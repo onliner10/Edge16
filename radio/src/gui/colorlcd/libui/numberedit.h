@@ -132,4 +132,6 @@ class NumberEdit : public TextButton
 
   void updateDisplay();
   void openEdit();
+
+  void checkEvents() override;
 };

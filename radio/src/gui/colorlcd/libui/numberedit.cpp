@@ -431,6 +431,18 @@ void NumberEdit::setValue(int value)
   if (edit) edit->update();
 }
 
+void NumberEdit::checkEvents()
+{
+  if (_getValue) {
+    int newValue = _getValue();
+    if (newValue != currentValue) {
+      currentValue = newValue;
+      updateDisplay();
+    }
+  }
+  TextButton::checkEvents();
+}
+
 #if defined(SIMU)
 void etxCreateForceObjectAllocationFailureForTest(bool force);
 

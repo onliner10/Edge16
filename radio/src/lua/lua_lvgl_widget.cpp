@@ -1436,13 +1436,13 @@ void LvglWidgetTriangle::fillTriangle()
   }
 next:
   // Second half
-  dx1 = (int8_t)(x3 - x2);
+  dx1 = (coord_t)(x3 - x2);
   if (dx1 < 0) {
     dx1 = -dx1;
     signx1 = -1;
   } else
     signx1 = 1;
-  dy1 = (int8_t)(y3 - y2);
+  dy1 = (coord_t)(y3 - y2);
   t1x = x2;
 
   if (dy1 > dx1) {  // swap values

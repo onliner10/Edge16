@@ -373,7 +373,7 @@ class Window
   bool sendLvEvent(lv_event_code_t code, void* param = nullptr);
   void addLvEventCb(lv_event_cb_t eventCb, lv_event_code_t filter,
                     void* userData);
-  void checkEvents();
+  virtual void checkEvents();
 
 #if defined(SIMU)
   void setAutomationId(std::string value);
