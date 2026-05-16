@@ -268,6 +268,18 @@ uint32_t s_anaFilt[MAX_ANALOG_INPUTS];
 
 #define ANALOG_MULTIPLIER (1 << ANALOG_SCALE)
 #define ANA_FILT(chan)    (getFilteredAnalog(chan) / (JITTER_ALPHA * ANALOG_MULTIPLIER))
+
+#if defined(RADIO_TX16S) || defined(RADIO_TX16SMK3)
+// TX16S Hall gimbals are stable enough to avoid the legacy long time constant.
+#define MAIN_INPUT_JITTER_ALPHA 4
+#else
+#define MAIN_INPUT_JITTER_ALPHA JITTER_ALPHA
+#endif
+
+#if (JITTER_ALPHA % MAIN_INPUT_JITTER_ALPHA != 0)
+  #error "MAIN_INPUT_JITTER_ALPHA must divide JITTER_ALPHA"
+#endif
+
 #if (JITTER_ALPHA * ANALOG_MULTIPLIER > 32)
   #error "JITTER_FILTER_STRENGTH and ANALOG_SCALE are too big, their summ should be <= 5 !!!"
 #endif
@@ -367,7 +379,9 @@ static uint32_t apply_low_pass_filter(uint32_t v, uint32_t v_prev,
   uint32_t out;
   if (useJitterFilter && diff < (10 * ANALOG_MULTIPLIER)) {
     // apply jitter filter
-    out = (v_prev - previous) + v;
+    uint32_t decay = is_main_input ? (v_prev / MAIN_INPUT_JITTER_ALPHA) : previous;
+    uint32_t input = is_main_input ? (v * (JITTER_ALPHA / MAIN_INPUT_JITTER_ALPHA)) : v;
+    out = (v_prev - decay) + input;
   } else {
     // use unfiltered value
     out = v * JITTER_ALPHA;
