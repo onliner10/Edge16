@@ -116,9 +116,23 @@ For clang-tidy, cppcheck, GCC analyzer, and CodeQL, mirror `.github/workflows/bu
 
 ### UI simulator harness
 
-Use the MCP servers when available: `edge16-serena` and `edge16-ui-harness`.
+Use the Pi `edgetx_ui` tool for simulator interaction instead of calling the UI MCP server directly. The tool is a lazy wrapper around `tools/ui-harness/edgetx-mcp`: it starts MCP on first use, auto-builds the simulator if `start` cannot find the executable, keeps one persistent simulator session, returns compact JSON, and truncates large results.
 
-CLI fallback:
+Common `edgetx_ui` calls:
+
+```text
+edgetx_ui action=help
+edgetx_ui action=start args={target:"tx16s"}
+edgetx_ui action=status
+edgetx_ui action=skip_storage_warning
+edgetx_ui action=screen
+edgetx_ui action=ui_tree args={mode:"summary", actionable_only:true}
+edgetx_ui action=activate args={automation_id:"nav.quick_menu"}
+edgetx_ui action=screenshot args={name:"after-quick-menu"}
+edgetx_ui action=stop
+```
+
+CLI fallback is only for cases where Pi tools are unavailable or debugging the harness itself:
 
 ```sh
 nix develop -c tools/ui-harness/edgetx-ui build tx16s
@@ -127,7 +141,7 @@ nix develop -c tools/ui-harness/edgetx-ui run-flow tools/ui-harness/flows/tx16s-
 nix develop -c tools/ui-harness/edgetx-mcp
 ```
 
-Interactive UI rule: start one persistent simulator session, wait for `startup_completed: true`, skip storage warnings with `edgetx_skip_storage_warning_if_present`, inspect `edgetx_ui_tree`, interact with selector clicks, then screenshot. Use `automation_id` first, exact `text` second, `text_contains` only with `role` or `index`. Use raw coordinates only when pointer timing/hit testing is the subject.
+Interactive UI rule: start one persistent simulator session with `edgetx_ui action=start`, wait for `startup_completed: true` via `edgetx_ui action=status`, skip storage warnings with `edgetx_ui action=skip_storage_warning`, inspect `edgetx_ui action=screen` or `edgetx_ui action=ui_tree args={mode:"summary"}`, interact with selector clicks/activation, then screenshot. Use `automation_id` first, exact `text` second, `text_contains` only with `role` or `index`. Use raw coordinates only when pointer timing/hit testing is the subject.
 
 For risky navigation, overlays, model switching, shutdown, or any surprising UI-tree result, capture a screenshot before interpreting the tree. The tree can include covered/background nodes, so a tree-only check is not enough to prove what the user sees.
 
@@ -140,13 +154,13 @@ sleep 2; click random coordinates; screenshot once; claim success
 Good UI verification:
 
 ```text
-edgetx_start_simulator target=tx16s
-edgetx_status until startup_completed=true
-edgetx_skip_storage_warning_if_present
-edgetx_ui_tree
-edgetx_click automation_id=nav.quick_menu
-edgetx_ui_tree confirms page/node change
-edgetx_screenshot name=after-quick-menu
+edgetx_ui action=start args={target:"tx16s"}
+edgetx_ui action=status until startup_completed=true
+edgetx_ui action=skip_storage_warning
+edgetx_ui action=screen
+edgetx_ui action=activate args={automation_id:"nav.quick_menu"}
+edgetx_ui action=ui_tree args={mode:"summary"} confirms page/node change
+edgetx_ui action=screenshot args={name:"after-quick-menu"}
 ```
 
 ### HIL harness
