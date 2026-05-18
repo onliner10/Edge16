@@ -23,9 +23,12 @@
 
 #include <algorithm>
 
+#include "LvglWrapper.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "mainwindow.h"
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/widgets/button/lv_button_private.h"
 
 #if defined(SIMU)
 static bool forceFmBufferMallocFailure = false;
@@ -54,19 +57,20 @@ static void input_mix_line_constructor(const lv_obj_class_t* class_p,
                                        lv_obj_t* obj)
 {
   etx_std_style(obj, LV_PART_MAIN, PAD_TINY);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
 }
 
 static const lv_obj_class_t input_mix_line_class = {
-    .base_class = &lv_btn_class,
+    .base_class = &lv_button_class,
     .constructor_cb = input_mix_line_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = ListLineButton::GRP_W,
     .height_def = ListLineButton::BTN_H,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_TRUE,
-    .instance_size = sizeof(lv_btn_t),
+    .instance_size = sizeof(lv_button_t),
 };
 
 static lv_obj_t* input_mix_line_create(lv_obj_t* parent)
@@ -77,20 +81,235 @@ static lv_obj_t* input_mix_line_create(lv_obj_t* parent)
 ListLineButton::ListLineButton(Window* parent, uint8_t index) :
     ButtonBase(parent, rect_t{}, nullptr, input_mix_line_create), index(index)
 {
+  setWindowFlag(NO_SCROLL);
 }
 
 void ListLineButton::onLiveCheckEvents(Window::LiveWindow& live)
 {
-  ButtonBase::onLiveCheckEvents(live);
-  runWhenLoaded([&]() {
+  LineRealizationToken token;
+  if (!tryRealize(token, live)) return;
+
+  Window::onLiveCheckEvents(live);
+  applyRefreshIfReady();
+  if (checkHandler) checkHandler();
+}
+
+void ListLineButton::delayedInit()
+{
+  withLive([&](LiveWindow& live) {
+    LineRealizationToken token;
+    tryRealize(token, live);
+  });
+}
+
+void ListLineButton::onDelete()
+{
+  setLiveValueUpdatesEnabled(false);
+}
+
+void ListLineButton::onFailClosed()
+{
+  transitionToFailedClosed();
+}
+
+void ListLineButton::onLiveVisibilityChanged(Window::LiveWindow&, bool visible)
+{
+  setLiveValueUpdatesEnabled(visible);
+}
+
+void ListLineButton::setLiveValueUpdatesEnabled(bool enabled)
+{
+  if (!enabled) {
+    liveConnection.disconnect();
+    liveSubscription.reset();
+    return;
+  }
+
+  if (!isLineReady() || liveConnection.connected()) return;
+
+  liveSubscription = UiEventHub::registerLiveValueConsumer();
+  liveConnection = UiEventHub::subscribe(
+      UiTopic::LiveChannelValues,
+      [this](uint32_t) { runLiveValueUpdate(); });
+}
+
+void ListLineButton::runLiveValueUpdate()
+{
+  if (!isLineReady()) return;
+
+  withLive([&](LiveWindow& live) {
+    if (!isLiveOnScreen(live)) return;
+    Window::onLiveCheckEvents(live);
+    applyRefreshIfReady();
+    if (checkHandler) checkHandler();
     check(isActive());
-    onLoadedCheckEvents(live);
+    updatePhase = UpdatePhase::LiveUpdating;
+    onLineLiveUpdate(live);
+    updatePhase = UpdatePhase::Idle;
   });
 }
 
 void ListLineButton::refresh()
 {
-  runWhenLoaded([&]() { onRefresh(); });
+  refreshPending = true;
+  if (updatePhase == UpdatePhase::Idle) applyRefreshIfReady();
+}
+
+void ListLineButton::onLineLiveUpdate(Window::LiveWindow& live)
+{
+  onLoadedCheckEvents(live);
+}
+
+bool ListLineButton::isLineReady() const
+{
+  return lineState == LineState::Ready;
+}
+
+bool ListLineButton::tryRealize(LineRealizationToken&,
+                                Window::LiveWindow& live)
+{
+  if (transitionToFailedClosedIfUnavailable()) return false;
+  if (lineState == LineState::Ready) return true;
+  if (lineState == LineState::FailedClosed || lineState == LineState::Loading)
+    return false;
+
+  lineState = LineState::Loading;
+  onLineLoaded();
+
+  if (transitionToFailedClosedIfUnavailable()) return false;
+
+  lineState = LineState::Ready;
+  refreshPending = true;
+  applyRefreshIfReady();
+  setLiveValueUpdatesEnabled(isLiveOnScreen(live));
+  lv_obj_invalidate(live.lvobj());
+  return true;
+}
+
+void ListLineButton::transitionToFailedClosed()
+{
+  lineState = LineState::FailedClosed;
+  setLiveValueUpdatesEnabled(false);
+}
+
+bool ListLineButton::transitionToFailedClosedIfUnavailable()
+{
+  if (isAvailable()) return false;
+
+  transitionToFailedClosed();
+  return true;
+}
+
+void ListLineButton::applyRefreshIfReady()
+{
+  if (!refreshPending) return;
+  if (!isLineReady()) return;
+  if (updatePhase != UpdatePhase::Idle) return;
+
+  withLive([&](LiveWindow& live) {
+    updatePhase = UpdatePhase::Refreshing;
+    refreshPending = false;
+    check(isActive());
+    onRefresh();
+    if (transitionToFailedClosedIfUnavailable()) return;
+    onLineAfterRefresh();
+    if (transitionToFailedClosedIfUnavailable()) return;
+    updatePhase = UpdatePhase::Idle;
+  });
+
+  updatePhase = UpdatePhase::Idle;
+}
+
+void ListLineButton::onLiveClicked(Window::LiveWindow& live)
+{
+  LineRealizationToken token;
+  if (!tryRealize(token, live)) return;
+
+  ButtonBase::onLiveClicked(live);
+}
+
+bool ListLineButton::onLiveCustomEvent(Window::LiveWindow& live,
+                                       lv_event_t* event)
+{
+  if (lv_event_get_code(event) == LV_EVENT_DRAW_MAIN_END && !isLineReady()) {
+    drawPlaceholder(live, event);
+  }
+  return false;
+}
+
+static void draw_placeholder_bar(lv_layer_t* layer, lv_area_t area,
+                                 lv_coord_t radius, lv_color_t color,
+                                 lv_opa_t opa)
+{
+  if (area.x2 < area.x1 || area.y2 < area.y1) return;
+
+  lv_draw_rect_dsc_t dsc;
+  lv_draw_rect_dsc_init(&dsc);
+  dsc.radius = radius;
+  dsc.bg_color = color;
+  dsc.bg_opa = opa;
+  lv_draw_rect(layer, &dsc, &area);
+}
+
+void ListLineButton::drawPlaceholder(Window::LiveWindow& live,
+                                     lv_event_t* event)
+{
+  if (lineState == LineState::FailedClosed) return;
+
+  lv_layer_t* layer = lv_event_get_layer(event);
+  if (!layer) return;
+
+  lv_area_t row;
+  lv_obj_get_coords(live.lvobj(), &row);
+  const lv_coord_t rowW = lv_area_get_width(&row);
+  const lv_coord_t rowH = lv_area_get_height(&row);
+  if (rowW <= PAD_LARGE * 2 || rowH <= PAD_SMALL * 2) return;
+
+  const lv_coord_t inset = PAD_MEDIUM;
+  const lv_coord_t barH = std::max<lv_coord_t>(
+      4, std::min<lv_coord_t>(8, rowH / 5));
+  const lv_coord_t gap = std::max<lv_coord_t>(3, barH / 2);
+  const lv_coord_t blockH = barH * 2 + gap;
+  const lv_coord_t y = row.y1 + std::max<lv_coord_t>(PAD_TINY,
+                                                     (rowH - blockH) / 2);
+
+  const lv_color_t color = makeLvColor(COLOR_THEME_SECONDARY2);
+  const lv_opa_t primaryOpa = LV_OPA_50;
+  const lv_opa_t secondaryOpa = LV_OPA_30;
+  const lv_coord_t radius = barH / 2;
+
+  lv_area_t left = {
+      row.x1 + inset,
+      y,
+      row.x1 + inset + std::min<lv_coord_t>(rowW / 5, 64),
+      y + barH - 1,
+  };
+  draw_placeholder_bar(layer, left, radius, color, primaryOpa);
+
+  lv_area_t main = {
+      left.x2 + PAD_LARGE,
+      y,
+      row.x1 + inset + std::min<lv_coord_t>((rowW * 3) / 5, rowW - 80),
+      y + barH - 1,
+  };
+  draw_placeholder_bar(layer, main, radius, color, primaryOpa);
+
+  lv_area_t detail = {
+      row.x1 + inset,
+      y + barH + gap,
+      row.x1 + inset + std::min<lv_coord_t>(rowW / 3, 120),
+      y + barH * 2 + gap - 1,
+  };
+  draw_placeholder_bar(layer, detail, radius, color, secondaryOpa);
+
+  const lv_coord_t affordance = std::min<lv_coord_t>(barH * 2, 18);
+  lv_area_t right = {
+      row.x2 - inset - affordance,
+      row.y1 + (rowH - affordance) / 2,
+      row.x2 - inset,
+      row.y1 + (rowH + affordance) / 2,
+  };
+  draw_placeholder_bar(layer, right, PAD_TINY, color, secondaryOpa);
 }
 
 InputMixButtonBase::InputMixButtonBase(Window* parent, uint8_t index) :
@@ -132,6 +351,7 @@ bool InputMixButtonBase::ensureLineLabel(RequiredLvObj& label, coord_t x,
 
 void InputMixButtonBase::setWeight(gvar_t value, gvar_t min, gvar_t max)
 {
+  if (!isLineReady()) return;
   if (!ensureLineLabel(weight, WGT_X, WGT_Y, WGT_W, WGT_H)) return;
 
   char s[32];
@@ -141,6 +361,7 @@ void InputMixButtonBase::setWeight(gvar_t value, gvar_t min, gvar_t max)
 
 void InputMixButtonBase::setSource(mixsrc_t idx)
 {
+  if (!isLineReady()) return;
   if (!ensureLineLabel(source, SRC_X, SRC_Y, SRC_W, SRC_H)) return;
 
   char* s = getSourceString(idx);
@@ -149,6 +370,7 @@ void InputMixButtonBase::setSource(mixsrc_t idx)
 
 void InputMixButtonBase::setOpts(const char* s)
 {
+  if (!isLineReady()) return;
   if (!ensureLineLabel(opts, OPT_X, OPT_Y, OPT_W, OPT_H)) return;
 
   setLineLabelText(opts, s, OPT_W);
@@ -156,6 +378,8 @@ void InputMixButtonBase::setOpts(const char* s)
 
 void InputMixButtonBase::setFlightModes(uint16_t modes)
 {
+  if (!isLineReady()) return;
+
   bool handled = withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
 
@@ -198,7 +422,7 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
       fm_canvas = newCanvas;
       fm_buffer = newBuffer;
       lv_canvas_set_buffer(fm_canvas, fm_buffer, FM_CANVAS_WIDTH,
-                           FM_CANVAS_HEIGHT, LV_IMG_CF_ALPHA_8BIT);
+                           FM_CANVAS_HEIGHT, LV_COLOR_FORMAT_A8);
       lv_obj_set_pos(fm_canvas, FM_X, FM_Y);
 
       lv_obj_set_style_img_recolor(fm_canvas, makeLvColor(COLOR_THEME_SECONDARY1), LV_PART_MAIN);
@@ -214,7 +438,18 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
     lv_coord_t h = mask->height;
 
     coord_t x = 0;
-    lv_canvas_copy_buf(fm_canvas, mask->data, x, 0, w, h);
+    {
+      lv_draw_buf_t src_buf;
+      if (lv_draw_buf_init(&src_buf, w, h, LV_COLOR_FORMAT_A8, 0,
+                           (void*)mask->data, w * h) == LV_RESULT_OK) {
+        lv_area_t canvas_area;
+        canvas_area.x1 = x;
+        canvas_area.y1 = 0;
+        canvas_area.x2 = x + w - 1;
+        canvas_area.y2 = h - 1;
+        lv_canvas_copy_buf(fm_canvas, &canvas_area, &src_buf, NULL);
+      }
+    }
     x += (w + PAD_TINY);
 
     lv_draw_label_dsc_t label_dsc;
@@ -227,18 +462,32 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
     const lv_font_t* font = getFont(FONT(XS));
     label_dsc.font = font;
 
+    lv_layer_t canvas_layer;
+    lv_canvas_init_layer(fm_canvas, &canvas_layer);
     for (int i = 0; i < MAX_FLIGHT_MODES; i++) {
       char s[] = " ";
       s[0] = '0' + i;
       if (fm_modes & (1 << i)) {
         label_dsc.color = lv_color_make(0x7f, 0x7f, 0x7f);
       } else {
-        lv_canvas_draw_rect(fm_canvas, x, 0, FM_W, PAD_THREE, &rect_dsc);
+        lv_area_t rect_area;
+        rect_area.x1 = x;
+        rect_area.y1 = 0;
+        rect_area.x2 = x + FM_W - 1;
+        rect_area.y2 = PAD_THREE - 1;
+        lv_draw_rect(&canvas_layer, &rect_dsc, &rect_area);
         label_dsc.color = lv_color_white();
       }
-      lv_canvas_draw_text(fm_canvas, x, 0, FM_W, &label_dsc, s);
+      lv_area_t text_area;
+      text_area.x1 = x;
+      text_area.y1 = 0;
+      text_area.x2 = x + FM_W - 1;
+      text_area.y2 = PAD_THREE - 1;
+      label_dsc.text = s;
+      lv_draw_label(&canvas_layer, &label_dsc, &text_area);
       x += FM_W;
     }
+    lv_canvas_finish_layer(fm_canvas, &canvas_layer);
 
     updateHeight();
   });
@@ -258,6 +507,7 @@ bool listLineButtonMissingFmBufferLeavesNoCanvasForTest()
 
     void onRefresh() override {}
     void updatePos(coord_t, coord_t) override {}
+    void forceFirstLoadForTest() { delayedInit(); }
 
     bool hasFlightModeCanvas() const { return fm_canvas != nullptr; }
     bool hasFlightModeBuffer() const { return fm_buffer != nullptr; }
@@ -270,6 +520,7 @@ bool listLineButtonMissingFmBufferLeavesNoCanvasForTest()
   g_model.modelFMDisabled = OVERRIDE_ON;
 
   auto button = new TestInputMixButton(MainWindow::instance());
+  button->forceFirstLoadForTest();
   listLineButtonForceFmBufferMallocFailureForTest(true);
   button->setFlightModes(1);
   listLineButtonForceFmBufferMallocFailureForTest(false);
@@ -286,6 +537,7 @@ bool listLineButtonLabelAllocationFailureFailsClosedForTest()
 
     void onRefresh() override {}
     void updatePos(coord_t, coord_t) override {}
+    void forceFirstLoadForTest() { delayedInit(); }
 
    protected:
     bool isActive() const override { return false; }
@@ -297,6 +549,7 @@ bool listLineButtonLabelAllocationFailureFailsClosedForTest()
     return false;
   }
 
+  button->forceFirstLoadForTest();
   listLineButtonForceLabelCreateFailureForTest(true);
   button->setWeight(100, -100, 100);
   listLineButtonForceLabelCreateFailureForTest(false);
@@ -470,6 +723,114 @@ bool listLinePageLookupRequiresGroupAndLineForTest()
   delete group;
   return true;
 }
+
+bool listLineButtonRefreshBeforeVisibleLoadRunsOnFirstLoadForTest()
+{
+  class TestLineButton : public ListLineButton
+  {
+   public:
+    explicit TestLineButton(Window* parent) : ListLineButton(parent, 0) {}
+
+    int loadCalls = 0;
+    int refreshCalls = 0;
+
+    void forceFirstLoadForTest()
+    {
+      delayedInit();
+    }
+
+   protected:
+    bool isActive() const override { return false; }
+    void onLineLoaded() override { loadCalls += 1; }
+    void onRefresh() override { refreshCalls += 1; }
+  };
+
+  auto mainWindow = MainWindow::instance();
+  mainWindow->loadLvglScreen();
+
+  auto button = new (std::nothrow) TestLineButton(mainWindow);
+  if (!button || !button->isAvailable()) {
+    delete button;
+    return false;
+  }
+
+  button->refresh();
+  if (button->refreshCalls != 0 || button->loadCalls != 0) {
+    button->deleteLater();
+    mainWindow->runMainLoopTick();
+    mainWindow->runMainLoopTick();
+    return false;
+  }
+
+  button->forceFirstLoadForTest();
+  const bool firstLoadApplied =
+      button->loadCalls == 1 && button->refreshCalls == 1;
+
+  button->refresh();
+  const bool loadedRefreshRuns = button->refreshCalls == 2;
+
+  button->deleteLater();
+  mainWindow->runMainLoopTick();
+  mainWindow->runMainLoopTick();
+
+  return firstLoadApplied && loadedRefreshRuns;
+}
+
+bool listLineButtonRefreshFromLiveUpdateDefersForTest()
+{
+  class TestLineButton : public ListLineButton
+  {
+   public:
+    explicit TestLineButton(Window* parent) : ListLineButton(parent, 0) {}
+
+    int refreshCalls = 0;
+    int liveUpdateCalls = 0;
+
+    void forceFirstLoadForTest() { delayedInit(); }
+    void forceLiveUpdateForTest() { runLiveValueUpdate(); }
+
+   protected:
+    bool isActive() const override { return false; }
+    void onRefresh() override { refreshCalls += 1; }
+
+    void onLineLiveUpdate(LiveWindow&) override
+    {
+      liveUpdateCalls += 1;
+      refresh();
+    }
+  };
+
+  auto mainWindow = MainWindow::instance();
+  mainWindow->loadLvglScreen();
+
+  auto button = new (std::nothrow) TestLineButton(mainWindow);
+  if (!button || !button->isAvailable()) {
+    delete button;
+    return false;
+  }
+
+  button->forceFirstLoadForTest();
+  if (button->refreshCalls != 1 || button->liveUpdateCalls != 0) {
+    button->deleteLater();
+    mainWindow->runMainLoopTick();
+    mainWindow->runMainLoopTick();
+    return false;
+  }
+
+  button->forceLiveUpdateForTest();
+  const bool refreshDeferred =
+      button->refreshCalls == 1 && button->liveUpdateCalls == 1;
+
+  button->forceLiveUpdateForTest();
+  const bool deferredRefreshAppliedOnce =
+      button->refreshCalls == 2 && button->liveUpdateCalls == 2;
+
+  button->deleteLater();
+  mainWindow->runMainLoopTick();
+  mainWindow->runMainLoopTick();
+
+  return refreshDeferred && deferredRefreshAppliedOnce;
+}
 #endif
 
 void InputMixButtonBase::onLoadedCheckEvents(Window::LiveWindow& live)
@@ -504,8 +865,8 @@ static const lv_obj_class_t group_class = {
     .base_class = &lv_obj_class,
     .constructor_cb = group_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = ListLineButton::GRP_W,
     .height_def = LV_SIZE_CONTENT,
     .editable = LV_OBJ_CLASS_EDITABLE_FALSE,

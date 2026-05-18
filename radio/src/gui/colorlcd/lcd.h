@@ -26,20 +26,19 @@
 #include "colors.h"
 
 #include <lvgl/lvgl.h>
+#include "edgetx_lvgl_adapter.h"
 #include <cstddef>
 #include <cstdint>
 #include <utility>
 
 #if !defined(LCD_FLUSH_INVALIDATED_AREAS_MAX)
-#define LCD_FLUSH_INVALIDATED_AREAS_MAX LV_INV_BUF_SIZE
+#define LCD_FLUSH_INVALIDATED_AREAS_MAX 32
 #endif
 
 #if !defined(LCD_FLUSH_VBLANK_TIMEOUT_MS)
 #define LCD_FLUSH_VBLANK_TIMEOUT_MS 50
 #endif
 
-struct _lv_disp_drv_t;
-typedef _lv_disp_drv_t lv_disp_drv_t;
 
 #if defined(DEBUG) || defined(SIMU)
 #define LCD_ASSERT(cond, msg) \
@@ -118,42 +117,43 @@ private:
 
 class LvglFlushToken {
 public:
-  LvglFlushToken() : drv_(nullptr) {}
-  explicit LvglFlushToken(lv_disp_drv_t* drv) : drv_(drv) {}
+  LvglFlushToken() = default;
+  explicit LvglFlushToken(lv_display_t* disp) : disp_(disp) {}
 
   LvglFlushToken(const LvglFlushToken&) = delete;
   LvglFlushToken& operator=(const LvglFlushToken&) = delete;
 
-  LvglFlushToken(LvglFlushToken&& o) noexcept : drv_(o.drv_) { o.drv_ = nullptr; }
+  LvglFlushToken(LvglFlushToken&& o) noexcept : disp_(o.disp_)
+  {
+    o.disp_ = nullptr;
+  }
   LvglFlushToken& operator=(LvglFlushToken&& o) noexcept
   {
     if (this != &o) {
-      LCD_ASSERT(!drv_, "LvglFlushToken: move-assign over live token");
-      drv_ = o.drv_;
-      o.drv_ = nullptr;
+      LCD_ASSERT(!disp_, "LvglFlushToken: move-assign over live token");
+      disp_ = o.disp_;
+      o.disp_ = nullptr;
     }
     return *this;
   }
 
   ~LvglFlushToken()
   {
-    LCD_ASSERT(drv_ == nullptr,
+    LCD_ASSERT(!disp_,
                "LvglFlushToken: destroyed without completing flush");
   }
 
   void complete()
   {
-    LCD_ASSERT(drv_, "LvglFlushToken: double complete");
-    lv_disp_flush_ready(drv_);
-    drv_ = nullptr;
+    LCD_ASSERT(disp_, "LvglFlushToken: double complete");
+    lv_display_flush_ready(disp_);
+    disp_ = nullptr;
   }
 
-  lv_disp_drv_t* driver() const { return drv_; }
-
-  bool isLive() const { return drv_ != nullptr; }
+  bool isLive() const { return disp_ != nullptr; }
 
 private:
-  lv_disp_drv_t* drv_;
+  lv_display_t* disp_ = nullptr;
 };
 
 struct LcdFlushChunk {
@@ -330,7 +330,7 @@ public:
   LcdFlushManager(const LcdFlushManager&) = delete;
   LcdFlushManager& operator=(const LcdFlushManager&) = delete;
 
-  void onLvglFlush(lv_disp_drv_t* disp_drv, const lv_area_t* area,
+  void onLvglFlush(lv_display_t* disp_drv, const lv_area_t* area,
                    lv_color_t* color_p);
   void poll();
   bool isBusy() const;
@@ -363,8 +363,8 @@ private:
   void forceCompleteFlush();
 };
 
-void lcdSetWaitCb(void (*cb)(lv_disp_drv_t*));
-void lcdSetFlushCb(void (*cb)(lv_disp_drv_t*, uint16_t*, const rect_t&));
+void lcdSetWaitCb(void (*cb)(lv_display_t*));
+void lcdSetFlushCb(void (*cb)(lv_display_t*, uint16_t*, const rect_t&));
 void lcdSetTypedFlushCb(lcd_typed_flush_cb_t cb);
 
 void lcdFlushPoll();
@@ -372,6 +372,7 @@ bool lcdFlushIsBusy();
 
 LcdFlushDrainResult lcdFlushDrain(uint32_t timeoutMs);
 void lcdVBlankTickFromIsr();
+LcdInvalidatedAreas lcdCaptureFlushAreas();
 
 void lcdInitDisplayDriver();
 void lcdClear();

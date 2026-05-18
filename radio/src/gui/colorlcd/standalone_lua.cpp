@@ -229,7 +229,7 @@ StandaloneLuaWindow::StandaloneLuaWindow(bool useLvgl, int initFn, int runFn) :
       } else {
         lv_obj_center(canvas);
         lv_canvas_set_buffer(canvas, lcdBuffer->getData(),
-                             lcdBuffer->width(), lcdBuffer->height(), LV_IMG_CF_TRUE_COLOR);
+                             lcdBuffer->width(), lcdBuffer->height(), LV_COLOR_FORMAT_RGB565);
 
         focusStandaloneCanvas = true;
       }

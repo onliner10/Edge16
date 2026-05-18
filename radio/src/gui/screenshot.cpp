@@ -24,11 +24,17 @@
 #if defined(COLORLCD)
 // Scaling for RBG565 to RGB888
 uint8_t rbScale[32] = {
-  0,8,16,24,32,41,49,57,65,74,82,90,98,106,115,123,131,139,148,156,164,172,180,189,197,205,213,222,230,238,246,255
+  0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120,
+  128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232,
+  240, 248
 };
 uint8_t gScale[64] = {
-  0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,85,89,93,97,101,105,109,113,117,121,125,
-  129,133,137,141,145,149,153,157,161,165,170,174,178,182,186,190,194,198,202,206,210,214,218,222,226,230,234,238,242,246,250,255
+  0,   4,   8,   12,  16,  20,  24,  28,  32,  36,  40,
+  44,  48,  52,  56,  60,  64,  68,  72,  76,  80,  84,
+  88,  92,  96,  100, 104, 108, 112, 116, 120, 124, 128,
+  132, 136, 140, 144, 148, 152, 156, 160, 164, 168, 172,
+  176, 180, 184, 188, 192, 196, 200, 204, 208, 212, 216,
+  220, 224, 228, 232, 236, 240, 244, 248
 };
 #endif
 
@@ -41,14 +47,14 @@ uint8_t gScale[64] = {
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
 
-static void convert_RGB565_to_RGB888(uint8_t* dst, lv_img_dsc_t* src, coord_t w, coord_t h)
+static void convert_RGB565_to_RGB888(uint8_t* dst, lv_draw_buf_t* src, coord_t w, coord_t h)
 {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      lv_color_t pixel = lv_img_buf_get_px_color(src, x, y, {});
-      *(dst++) = rbScale[pixel.ch.red];
-      *(dst++) = gScale[pixel.ch.green];
-      *(dst++) = rbScale[pixel.ch.blue];
+      lv_color16_t pixel = *(lv_color16_t*)lv_draw_buf_goto_xy(src, x, y);
+      *(dst++) = rbScale[pixel.red];
+      *(dst++) = gScale[pixel.green];
+      *(dst++) = rbScale[pixel.blue];
     }
   }
 }
@@ -87,7 +93,7 @@ static const char* _writeScreenshot()
     return error;
   }
 
-  lv_img_dsc_t* snapshot = lv_snapshot_take(lv_scr_act(), LV_IMG_CF_TRUE_COLOR);
+  lv_draw_buf_t* snapshot = lv_snapshot_take(lv_scr_act(), LV_COLOR_FORMAT_RGB565);
   if (!snapshot) {
     return "LVGL error creating snapshot";
   }
@@ -132,7 +138,7 @@ static const char* _writeScreenshot()
   stbi_write_png_to_func(writeScreenToFile, filename, LCD_W, LCD_H, 3, img, stride);
   free(img);
 
-  lv_snapshot_free(snapshot);
+  lv_draw_buf_destroy(snapshot);
 
   return writeResult;
 }
@@ -210,7 +216,7 @@ static const char* _writeScreenshot()
   }
 
 #if defined(COLORLCD)
-  lv_img_dsc_t* snapshot = lv_snapshot_take(lv_scr_act(), LV_IMG_CF_TRUE_COLOR);
+  lv_draw_buf_t* snapshot = lv_snapshot_take(lv_scr_act(), LV_COLOR_FORMAT_RGB565);
   if (!snapshot) {
     f_close(&bmpFile);
     return "LVGL error creating snapshot";
@@ -227,18 +233,17 @@ static const char* _writeScreenshot()
   for (int y = h - 1; y >= 0; y--) {
     for (uint32_t x = 0; x < w; x++) {
 
-      lv_color_t pixel = lv_img_buf_get_px_color(snapshot, x, y, {});
+      lv_color16_t pixel = *(lv_color16_t*)lv_draw_buf_goto_xy(snapshot, x, y);
 
-      _bmp_buf[bpos++] = rbScale[pixel.ch.blue];
-      _bmp_buf[bpos++] = gScale[pixel.ch.green];
-
-      // Header size is a multiple of 2, sector size is a multiple of 4
+      _bmp_buf[bpos++] = rbScale[pixel.blue];
+      _bmp_buf[bpos++] = gScale[pixel.green];
+      _bmp_buf[bpos++] = rbScale[pixel.red];
       // so we will hit end of buffer half way through a pixel
       if (bpos == BMP_BUF_SIZE) {
         result = f_write(&bmpFile, _bmp_buf, bpos, &written);
 
         if (result != FR_OK || written != bpos) {
-          lv_snapshot_free(snapshot);
+          lv_draw_buf_destroy(snapshot);
           f_close(&bmpFile);
           return SDCARD_ERROR(result);
         }
@@ -246,7 +251,7 @@ static const char* _writeScreenshot()
         bpos = 0;
       }
 
-      _bmp_buf[bpos++] = rbScale[pixel.ch.red];
+      _bmp_buf[bpos++] = rbScale[pixel.red];
       _bmp_buf[bpos++] = 0xFF;
     }
   }
@@ -255,13 +260,13 @@ static const char* _writeScreenshot()
     result = f_write(&bmpFile, _bmp_buf, bpos, &written);
 
     if (result != FR_OK || written != bpos) {
-      lv_snapshot_free(snapshot);
+      lv_draw_buf_destroy(snapshot);
       f_close(&bmpFile);
       return SDCARD_ERROR(result);
     }
   }
 
-  lv_snapshot_free(snapshot);
+  lv_draw_buf_destroy(snapshot);
 
 #else // stdlcd
 

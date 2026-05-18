@@ -50,7 +50,8 @@ class ColorList : public ListBox
  protected:
   std::vector<ColorEntry> _colorList;
 
-  void onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc);
+  void onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
+               lv_layer_t* layer);
 };
 
 class ColorSwatch : public Window

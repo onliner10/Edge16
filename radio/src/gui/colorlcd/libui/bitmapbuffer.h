@@ -61,7 +61,7 @@ class BitmapBuffer
 
   ~BitmapBuffer();
 
-  void setDrawCtx(lv_draw_ctx_t* ctx) { draw_ctx = ctx; }
+  void setDrawCtx(lv_layer_t* ctx) { draw_ctx = ctx; }
 
   void setData(uint16_t* d);
 
@@ -266,5 +266,5 @@ class BitmapBuffer
   bool leakReported;
 #endif
   lv_obj_t* canvas = nullptr;
-  lv_draw_ctx_t* draw_ctx = nullptr;
+  lv_layer_t* draw_ctx = nullptr;
 };

@@ -173,8 +173,8 @@ static void sanitizeMixerLines()
 void postModelLoad(bool alarms)
 {
 #if defined(COLORLCD)
-  if (!g_model.hasScreenData(0))
-    LayoutFactory::loadDefaultLayout();
+  if (!g_model.hasScreenData(0) && !LayoutFactory::screenReplacementActive())
+    LayoutFactory::replaceDefaultLayout();
 
   if (g_eeGeneral.topbarWidgetWidth[0] == 0) {
     // Set default width for top bar widgets

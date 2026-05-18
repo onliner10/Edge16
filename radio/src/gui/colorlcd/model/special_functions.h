@@ -37,16 +37,18 @@ class FunctionLineButton : public ListLineButton
 {
  public:
   FunctionLineButton(Window *parent, const rect_t &rect,
-                     const CustomFunctionData *cfn, uint8_t index,
+                     CustomFunctionData *cfn, uint8_t index,
                      const char *prefix);
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return "FunctionButton"; }
 #endif
 
-  void delayedInit() override;
+  void onLineLoaded() override;
 
   void onRefresh() override;
+  bool functionEnabled() const;
+  void setFunctionEnabled(bool enabled);
 
   static constexpr coord_t NM_X = PAD_TINY;
   static LAYOUT_SIZE_SCALED(NM_Y, 4, 10)
@@ -58,23 +60,25 @@ class FunctionLineButton : public ListLineButton
   static LAYOUT_SIZE_SCALED(FN_Y, 4, 20)
   static LAYOUT_SIZE_SCALED(RP_W, 40, 34)
   static LAYOUT_VAL_SCALED(EN_SZ, 16)
-  static constexpr coord_t RP_X = ListLineButton::GRP_W - PAD_BORDER * 2 - RP_W - EN_SZ - PAD_TINY * 2;
+  static constexpr coord_t EN_X =
+      ListLineButton::GRP_W - PAD_BORDER * 2 - EN_SZ - PAD_SMALL;
+  static constexpr coord_t RP_X = EN_X - PAD_TINY - RP_W;
   static constexpr coord_t RP_Y = NM_Y;
   static constexpr coord_t FN_W = RP_X - FN_X - PAD_TINY;
-  static constexpr coord_t EN_X = ListLineButton::GRP_W - PAD_BORDER * 2 - EN_SZ - PAD_TINY;
   static constexpr coord_t EN_Y = NM_Y + PAD_TINY;
 
  protected:
-  const CustomFunctionData *cfn;
+  CustomFunctionData *cfn;
   const char *prefix;
 
   lv_obj_t *sfName = nullptr;
   lv_obj_t *sfSwitch = nullptr;
   lv_obj_t *sfFunc = nullptr;
   lv_obj_t *sfRepeat = nullptr;
-  lv_obj_t *sfEnable = nullptr;
+  CheckButton *sfEnable = nullptr;
 
   virtual bool isActive() const override = 0;
+  virtual void setDirty() const = 0;
 };
 
 //-----------------------------------------------------------------------------

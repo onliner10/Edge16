@@ -34,6 +34,8 @@
 #include "view_channels.h"
 #include "widget.h"
 
+#include "thirdparty/lvgl/src/misc/lv_timer_private.h"
+
 namespace
 {
 
@@ -48,8 +50,8 @@ bool timeReached(uint32_t now, uint32_t target)
 
 static void tile_view_deleted_cb(lv_event_t* e)
 {
-  lv_obj_t* target = lv_event_get_target(e);
-  lv_obj_t* obj = lv_event_get_current_target(e);
+  lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
+  lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
 
   // LV_EVENT_CHILD_DELETED is bubbled to all parents, so
   // we'd better make sure this is one of our own.
@@ -71,7 +73,7 @@ static void saveViewId(unsigned view)
 static void tile_view_scroll_begin(lv_event_t* e)
 {
   lv_anim_t* a = (lv_anim_t*)lv_event_get_param(e);
-  if (a) a->time = 0;
+  if (a) a->duration = 0;
 }
 
 static void tile_view_scroll(lv_event_t* e)
@@ -138,7 +140,7 @@ void ViewMain::addMainView(WidgetsContainer* view, uint32_t viewId)
   if (!tile_view || !view) return;
 
   auto tile =
-      lv_tileview_add_tile(tile_view, viewId, 0, LV_DIR_LEFT | LV_DIR_RIGHT);
+      lv_tileview_add_tile(tile_view, viewId, 0, static_cast<lv_dir_t>(LV_DIR_LEFT | LV_DIR_RIGHT));
   if (!tile) return;
 
   if (!view->withLive([&](Window::LiveWindow& liveView) {

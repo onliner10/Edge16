@@ -28,10 +28,21 @@
 #include "list_line_button.h"
 #include "numberedit.h"
 #include "page.h"
+
 #include "switchchoice.h"
 #include "textedit.h"
+#include "ui_events.h"
 
-#define SET_DIRTY() storageDirty(EE_MODEL)
+#define SET_DIRTY()                  \
+  do {                               \
+    storageDirty(EE_MODEL);          \
+    publishModelFlightModesChanged(); \
+  } while (0)
+
+static void publishModelFlightModesChanged()
+{
+  UiEventHub::publish(UiTopic::ModelFlightModesChanged);
+}
 
 static std::string getFMTrimStr(uint8_t mode, bool spacer)
 {
@@ -209,11 +220,9 @@ class FlightModeBtn : public ListLineButton
   {
     padAll(PAD_ZERO);
     setHeight(BTN_H);
-
-    delayLoad();
   }
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -280,7 +289,6 @@ class FlightModeBtn : public ListLineButton
         }))
       return;
 
-    refresh();
   }
 
   bool isActive() const override { return (getFlightMode() == index); }
@@ -393,8 +401,8 @@ const lv_obj_class_t FlightModeBtn::fm_id_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_id_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::FMID_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -412,8 +420,8 @@ const lv_obj_class_t FlightModeBtn::fm_name_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_name_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::NAME_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -430,8 +438,8 @@ const lv_obj_class_t FlightModeBtn::fm_switch_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_switch_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::SWTCH_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -448,8 +456,8 @@ const lv_obj_class_t FlightModeBtn::fm_fade_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_fade_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::FADE_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -467,8 +475,8 @@ const lv_obj_class_t FlightModeBtn::fm_trim_mode_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_trim_mode_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::TRIM_W,
     .height_def = FlightModeBtn::TRIM_H,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -487,8 +495,8 @@ const lv_obj_class_t FlightModeBtn::fm_trim_value_class = {
     .base_class = &lv_label_class,
     .constructor_cb = fm_trim_value_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = FlightModeBtn::TRIM_W,
     .height_def = FlightModeBtn::TRIM_H,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -517,7 +525,10 @@ void ModelFlightModesPage::build(Window* form)
     btn->setWidth(ListLineButton::GRP_W);
 
     btn->setPressHandler([=]() {
-      (new FlightModeEdit(i))->setCloseHandler([=]() { btn->refresh(); });
+      (new FlightModeEdit(i))->setCloseHandler([=]() {
+        btn->refresh();
+        publishModelFlightModesChanged();
+      });
       return 0;
     });
   }

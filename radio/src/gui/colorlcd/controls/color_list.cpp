@@ -24,6 +24,10 @@
 #include "color_editor.h"
 #include "etx_lv_theme.h"
 
+#include "thirdparty/lvgl/src/widgets/canvas/lv_canvas.h"
+#include "thirdparty/lvgl/src/core/lv_obj_class_private.h"
+#include "thirdparty/lvgl/src/core/lv_obj_private.h"
+
 ColorList::ColorList(Window *parent, const rect_t &rect,
                      std::vector<ColorEntry> colors) :
     ListBox(parent, rect, getColorListNames(colors)), _colorList(colors)
@@ -44,13 +48,14 @@ std::vector<std::string> ColorList::getColorListNames(
 }
 
 void ColorList::onDrawEnd(uint16_t row, uint16_t col,
-                          lv_obj_draw_part_dsc_t *dsc)
+                          lv_area_t *cell_area,
+                          lv_layer_t* layer)
 {
   lv_draw_rect_dsc_t rect_dsc;
   lv_draw_rect_dsc_init(&rect_dsc);
 
   lv_area_t coords;
-  lv_coord_t area_h = lv_area_get_height(dsc->draw_area);
+  lv_coord_t area_h = lv_area_get_height(cell_area);
 
   auto box_h = getFontHeight(FONT(STD));
   auto box_w = 3 * box_h / 4;
@@ -59,9 +64,9 @@ void ColorList::onDrawEnd(uint16_t row, uint16_t col,
     cell_right = lv_obj_get_style_pad_right(live.lvobj(), LV_PART_ITEMS);
   });
 
-  coords.x2 = dsc->draw_area->x2 - cell_right;
+  coords.x2 = cell_area->x2 - cell_right;
   coords.x1 = coords.x2 - box_w;
-  coords.y1 = dsc->draw_area->y1 + (area_h - box_h) / 2;
+  coords.y1 = cell_area->y1 + (area_h - box_h) / 2;
   coords.y2 = coords.y1 + box_h - 1;
 
   rect_dsc.border_color = makeLvColor(COLOR_THEME_PRIMARY1);
@@ -73,7 +78,7 @@ void ColorList::onDrawEnd(uint16_t row, uint16_t col,
       lv_color_make(GET_RED(color), GET_GREEN(color), GET_BLUE(color));
   rect_dsc.bg_opa = LV_OPA_100;
 
-  lv_draw_rect(dsc->draw_ctx, &rect_dsc, &coords);
+  lv_draw_rect(layer, &rect_dsc, &coords);
 }
 
 static void color_swatch_constructor(const lv_obj_class_t *class_p,
@@ -88,8 +93,8 @@ static const lv_obj_class_t color_swatch_class = {
     .base_class = &lv_obj_class,
     .constructor_cb = color_swatch_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = LV_SIZE_CONTENT,
     .height_def = LV_SIZE_CONTENT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,

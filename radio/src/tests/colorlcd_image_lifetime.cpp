@@ -37,14 +37,15 @@ bool mainWindowBackgroundCanvasCreateFailureLeavesNoCanvasForTest();
 bool mainWindowObjectAllocationFailureFailsClosedForTest();
 #endif
 
-namespace {
+namespace
+{
 
 constexpr const char* VALID_IMAGE = "images/color/edgetx.png";
 constexpr const char* MISSING_IMAGE = "images/color/missing-image.png";
 
 const void* canvasData(lv_obj_t* canvas)
 {
-  lv_img_dsc_t* image = canvas ? lv_canvas_get_img(canvas) : nullptr;
+  lv_img_dsc_t* image = canvas ? lv_canvas_get_image(canvas) : nullptr;
   return image ? image->data : nullptr;
 }
 
@@ -67,7 +68,7 @@ TEST(ColorImageLifetime, MainWindowCanvasCreateFailureLeavesNoCanvas)
   if (pid == 0) {
     alarm(2);
     _exit(mainWindowBackgroundCanvasCreateFailureLeavesNoCanvasForTest() ? 0
-                                                                        : 1);
+                                                                         : 1);
   }
 
   expectChildSuccess(pid);

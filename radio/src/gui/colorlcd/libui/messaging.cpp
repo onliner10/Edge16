@@ -18,10 +18,8 @@
 
 #include "messaging.h"
 
-#include <list>
-#include <algorithm>
-
-static std::list<Messaging*> subscriptions;
+static UiSignal<uint32_t> messageSignals[Messaging::REFRESH_OUTPUTS_WIDGET + 1];
+static int32_t nextMessageGroup = 0;
 
 Messaging::~Messaging()
 {
@@ -33,17 +31,19 @@ void Messaging::subscribe(uint32_t _id, std::function<void(uint32_t)> cb)
   unsubscribe();
   id = _id;
   callback = cb;
-  subscriptions.emplace_back(this);
+
+  if (id <= Messaging::REFRESH_OUTPUTS_WIDGET) {
+    connection = messageSignals[id].connect(
+        [this](uint32_t data) {
+          if (callback) callback(data);
+        },
+        --nextMessageGroup);
+  }
 }
 
 void Messaging::unsubscribe()
 {
-  if (id) {
-    auto s = std::find_if(subscriptions.begin(), subscriptions.end(),
-                              [=](Messaging* lh) -> bool { return lh == this; });
-    if (s != subscriptions.end()) subscriptions.erase(s);
-  }
-
+  connection.disconnect();
   callback = nullptr;
   id = 0;
 }
@@ -55,9 +55,5 @@ void Messaging::send(uint32_t id)
 
 void Messaging::send(uint32_t msgId, uint32_t msgData)
 {
-  for (auto it = subscriptions.rbegin(); it != subscriptions.rend(); ++it) {
-    Messaging* m = *it;
-    if (m->id == msgId && m->callback)
-      m->callback(msgData);
-  }
+  if (msgId <= Messaging::REFRESH_OUTPUTS_WIDGET) messageSignals[msgId].emit(msgData);
 }

@@ -156,11 +156,11 @@ class ValueWidget : public NativeWidget
       // Set color to option value
       label.with([](lv_obj_t* obj) {
         lv_obj_clear_state(obj,
-                           ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE);
+                           static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
       });
       value.with([](lv_obj_t* obj) {
         lv_obj_clear_state(obj,
-                           ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE);
+                           static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
       });
 
       // Check for disabled or warning color states

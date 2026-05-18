@@ -218,7 +218,7 @@ class Widget : public ButtonBase
   bool closeFS = false;
   OptionalLvObj focusBorder;
   lv_style_t borderStyle;
-  lv_point_t borderPts[5];
+  lv_point_precise_t borderPts[5];
 
   static FontIndex responsiveTextFont(coord_t height);
   static void layoutTextLabel(lv_obj_t* label, const rect_t& rect,

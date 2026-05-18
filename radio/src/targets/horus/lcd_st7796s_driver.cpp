@@ -55,7 +55,7 @@ static void waitFrameAddressReload()
 #endif
 }
 
-static void startLcdRefresh(lv_disp_drv_t* disp_drv, uint16_t* buffer,
+static void startLcdRefresh(lv_display_t* disp_drv, uint16_t* buffer,
                             const rect_t& copy_area)
 {
   (void)disp_drv;

@@ -15,6 +15,7 @@ timers:
       countdownStart: -2
       showElapsed: 0
       extraHaptic: 0
+      minuteBeepStart: 0
       name: "EDF"
 telemetryProtocol: 0
 thrTrim: 0
@@ -506,6 +507,8 @@ flightModeData:
       fadeIn: 0
       fadeOut: 0
 thrTraceSrc: Thr
+armingEnabled: 0
+armingThrottleChannel: 0
 switchWarning:
    SA:
       pos: up

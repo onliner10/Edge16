@@ -55,6 +55,10 @@ class ChoiceBase : public FormField
 
   const char* getTitle() const { return menuTitle; }
 
+#if defined(SIMU)
+  std::string automationText() const override;
+#endif
+
   void setPopupWidth(coord_t w) { popupWidth = w; }
 
   static LAYOUT_VAL_SCALED(ICON_W, 18)

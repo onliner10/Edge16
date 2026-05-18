@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "ui_signal.h"
+
 #include <functional>
 #include <stdint.h>
 
@@ -52,4 +54,5 @@ class Messaging
  protected:
   uint32_t id = 0;
   std::function<void(uint32_t)> callback = nullptr;
+  UiScopedConnection connection;
 };

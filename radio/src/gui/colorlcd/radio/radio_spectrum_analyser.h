@@ -30,7 +30,7 @@ class RadioSpectrumAnalyser : public Page
 
  protected:
   uint8_t moduleIdx;
-  lv_point_t trackPts[2];
+  lv_point_precise_t trackPts[2];
   RequiredLvObj trackLine;
   int16_t trackX = -1;
 

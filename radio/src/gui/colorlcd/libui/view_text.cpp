@@ -29,20 +29,31 @@
 #include "menu.h"
 #include "sdcard.h"
 
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/widgets/checkbox/lv_checkbox_private.h"
+
 #include <new>
 
 // Used on startup to block until checklist is closed.
 static bool checkListOpen = false;
 
 // Check Box
-const lv_style_const_prop_t cb_marker_checked_props[] = {
-    LV_STYLE_CONST_BG_IMG_SRC(LV_SYMBOL_OK),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(cb_marker_checked, cb_marker_checked_props);
+static lv_style_t cb_marker_checked;
+static bool cb_marker_checked_inited = false;
+
+static void ensure_cb_marker_checked()
+{
+  if (!cb_marker_checked_inited) {
+    lv_style_init(&cb_marker_checked);
+    lv_style_set_bg_img_src(&cb_marker_checked, LV_SYMBOL_OK);
+    cb_marker_checked_inited = true;
+  }
+}
 
 static void checkbox_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
+  ensure_cb_marker_checked();
   etx_std_style(obj, LV_PART_INDICATOR, PAD_TINY);
 
   etx_obj_add_style(obj, cb_marker_checked,
@@ -55,8 +66,8 @@ static const lv_obj_class_t checkbox_class = {
     .base_class = &lv_checkbox_class,
     .constructor_cb = checkbox_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 25,
     .height_def = 25,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -108,8 +119,9 @@ class TextViewer
     if (openFile()) {
       window->withLive([&](Window::LiveWindow& live) {
         auto obj = live.lvobj();
-        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_WITH_ARROW |
-                                 LV_OBJ_FLAG_SCROLL_MOMENTUM);
+        lv_obj_add_flag(obj, static_cast<lv_obj_flag_t>(
+        LV_OBJ_FLAG_SCROLL_WITH_ARROW |
+        LV_OBJ_FLAG_SCROLL_MOMENTUM));
         etx_scrollbar(obj);
         // prevents resetting the group's edit mode
         window->setWindowFlag(NO_FOCUS);
@@ -366,7 +378,7 @@ class ViewChecklistWindow : public Page, public TextViewer
 
   static void checkbox_event_handler(lv_event_t* e)
   {
-    lv_obj_t* target = lv_event_get_target(e);
+    lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
     ViewChecklistWindow* vtw =
         (ViewChecklistWindow*)lv_obj_get_user_data(target);
 
@@ -378,8 +390,9 @@ class ViewChecklistWindow : public Page, public TextViewer
     if (openFile()) {
       window->withLive([&](Window::LiveWindow& live) {
         auto obj = live.lvobj();
-        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_WITH_ARROW |
-                                 LV_OBJ_FLAG_SCROLL_MOMENTUM);
+        lv_obj_add_flag(obj, static_cast<lv_obj_flag_t>(
+        LV_OBJ_FLAG_SCROLL_WITH_ARROW |
+        LV_OBJ_FLAG_SCROLL_MOMENTUM));
         etx_scrollbar(obj);
         // prevents resetting the group's edit mode
         window->setWindowFlag(NO_FOCUS);

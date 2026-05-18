@@ -38,9 +38,11 @@ class FileBrowser : public TableField
   void adjustWidth();
 
   void onDrawBegin(uint16_t row, uint16_t col,
-                   lv_obj_draw_part_dsc_t* dsc) override;
+                   lv_area_t* cell_area,
+                   lv_layer_t* layer) override;
   void onDrawEnd(uint16_t row, uint16_t col,
-                 lv_obj_draw_part_dsc_t* dsc) override;
+                 lv_area_t* cell_area,
+                 lv_layer_t* layer) override;
 
   // TableField methods
   void onSelected(uint16_t row, uint16_t col) override;

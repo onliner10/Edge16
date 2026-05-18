@@ -40,16 +40,16 @@ static void etx_quick_button_constructor(const lv_obj_class_t* class_p,
 }
 
 static const lv_obj_class_t etx_quick_button_class = {
-    .base_class = &lv_btn_class,
+    .base_class = &lv_button_class,
     .constructor_cb = etx_quick_button_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = QuickMenuGroup::QM_BUTTON_WIDTH,
     .height_def = QuickMenuGroup::QM_BUTTON_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_TRUE,
-    .instance_size = sizeof(lv_btn_t),
+    .instance_size = sizeof(lv_button_t),
 };
 
 static lv_obj_t* etx_quick_button_create(lv_obj_t* parent)
@@ -122,14 +122,14 @@ class QuickMenuButton : public ButtonBase
   static void focused_cb(lv_event_t* e)
   {
     QuickMenuButton* b =
-        (QuickMenuButton*)lv_obj_get_user_data(lv_event_get_target(e));
+        (QuickMenuButton*)lv_obj_get_user_data(static_cast<lv_obj_t*>(lv_event_get_target(e)));
     if (b) b->setFocused();
   }
 
   static void defocused_cb(lv_event_t* e)
   {
     QuickMenuButton* b =
-        (QuickMenuButton*)lv_obj_get_user_data(lv_event_get_target(e));
+        (QuickMenuButton*)lv_obj_get_user_data(static_cast<lv_obj_t*>(lv_event_get_target(e)));
     if (b) b->setDeFocused();
   }
 

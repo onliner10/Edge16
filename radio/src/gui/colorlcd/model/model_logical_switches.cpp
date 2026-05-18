@@ -305,11 +305,9 @@ class LogicalSwitchButton : public ListLineButton
     padAll(PAD_ZERO);
 
     check(isActive());
-
-    delayLoad();
   }
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -367,7 +365,6 @@ class LogicalSwitchButton : public ListLineButton
         }))
       return;
 
-    refresh();
   }
 
   bool isActive() const override

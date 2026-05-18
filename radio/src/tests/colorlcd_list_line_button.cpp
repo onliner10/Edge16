@@ -29,6 +29,8 @@ bool listLineButtonMissingFmBufferLeavesNoCanvasForTest();
 bool listLineButtonLabelAllocationFailureFailsClosedForTest();
 bool listLineGroupLabelAllocationFailureFailsClosedForTest();
 bool listLinePageLookupRequiresGroupAndLineForTest();
+bool listLineButtonRefreshBeforeVisibleLoadRunsOnFirstLoadForTest();
+bool listLineButtonRefreshFromLiveUpdateDefersForTest();
 
 TEST(ColorListLineButton, FlightModeCanvasAllocationFailureLeavesNoCanvas)
 {
@@ -86,6 +88,39 @@ TEST(ColorListLineButton, PageLookupRequiresGroupAndLine)
   if (pid == 0) {
     alarm(2);
     _exit(listLinePageLookupRequiresGroupAndLineForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorListLineButton, RefreshBeforeVisibleLoadRunsOnFirstLoad)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(listLineButtonRefreshBeforeVisibleLoadRunsOnFirstLoadForTest() ? 0
+                                                                        : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorListLineButton, RefreshFromLiveUpdateDefers)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(listLineButtonRefreshFromLiveUpdateDefersForTest() ? 0 : 1);
   }
 
   int status = 0;

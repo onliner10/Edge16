@@ -81,18 +81,16 @@ class MixLineButton : public InputMixButtonBase
     InputMixButtonBase(parent, index)
   {
     mplex = new MPlexIcon(parent, index);
-
-    delayLoad();
   }
 
   void onDelete() override
   {
+    InputMixButtonBase::onDelete();
     if (mplex) mplex->deleteLater();
   }
 
-  void delayedInit() override
+  void onLineAfterRefresh() override
   {
-    refresh();
     ((InputMixGroupBase*)parent)->adjustHeight();
   }
 

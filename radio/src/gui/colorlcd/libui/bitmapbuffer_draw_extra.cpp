@@ -543,8 +543,8 @@ void BitmapBuffer::drawFilledCircle(coord_t x, coord_t y, coord_t radius,
   rect_dsc.radius = LV_RADIUS_CIRCLE;
 
   if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+    x += draw_ctx->buf_area.x1;
+    y += draw_ctx->buf_area.y1;
   }
 
   lv_area_t coords = {
@@ -559,8 +559,10 @@ void BitmapBuffer::drawFilledCircle(coord_t x, coord_t y, coord_t radius,
   }
 #if !defined(BOOT)
   else if (canvas) {
-    lv_canvas_draw_rect(canvas, coords.x1, coords.y1, coords.x2 - coords.x1 + 1,
-                        coords.y2 - coords.y1 + 1, &rect_dsc);
+    lv_layer_t canvas_layer;
+    lv_canvas_init_layer(canvas, &canvas_layer);
+    lv_draw_rect(&canvas_layer, &rect_dsc, &coords);
+    lv_canvas_finish_layer(canvas, &canvas_layer);
   }
 #endif
 }
@@ -579,8 +581,8 @@ void BitmapBuffer::drawCircle(coord_t x, coord_t y, coord_t radius,
   rect_dsc.radius = LV_RADIUS_CIRCLE;
 
   if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+    x += draw_ctx->buf_area.x1;
+    y += draw_ctx->buf_area.y1;
   }
 
   lv_area_t coords = {
@@ -595,8 +597,10 @@ void BitmapBuffer::drawCircle(coord_t x, coord_t y, coord_t radius,
   }
 #if !defined(BOOT)
   else if (canvas) {
-    lv_canvas_draw_rect(canvas, coords.x1, coords.y1, coords.x2 - coords.x1 + 1,
-                        coords.y2 - coords.y1 + 1, &rect_dsc);
+    lv_layer_t canvas_layer;
+    lv_canvas_init_layer(canvas, &canvas_layer);
+    lv_draw_rect(&canvas_layer, &rect_dsc, &coords);
+    lv_canvas_finish_layer(canvas, &canvas_layer);
   }
 #endif
 }
@@ -749,14 +753,24 @@ void BitmapBuffer::drawAnnulusSector(coord_t x, coord_t y,
   arc_dsc.color = makeLvColor(flags);
 
   if (draw_ctx) {
-    lv_point_t p;
-    p.x = x + draw_ctx->buf_area->x1;
-    p.y = y + draw_ctx->buf_area->y1;
-    lv_draw_arc(draw_ctx, &arc_dsc, &p, externalRadius, startAngle, endAngle);
+    arc_dsc.center.x = x + draw_ctx->buf_area.x1;
+    arc_dsc.center.y = y + draw_ctx->buf_area.y1;
+    arc_dsc.radius = externalRadius;
+    arc_dsc.start_angle = startAngle;
+    arc_dsc.end_angle = endAngle;
+    lv_draw_arc(draw_ctx, &arc_dsc);
   }
 #if !defined(BOOT)
   else if (canvas) {
-    lv_canvas_draw_arc(canvas, x, y, externalRadius, startAngle, endAngle, &arc_dsc);
+    lv_layer_t canvas_layer;
+    lv_canvas_init_layer(canvas, &canvas_layer);
+    arc_dsc.center.x = x;
+    arc_dsc.center.y = y;
+    arc_dsc.radius = externalRadius;
+    arc_dsc.start_angle = startAngle;
+    arc_dsc.end_angle = endAngle;
+    lv_draw_arc(&canvas_layer, &arc_dsc);
+    lv_canvas_finish_layer(canvas, &canvas_layer);
   }
 #endif
 }

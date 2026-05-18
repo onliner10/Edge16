@@ -24,6 +24,10 @@
 #include "etx_lv_theme.h"
 #include "translations/translations.h"
 
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/widgets/button/lv_button_private.h"
+
 #include <new>
 
 #if defined(SIMU)
@@ -47,13 +51,13 @@ static const lv_obj_class_t menu_button_class = {
     .base_class = &button_class,
     .constructor_cb = nullptr,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_FALSE,
-    .instance_size = sizeof(lv_btn_t),
+    .instance_size = sizeof(lv_button_t),
 };
 
 static lv_obj_t* menu_button_create(lv_obj_t* parent)
@@ -64,7 +68,7 @@ static lv_obj_t* menu_button_create(lv_obj_t* parent)
 static void toolbar_btn_defocus(lv_event_t* event)
 {
   auto btn = static_cast<MenuToolbarButton*>(
-      Window::fromAvailableLvObj(lv_event_get_target(event)));
+      Window::fromAvailableLvObj(static_cast<lv_obj_t*>(lv_event_get_target(event))));
   if (btn) btn->check(false);
 }
 

@@ -186,7 +186,7 @@ void TextEdit::openEdit()
   edit->show();
   if (edit->focus()) {
     edit->withLive([](Window::LiveWindow& liveEdit) {
-      lv_obj_add_state(liveEdit.lvobj(), LV_STATE_FOCUSED | LV_STATE_EDITED);
+      lv_obj_add_state(liveEdit.lvobj(), static_cast<lv_state_t>(LV_STATE_FOCUSED | LV_STATE_EDITED));
     });
   }
   edit->openKeyboard();

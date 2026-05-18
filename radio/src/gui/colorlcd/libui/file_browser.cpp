@@ -186,7 +186,7 @@ void FileBrowser::refresh()
     withLive([&](LiveWindow& live) {
       auto obj = live.lvobj();
       lv_table_set_cell_value(obj, row, 0, name.c_str());
-      lv_table_add_cell_ctrl(obj, row, 0, CELL_CTRL_DIR);
+      lv_table_set_cell_ctrl(obj, row, 0, CELL_CTRL_DIR);
     });
     row++;
   }
@@ -231,35 +231,33 @@ void FileBrowser::onPress(uint16_t row, uint16_t col)
   });
 }
 
-void FileBrowser::onDrawBegin(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc)
+void FileBrowser::onDrawBegin(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                               lv_layer_t*)
 {
-  withLive([&](LiveWindow& live) {
-    lv_coord_t cell_left =
-        lv_obj_get_style_pad_left(live.lvobj(), LV_PART_ITEMS);
-    dsc->label_dsc->ofs_x = getFontHeight(FONT(STD)) + cell_left;
-  });
+  // onDrawBegin was used to pre-modify dsc->label_dsc->ofs_x
+  // In LVGL9, pre-draw modification is no longer possible.
+  // The icon is drawn in onDrawEnd.
 }
 
-void FileBrowser::onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc)
+void FileBrowser::onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                             lv_layer_t* layer)
 {
   const char* sym = nullptr;
   withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
     if (lv_table_has_cell_ctrl(obj, row, 0, CELL_CTRL_DIR)) {
-    // dir
-    const char* dir = lv_table_get_cell_value(obj, row, 0);
-    if (dir[0] == '.')
-      sym = LV_SYMBOL_LEFT;
-    else
-      sym = LV_SYMBOL_DIRECTORY;
-  } else {
-    // file
-    sym = LV_SYMBOL_FILE;
-  }
+      const char* dir = lv_table_get_cell_value(obj, row, 0);
+      if (dir[0] == '.')
+        sym = LV_SYMBOL_LEFT;
+      else
+        sym = LV_SYMBOL_DIRECTORY;
+    } else {
+      sym = LV_SYMBOL_FILE;
+    }
   });
 
   lv_area_t coords;
-  lv_coord_t area_h = lv_area_get_height(dsc->draw_area);
+  lv_coord_t area_h = lv_area_get_height(cell_area);
 
   lv_coord_t cell_left = 0;
   withLive([&](LiveWindow& live) {
@@ -267,13 +265,20 @@ void FileBrowser::onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* 
   });
   lv_coord_t font_h = getFontHeight(FONT(STD));
 
-  coords.x1 = dsc->draw_area->x1 + cell_left;
-  coords.x2 = coords.x1 + dsc->label_dsc->ofs_x - cell_left;
-  coords.y1 = dsc->draw_area->y1 + (area_h - font_h) / 2;
+  coords.x1 = cell_area->x1 + cell_left;
+  coords.x2 = coords.x1 + font_h - 1;
+  coords.y1 = cell_area->y1 + (area_h - font_h) / 2;
   coords.y2 = coords.y1 + font_h - 1;
 
-  dsc->label_dsc->ofs_x = 0;
-  lv_draw_label(dsc->draw_ctx, dsc->label_dsc, &coords, sym, nullptr);
+  lv_draw_label_dsc_t label_dsc;
+  lv_draw_label_dsc_init(&label_dsc);
+  label_dsc.text = sym;
+  withLive([&](LiveWindow& live) {
+    auto obj = live.lvobj();
+    label_dsc.color = lv_obj_get_style_text_color(obj, LV_PART_ITEMS);
+    label_dsc.font = lv_obj_get_style_text_font(obj, LV_PART_ITEMS);
+  });
+  lv_draw_label(layer, &label_dsc, &coords);
 }
 
 void FileBrowser::onSelected(const char* name, bool is_dir)

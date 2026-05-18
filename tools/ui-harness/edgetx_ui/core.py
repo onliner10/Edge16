@@ -1415,7 +1415,9 @@ def _validate_field_target(field: dict[str, Any], target_value: str) -> str:
     target = _clean_text(target_value)
     kind = str(field.get("kind", ""))
     label = str(field.get("label", "field"))
-    if kind == "number" and not re.fullmatch(r"-?\d+(?:\.\d+)?", target):
+    if kind in {"number", "number_with_unit"} and not re.fullmatch(
+        r"-?\d+(?:\.\d+)?", target
+    ):
         raise HarnessError(
             f"field `{label}` is numeric; target_value must be numeric-only, got {target_value!r}"
         )
@@ -1424,7 +1426,7 @@ def _validate_field_target(field: dict[str, Any], target_value: str) -> str:
 
 def _field_value_matches(field: dict[str, Any], value: str, target_value: str) -> bool:
     kind = str(field.get("kind", ""))
-    if kind == "number":
+    if kind in {"number", "number_with_unit"}:
         value_num = _first_number(value)
         target_num = _first_number(target_value)
         return value_num is not None and target_num is not None and value_num == target_num

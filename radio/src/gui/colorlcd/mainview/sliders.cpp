@@ -57,7 +57,7 @@ SliderIcon::SliderIcon(Window* parent) :
     if (!obj) return;
     shadow.reset(obj);
     lv_canvas_set_buffer(obj, (void*)icon->data, icon->width, icon->height,
-                         LV_IMG_CF_ALPHA_8BIT);
+                         LV_COLOR_FORMAT_A8);
     etx_img_color(obj, COLOR_THEME_PRIMARY1_INDEX);
   });
 
@@ -67,7 +67,7 @@ SliderIcon::SliderIcon(Window* parent) :
     if (!obj) return;
     mask.reset(obj);
     lv_canvas_set_buffer(obj, (void*)icon->data, icon->width, icon->height,
-                         LV_IMG_CF_ALPHA_8BIT);
+                         LV_COLOR_FORMAT_A8);
     etx_img_color(obj, COLOR_THEME_FOCUS_INDEX);
   });
 }
@@ -89,7 +89,7 @@ MainViewSlider::MainViewSlider(Window* parent, const rect_t& rect, uint8_t idx,
       maskCanvas.reset(obj);
       etx_img_color(obj, COLOR_THEME_SECONDARY1_INDEX);
       lv_canvas_set_buffer(obj, mask->data, mask->width, mask->height,
-                           LV_IMG_CF_ALPHA_8BIT);
+                           LV_COLOR_FORMAT_A8);
 
       if (isVertical) {
         lv_obj_set_pos(obj, PAD_TINY, SLIDER_BAR_SIZE / 2);

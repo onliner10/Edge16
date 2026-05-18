@@ -18,23 +18,44 @@
 
 #include "table.h"
 
+#include <new>
+
 #include "debug.h"
 #include "etx_lv_theme.h"
 #include "keys.h"
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/widgets/table/lv_table_private.h"
 #include "mainwindow.h"
 
+static bool area_intersects(const lv_area_t& a, const lv_area_t& b)
+{
+  return a.x1 <= b.x2 && a.x2 >= b.x1 && a.y1 <= b.y2 && a.y2 >= b.y1;
+}
+
 // Table
-const lv_style_const_prop_t table_cell_props[] = {
-    LV_STYLE_CONST_BORDER_WIDTH(1),
-    LV_STYLE_CONST_BORDER_SIDE(LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM),
-    LV_STYLE_CONST_PAD_TOP(PAD_TABLE_V),  LV_STYLE_CONST_PAD_BOTTOM(PAD_TABLE_V),
-    LV_STYLE_CONST_PAD_LEFT(PAD_TABLE_H), LV_STYLE_CONST_PAD_RIGHT(PAD_TABLE_H),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(table_cell, table_cell_props);
+static lv_style_t table_cell;
+static bool table_cell_inited = false;
+
+static void ensure_table_cell_style()
+{
+  if (!table_cell_inited) {
+    lv_style_init(&table_cell);
+    lv_style_set_border_width(&table_cell, 1);
+    lv_style_set_border_side(
+        &table_cell,
+        (lv_border_side_t)(LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM));
+    lv_style_set_pad_top(&table_cell, PAD_TABLE_V);
+    lv_style_set_pad_bottom(&table_cell, PAD_TABLE_V);
+    lv_style_set_pad_left(&table_cell, PAD_TABLE_H);
+    lv_style_set_pad_right(&table_cell, PAD_TABLE_H);
+    table_cell_inited = true;
+  }
+}
 
 static void table_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
+  ensure_table_cell_style();
   etx_obj_add_style(obj, styles->pad_zero, LV_PART_MAIN);
   etx_font(obj, FONT_STD_INDEX);
 
@@ -43,11 +64,14 @@ static void table_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
   etx_solid_bg(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_ITEMS);
   etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX, LV_PART_ITEMS);
   etx_obj_add_style(obj, table_cell, LV_PART_ITEMS);
-  etx_obj_add_style(obj, styles->border_color[COLOR_THEME_SECONDARY2_INDEX], LV_PART_ITEMS);
+  etx_obj_add_style(obj, styles->border_color[COLOR_THEME_SECONDARY2_INDEX],
+                    LV_PART_ITEMS);
   etx_obj_add_style(obj, styles->pressed, LV_PART_ITEMS | LV_STATE_PRESSED);
 
-  etx_bg_color(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_ITEMS | LV_STATE_EDITED);
-  etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX, LV_PART_ITEMS | LV_STATE_EDITED);
+  etx_bg_color(obj, COLOR_THEME_PRIMARY2_INDEX,
+               LV_PART_ITEMS | LV_STATE_EDITED);
+  etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX,
+                LV_PART_ITEMS | LV_STATE_EDITED);
   etx_obj_add_style(obj, styles->border_color[COLOR_THEME_PRIMARY1_INDEX],
                     LV_PART_ITEMS | LV_STATE_EDITED);
 }
@@ -56,8 +80,8 @@ static const lv_obj_class_t table_class = {
     .base_class = &lv_table_class,
     .constructor_cb = table_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = TableField::table_event,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_TRUE,
@@ -72,7 +96,7 @@ static lv_obj_t* table_create(lv_obj_t* parent)
 
 void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
 {
-  lv_obj_t* obj = lv_event_get_target(e);
+  lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
   if (obj) {
     auto tf = static_cast<TableField*>(Window::fromAvailableLvObj(obj));
     if (tf) {
@@ -80,8 +104,8 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
 
       switch (code) {
         case LV_EVENT_VALUE_CHANGED: {
-          uint16_t row;
-          uint16_t col;
+          uint32_t row;
+          uint32_t col;
           lv_table_get_selected_cell(obj, &row, &col);
           if (row != LV_TABLE_CELL_NONE && col != LV_TABLE_CELL_NONE) {
             lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_get_act());
@@ -107,40 +131,61 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
             }
           }
         } break;
-        case LV_EVENT_DRAW_PART_BEGIN: {
-          lv_obj_draw_part_dsc_t* dsc = lv_event_get_draw_part_dsc(e);
-          if (dsc->part == LV_PART_ITEMS) {
-            uint16_t cols = lv_table_get_col_cnt(obj);
-            if (cols) {
-              uint16_t row = dsc->id / cols;
-              uint16_t col = dsc->id % cols;
-              tf->onDrawBegin(row, col, dsc);
+        case LV_EVENT_DRAW_MAIN_END: {
+          lv_layer_t* layer = lv_event_get_layer(e);
+          if (!layer) break;
+          lv_table_t* table = (lv_table_t*)obj;
+          uint16_t cols = table->col_cnt;
+          if (cols) {
+            lv_area_t obj_coords;
+            lv_obj_get_coords(obj, &obj_coords);
+
+            const lv_coord_t pad_left =
+                lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
+            const lv_coord_t pad_top =
+                lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
+            const lv_coord_t scroll_x = lv_obj_get_scroll_x(obj);
+            const lv_coord_t scroll_y = lv_obj_get_scroll_y(obj);
+            const lv_area_t& clip = layer->_clip_area;
+
+            lv_coord_t y = obj_coords.y1 + pad_top - scroll_y;
+            for (uint16_t r = 0; r < table->row_cnt; r++) {
+              const lv_coord_t row_h = table->row_h[r];
+              const lv_coord_t y2 = y + row_h - 1;
+              if (y > clip.y2) break;
+              if (y2 < clip.y1) {
+                y += row_h;
+                continue;
+              }
+
+              lv_coord_t x = obj_coords.x1 + pad_left - scroll_x;
+              for (uint16_t c = 0; c < cols; c++) {
+                const lv_coord_t col_w = table->col_w[c];
+                lv_area_t cell_area = {x, y, x + col_w - 1, y2};
+                x += col_w;
+
+                if (cell_area.x1 > clip.x2) break;
+                if (!area_intersects(cell_area, clip)) continue;
+
+                tf->onDrawBegin(r, c, &cell_area, layer);
+                tf->onDrawEnd(r, c, &cell_area, layer);
+              }
+              y += row_h;
             }
           }
         } break;
-        case LV_EVENT_DRAW_PART_END: {
-          lv_obj_draw_part_dsc_t* dsc = lv_event_get_draw_part_dsc(e);
-          if (dsc->part == LV_PART_ITEMS) {
-            uint16_t cols = lv_table_get_col_cnt(obj);
-            if (cols) {
-              uint16_t row = dsc->id / cols;
-              uint16_t col = dsc->id % cols;
-              tf->onDrawEnd(row, col, dsc);
-            }
-          }
-        } break;
-        case LV_EVENT_DRAW_POST: {
+        case LV_EVENT_DRAW_POST_END: {
           bool has_focus = lv_obj_has_state(obj, LV_STATE_FOCUS_KEY);
           bool is_edited =
               lv_group_get_editing((lv_group_t*)lv_obj_get_group(obj));
 
           if (has_focus && !is_edited) {
-            lv_draw_ctx_t* draw_ctx = lv_event_get_draw_ctx(e);
+            lv_layer_t* draw_ctx = lv_event_get_layer(e);
 
             lv_draw_rect_dsc_t rect_dsc;
             lv_draw_rect_dsc_init(&rect_dsc);
             rect_dsc.bg_opa = LV_OPA_TRANSP;
-            rect_dsc.bg_img_opa = LV_OPA_TRANSP;
+            rect_dsc.bg_image_opa = LV_OPA_TRANSP;
             rect_dsc.outline_opa = LV_OPA_TRANSP;
             rect_dsc.shadow_opa = LV_OPA_TRANSP;
 
@@ -154,8 +199,7 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
             lv_draw_rect(draw_ctx, &rect_dsc, &coords);
           }
         } break;
-        case LV_EVENT_RELEASED:
-        {
+        case LV_EVENT_RELEASED: {
           lv_table_t* table = (lv_table_t*)obj;
           /*From lv_table.c: handler for LV_EVENT_RELEASED*/
           lv_obj_invalidate(obj);
@@ -163,7 +207,7 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
           lv_obj_t* scroll_obj = lv_indev_get_scroll_obj(indev);
           if (table->col_act != LV_TABLE_CELL_NONE &&
               table->row_act != LV_TABLE_CELL_NONE && scroll_obj == NULL) {
-            lv_event_send(obj, LV_EVENT_VALUE_CHANGED, NULL);
+            lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
           }
           // Do not call base class event handler
           return;
@@ -183,9 +227,7 @@ TableField::TableField(Window* parent, const rect_t& rect) :
 {
   setWindowFlag(OPAQUE);
 
-  withLive([](LiveWindow& live) {
-    lv_table_set_col_cnt(live.lvobj(), 1);
-  });
+  withLive([](LiveWindow& live) { lv_table_set_col_cnt(live.lvobj(), 1); });
 }
 
 void TableField::setRowCount(uint16_t rows)
@@ -272,8 +314,8 @@ void TableField::adjustScroll()
 
 int TableField::getSelected() const
 {
-  uint16_t row = LV_TABLE_CELL_NONE;
-  uint16_t col = LV_TABLE_CELL_NONE;
+  uint32_t row = LV_TABLE_CELL_NONE;
+  uint32_t col = LV_TABLE_CELL_NONE;
   withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
     lv_table_get_selected_cell(obj, &row, &col);
@@ -346,7 +388,10 @@ bool tableFieldObjectAllocationFailureFailsClosedForTest()
   class TestTableField : public TableField
   {
    public:
-    explicit TestTableField(Window* parent) : TableField(parent, {0, 0, 100, 40}) {}
+    explicit TestTableField(Window* parent) :
+        TableField(parent, {0, 0, 100, 40})
+    {
+    }
 
     void exercise()
     {
@@ -376,8 +421,8 @@ bool tableFieldObjectAllocationFailureFailsClosedForTest()
 
 bool tableFieldInvalidSelectionClearsWithoutScrollForTest()
 {
-  auto table = new (std::nothrow) TableField(MainWindow::instance(),
-                                             {0, 0, 100, 40});
+  auto table =
+      new (std::nothrow) TableField(MainWindow::instance(), {0, 0, 100, 40});
   if (!table || !table->isAvailable()) {
     delete table;
     return false;
@@ -393,22 +438,21 @@ bool tableFieldInvalidSelectionClearsWithoutScrollForTest()
 
 bool tableFieldSelectMovesAcrossColumnsForTest()
 {
-  auto table = new (std::nothrow) TableField(MainWindow::instance(),
-                                             {0, 0, 100, 40});
+  auto table =
+      new (std::nothrow) TableField(MainWindow::instance(), {0, 0, 100, 40});
   if (!table || !table->isAvailable()) {
     delete table;
     return false;
   }
 
   table->setRowCount(1);
-  table->withLive([](Window::LiveWindow& live) {
-    lv_table_set_col_cnt(live.lvobj(), 2);
-  });
+  table->withLive(
+      [](Window::LiveWindow& live) { lv_table_set_col_cnt(live.lvobj(), 2); });
   table->select(0, 0);
   table->select(0, 1);
 
-  uint16_t row = LV_TABLE_CELL_NONE;
-  uint16_t col = LV_TABLE_CELL_NONE;
+  uint32_t row = LV_TABLE_CELL_NONE;
+  uint32_t col = LV_TABLE_CELL_NONE;
   table->withLive([&](Window::LiveWindow& live) {
     lv_table_get_selected_cell(live.lvobj(), &row, &col);
   });

@@ -70,8 +70,7 @@ class ModelButton : public Button
     setAutomationText(modelCell->modelName);
     setAutomationId(std::string("model.") + modelCell->modelFilename);
 #endif
-
-    delayLoad();
+    delayLoadWhenVisible();
   }
 
   void delayedInit() override
@@ -111,6 +110,7 @@ class ModelButton : public Button
     }
 
     updateLayout();
+    loadImage();
   }
 
   const char *modelFilename() { return modelCell->modelFilename; }
@@ -140,6 +140,7 @@ class ModelButton : public Button
           auto bitmap = new StaticBitmap(this, {PAD_TINY, PAD_TINY, w, h}, filename);
           bitmap->moveBackground();
           bitmap->show(bitmap->hasImage());
+          if (modelName) modelName->moveForeground();
           if (bitmap->hasImage()) {
             return true;
           }
@@ -159,19 +160,26 @@ class ModelButton : public Button
   uint8_t layout;
   ModelCell *modelCell;
   StaticText* modelName = nullptr;
+  StaticText* noImageMsg = nullptr;
 
   std::function<void()> m_setSelected = nullptr;
 
   void showNoImgMsg()
   {
+    if (noImageMsg) {
+      noImageMsg->moveForeground();
+      return;
+    }
+
     coord_t w = width() - PAD_SMALL * 2;
     coord_t h = height() - PAD_SMALL * 2;
     std::string errorMsg = "(";
     errorMsg += STR_NO_PICTURE;
     errorMsg += ")";
     LcdFlags font = (modelLayouts[layout].font == FONT(STD)) ? FONT(XS) : FONT(XXS);
-    new StaticText(this, {PAD_TINY, h / 2, w, getFontHeight(font)}, errorMsg,
-                  COLOR_THEME_SECONDARY1_INDEX, CENTERED | font);
+    noImageMsg = new StaticText(this, {PAD_TINY, h / 2, w, getFontHeight(font)}, errorMsg,
+                                COLOR_THEME_SECONDARY1_INDEX, CENTERED | font);
+    if (modelName) modelName->moveForeground();
   }
 
   void onLiveClicked(LiveWindow& live) override
@@ -392,11 +400,7 @@ class ModelsPageBody : public Window
 
   void onLiveCheckEvents(LiveWindow& live) override
   {
-    for (auto c : children) {
-      if (((ModelButton*)c)->loadImage()) {
-        return;
-      }
-    }
+    Window::onLiveCheckEvents(live);
   }
 
   void openMenu()
@@ -417,9 +421,16 @@ class ModelsPageBody : public Window
 
   void selectModel(ModelCell *model)
   {
+    if (!model) return;
+
+    const bool alreadyCurrent = model == modelslist.getCurrentModel();
+    char selectedFilename[LEN_MODEL_FILENAME + 1];
+    strncpy(selectedFilename, model->modelFilename, LEN_MODEL_FILENAME);
+    selectedFilename[LEN_MODEL_FILENAME] = '\0';
+
     // Don't need to check connection to receiver if re-selecting the active
     // model
-    if (model != modelslist.getCurrentModel()) {
+    if (!alreadyCurrent) {
       bool modelConnected =
           TELEMETRY_STREAMING() && !g_eeGeneral.disableRssiPoweroffAlarm;
       if (modelConnected) {
@@ -431,26 +442,61 @@ class ModelsPageBody : public Window
       }
     }
 
-    closeHandler();
-
     // Skip reloading model if re-selecting the active model
-    if (model != modelslist.getCurrentModel()) {
-      // store changes (if any) and load selected model
-      storageFlushCurrentModel();
-      storageCheck(true);
-      memcpy(g_eeGeneral.currModelFilename, model->modelFilename,
-             LEN_MODEL_FILENAME);
+    deferModelSwitch(selectedFilename, !alreadyCurrent, closeHandler);
+  }
 
-      loadModel(g_eeGeneral.currModelFilename, true);
-      modelslist.setCurrentModel(model);
+  struct DeferredModelSwitch
+  {
+    char filename[LEN_MODEL_FILENAME + 1] = {};
+    bool reload = false;
+    CloseHandler close;
+  };
 
-      // Main view layout
-      LayoutFactory::deleteCustomScreens();
-      LayoutFactory::loadCustomScreens();
-
-      storageDirty(EE_GENERAL);
-      storageCheck(true);
+  static ModelCell* findModelByFilename(const char* filename)
+  {
+    for (auto cell : modelslist) {
+      if (strncmp(cell->modelFilename, filename, LEN_MODEL_FILENAME) == 0)
+        return cell;
     }
+    return nullptr;
+  }
+
+  static void performModelSwitch(UiMutationToken& token, const char* filename,
+                                 bool reload)
+  {
+    if (!reload) return;
+
+    // Store changes (if any) and load the selected model. This is intentionally
+    // outside the LVGL click callback so page teardown and model rebuild cannot
+    // re-enter the originating object tree.
+    storageFlushCurrentModel();
+    storageCheck(true);
+    strncpy(g_eeGeneral.currModelFilename, filename, LEN_MODEL_FILENAME);
+    g_eeGeneral.currModelFilename[LEN_MODEL_FILENAME] = '\0';
+
+    LayoutFactory::replaceCustomScreens(token, [&]() {
+      loadModel(g_eeGeneral.currModelFilename, true);
+      if (auto current = findModelByFilename(filename))
+        modelslist.setCurrentModel(current);
+    });
+
+    storageDirty(EE_GENERAL);
+    storageCheck(true);
+  }
+
+  void deferModelSwitch(const char* filename, bool reload, CloseHandler close)
+  {
+    DeferredModelSwitch job;
+    strncpy(job.filename, filename, LEN_MODEL_FILENAME);
+    job.filename[LEN_MODEL_FILENAME] = '\0';
+    job.reload = reload;
+    job.close = std::move(close);
+
+    Window::deferUiMutation([job](UiMutationToken& token) mutable {
+      if (job.close) job.close();
+      performModelSwitch(token, job.filename, job.reload);
+    });
   }
 
   void duplicateModel(ModelCell *model)
@@ -701,36 +747,39 @@ void ModelLabelsWindow::newModel()
     // Close Window
     onCancel();
 
-    // Check for not 'Blank Model'
-    if (name.size() > 0) {
-      static constexpr size_t LEN_BUFFER =
-          sizeof(TEMPLATES_PATH) + 2 * TEXT_FILENAME_MAXLEN + 1;
+    Window::deferUiMutation([folder, name](UiMutationToken& token) {
+      (void)token;
+      // Check for not 'Blank Model'
+      if (name.size() > 0) {
+        static constexpr size_t LEN_BUFFER =
+            sizeof(TEMPLATES_PATH) + 2 * TEXT_FILENAME_MAXLEN + 1;
 
-      char path[LEN_BUFFER + 1];
-      snprintf(path, LEN_BUFFER, "%s/%s", TEMPLATES_PATH, folder.c_str());
+        char path[LEN_BUFFER + 1];
+        snprintf(path, LEN_BUFFER, "%s/%s", TEMPLATES_PATH, folder.c_str());
 
-      // Read model template
-      LayoutFactory::deleteCustomScreens();
-      LayoutFactory::deleteTopBarWidgets();
-      loadModel((name + YAML_EXT).c_str(), false, path);
-      storageFlushCurrentModel();
-      storageCheck(true);
+        // Read model template
+        LayoutFactory::replaceTemplateScreens(token, [&]() {
+          loadModel((name + YAML_EXT).c_str(), false, path);
+          storageFlushCurrentModel();
+          storageCheck(true);
+        });
 
-      // Update the current cell's data
-      modelslist.updateCurrentModelCell();
+        // Update the current cell's data
+        modelslist.updateCurrentModelCell();
 
 #if defined(LUA)
-      // If there is a wizard Lua script, fire it up
-      int len = strlen(path);
-      snprintf(path + len, LEN_BUFFER - len, "/%s%s", name.c_str(), SCRIPT_EXT);
-      if (f_stat(path, 0) == FR_OK) {
-        luaExecStandalone(path);
-      }
+        // If there is a wizard Lua script, fire it up
+        int len = strlen(path);
+        snprintf(path + len, LEN_BUFFER - len, "/%s%s", name.c_str(),
+                 SCRIPT_EXT);
+        if (f_stat(path, 0) == FR_OK) {
+          luaExecStandalone(path);
+        }
 #endif
-    }
-
-    // Main view layout
-    LayoutFactory::loadCustomScreens();
+      } else {
+        LayoutFactory::replaceCustomScreens(token);
+      }
+    });
   });
 }
 

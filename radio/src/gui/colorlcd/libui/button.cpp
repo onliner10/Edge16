@@ -33,16 +33,16 @@ static void button_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 
 // Must not be static - inherited by menu_button_class
 const lv_obj_class_t button_class = {
-    .base_class = &lv_btn_class,
+    .base_class = &lv_button_class,
     .constructor_cb = button_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = LV_SIZE_CONTENT,
     .height_def = EdgeTxStyles::UI_ELEMENT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_TRUE,
-    .instance_size = sizeof(lv_btn_t),
+    .instance_size = sizeof(lv_button_t),
 };
 
 static lv_obj_t* button_create(lv_obj_t* parent)
@@ -66,6 +66,104 @@ Button::Button(Window* parent, const rect_t& rect,
                std::function<uint8_t(void)> pressHandler) :
     ButtonBase(parent, rect, pressHandler, button_create)
 {
+}
+
+//-----------------------------------------------------------------------------
+
+static lv_obj_t* check_button_create(lv_obj_t* parent)
+{
+  auto obj = lv_button_create(parent);
+  if (!obj) return nullptr;
+
+  lv_obj_remove_style_all(obj);
+  lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_ELASTIC);
+
+  lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(obj, PAD_BORDER, LV_PART_MAIN);
+  lv_obj_set_style_border_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_color(obj, makeLvColor(COLOR_THEME_SECONDARY1),
+                                LV_PART_MAIN);
+  lv_obj_set_style_radius(obj, PAD_TINY, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(obj, makeLvColor(COLOR_THEME_PRIMARY2),
+                            LV_PART_MAIN);
+  lv_obj_set_style_bg_color(obj, makeLvColor(COLOR_THEME_ACTIVE),
+                            LV_PART_MAIN | LV_STATE_CHECKED);
+
+  return obj;
+}
+
+CheckButton::CheckButton(Window* parent, const rect_t& rect,
+                         std::function<uint8_t()> getValue,
+                         std::function<void(uint8_t)> setValue) :
+    ButtonBase(parent, rect, nullptr, check_button_create),
+    _getValue(std::move(getValue)),
+    _setValue(std::move(setValue))
+{
+  lv_subject_init_int(&checkedSubject, _getValue && _getValue() ? 1 : 0);
+  checkedSubjectInitialized = true;
+
+  withLive([&](LiveWindow& live) {
+    auto obj = live.lvobj();
+    auto binding = lv_obj_bind_checked(obj, &checkedSubject);
+    auto observer = lv_subject_add_observer_obj(
+        &checkedSubject, CheckButton::checkedSubjectChanged, obj, this);
+    lv_obj_add_event_cb(obj, CheckButton::checkedValueChanged,
+                        LV_EVENT_VALUE_CHANGED, this);
+    if (!binding || !observer) failClosed();
+  });
+}
+
+CheckButton::~CheckButton()
+{
+  if (checkedSubjectInitialized) {
+    lv_subject_deinit(&checkedSubject);
+    checkedSubjectInitialized = false;
+  }
+}
+
+void CheckButton::update() const
+{
+  if (!_getValue) return;
+  lv_subject_set_int(const_cast<lv_subject_t*>(&checkedSubject),
+                     _getValue() ? 1 : 0);
+}
+
+void CheckButton::onLivePress(Window::LiveWindow& live)
+{
+  if (lvglValueChanged) {
+    lvglValueChanged = false;
+    return;
+  }
+
+  const bool modelValue = _getValue && _getValue();
+  lv_subject_set_int(&checkedSubject, modelValue ? 0 : 1);
+}
+
+void CheckButton::onLiveCheckEvents(Window::LiveWindow& live)
+{
+  ButtonBase::onLiveCheckEvents(live);
+  if (!_getValue) return;
+  const bool modelValue = _getValue() != 0;
+  const bool checked = lv_obj_has_state(live.lvobj(), LV_STATE_CHECKED);
+  if (modelValue != checked) update();
+}
+
+void CheckButton::checkedSubjectChanged(lv_observer_t* observer,
+                                        lv_subject_t* subject)
+{
+  withAvailableObserver<CheckButton>(observer, [&](CheckButton& self) {
+    self.setValue(lv_subject_get_int(subject) != 0);
+  });
+}
+
+void CheckButton::checkedValueChanged(lv_event_t* e)
+{
+  auto self = static_cast<CheckButton*>(lv_event_get_user_data(e));
+  if (self) self->lvglValueChanged = true;
 }
 
 //-----------------------------------------------------------------------------
@@ -181,8 +279,8 @@ bool textButtonLabelCreateFailureFailsClosedForTest()
     longPressed = true;
     return 0;
   });
-  lv_event_send(button->getLvObjForTest(), LV_EVENT_CLICKED, nullptr);
-  lv_event_send(button->getLvObjForTest(), LV_EVENT_LONG_PRESSED, nullptr);
+  lv_obj_send_event(button->getLvObjForTest(), LV_EVENT_CLICKED, nullptr);
+  lv_obj_send_event(button->getLvObjForTest(), LV_EVENT_LONG_PRESSED, nullptr);
 
   const bool ok = button->automationText() == "Next" &&
                   !button->isAvailable() && !button->isVisible() && !pressed &&
@@ -239,9 +337,11 @@ bool textButtonLongPressHandlerMayDeleteButtonForTest()
   });
 
   bool sent = button->sendLvEvent(LV_EVENT_LONG_PRESSED);
-  bool ok = sent && closed && !button->hasLiveLvObj() &&
+  bool ok = sent && !closed && !button->hasLiveLvObj() &&
             !button->automationLongClickable();
   MainWindow::instance()->runMainLoopTick();
+  MainWindow::instance()->runMainLoopTick();
+  ok = ok && closed;
   return ok;
 }
 #endif

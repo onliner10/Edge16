@@ -22,27 +22,24 @@
 
 class BitmapBuffer;
 
-class MainWindow: public Window
+class MainWindow : public Window
 {
+  friend class Window;
+  friend class LayoutFactory;
+
  protected:
   // singleton
   MainWindow();
 
  public:
-  static MainWindow * instance();
+  static MainWindow* instance();
 
 #if defined(TESTS)
-  static void create()
-  {
-    _instance = new MainWindow();
-  }
+  static void create() { _instance = new MainWindow(); }
 #endif
 
 #if defined(DEBUG_WINDOWS)
-  std::string getName() const override
-  {
-    return "MainWindow";
-  }
+  std::string getName() const override { return "MainWindow"; }
 #endif
 
   uint32_t runMainLoopTick();
@@ -54,7 +51,8 @@ class MainWindow: public Window
 
   void enableWidgetRefresh(bool state) { widgetRefreshEnable = state; }
 
-  void blockUntilClose(bool checkPwr, std::function<bool(void)> closeCondition, bool isError = false);
+  void blockUntilClose(bool checkPwr, std::function<bool(void)> closeCondition,
+                       bool isError = false);
   void blockUntilClosed(Window& window, bool checkPwr, bool isError = false);
   void blockUntilClosed(Window& window, bool checkPwr,
                         const std::function<bool(void)>& closeCondition,
@@ -62,14 +60,28 @@ class MainWindow: public Window
 
  protected:
   lv_obj_t* background = nullptr;
-  const BitmapBuffer *backgroundBitmap = nullptr;
+  const BitmapBuffer* backgroundBitmap = nullptr;
   bool widgetRefreshEnable = true;
 
-  static MainWindow * _instance;
+  static MainWindow* _instance;
 
-  void emptyTrash();
+  void collectRetiredWindows();
 
  private:
+  struct UiLifecycleSnapshot {
+    size_t deferredReady;
+    size_t deferredPending;
+    size_t trash;
+    size_t pendingTrash;
+
+    bool operator==(const UiLifecycleSnapshot& other) const
+    {
+      return deferredReady == other.deferredReady &&
+             deferredPending == other.deferredPending && trash == other.trash &&
+             pendingTrash == other.pendingTrash;
+    }
+  };
+
   class NormalUiTick
   {
     friend class MainWindow;
@@ -94,6 +106,7 @@ class MainWindow: public Window
 
   template <class TickMode>
   uint32_t runUiTick(TickMode mode);
+  uint32_t runLvglOnlyTick();
 
   void refreshModelWidgets(NormalUiTick);
   void refreshModelWidgets(ModalUiTick) {}
@@ -101,4 +114,10 @@ class MainWindow: public Window
   void collectDeletedWindows(NormalUiTick);
   void collectDeletedWindows(ModalUiTick) {}
   void collectDeletedWindows(ActiveUiTick) {}
+
+  bool settleUiLifecycleForRebuild(UiMutationToken&);
+  bool hasUiLifecycleWork() const;
+  UiLifecycleSnapshot uiLifecycleSnapshot() const;
+
+  bool lifecycleSettlementRunning = false;
 };

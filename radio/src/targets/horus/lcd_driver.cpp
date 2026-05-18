@@ -32,6 +32,7 @@
 
 #include "lcd.h"
 #include <lvgl/lvgl.h>
+#include <cstring>
 #if defined(LVGL_ADAPTIVE_UI_PUMP_STATS)
 #include "LvglWrapper.h"
 #include "os/time.h"
@@ -187,9 +188,11 @@ static void _update_frame_buffer_addr(uint16_t* addr)
 #endif
 
 #if defined(BOOT)
-static void startLcdRefresh(lv_disp_drv_t *disp_drv, uint16_t *buffer,
+static void startLcdRefresh(lv_display_t* disp_drv, uint16_t *buffer,
                             const rect_t &copy_area)
 {
+  (void)disp_drv;
+
 #if defined(LCD_VERTICAL_INVERT)
 #if defined(RADIO_F16)
   if(hardwareOptions.pcbrev > 0) {
@@ -200,44 +203,23 @@ static void startLcdRefresh(lv_disp_drv_t *disp_drv, uint16_t *buffer,
   {
   _copy_rotate_180(_back_buffer, buffer, copy_area);
 
-  if (lv_disp_flush_is_last(disp_drv)) {
-
-    // swap back/front
-    if (_front_buffer == _LCD_BUF_1) {
-      _front_buffer = _LCD_BUF_2;
-      _back_buffer = _LCD_BUF_1;
-    } else {
-      _front_buffer = _LCD_BUF_1;
-      _back_buffer = _LCD_BUF_2;
-    }
-
-    // Trigger async refresh
-    _update_frame_buffer_addr(_front_buffer);
-
-    // Copy refreshed & rotated areas into new back buffer
-    uint16_t* src = _front_buffer;
-    uint16_t* dst = _back_buffer;
-
-    lv_disp_t* disp = _lv_refr_get_disp_refreshing();
-    for(int i = 0; i < disp->inv_p; i++) {
-      if(disp->inv_area_joined[i]) continue;
-
-      lv_area_t refr_area;
-      lv_area_copy(&refr_area, &disp->inv_areas[i]);
-
-      // TRACE("Vert invert refresh {%d,%d,%d,%d}", refr_area.x1,
-      //      refr_area.y1, refr_area.x2 - refr_area.x1 + 1, refr_area.y2 - refr_area.y1 + 1);
-
-      _rotate_area_180(refr_area);
-
-      auto area_w = refr_area.x2 - refr_area.x1 + 1;
-      auto area_h = refr_area.y2 - refr_area.y1 + 1;
-      
-      DMACopyBitmap(dst, LCD_W, LCD_H, refr_area.x1, refr_area.y1,
-                    src, LCD_W, LCD_H, refr_area.x1, refr_area.y1,
-                    area_w, area_h);
-    }
+  // Bootloader refreshes are single full-frame direct flushes.
+  if (_front_buffer == _LCD_BUF_1) {
+    _front_buffer = _LCD_BUF_2;
+    _back_buffer = _LCD_BUF_1;
+  } else {
+    _front_buffer = _LCD_BUF_1;
+    _back_buffer = _LCD_BUF_2;
   }
+
+  _update_frame_buffer_addr(_front_buffer);
+
+  uint16_t* src = _front_buffer;
+  uint16_t* dst = _back_buffer;
+  DMACopyBitmap(dst, LCD_W, LCD_H, 0, 0,
+                src, LCD_W, LCD_H, 0, 0,
+                LCD_W, LCD_H);
+  DMAWait();
   }
 #else
   // Direct mode

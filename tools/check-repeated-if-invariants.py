@@ -42,6 +42,20 @@ DEFAULT_COMPILE_COMMANDS = (
     Path("build/arm-none-eabi/compile_commands.json"),
 )
 
+# libclang is used here as a parser, not as the project compiler.  The compile
+# database can come from GCC/arm-none-eabi builds, where GCC-only warnings are
+# promoted by -Werror and make clang reject otherwise parseable files.
+CLANG_PARSE_DROPPED_ARGS = {
+    "-Warray-bounds=2",
+    "-Wstringop-overflow=4",
+    "-Wimplicit-fallthrough=5",
+    "-Wtrampolines",
+    "-Wduplicated-cond",
+    "-Wlogical-op",
+    "-Wstack-usage=8192",
+    "-Wno-stack-usage",
+}
+
 IGNORED_PATH_PARTS = {
     ".git",
     "build",
@@ -362,7 +376,21 @@ def command_args(entry: dict, directory: Path, source_file: Path) -> tuple[str, 
 
     if not any(arg.startswith("-std=") for arg in args):
         args.append("-std=c++17")
-    return tuple(args)
+    return tuple(sanitize_clang_parse_args(args))
+
+
+def sanitize_clang_parse_args(args: Iterable[str]) -> list[str]:
+    sanitized: list[str] = []
+
+    for arg in args:
+        if arg in CLANG_PARSE_DROPPED_ARGS:
+            continue
+        if arg == "-Werror" or arg.startswith("-Werror="):
+            continue
+        sanitized.append(arg)
+
+    sanitized.append("-Wno-unknown-warning-option")
+    return sanitized
 
 
 def looks_like_source_arg(arg: str) -> bool:

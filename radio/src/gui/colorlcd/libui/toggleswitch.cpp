@@ -21,58 +21,33 @@
 #include "etx_lv_theme.h"
 #include "mainwindow.h"
 
-// Animation
-LV_STYLE_CONST_SINGLE_INIT(anim_fast, LV_STYLE_ANIM_TIME, 120);
-
-// Toggle switch
-const lv_style_const_prop_t switch_knob_props[] = {
-    LV_STYLE_CONST_PAD_TOP(-4),  LV_STYLE_CONST_PAD_BOTTOM(-4),
-    LV_STYLE_CONST_PAD_LEFT(-4), LV_STYLE_CONST_PAD_RIGHT(-4),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(switch_knob, switch_knob_props);
-
-static void switch_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
+static void switch_apply_edge_style(lv_obj_t* obj)
 {
   etx_std_style(obj, LV_PART_MAIN, PAD_ZERO);
   etx_obj_add_style(obj, styles->circle, LV_PART_MAIN);
-  etx_obj_add_style(obj, anim_fast, LV_PART_MAIN);
+  etx_bg_color(obj, COLOR_THEME_SECONDARY3_INDEX, LV_PART_MAIN);
 
-  etx_std_style(obj, LV_PART_INDICATOR, PAD_ZERO);
   etx_obj_add_style(obj, styles->circle, LV_PART_INDICATOR);
+  etx_bg_color(obj, COLOR_THEME_ACTIVE_INDEX,
+               LV_PART_INDICATOR | LV_STATE_CHECKED);
 
   etx_obj_add_style(obj, styles->bg_opacity_cover, LV_PART_KNOB);
   etx_obj_add_style(obj, styles->circle, LV_PART_KNOB);
-  etx_obj_add_style(obj, switch_knob, LV_PART_KNOB);
   etx_bg_color(obj, COLOR_THEME_SECONDARY1_INDEX, LV_PART_KNOB);
 
   etx_obj_add_style(obj, styles->disabled, LV_PART_KNOB | LV_STATE_DISABLED);
 }
 
-static const lv_obj_class_t switch_class = {
-    .base_class = &lv_switch_class,
-    .constructor_cb = switch_constructor,
-    .destructor_cb = nullptr,
-    .user_data = nullptr,
-    .event_cb = nullptr,
-    .width_def = ToggleSwitch::TOGGLE_W,
-    .height_def = EdgeTxStyles::UI_ELEMENT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_switch_t),
-};
-
 static lv_obj_t* switch_create(lv_obj_t* parent)
 {
-  return etx_create(&switch_class, parent);
-}
-
-void ToggleSwitch::toggleswitch_event_handler(lv_event_t* e)
-{
-  lv_obj_t* target = lv_event_get_target(e);
-  ToggleSwitch* cb = (ToggleSwitch*)lv_obj_get_user_data(target);
-
-  if (cb) cb->setValue(lv_obj_get_state(target) & LV_STATE_CHECKED);
+  auto obj = etx_create(&lv_switch_class, parent);
+  if (!obj) return nullptr;
+  lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+  lv_obj_set_size(obj, ToggleSwitch::TOGGLE_W, EdgeTxStyles::UI_ELEMENT_HEIGHT);
+  lv_switch_set_orientation(obj, LV_SWITCH_ORIENTATION_HORIZONTAL);
+  switch_apply_edge_style(obj);
+  return obj;
 }
 
 ToggleSwitch::ToggleSwitch(Window* parent, const rect_t& rect,
@@ -82,29 +57,52 @@ ToggleSwitch::ToggleSwitch(Window* parent, const rect_t& rect,
     _getValue(std::move(getValue)),
     _setValue(std::move(setValue))
 {
-  update();
+  lv_subject_init_int(&checkedSubject, _getValue && _getValue() ? 1 : 0);
+  checkedSubjectInitialized = true;
+
+#if defined(SIMU)
+  setAutomationRole("button");
+#endif
 
   withLive([&](LiveWindow& live) {
-    lv_obj_add_event_cb(live.lvobj(), ToggleSwitch::toggleswitch_event_handler,
+    auto obj = live.lvobj();
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+    if (rect.w == 0) lv_obj_set_width(obj, TOGGLE_W);
+    if (rect.h == 0) lv_obj_set_height(obj, EdgeTxStyles::UI_ELEMENT_HEIGHT);
+    auto binding = lv_obj_bind_checked(obj, &checkedSubject);
+    auto observer = lv_subject_add_observer_obj(
+        &checkedSubject, ToggleSwitch::checkedSubjectChanged, obj, this);
+    lv_obj_add_event_cb(obj, ToggleSwitch::checkedValueChanged,
                         LV_EVENT_VALUE_CHANGED, this);
+    if (!binding || !observer) failClosed();
   });
+}
+
+ToggleSwitch::~ToggleSwitch()
+{
+  if (checkedSubjectInitialized) {
+    lv_subject_deinit(&checkedSubject);
+    checkedSubjectInitialized = false;
+  }
 }
 
 void ToggleSwitch::update() const
 {
   if (!_getValue) return;
-  withLive([&](LiveWindow& live) {
-    auto obj = live.lvobj();
-    if (_getValue())
-      lv_obj_add_state(obj, LV_STATE_CHECKED);
-    else
-      lv_obj_clear_state(obj, LV_STATE_CHECKED);
-  });
+  lv_subject_set_int(const_cast<lv_subject_t*>(&checkedSubject),
+                     _getValue() ? 1 : 0);
 }
 
-void ToggleSwitch::onLiveClicked(Window::LiveWindow&)
+void ToggleSwitch::onLiveClicked(Window::LiveWindow& live)
 {
-  // prevent FormField::onClicked()
+  if (lvglValueChanged) {
+    lvglValueChanged = false;
+    return;
+  }
+
+  const bool modelValue = _getValue && _getValue();
+  lv_subject_set_int(&checkedSubject, modelValue ? 0 : 1);
 }
 
 void ToggleSwitch::onLiveCheckEvents(Window::LiveWindow& live)
@@ -115,9 +113,22 @@ void ToggleSwitch::onLiveCheckEvents(Window::LiveWindow& live)
     if (!_getValue) return;
     bool v = _getValue() != 0;
     bool s = (lv_obj_get_state(obj) & LV_STATE_CHECKED) == LV_STATE_CHECKED;
-    if (v != s)
-      update();
+    if (v != s) update();
   });
+}
+
+void ToggleSwitch::checkedSubjectChanged(lv_observer_t* observer,
+                                         lv_subject_t* subject)
+{
+  withAvailableObserver<ToggleSwitch>(observer, [&](ToggleSwitch& self) {
+    self.setValue(lv_subject_get_int(subject) != 0);
+  });
+}
+
+void ToggleSwitch::checkedValueChanged(lv_event_t* e)
+{
+  auto self = static_cast<ToggleSwitch*>(lv_event_get_user_data(e));
+  if (self) self->lvglValueChanged = true;
 }
 
 #if defined(SIMU)
@@ -130,9 +141,10 @@ bool toggleSwitchObjectAllocationFailureFailsClosedForTest()
    public:
     TestToggleSwitch(Window* parent, std::function<uint8_t()> getValue,
                      std::function<void(uint8_t)> setValue) :
-        ToggleSwitch(parent,
-                     {0, 0, ToggleSwitch::TOGGLE_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},
-                     std::move(getValue), std::move(setValue))
+        ToggleSwitch(
+            parent,
+            {0, 0, ToggleSwitch::TOGGLE_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+            std::move(getValue), std::move(setValue))
     {
     }
 
@@ -142,8 +154,7 @@ bool toggleSwitchObjectAllocationFailureFailsClosedForTest()
   bool changed = false;
   etxCreateForceObjectAllocationFailureForTest(true);
   auto toggle = new (std::nothrow) TestToggleSwitch(
-      MainWindow::instance(),
-      []() { return 1; },
+      MainWindow::instance(), []() { return 1; },
       [&](uint8_t) { changed = true; });
   etxCreateForceObjectAllocationFailureForTest(false);
 

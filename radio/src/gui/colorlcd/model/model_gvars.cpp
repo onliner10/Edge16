@@ -31,10 +31,20 @@
 #include "page.h"
 #include "textedit.h"
 #include "toggleswitch.h"
+#include "ui_events.h"
 
-#define SET_DIRTY() storageDirty(EE_MODEL)
+#define SET_DIRTY()             \
+  do {                          \
+    storageDirty(EE_MODEL);     \
+    publishModelGVarsChanged(); \
+  } while (0)
 
 #define ETX_STATE_VALUE_SMALL_FONT LV_STATE_USER_1
+
+static void publishModelGVarsChanged()
+{
+  UiEventHub::publish(UiTopic::ModelGVarsChanged);
+}
 
 void getFMExtName(char* dest, int8_t idx)
 {
@@ -58,8 +68,6 @@ class GVarButton : public ListLineButton
     padAll(PAD_ZERO);
     setHeight(BTN_H);
     if (!modelFMEnabled()) padLeft(PAD_LARGE);
-
-    delayLoad();
   }
 
   static LAYOUT_VAL_SCALED(GVAR_NAME_SIZE, 44)
@@ -106,7 +114,7 @@ class GVarButton : public ListLineButton
     }
   }
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -212,8 +220,8 @@ const lv_obj_class_t GVarButton::gv_label_class = {
     .base_class = &lv_label_class,
     .constructor_cb = gv_label_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = GVarButton::GVAR_VAL_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT - PAD_MEDIUM,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -232,8 +240,8 @@ const lv_obj_class_t GVarButton::gv_value_class = {
     .base_class = &lv_label_class,
     .constructor_cb = gv_value_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = GVarButton::GVAR_VAL_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -525,6 +533,7 @@ class GVarEditWindow : public Page
             [=](uint8_t checked) {
               fmData->gvars[index] = checked ? 0 : GVAR_MAX + 1;
               setProperties(flightMode);
+              publishModelGVarsChanged();
             });
         cb->setStyleGridCellXAlign(LV_GRID_ALIGN_END, 0);
         cb->invalidate();
@@ -583,13 +592,17 @@ void ModelGVarsPage::build(Window* window)
       Menu* menu = new Menu();
       menu->addLine(STR_EDIT, [=]() {
         Window* editWindow = new GVarEditWindow(index);
-        editWindow->setCloseHandler([=]() { rebuild(window); });
+        editWindow->setCloseHandler([=]() {
+          rebuild(window);
+          publishModelGVarsChanged();
+        });
       });
       menu->addLine(STR_CLEAR, [=]() {
         for (auto& flightMode : g_model.flightModeData) {
           flightMode.gvars[index] = 0;
         }
         storageDirty(EE_MODEL);
+        publishModelGVarsChanged();
       });
       return 0;
     });

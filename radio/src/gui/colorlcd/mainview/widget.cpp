@@ -321,7 +321,7 @@ lv_obj_t* NativeWidget::createFlexBox(lv_obj_t* parent, lv_flex_flow_t flow)
   auto obj = lv_obj_create(parent);
   if (!obj) return nullptr;
   lv_obj_remove_style_all(obj);
-  lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_clear_flag(obj, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
   lv_obj_set_layout(obj, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(obj, flow);
   lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -559,8 +559,10 @@ void NativeWidget::delayedInit()
         auto obj = lv_obj_create(parent);
         if (obj) {
           lv_obj_remove_style_all(obj);
-          lv_obj_clear_flag(obj,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+          lv_obj_clear_flag(
+              obj,
+              static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                         LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_border_width(obj, 1, LV_PART_MAIN);
           lv_obj_set_style_radius(obj, CARD_RADIUS, LV_PART_MAIN);

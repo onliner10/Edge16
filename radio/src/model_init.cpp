@@ -149,9 +149,7 @@ void applyDefaultTemplate()
 
 #if defined(COLORLCD)
   g_model.resetScreenData();
-  LayoutFactory::deleteCustomScreens();
-  LayoutFactory::deleteTopBarWidgets();
-  LayoutFactory::loadDefaultLayout();
+  LayoutFactory::replaceDefaultLayout();
 #endif
 
   // enable switch warnings

@@ -18,20 +18,20 @@
 
 #include "mainwindow.h"
 
+#include "LvglWrapper.h"
 #include "board.h"
 #include "debug.h"
 #include "edgetx.h"
-#include "keyboard_base.h"
-#include "lcd.h"
-#include "layout.h"
-#include "LvglWrapper.h"
 #include "etx_lv_theme.h"
-#include "view_main.h"
-
+#include "keyboard_base.h"
+#include "layout.h"
+#include "lcd.h"
 #include "os/sleep.h"
 #include "os/time.h"
 #include "sdcard.h"
 #include "telemetry/battery_monitor.h"
+#include "ui_events.h"
+#include "view_main.h"
 
 #if defined(SIMU)
 #include "targets/simu/simu_ui_automation.h"
@@ -76,38 +76,62 @@ MainWindow::MainWindow() : Window(nullptr, {0, 0, LCD_W, LCD_H})
   });
 }
 
-void MainWindow::emptyTrash()
+void MainWindow::collectRetiredWindows()
 {
   for (auto window : trash) {
     delete window;
   }
   trash.clear();
+  trash.splice(trash.end(), pendingTrash);
 }
 
-uint32_t MainWindow::runMainLoopTick()
+bool MainWindow::hasUiLifecycleWork() const
 {
-  return run(NormalUiTick{});
+  return !Window::deferredMutationsReady.empty() ||
+         !Window::deferredMutationsPending.empty() || !trash.empty() ||
+         !pendingTrash.empty();
 }
 
-uint32_t MainWindow::runActiveLoopTick()
+MainWindow::UiLifecycleSnapshot MainWindow::uiLifecycleSnapshot() const
 {
-  return run(ActiveUiTick{});
+  return {
+      Window::deferredMutationsReady.size(),
+      Window::deferredMutationsPending.size(),
+      trash.size(),
+      pendingTrash.size(),
+  };
 }
 
-uint32_t MainWindow::run(NormalUiTick mode)
+bool MainWindow::settleUiLifecycleForRebuild(UiMutationToken&)
 {
-  return runUiTick(mode);
+  if (lifecycleSettlementRunning) return false;
+
+  lifecycleSettlementRunning = true;
+  while (hasUiLifecycleWork()) {
+    const auto before = uiLifecycleSnapshot();
+
+    Window::runDeferredCloseHandlers();
+    collectRetiredWindows();
+
+    if (uiLifecycleSnapshot() == before) {
+      lifecycleSettlementRunning = false;
+      return false;
+    }
+  }
+
+  lifecycleSettlementRunning = false;
+  return true;
 }
 
-uint32_t MainWindow::run(ModalUiTick mode)
-{
-  return runUiTick(mode);
-}
+uint32_t MainWindow::runMainLoopTick() { return run(NormalUiTick{}); }
 
-uint32_t MainWindow::run(ActiveUiTick mode)
-{
-  return runUiTick(mode);
-}
+uint32_t MainWindow::runActiveLoopTick() { return run(ActiveUiTick{}); }
+
+uint32_t MainWindow::run(NormalUiTick mode) { return runUiTick(mode); }
+
+uint32_t MainWindow::run(ModalUiTick mode) { return runUiTick(mode); }
+
+uint32_t MainWindow::run(ActiveUiTick) { return runLvglOnlyTick(); }
 
 void MainWindow::refreshModelWidgets(NormalUiTick)
 {
@@ -117,7 +141,19 @@ void MainWindow::refreshModelWidgets(NormalUiTick)
 
 void MainWindow::collectDeletedWindows(NormalUiTick)
 {
-  emptyTrash();
+  collectRetiredWindows();
+}
+
+uint32_t MainWindow::runLvglOnlyTick()
+{
+  lcdFlushPoll();
+  if (lcdFlushIsBusy()) {
+    return 1;
+  }
+
+  uint32_t nextRun = LvglWrapper::instance()->run();
+  deferUiSideWorkIfNeeded();
+  return nextRun;
 }
 
 template <class TickMode>
@@ -130,11 +166,18 @@ uint32_t MainWindow::runUiTick(TickMode mode)
 
   uint32_t nextRun = LvglWrapper::instance()->run();
 
+  if (deferUiSideWorkIfNeeded()) {
+    return nextRun;
+  }
+
 #if defined(DEBUG_WINDOWS)
   auto start = time_get_ms();
 #endif
 
+  Window::runDeferredCloseHandlers();
   refreshModelWidgets(mode);
+  UiEventHub::tickLiveValues();
+  UiEventHub::flush();
 
   auto opaque = Window::firstOpaque();
   if (opaque) {
@@ -188,7 +231,8 @@ void MainWindow::shutdown()
     w->deleteLater();
 
   clear();
-  emptyTrash();
+  UiMutationToken token;
+  settleUiLifecycleForRebuild(token);
 
   // Re-add background canvas
   background = nullptr;
@@ -214,8 +258,9 @@ bool MainWindow::setBackgroundImage(std::string& fileName)
 
     auto oldBitmap = backgroundBitmap;
     backgroundBitmap = newBitmap;
-    lv_canvas_set_buffer(background, backgroundBitmap->getData(), backgroundBitmap->width(),
-                         backgroundBitmap->height(), LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(background, backgroundBitmap->getData(),
+                         backgroundBitmap->width(), backgroundBitmap->height(),
+                         LV_COLOR_FORMAT_RGB565);
     if (oldBitmap != nullptr) delete oldBitmap;
     return true;
   }
@@ -261,7 +306,9 @@ bool mainWindowObjectAllocationFailureFailsClosedForTest()
 }
 #endif
 
-void MainWindow::blockUntilClose(bool checkPwr, std::function<bool(void)> closeCondition, bool isError)
+void MainWindow::blockUntilClose(bool checkPwr,
+                                 std::function<bool(void)> closeCondition,
+                                 bool isError)
 {
   // reset input devices to avoid
   // RELEASED/CLICKED to be called in a loop
@@ -315,12 +362,15 @@ void MainWindow::blockUntilClosed(
     Window& window, bool checkPwr,
     const std::function<bool(void)>& closeCondition, bool isError)
 {
-  blockUntilClose(checkPwr, [&]() {
-    if (window.deleted()) return true;
-    if (closeCondition && closeCondition()) {
-      window.deleteLater();
-      return true;
-    }
-    return false;
-  }, isError);
+  blockUntilClose(
+      checkPwr,
+      [&]() {
+        if (window.deleted()) return true;
+        if (closeCondition && closeCondition()) {
+          window.deleteLater();
+          return true;
+        }
+        return false;
+      },
+      isError);
 }

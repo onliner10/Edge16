@@ -38,7 +38,7 @@ ChannelBar::ChannelBar(Window* parent, const rect_t& rect, uint8_t channel,
                        LcdColorIndex txtColorIndex) :
     Window(parent, rect), channel(channel), getValue(std::move(getValueFunc))
 {
-  setWindowFlag(NO_CLICK);
+  setWindowFlag(NO_CLICK | NO_SCROLL);
 
   if (withLive([&](LiveWindow& live) {
         auto obj = live.lvobj();
@@ -50,6 +50,7 @@ ChannelBar::ChannelBar(Window* parent, const rect_t& rect, uint8_t channel,
 
         bar = lv_obj_create(obj);
         if (!requireLvObj(bar)) return false;
+        lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
         etx_solid_bg(bar, barColorIndex);
         lv_obj_set_pos(bar, width() / 2, 1);
         lv_obj_set_size(bar, 0, height() - 2);
@@ -75,51 +76,59 @@ ChannelBar::ChannelBar(Window* parent, const rect_t& rect, uint8_t channel,
         lv_line_set_points(divLine, divPoints, 2);
         return true;
       })) {
-    checkEvents();
+    updateLiveValue(true);
   }
 }
 
 void ChannelBar::onLiveCheckEvents(Window::LiveWindow& live)
 {
   Window::onLiveCheckEvents(live);
+  updateLiveValue();
+}
 
-  int newValue = getValue();
+void ChannelBar::updateLiveValue(bool force)
+{
+  withLive([&](Window::LiveWindow& live) {
+    if (!force && !isLiveOnScreen(live)) return;
 
-  if (value != newValue || extendedLimits != g_model.extendedLimits) {
-    value = newValue;
+    int newValue = getValue();
 
-    std::string s;
-    if (g_eeGeneral.ppmunit == PPM_US)
-      s = formatNumberAsString(PPM_CH_CENTER(channel) + value / 2, 0, 0, "",
-                               STR_US);
-    else if (g_eeGeneral.ppmunit == PPM_PERCENT_PREC1)
-      s = formatNumberAsString(calcRESXto1000(value), PREC1, 0, "", "%");
-    else
-      s = formatNumberAsString(calcRESXto100(value), 0, 0, "", "%");
+    if (value != newValue || extendedLimits != g_model.extendedLimits) {
+      value = newValue;
 
-    if (s != valStr || extendedLimits != g_model.extendedLimits) {
-      valStr = s;
-      lv_label_set_text(valText, s.c_str());
-
-      if (s[0] == '-')
-        lv_obj_clear_state(valText, LV_STATE_USER_1);
+      std::string s;
+      if (g_eeGeneral.ppmunit == PPM_US)
+        s = formatNumberAsString(PPM_CH_CENTER(channel) + value / 2, 0, 0, "",
+                                 STR_US);
+      else if (g_eeGeneral.ppmunit == PPM_PERCENT_PREC1)
+        s = formatNumberAsString(calcRESXto1000(value), PREC1, 0, "", "%");
       else
-        lv_obj_add_state(valText, LV_STATE_USER_1);
+        s = formatNumberAsString(calcRESXto100(value), 0, 0, "", "%");
 
-      const int lim =
-          (g_model.extendedLimits ? (1024 * LIMIT_EXT_PERCENT / 100) : 1024);
-      int chanVal = limit<int>(-lim, value, lim);
+      if (s != valStr || extendedLimits != g_model.extendedLimits) {
+        valStr = s;
+        lv_label_set_text(valText, s.c_str());
 
-      uint16_t size = divRoundClosest(abs(chanVal) * width(), lim * 2);
+        if (s[0] == '-')
+          lv_obj_clear_state(valText, LV_STATE_USER_1);
+        else
+          lv_obj_add_state(valText, LV_STATE_USER_1);
 
-      int16_t x = width() / 2 - ((chanVal > 0) ? 0 : size);
+        const int lim =
+            (g_model.extendedLimits ? (1024 * LIMIT_EXT_PERCENT / 100) : 1024);
+        int chanVal = limit<int>(-lim, value, lim);
 
-      lv_obj_set_pos(bar, x, 1);
-      lv_obj_set_size(bar, size, height() - 2);
+        uint16_t size = divRoundClosest(abs(chanVal) * width(), lim * 2);
+
+        int16_t x = width() / 2 - ((chanVal > 0) ? 0 : size);
+
+        lv_obj_set_pos(bar, x, 1);
+        lv_obj_set_size(bar, size, height() - 2);
+      }
+
+      extendedLimits = g_model.extendedLimits;
     }
-
-    extendedLimits = g_model.extendedLimits;
-  }
+  });
 }
 
 //-----------------------------------------------------------------------------
@@ -237,6 +246,11 @@ void OutputChannelBar::onLiveCheckEvents(Window::LiveWindow& live)
 {
   ChannelBar::onLiveCheckEvents(live);
   drawLimitLines(false);
+}
+
+void OutputChannelBar::updateLiveValue(bool force)
+{
+  ChannelBar::updateLiveValue(force);
 }
 
 //-----------------------------------------------------------------------------

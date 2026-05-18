@@ -229,7 +229,7 @@ void drawShutdownAnimation(uint32_t duration, uint32_t totalDuration,
         lv_obj_center(shutdownCanvas);
         lv_canvas_set_buffer(shutdownCanvas, shutdownSplashImg->getData(),
                              shutdownSplashImg->width(),
-                             shutdownSplashImg->height(), LV_IMG_CF_TRUE_COLOR);
+                             shutdownSplashImg->height(), LV_COLOR_FORMAT_RGB565);
       }
     }
     if (auto icon = new (std::nothrow) StaticIcon(

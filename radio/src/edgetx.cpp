@@ -1306,7 +1306,7 @@ void edgeTxResume()
   //TODO: needs to go into storageReadAll()
   TRACE("reloading theme");
   ThemePersistance::instance()->loadDefaultTheme();
-  LayoutFactory::loadCustomScreens();
+  LayoutFactory::replaceCustomScreens();
   ViewMain::instance()->show();
 #endif
 
@@ -1691,8 +1691,7 @@ void edgeTxInit()
 #endif // defined(GUI)
 
 #if defined(COLORLCD)
-    LayoutFactory::deleteCustomScreens();
-    LayoutFactory::loadCustomScreens();
+    LayoutFactory::replaceCustomScreens();
 #endif
 
 #if defined(BLUETOOTH_PROBE)

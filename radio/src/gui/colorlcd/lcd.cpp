@@ -38,6 +38,10 @@
 #include "os/sleep.h"
 #endif
 
+#include <cstring>
+
+#include "edgetx_lvgl_adapter.h"
+
 #if LV_MEM_CUSTOM == 0
 char LVGL_MEM_BUFFER[LV_MEM_SIZE] __SDRAM __ALIGNED(16);
 
@@ -59,21 +63,32 @@ BitmapBuffer lcdBuffer2(BMP_RGB565, LCD_W, LCD_H,
 static BitmapBuffer* lcdFront = &lcdBuffer1;
 static BitmapBuffer* lcd = &lcdBuffer2;
 
-static lv_disp_draw_buf_t disp_buf;
-static lv_disp_drv_t disp_drv;
-
 volatile uint32_t LcdVBlankClock::counter = 0;
 
 static LcdFlushManager g_lcdFlushMgr;
 
-static void (*lcd_wait_cb)(lv_disp_drv_t*) = nullptr;
-static void (*lcd_flush_cb)(lv_disp_drv_t*, uint16_t* buffer,
+// Accumulates flushed areas during a refresh cycle, replacing direct
+// reads of private LVGL display internals (which don't exist in v9).
+static LcdInvalidatedAreas g_capturedFlushAreas;
+
+static void (*lcd_wait_cb)(lv_display_t*) = nullptr;
+static void (*lcd_flush_cb)(lv_display_t*, uint16_t* buffer,
                             const rect_t& area) = nullptr;
 static lcd_typed_flush_cb_t g_typedFlushCb = nullptr;
 
-void lcdSetWaitCb(void (*cb)(lv_disp_drv_t*)) { lcd_wait_cb = cb; }
+static uint16_t* lvglRgb565Pixels(void* pixels)
+{
+  return static_cast<uint16_t*>(pixels);
+}
 
-void lcdSetFlushCb(void (*cb)(lv_disp_drv_t*, uint16_t*, const rect_t&))
+static lv_color_t* lvglColorPixels(uint8_t* pixels)
+{
+  return static_cast<lv_color_t*>(static_cast<void*>(pixels));
+}
+
+void lcdSetWaitCb(void (*cb)(lv_display_t*)) { lcd_wait_cb = cb; }
+
+void lcdSetFlushCb(void (*cb)(lv_display_t*, uint16_t*, const rect_t&))
 {
   LCD_ASSERT(!g_typedFlushCb,
              "lcdSetFlushCb: typed callback already registered");
@@ -89,28 +104,29 @@ void lcdSetTypedFlushCb(lcd_typed_flush_cb_t cb)
 
 static LcdInvalidatedAreas captureInvalidatedAreas()
 {
-  LcdInvalidatedAreas inv;
-  lv_disp_t* disp = _lv_refr_get_disp_refreshing();
-  if (disp) {
-    for (int i = 0; i < disp->inv_p; i++) {
-      if (!disp->inv_area_joined[i]) {
-        inv.add(disp->inv_areas[i]);
-      }
-    }
-  }
-  return inv;
+  LcdInvalidatedAreas result;
+  std::swap(result, g_capturedFlushAreas);
+  return result;
 }
 
-static void flushLcd(lv_disp_drv_t* disp_drv, const lv_area_t* area,
-                     lv_color_t* color_p)
+LcdInvalidatedAreas lcdCaptureFlushAreas()
 {
+  return captureInvalidatedAreas();
+}
+
+static void flushLcd(lv_display_t* disp_drv, const lv_area_t* area,
+                     uint8_t* color_p)
+{
+  // Record this flushed area for final-chunk invalidation tracking
+  // (replaces direct reads of private LVGL display internals)
+  g_capturedFlushAreas.add(*area);
 #if !defined(LCD_VERTICAL_INVERT) || defined(RADIO_F16)
 #if defined(RADIO_F16)
   if (hardwareOptions.pcbrev > 0)
 #endif
   {
-    if (!lv_disp_flush_is_last(disp_drv)) {
-      lv_disp_flush_ready(disp_drv);
+    if (!etx::lvgl::etx_lvgl_flush_is_last()) {
+      etx::lvgl::etx_lvgl_flush_ready();
       return;
     }
   }
@@ -127,7 +143,7 @@ static void flushLcd(lv_disp_drv_t* disp_drv, const lv_area_t* area,
 #endif
 
   if (g_typedFlushCb) {
-    g_lcdFlushMgr.onLvglFlush(disp_drv, area, color_p);
+    g_lcdFlushMgr.onLvglFlush(disp_drv, area, lvglColorPixels(color_p));
     return;
   }
 
@@ -139,13 +155,13 @@ static void flushLcd(lv_disp_drv_t* disp_drv, const lv_area_t* area,
     rect_t copy_area = {area->x1, area->y1, area->x2 - area->x1 + 1,
                         area->y2 - area->y1 + 1};
 
-    lcd_flush_cb(disp_drv, (uint16_t*)color_p, copy_area);
+    lcd_flush_cb(disp_drv, lvglRgb565Pixels(color_p), copy_area);
   }
 
-  lv_disp_flush_ready(disp_drv);
+  lv_display_flush_ready(disp_drv);
 }
 
-static void lcdFlushWaitCb(lv_disp_drv_t* disp_drv)
+static void lcdFlushWaitCb(lv_display_t* disp_drv)
 {
   g_lcdFlushMgr.poll();
   if (g_lcdFlushMgr.isBusy()) {
@@ -156,7 +172,7 @@ static void lcdFlushWaitCb(lv_disp_drv_t* disp_drv)
   }
 }
 
-void LcdFlushManager::onLvglFlush(lv_disp_drv_t* disp_drv,
+void LcdFlushManager::onLvglFlush(lv_display_t* disp_drv,
                                   const lv_area_t* area, lv_color_t* color_p)
 {
   while (state_ != State::Idle) {
@@ -173,11 +189,11 @@ void LcdFlushManager::onLvglFlush(lv_disp_drv_t* disp_drv,
                       area->y2 - area->y1 + 1};
 
   LcdFlushChunk chunk;
-  if (lv_disp_flush_is_last(disp_drv)) {
-    chunk = LcdFlushChunk::finalChunk((uint16_t*)color_p, copy_area,
+  if (etx::lvgl::etx_lvgl_flush_is_last()) {
+    chunk = LcdFlushChunk::finalChunk(lvglRgb565Pixels(color_p), copy_area,
                                        captureInvalidatedAreas());
   } else {
-    chunk = LcdFlushChunk::intermediate((uint16_t*)color_p, copy_area);
+    chunk = LcdFlushChunk::intermediate(lvglRgb565Pixels(color_p), copy_area);
   }
 
   LcdFlushOutcome outcome = g_typedFlushCb(chunk);
@@ -347,7 +363,7 @@ bool lvglRefreshNowIfIdle()
 {
   lcdFlushPoll();
   if (lcdFlushIsBusy()) return false;
-  lv_refr_now(nullptr);
+  etx::lvgl::etx_lvgl_refr_now();
   lcdFlushPoll();
   return !lcdFlushIsBusy();
 }
@@ -357,7 +373,7 @@ bool lvglRefreshNowAndDrain(uint32_t timeoutMs)
   auto before = lcdFlushDrain(timeoutMs);
   if (before != LcdFlushDrainResult::Completed) return false;
 
-  lv_refr_now(nullptr);
+  etx::lvgl::etx_lvgl_refr_now();
 
   auto after = lcdFlushDrain(timeoutMs);
   return after == LcdFlushDrainResult::Completed;
@@ -369,27 +385,23 @@ static void clear_frame_buffers()
   memset(LCD_SECOND_FRAME_BUFFER, 0, sizeof(LCD_SECOND_FRAME_BUFFER));
 }
 
-static void init_lvgl_disp_drv()
+static bool init_lvgl_disp_drv()
 {
-  lv_disp_draw_buf_init(&disp_buf, lcdFront->getData(), lcd->getData(),
-                        LCD_W * LCD_H);
-  lv_disp_drv_init(&disp_drv); /*Basic initialization*/
-
-  disp_drv.draw_buf = &disp_buf; /*Set an initialized buffer*/
-  disp_drv.flush_cb = flushLcd;  /*Set a flush callback to draw to the display*/
-  disp_drv.wait_cb = lcdFlushWaitCb; /*Set a wait callback that polls the manager*/
-
-  disp_drv.hor_res = LCD_W; /*Set the horizontal resolution in pixels*/
-  disp_drv.ver_res = LCD_H; /*Set the vertical resolution in pixels*/
-  disp_drv.full_refresh = 0;
-
+  // Display buffer, driver init, and registration through the adapter
+  return etx::lvgl::etx_lvgl_disp_create(
+    flushLcd, lcdFlushWaitCb,
+    lcdFront->getData(), lcd->getData(),
+    LCD_W, LCD_H,
+    false,  // full_refresh = 0
+    // direct_mode depends on LCD_VERTICAL_INVERT
 #if !defined(LCD_VERTICAL_INVERT)
-  disp_drv.direct_mode = 1;
+    true
 #elif defined(RADIO_F16)
-  disp_drv.direct_mode = (hardwareOptions.pcbrev > 0) ? 1 : 0;
+    (hardwareOptions.pcbrev > 0) ? true : false
 #else
-  disp_drv.direct_mode = 0;
+    false
 #endif
+  ) != nullptr;
 }
 
 void lcdInitDisplayDriver()
@@ -416,13 +428,13 @@ void lcdInitDisplayDriver()
   lcdInit();
   backlightInit();
 
-  init_lvgl_disp_drv();
-
-  // Register the driver and save the created display object
-  lv_disp_drv_register(&disp_drv);
+  if (!init_lvgl_disp_drv()) {
+    return;
+  }
 
   // remove all styles on default screen (makes it transparent as well)
-  lv_obj_remove_style_all(lv_scr_act());
+  etx::lvgl::etx_lvgl_remove_style_all(
+      etx::lvgl::etx_lvgl_screen_active());
 }
 
 void lcdFlushed()

@@ -24,6 +24,7 @@
 #include "button.h"
 #include "edgetx_types.h"
 #include "pagegroup.h"
+#include "ui_events.h"
 
 class ListLineButton : public ButtonBase
 {
@@ -44,8 +45,55 @@ class ListLineButton : public ButtonBase
   uint8_t index;
 
   virtual bool isActive() const = 0;
+  void delayedInit() final;
+  virtual void onLineLoaded() {}
+  virtual void onLineAfterRefresh() {}
+  virtual void onLineLiveUpdate(LiveWindow& live);
   virtual void onLoadedCheckEvents(LiveWindow& live) {}
   virtual void onRefresh() = 0;
+  void onDelete() override;
+  void onFailClosed() override;
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
+  void onLiveClicked(LiveWindow& live) override;
+  void onLiveVisibilityChanged(LiveWindow& live, bool visible) override;
+  void runLiveValueUpdate();
+  void setLiveValueUpdatesEnabled(bool enabled);
+  bool isLineReady() const;
+
+ private:
+  enum class LineState : uint8_t
+  {
+    Placeholder,
+    Loading,
+    Ready,
+    FailedClosed,
+  };
+
+  enum class UpdatePhase : uint8_t
+  {
+    Idle,
+    Refreshing,
+    LiveUpdating,
+  };
+
+  class LineRealizationToken final
+  {
+   private:
+    friend class ListLineButton;
+    LineRealizationToken() = default;
+  };
+
+  bool tryRealize(LineRealizationToken& token, LiveWindow& live);
+  void applyRefreshIfReady();
+  void drawPlaceholder(LiveWindow& live, lv_event_t* event);
+  void transitionToFailedClosed();
+  bool transitionToFailedClosedIfUnavailable();
+
+  LineState lineState = LineState::Placeholder;
+  UpdatePhase updatePhase = UpdatePhase::Idle;
+  bool refreshPending = true;
+  UiScopedConnection liveConnection;
+  UiLiveSubscription liveSubscription;
 };
 
 class InputMixButtonBase : public ListLineButton

@@ -47,10 +47,11 @@ class ChannelBar : public Window
   std::string valStr;
   std::function<int16_t()> getValue;
   lv_obj_t* valText = nullptr;
-  lv_point_t divPoints[2];
+  lv_point_precise_t divPoints[2];
   lv_obj_t* bar = nullptr;
 
   void onLiveCheckEvents(LiveWindow& live) override;
+  virtual void updateLiveValue(bool force = false);
 };
 
 class MixerChannelBar : public ChannelBar
@@ -69,13 +70,14 @@ class OutputChannelBar : public ChannelBar
   int limMax = 0;
   int limMin = 0;
   bool drawLimits = true;
-  lv_point_t limPoints[9];
+  lv_point_precise_t limPoints[9];
   lv_obj_t* leftLim = nullptr;
   lv_obj_t* rightLim = nullptr;
 
   void drawLimitLines(bool forced);
 
   void onLiveCheckEvents(LiveWindow& live) override;
+  void updateLiveValue(bool force = false) override;
 };
 
 class ComboChannelBar : public Window

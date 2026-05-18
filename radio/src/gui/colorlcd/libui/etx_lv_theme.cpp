@@ -34,190 +34,15 @@
 extern lv_color_t makeLvColor(uint32_t colorFlags);
 
 /**********************
- *   Constant Styles
+ *   Filter Callbacks
  **********************/
 
-// Opacity
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_transparent,
-                           LV_STYLE_BG_OPA, LV_OPA_TRANSP);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_20, LV_STYLE_BG_OPA,
-                           LV_OPA_20);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_50, LV_STYLE_BG_OPA,
-                           LV_OPA_50);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_75, LV_STYLE_BG_OPA, 187);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_90, LV_STYLE_BG_OPA, 230);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::bg_opacity_cover, LV_STYLE_BG_OPA,
-                           LV_OPA_COVER);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::fg_opacity_transparent, LV_STYLE_OPA,
-                           LV_OPA_TRANSP);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::fg_opacity_cover, LV_STYLE_OPA,
-                           LV_OPA_COVER);
-
-// Corner rounding (button, edit box, etc)
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::rounded, LV_STYLE_RADIUS, 6);
-
-// Toggle switch and slider knob rounding
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::circle, LV_STYLE_RADIUS,
-                           LV_RADIUS_CIRCLE);
-
-// Text align
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::text_align_left, LV_STYLE_TEXT_ALIGN,
-                           LV_TEXT_ALIGN_LEFT);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::text_align_right, LV_STYLE_TEXT_ALIGN,
-                           LV_TEXT_ALIGN_RIGHT);
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::text_align_center, LV_STYLE_TEXT_ALIGN,
-                           LV_TEXT_ALIGN_CENTER);
-
-// Padding
-LV_STYLE_CONST_SINGLE_INIT(EdgeTxStyles::pad_left_2, LV_STYLE_PAD_LEFT, 2);
-
-// Scrollbar
-const lv_style_const_prop_t scrollbar_props[] = {
-    LV_STYLE_CONST_BG_OPA(LV_OPA_50),
-    LV_STYLE_CONST_PAD_TOP(PAD_SCROLL),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_SCROLL),
-    LV_STYLE_CONST_PAD_LEFT(PAD_SCROLL),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_SCROLL),
-    LV_STYLE_CONST_WIDTH(PAD_SMALL),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::scrollbar, scrollbar_props);
-
-// Padding
-const lv_style_const_prop_t pad_zero_props[] = {
-    LV_STYLE_CONST_PAD_TOP(0),  LV_STYLE_CONST_PAD_BOTTOM(0),
-    LV_STYLE_CONST_PAD_LEFT(0), LV_STYLE_CONST_PAD_RIGHT(0),
-    LV_STYLE_CONST_PAD_ROW(0),  LV_STYLE_CONST_PAD_COLUMN(0),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_zero, pad_zero_props);
-
-const lv_style_const_prop_t pad_tiny_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_TINY),  LV_STYLE_CONST_PAD_BOTTOM(PAD_TINY),
-    LV_STYLE_CONST_PAD_LEFT(PAD_TINY), LV_STYLE_CONST_PAD_RIGHT(PAD_TINY),
-    LV_STYLE_CONST_PAD_ROW(PAD_TINY),  LV_STYLE_CONST_PAD_COLUMN(PAD_TINY),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_tiny, pad_tiny_props);
-
-const lv_style_const_prop_t pad_small_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_SMALL),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_SMALL),
-    LV_STYLE_CONST_PAD_LEFT(PAD_SMALL),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_SMALL),
-    LV_STYLE_CONST_PAD_ROW(PAD_SMALL),
-    LV_STYLE_CONST_PAD_COLUMN(PAD_SMALL),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_small, pad_small_props);
-
-const lv_style_const_prop_t pad_medium_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_LEFT(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_ROW(PAD_SMALL),
-    LV_STYLE_CONST_PAD_COLUMN(PAD_SMALL),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_medium, pad_medium_props);
-
-const lv_style_const_prop_t pad_large_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_LARGE),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_LARGE),
-    LV_STYLE_CONST_PAD_LEFT(PAD_LARGE),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_LARGE),
-    LV_STYLE_CONST_PAD_ROW(PAD_SMALL),
-    LV_STYLE_CONST_PAD_COLUMN(PAD_SMALL),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_large, pad_large_props);
-
-const lv_style_const_prop_t pad_button_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_TINY),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_TINY),
-    LV_STYLE_CONST_PAD_LEFT(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_ROW(PAD_TINY),
-    LV_STYLE_CONST_PAD_COLUMN(PAD_TINY),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_button, pad_button_props);
-
-const lv_style_const_prop_t pad_textarea_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_SMALL),
-    LV_STYLE_CONST_PAD_BOTTOM(PAD_SMALL - 1),
-    LV_STYLE_CONST_PAD_LEFT(PAD_MEDIUM),
-    LV_STYLE_CONST_PAD_RIGHT(PAD_SMALL),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pad_textarea, pad_textarea_props);
-
-// Border
-const lv_style_const_prop_t border_props[] = {
-    LV_STYLE_CONST_BORDER_OPA(LV_OPA_COVER),
-    LV_STYLE_CONST_BORDER_WIDTH(PAD_BORDER),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::border, border_props);
-
-// Border
-const lv_style_const_prop_t border_transparent_props[] = {
-    LV_STYLE_CONST_BORDER_OPA(LV_OPA_TRANSP),
-    LV_STYLE_CONST_BORDER_WIDTH(PAD_BORDER),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::border_transparent,
-                          border_transparent_props);
-
-const lv_style_const_prop_t border_thin_props[] = {
-    LV_STYLE_CONST_BORDER_OPA(LV_OPA_COVER),
-    LV_STYLE_CONST_BORDER_WIDTH(1),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::border_thin, border_thin_props);
-
-static const lv_style_const_prop_t outline_props[] = {
-    LV_STYLE_CONST_OUTLINE_WIDTH(PAD_OUTLINE + 1),
-    LV_STYLE_CONST_OUTLINE_OPA(LV_OPA_COVER),
-    LV_STYLE_CONST_OUTLINE_PAD(PAD_TINY),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::outline, outline_props);
-
-static const lv_style_const_prop_t state_focus_frame_props[] = {
-    LV_STYLE_CONST_BORDER_WIDTH(PAD_BORDER + 2),
-    LV_STYLE_CONST_BORDER_OPA(LV_OPA_COVER),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::state_focus_frame,
-                          state_focus_frame_props);
-
-static const lv_style_const_prop_t state_edit_frame_props[] = {
-    LV_STYLE_CONST_BORDER_WIDTH(PAD_BORDER + 2),
-    LV_STYLE_CONST_BORDER_OPA(LV_OPA_COVER),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::state_edit_frame,
-                          state_edit_frame_props);
-
-// States (pressed, disabled, etc)
 static lv_color_t dark_color_filter_cb(const lv_color_filter_dsc_t* f,
                                        lv_color_t c, lv_opa_t opa)
 {
   LV_UNUSED(f);
   return lv_color_darken(c, opa);
 }
-
-const lv_color_filter_dsc_t dark_filter = {.filter_cb = dark_color_filter_cb,
-                                           .user_data = 0};
-
-const lv_style_const_prop_t pressed_props[] = {
-    LV_STYLE_CONST_COLOR_FILTER_DSC(&dark_filter),
-    LV_STYLE_CONST_COLOR_FILTER_OPA(35),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::pressed, pressed_props);
 
 static lv_color_t grey_filter_cb(const lv_color_filter_dsc_t* f,
                                  lv_color_t color, lv_opa_t opa)
@@ -226,16 +51,6 @@ static lv_color_t grey_filter_cb(const lv_color_filter_dsc_t* f,
   return lv_color_mix(lv_palette_lighten(LV_PALETTE_GREY, 2), color, opa);
 }
 
-const lv_color_filter_dsc_t grey_filter = {.filter_cb = grey_filter_cb,
-                                           .user_data = 0};
-
-const lv_style_const_prop_t disabled_props[] = {
-    LV_STYLE_CONST_COLOR_FILTER_DSC(&grey_filter),
-    LV_STYLE_CONST_COLOR_FILTER_OPA(LV_OPA_50),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::disabled, disabled_props);
-
 static lv_color_t qm_disabled_filter_cb(const lv_color_filter_dsc_t* f,
                                  lv_color_t color, lv_opa_t opa)
 {
@@ -243,15 +58,9 @@ static lv_color_t qm_disabled_filter_cb(const lv_color_filter_dsc_t* f,
   return lv_color_mix(makeLvColor(COLOR_THEME_QM_FG_INDEX), color, opa);
 }
 
-const lv_color_filter_dsc_t qm_disabled_filter = {.filter_cb = qm_disabled_filter_cb,
-                                           .user_data = 0};
-
-const lv_style_const_prop_t qm_disabled_props[] = {
-    LV_STYLE_CONST_COLOR_FILTER_DSC(&qm_disabled_filter),
-    LV_STYLE_CONST_COLOR_FILTER_OPA(LV_OPA_60),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(EdgeTxStyles::qmdisabled, qm_disabled_props);
+static lv_color_filter_dsc_t dark_filter;
+static lv_color_filter_dsc_t grey_filter;
+static lv_color_filter_dsc_t qm_disabled_filter;
 
 /**********************
  *   Variable Styles
@@ -311,6 +120,152 @@ EdgeTxStyles::EdgeTxStyles()
 
   lv_style_set_line_width(&div_line_white, 1);
   lv_style_set_line_opa(&div_line_white, LV_OPA_COVER);
+
+  // Init styles that were previously const-initialized
+  lv_style_init(&pad_zero);
+  lv_style_set_pad_top(&pad_zero, 0);
+  lv_style_set_pad_bottom(&pad_zero, 0);
+  lv_style_set_pad_left(&pad_zero, 0);
+  lv_style_set_pad_right(&pad_zero, 0);
+  lv_style_set_pad_row(&pad_zero, 0);
+  lv_style_set_pad_column(&pad_zero, 0);
+
+  lv_style_init(&pad_tiny);
+  lv_style_set_pad_top(&pad_tiny, PAD_TINY);
+  lv_style_set_pad_bottom(&pad_tiny, PAD_TINY);
+  lv_style_set_pad_left(&pad_tiny, PAD_TINY);
+  lv_style_set_pad_right(&pad_tiny, PAD_TINY);
+  lv_style_set_pad_row(&pad_tiny, PAD_TINY);
+  lv_style_set_pad_column(&pad_tiny, PAD_TINY);
+
+  lv_style_init(&pad_small);
+  lv_style_set_pad_top(&pad_small, PAD_SMALL);
+  lv_style_set_pad_bottom(&pad_small, PAD_SMALL);
+  lv_style_set_pad_left(&pad_small, PAD_SMALL);
+  lv_style_set_pad_right(&pad_small, PAD_SMALL);
+  lv_style_set_pad_row(&pad_small, PAD_SMALL);
+  lv_style_set_pad_column(&pad_small, PAD_SMALL);
+
+  lv_style_init(&pad_medium);
+  lv_style_set_pad_top(&pad_medium, PAD_MEDIUM);
+  lv_style_set_pad_bottom(&pad_medium, PAD_MEDIUM);
+  lv_style_set_pad_left(&pad_medium, PAD_MEDIUM);
+  lv_style_set_pad_right(&pad_medium, PAD_MEDIUM);
+  lv_style_set_pad_row(&pad_medium, PAD_SMALL);
+  lv_style_set_pad_column(&pad_medium, PAD_SMALL);
+
+  lv_style_init(&pad_large);
+  lv_style_set_pad_top(&pad_large, PAD_LARGE);
+  lv_style_set_pad_bottom(&pad_large, PAD_LARGE);
+  lv_style_set_pad_left(&pad_large, PAD_LARGE);
+  lv_style_set_pad_right(&pad_large, PAD_LARGE);
+  lv_style_set_pad_row(&pad_large, PAD_SMALL);
+  lv_style_set_pad_column(&pad_large, PAD_SMALL);
+
+  lv_style_init(&pad_button);
+  lv_style_set_pad_top(&pad_button, PAD_TINY);
+  lv_style_set_pad_bottom(&pad_button, PAD_TINY);
+  lv_style_set_pad_left(&pad_button, PAD_MEDIUM);
+  lv_style_set_pad_right(&pad_button, PAD_MEDIUM);
+  lv_style_set_pad_row(&pad_button, PAD_TINY);
+  lv_style_set_pad_column(&pad_button, PAD_TINY);
+
+  lv_style_init(&pad_textarea);
+  lv_style_set_pad_top(&pad_textarea, PAD_SMALL);
+  lv_style_set_pad_bottom(&pad_textarea, PAD_SMALL - 1);
+  lv_style_set_pad_left(&pad_textarea, PAD_MEDIUM);
+  lv_style_set_pad_right(&pad_textarea, PAD_SMALL);
+
+  lv_style_init(&pad_left_2);
+  lv_style_set_pad_left(&pad_left_2, 2);
+
+  lv_style_init(&text_align_left);
+  lv_style_set_text_align(&text_align_left, LV_TEXT_ALIGN_LEFT);
+
+  lv_style_init(&text_align_right);
+  lv_style_set_text_align(&text_align_right, LV_TEXT_ALIGN_RIGHT);
+
+  lv_style_init(&text_align_center);
+  lv_style_set_text_align(&text_align_center, LV_TEXT_ALIGN_CENTER);
+
+  lv_style_init(&bg_opacity_transparent);
+  lv_style_set_bg_opa(&bg_opacity_transparent, LV_OPA_TRANSP);
+
+  lv_style_init(&bg_opacity_20);
+  lv_style_set_bg_opa(&bg_opacity_20, LV_OPA_20);
+
+  lv_style_init(&bg_opacity_50);
+  lv_style_set_bg_opa(&bg_opacity_50, LV_OPA_50);
+
+  lv_style_init(&bg_opacity_75);
+  lv_style_set_bg_opa(&bg_opacity_75, 187);
+
+  lv_style_init(&bg_opacity_90);
+  lv_style_set_bg_opa(&bg_opacity_90, 230);
+
+  lv_style_init(&bg_opacity_cover);
+  lv_style_set_bg_opa(&bg_opacity_cover, LV_OPA_COVER);
+
+  lv_style_init(&fg_opacity_transparent);
+  lv_style_set_opa(&fg_opacity_transparent, LV_OPA_TRANSP);
+
+  lv_style_init(&fg_opacity_cover);
+  lv_style_set_opa(&fg_opacity_cover, LV_OPA_COVER);
+
+  lv_style_init(&rounded);
+  lv_style_set_radius(&rounded, 6);
+
+  lv_style_init(&circle);
+  lv_style_set_radius(&circle, LV_RADIUS_CIRCLE);
+
+  lv_style_init(&scrollbar);
+  lv_style_set_bg_opa(&scrollbar, LV_OPA_50);
+  lv_style_set_pad_top(&scrollbar, PAD_SCROLL);
+  lv_style_set_pad_bottom(&scrollbar, PAD_SCROLL);
+  lv_style_set_pad_left(&scrollbar, PAD_SCROLL);
+  lv_style_set_pad_right(&scrollbar, PAD_SCROLL);
+  lv_style_set_width(&scrollbar, PAD_SMALL);
+
+  lv_style_init(&border);
+  lv_style_set_border_opa(&border, LV_OPA_COVER);
+  lv_style_set_border_width(&border, PAD_BORDER);
+
+  lv_style_init(&border_transparent);
+  lv_style_set_border_opa(&border_transparent, LV_OPA_TRANSP);
+  lv_style_set_border_width(&border_transparent, PAD_BORDER);
+
+  lv_style_init(&border_thin);
+  lv_style_set_border_opa(&border_thin, LV_OPA_COVER);
+  lv_style_set_border_width(&border_thin, 1);
+
+  lv_style_init(&outline);
+  lv_style_set_outline_width(&outline, PAD_OUTLINE + 1);
+  lv_style_set_outline_opa(&outline, LV_OPA_COVER);
+  lv_style_set_outline_pad(&outline, PAD_TINY);
+
+  lv_style_init(&state_focus_frame);
+  lv_style_set_border_width(&state_focus_frame, PAD_BORDER + 2);
+  lv_style_set_border_opa(&state_focus_frame, LV_OPA_COVER);
+
+  lv_style_init(&state_edit_frame);
+  lv_style_set_border_width(&state_edit_frame, PAD_BORDER + 2);
+  lv_style_set_border_opa(&state_edit_frame, LV_OPA_COVER);
+
+  // Init color filter dsc objects and filter styles
+  lv_color_filter_dsc_init(&dark_filter, dark_color_filter_cb);
+  lv_style_init(&pressed);
+  lv_style_set_color_filter_dsc(&pressed, &dark_filter);
+  lv_style_set_color_filter_opa(&pressed, 35);
+
+  lv_color_filter_dsc_init(&grey_filter, grey_filter_cb);
+  lv_style_init(&disabled);
+  lv_style_set_color_filter_dsc(&disabled, &grey_filter);
+  lv_style_set_color_filter_opa(&disabled, LV_OPA_50);
+
+  lv_color_filter_dsc_init(&qm_disabled_filter, qm_disabled_filter_cb);
+  lv_style_init(&qmdisabled);
+  lv_style_set_color_filter_dsc(&qmdisabled, &qm_disabled_filter);
+  lv_style_set_color_filter_opa(&qmdisabled, LV_OPA_60);
 
   // Fonts
   for (int i = FONT_STD_INDEX; i < FONTS_COUNT; i += 1) {
@@ -440,6 +395,10 @@ lv_obj_t* etx_label_create(lv_obj_t* parent, FontIndex fontIdx)
   if (!lvobj) return nullptr;
 
   etx_font(lvobj, fontIdx);
+  lv_obj_clear_flag(lvobj,
+                    static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_SCROLLABLE |
+                                               LV_OBJ_FLAG_SCROLL_ON_FOCUS |
+                                               LV_OBJ_FLAG_SCROLL_ELASTIC));
   return lvobj;
 }
 
@@ -893,8 +852,8 @@ static const lv_obj_class_t textarea_class = {
     .base_class = &lv_textarea_class,
     .constructor_cb = textarea_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = EdgeTxStyles::UI_ELEMENT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,

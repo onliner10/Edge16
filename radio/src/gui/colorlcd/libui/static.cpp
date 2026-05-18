@@ -48,12 +48,49 @@ void staticTextForceCreateFailureForTest(bool force)
 }
 #endif
 
-static uint8_t* allocStaticLZ4ImageBuffer(size_t size)
+static uint8_t* allocStaticImageBuffer(size_t size)
 {
 #if defined(SIMU)
   if (forceStaticLZ4ImageBufferAllocationFailure) return nullptr;
 #endif
-  return static_cast<uint8_t*>(lv_mem_alloc(size));
+  return static_cast<uint8_t*>(lv_malloc(size));
+}
+
+static size_t rgb565a8BufferSize(uint16_t w, uint16_t h)
+{
+  uint32_t stride = lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565A8);
+  return stride * h + (stride / 2) * h;
+}
+
+static lv_draw_buf_t* createStaticImageDrawBuf(uint16_t w, uint16_t h)
+{
+#if defined(SIMU)
+  if (forceStaticLZ4ImageBufferAllocationFailure) return nullptr;
+#endif
+  return lv_draw_buf_create(w, h, LV_COLOR_FORMAT_RGB565A8, LV_STRIDE_AUTO);
+}
+
+static lv_draw_buf_t* initStaticImageDrawBuf(void* data, uint16_t w, uint16_t h)
+{
+  auto drawBuf = static_cast<lv_draw_buf_t*>(lv_malloc(sizeof(lv_draw_buf_t)));
+  if (!drawBuf) return nullptr;
+
+  uint32_t stride = lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565A8);
+  if (lv_draw_buf_init(drawBuf, w, h, LV_COLOR_FORMAT_RGB565A8, stride, data,
+                       rgb565a8BufferSize(w, h)) != LV_RESULT_OK) {
+    lv_free(drawBuf);
+    return nullptr;
+  }
+
+  return drawBuf;
+}
+
+static uint16_t expandArgb4ToRgb565(uint16_t r, uint16_t g, uint16_t b)
+{
+  uint16_t r5 = (r << 1) | (r >> 3);
+  uint16_t g6 = (g << 2) | (g >> 2);
+  uint16_t b5 = (b << 1) | (b >> 3);
+  return RGB_JOIN(r5, g6, b5);
 }
 
 static lv_obj_t* createStaticTextObject(lv_obj_t* parent)
@@ -88,7 +125,7 @@ StaticText::StaticText(Window* parent, const rect_t& rect, std::string txt,
     Window(parent, rect, createStaticTextObject), text(std::move(txt))
 {
   setTextFlag(textFlags);
-  setWindowFlag(NO_FOCUS);
+  setWindowFlag(NO_FOCUS | NO_SCROLL);
 
   withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
@@ -128,7 +165,8 @@ const std::string& StaticText::getText() const { return text; }
 
 void StaticText::setLongMode(lv_label_long_mode_t mode)
 {
-  withLive([&](LiveWindow& live) { lv_label_set_long_mode(live.lvobj(), mode); });
+  withLive(
+      [&](LiveWindow& live) { lv_label_set_long_mode(live.lvobj(), mode); });
 }
 
 #if defined(SIMU)
@@ -251,7 +289,7 @@ StaticIcon::StaticIcon(Window* parent, coord_t x, coord_t y,
       if (mask) {
         setSize(mask->width, mask->height);
         lv_canvas_set_buffer(obj, (void*)mask->data, mask->width, mask->height,
-                             LV_IMG_CF_ALPHA_8BIT);
+                             LV_COLOR_FORMAT_A8);
       }
       delete bm;
     }
@@ -283,7 +321,7 @@ void StaticIcon::setIcon(EdgeTxIcon icon)
     auto newMask = getBuiltinIcon(icon);
     setSize(newMask->width, newMask->height);
     lv_canvas_set_buffer(obj, (void*)newMask->data, newMask->width,
-                         newMask->height, LV_IMG_CF_ALPHA_8BIT);
+                         newMask->height, LV_COLOR_FORMAT_A8);
   });
 }
 
@@ -345,13 +383,13 @@ void StaticImage::clearSource()
 
 bool StaticImage::hasImage() const
 {
-  lv_img_t* img = (lv_img_t*)image;
+  lv_image_t* img = (lv_image_t*)image;
   return img && img->w && img->h;
 }
 
 void StaticImage::setZoom()
 {
-  lv_img_t* img = (lv_img_t*)image;
+  lv_image_t* img = (lv_image_t*)image;
   if (img && img->w && img->h) {
     uint16_t zw = (width() * 256) / img->w;
     uint16_t zh = (height() * 256) / img->h;
@@ -394,22 +432,32 @@ void StaticBitmap::setSource(const char* filename)
           return;
         }
 
+        lv_draw_buf_t* newDrawBuf = initStaticImageDrawBuf(
+            newImg->getData(), newImg->width(), newImg->height());
+        if (!newDrawBuf) {
+          delete newImg;
+          return;
+        }
+
         lv_obj_t* newCanvas = lv_canvas_create(obj);
         if (!newCanvas) {
+          lv_free(newDrawBuf);
           delete newImg;
           return;
         }
 
         lv_obj_center(newCanvas);
-        lv_canvas_set_buffer(newCanvas, newImg->getData(), newImg->width(),
-                             newImg->height(), LV_IMG_CF_TRUE_COLOR_ALPHA);
+        lv_canvas_set_draw_buf(newCanvas, newDrawBuf);
 
         auto oldCanvas = canvas;
+        auto oldDrawBuf = drawBuf;
         auto oldImg = img;
         canvas = newCanvas;
+        drawBuf = newDrawBuf;
         img = newImg;
 
         if (oldCanvas) lv_obj_del(oldCanvas);
+        if (oldDrawBuf) lv_free(oldDrawBuf);
         if (oldImg) delete oldImg;
       }
     }
@@ -420,14 +468,13 @@ void StaticBitmap::clearSource()
 {
   if (canvas) lv_obj_del(canvas);
   canvas = nullptr;
+  if (drawBuf) lv_free(drawBuf);
+  drawBuf = nullptr;
   if (img) delete img;
   img = nullptr;
 }
 
-StaticBitmap::~StaticBitmap()
-{
-  if (img) delete img;
-}
+StaticBitmap::~StaticBitmap() { clearSource(); }
 
 bool StaticBitmap::hasImage() const { return img && canvas; }
 
@@ -442,32 +489,51 @@ StaticLZ4Image::StaticLZ4Image(Window* parent, coord_t x, coord_t y,
 
   withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
-    // Convert ARGB4444 to LV_IMG_CF_TRUE_COLOR_ALPHA
     uint16_t w = lz4Bitmap->width;
     uint16_t h = lz4Bitmap->height;
 
     uint32_t pixels = w * h;
-    uint32_t size = (pixels + 1) & 0xFFFFFFFE;
-    imgData = allocStaticLZ4ImageBuffer(size * 3);
-    if (!imgData) return;
+    uint32_t decompSize = (pixels + 1) & 0xFFFFFFFE;
+    drawBuf = createStaticImageDrawBuf(w, h);
+    if (!drawBuf) return;
 
-    uint8_t* decompData = imgData + size;
-
-    LZ4_decompress_safe((const char*)lz4Bitmap->data, (char*)decompData,
-                        lz4Bitmap->compressedSize, pixels * sizeof(uint16_t));
-
-    uint8_t* dest = imgData;
-    for (uint32_t i = 0; i < pixels; i += 1) {
-      uint16_t c = read_u16_le(decompData);
-      ARGB_SPLIT(c, a, r, g, b);
-      c = RGB_JOIN(r * 2, g * 4, b * 2);
-      *dest++ = c & 0xFF;
-      *dest++ = c >> 8;
-      *dest++ = (a * 255) / 15;
-      decompData += sizeof(uint16_t);
+    uint8_t* decompData = allocStaticImageBuffer(decompSize * sizeof(uint16_t));
+    if (!decompData) {
+      lv_draw_buf_destroy(drawBuf);
+      drawBuf = nullptr;
+      return;
     }
 
-    lv_canvas_set_buffer(obj, imgData, w, h, LV_IMG_CF_TRUE_COLOR_ALPHA);
+    int decompressed = LZ4_decompress_safe(
+        (const char*)lz4Bitmap->data, (char*)decompData,
+        lz4Bitmap->compressedSize, pixels * sizeof(uint16_t));
+    if (decompressed != int(pixels * sizeof(uint16_t))) {
+      lv_free(decompData);
+      lv_draw_buf_destroy(drawBuf);
+      drawBuf = nullptr;
+      return;
+    }
+
+    uint32_t stride = drawBuf->header.stride;
+    uint8_t* color = drawBuf->data;
+    uint8_t* alpha = drawBuf->data + stride * h;
+    auto src = decompData;
+    for (uint16_t y = 0; y < h; y++) {
+      uint8_t* colorLine = color + y * stride;
+      uint8_t* alphaLine = alpha + y * (stride / 2);
+      for (uint16_t x = 0; x < w; x++) {
+        uint16_t c = read_u16_le(src);
+        ARGB_SPLIT(c, a, r, g, b);
+        c = expandArgb4ToRgb565(r, g, b);
+        colorLine[x * 2] = c & 0xFF;
+        colorLine[x * 2 + 1] = c >> 8;
+        alphaLine[x] = (a << 4) | a;
+        src += sizeof(uint16_t);
+      }
+    }
+
+    lv_free(decompData);
+    lv_canvas_set_draw_buf(obj, drawBuf);
   });
 }
 
@@ -497,7 +563,7 @@ bool staticLZ4ImageBufferAllocationFailureLeavesNoImageDataForTest()
     {
     }
 
-    bool hasImageData() const { return imgData != nullptr; }
+    bool hasImageData() const { return drawBuf != nullptr; }
   };
 
   alignas(LZ4Bitmap) static const uint8_t lz4Bitmap[] = {1, 0, 1, 0,
@@ -534,8 +600,8 @@ bool staticImageObjectCreateFailureLeavesNoImageForTest()
 
 void StaticLZ4Image::onDelete()
 {
-  if (imgData) lv_mem_free(imgData);
-  imgData = nullptr;
+  if (drawBuf) lv_draw_buf_destroy(drawBuf);
+  drawBuf = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -547,12 +613,12 @@ QRCode::QRCode(Window* parent, coord_t x, coord_t y, coord_t sz,
   setWindowFlag(NO_CLICK);
 
   if (initRequiredLvObj(
-          qr,
-          [&](lv_obj_t* parent) {
-            return lv_qrcode_create(parent, sz, makeLvColor(color),
-                                    makeLvColor(bgColor));
-          },
-          [](lv_obj_t*) {})) {
+          qr, [&](lv_obj_t* parent) { return lv_qrcode_create(parent); },
+          [&](lv_obj_t* obj) {
+            lv_qrcode_set_size(obj, sz);
+            lv_qrcode_set_dark_color(obj, makeLvColor(color));
+            lv_qrcode_set_light_color(obj, makeLvColor(bgColor));
+          })) {
     setData(data);
   }
 }

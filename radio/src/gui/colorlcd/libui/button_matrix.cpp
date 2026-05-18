@@ -44,16 +44,16 @@ static void btnmatrix_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 }
 
 static const lv_obj_class_t btnmatrix_class = {
-    .base_class = &lv_btnmatrix_class,
+    .base_class = &lv_buttonmatrix_class,
     .constructor_cb = btnmatrix_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_btnmatrix_t),
+    .instance_size = sizeof(lv_buttonmatrix_t),
 };
 
 static lv_obj_t* btnmatrix_create(lv_obj_t* parent)
@@ -71,7 +71,7 @@ static void btn_matrix_event(lv_event_t* e)
   lv_event_code_t code = lv_event_get_code(e);
 
   if (code == LV_EVENT_VALUE_CHANGED) {
-    lv_obj_t* obj = lv_event_get_target(e);
+    lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
     auto btn_id = *((uint8_t*)lv_event_get_param(e));
     auto btnm = (ButtonMatrix*)lv_event_get_user_data(e);
     if (!btnm) return;
@@ -192,7 +192,7 @@ void ButtonMatrix::update()
     }
     lv_btnmatrix_set_map(obj, (const char**)lv_btnm_map);
     lv_btnmatrix_set_btn_ctrl_all(
-        obj, LV_BTNMATRIX_CTRL_CLICK_TRIG | LV_BTNMATRIX_CTRL_NO_REPEAT);
+        obj, (lv_buttonmatrix_ctrl_t)(LV_BTNMATRIX_CTRL_CLICK_TRIG | LV_BTNMATRIX_CTRL_NO_REPEAT));
     int btn = 0;
     for (int i = 0; lv_btnm_map[i] != _map_end; i += 1) {
       if (lv_btnm_map[i] == _filler)

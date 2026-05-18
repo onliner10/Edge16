@@ -20,6 +20,10 @@
 
 #include <new>
 
+#include "lvgl/src/widgets/table/lv_table_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/core/lv_obj_class_private.h"
+
 #include "bitmaps.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
@@ -156,7 +160,7 @@ class MenuBody : public TableField
         lv_coord_t w = icon_mask->width;
         lv_coord_t h = icon_mask->height;
         lv_canvas_set_buffer(canvas, (void*)&icon_mask->data[0], w, h,
-                             LV_IMG_CF_ALPHA_8BIT);
+                             LV_COLOR_FORMAT_A8);
       }
     }
 
@@ -227,62 +231,65 @@ class MenuBody : public TableField
   }
 
   void onDrawBegin(uint16_t row, uint16_t col,
-                   lv_obj_draw_part_dsc_t* dsc) override
+                   lv_area_t* cell_area,
+                   lv_layer_t* layer) override
   {
-    if (row >= lines.size()) return;
-
-    lv_canvas_t* icon = (lv_canvas_t*)lines[row]->getIcon();
-    if (!icon) return;
-
-    lv_img_t* img = &icon->img;
-    withLive([&](LiveWindow& live) {
-      lv_coord_t cell_left =
-          lv_obj_get_style_pad_left(live.lvobj(), LV_PART_ITEMS);
-      dsc->label_dsc->ofs_x = img->w + cell_left;
-    });
+    // onDrawBegin was used to modify pre-draw state (dsc->label_dsc->ofs_x).
+    // In LVGL9, pre-draw modification is no longer possible.
+    // The icon will be drawn in onDrawEnd instead.
   }
 
   void onDrawEnd(uint16_t row, uint16_t col,
-                 lv_obj_draw_part_dsc_t* dsc) override
+                 lv_area_t* cell_area,
+                 lv_layer_t* layer) override
   {
     if (row >= lines.size()) return;
 
     lv_obj_t* icon = lines[row]->getIcon();
     if (icon) {
-      lv_draw_img_dsc_t img_dsc;
-      lv_draw_img_dsc_init(&img_dsc);
+      lv_draw_image_dsc_t img_dsc;
+      lv_draw_image_dsc_init(&img_dsc);
 
-      lv_img_dsc_t* img = lv_canvas_get_img(icon);
+      lv_img_dsc_t* img = lv_canvas_get_image(icon);
       lv_area_t coords;
 
-      lv_coord_t area_h = lv_area_get_height(dsc->draw_area);
+      lv_coord_t area_h = lv_area_get_height(cell_area);
 
       lv_coord_t cell_left = 0;
       withLive([&](LiveWindow& live) {
         cell_left = lv_obj_get_style_pad_left(live.lvobj(), LV_PART_ITEMS);
       });
-      coords.x1 = dsc->draw_area->x1 + cell_left;
+      coords.x1 = cell_area->x1 + cell_left;
       coords.x2 = coords.x1 + img->header.w - 1;
-      coords.y1 = dsc->draw_area->y1 + (area_h - img->header.h) / 2;
+      coords.y1 = cell_area->y1 + (area_h - img->header.h) / 2;
       coords.y2 = coords.y1 + img->header.h - 1;
 
-      lv_draw_img(dsc->draw_ctx, &img_dsc, &coords, img);
+      img_dsc.src = img;
+      lv_draw_image(layer, &img_dsc, &coords);
     }
 
     if (lines[row]->isChecked != nullptr && lines[row]->isChecked()) {
       lv_area_t coords;
-      lv_coord_t area_h = lv_area_get_height(dsc->draw_area);
+      lv_coord_t area_h = lv_area_get_height(cell_area);
       lv_coord_t cell_right = 0;
       withLive([&](LiveWindow& live) {
         cell_right = lv_obj_get_style_pad_right(live.lvobj(), LV_PART_ITEMS);
       });
       lv_coord_t font_h = getFontHeight(FONT(STD));
-      coords.x1 = dsc->draw_area->x2 - cell_right - font_h;
+      coords.x1 = cell_area->x2 - cell_right - font_h;
       coords.x2 = coords.x1 + font_h;
-      coords.y1 = dsc->draw_area->y1 + (area_h - font_h) / 2;
+      coords.y1 = cell_area->y1 + (area_h - font_h) / 2;
       coords.y2 = coords.y1 + font_h - 1;
-      lv_draw_label(dsc->draw_ctx, dsc->label_dsc, &coords, LV_SYMBOL_OK,
-                    nullptr);
+
+      // Create local label descriptor (replaces dsc->label_dsc)
+      lv_draw_label_dsc_t label_dsc;
+      lv_draw_label_dsc_init(&label_dsc);
+      withLive([&](LiveWindow& live) {
+        label_dsc.color = lv_obj_get_style_text_color(live.lvobj(), LV_PART_ITEMS);
+        label_dsc.font = lv_obj_get_style_text_font(live.lvobj(), LV_PART_ITEMS);
+      });
+      label_dsc.text = LV_SYMBOL_OK;
+      lv_draw_label(layer, &label_dsc, &coords);
     }
   }
 
@@ -333,8 +340,8 @@ static const lv_obj_class_t menu_content_class = {
     .base_class = &window_base_class,
     .constructor_cb = menu_content_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,

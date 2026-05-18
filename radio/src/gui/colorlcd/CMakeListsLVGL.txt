@@ -1,49 +1,129 @@
+# LVGL v9 source lists
+#
+# This is the active source list for LVGL v9, replacing the old v8
+# CMakeListsLVGL.txt.  Paths and file names reflect v9.5.0 exactly.
+#
+# KEY v8→v9 CHANGES:
+#   hal/*                    → moved: lv_hal_disp.c → display/lv_display.c,
+#                              lv_hal_tick.c → tick/lv_tick.c,
+#                              lv_hal_indev.c → merged into indev/lv_indev.c
+#   core/lv_disp.c           → display/lv_display.c (renamed)
+#   draw/lv_draw_img.c       → draw/lv_draw_image.c (renamed)
+#   draw/lv_img_buf.c        → REMOVED (replaced by draw/lv_draw_buf.c)
+#   draw/lv_img_cache.c      → misc/cache/instance/lv_image_cache.c (renamed)
+#   draw/lv_img_decoder.c    → draw/lv_image_decoder.c (renamed)
+#   draw/lv_draw_mask.c      → kept (still exists in v9)
+#   draw/lv_draw_triangle.c  → kept (still exists in v9)
+#   draw/lv_draw_layer.c     → REMOVED from this list (not present in v9)
+#   draw/stm32_dma2d/*       → draw/dma2d/lv_draw_dma2d*.c (renamed/restructured)
+#   extra/*                  → scattered: widgets/, layouts/, libs/, stdlib/
+#   extra/layouts/grid·flex  → layouts/grid·flex (top-level)
+#   extra/libs/qrcode        → libs/qrcode
+#   extra/libs/fsdrv         → libs/fsdrv
+#   extra/others/snapshot    → draw/snapshot/lv_snapshot.c
+#   widgets/lv_img.c         → widgets/image/lv_image.c (subdirectory)
+#   widgets/lv_btn.c         → widgets/button/lv_button.c (subdirectory)
+#   misc/lv_printf.c         → REMOVED in v9
+#   misc/lv_gc.c             → REMOVED in v9 (replaced by lv_global.h header)
+#   misc/lv_tlsf.c           → stdlib/builtin/lv_tlsf.c
+#   stdlib/                  → NEW directory
+
+# ── Minimal source list for bootloader ──────────────────────────────────
 set(LVGL_SOURCES_MINIMAL
+  lv_init.c                     # v9: defines lv_global, lv_init()
   core/lv_refr.c
+  display/lv_display.c         # v8: core/lv_disp.c + hal/lv_hal_disp.c → merged
+  tick/lv_tick.c               # v8: hal/lv_hal_tick.c → moved to tick/
 
   draw/lv_draw.c
-  draw/lv_draw_img.c
-  draw/lv_img_buf.c
-  draw/lv_img_cache.c
-  draw/lv_img_decoder.c
+  draw/lv_draw_image.c         # v8: draw/lv_draw_img.c — renamed
+  draw/lv_image_decoder.c      # v8: draw/lv_img_decoder.c — renamed
+  draw/lv_draw_buf.c           # NEW in v9 — draw buffer management
   draw/lv_draw_label.c
   draw/lv_draw_line.c
   draw/lv_draw_rect.c
-  draw/lv_draw_transform.c
 
   draw/sw/lv_draw_sw.c
   draw/sw/lv_draw_sw_arc.c
-  draw/sw/lv_draw_sw_blend.c
+  draw/sw/lv_draw_sw_border.c
+  draw/sw/lv_draw_sw_box_shadow.c
+  draw/sw/lv_draw_sw_fill.c
+  draw/sw/lv_draw_sw_grad.c
   draw/sw/lv_draw_sw_img.c
-  draw/sw/lv_draw_sw_layer.c
   draw/sw/lv_draw_sw_letter.c
   draw/sw/lv_draw_sw_line.c
-  draw/sw/lv_draw_sw_polygon.c
-  draw/sw/lv_draw_sw_rect.c
   draw/sw/lv_draw_sw_transform.c
+  draw/sw/lv_draw_sw_triangle.c
+  draw/sw/lv_draw_sw_utils.c
+  draw/sw/blend/lv_draw_sw_blend.c
+  draw/sw/blend/lv_draw_sw_blend_to_rgb565.c
+  draw/sw/lv_draw_sw_mask.c
+  draw/sw/lv_draw_sw_blur.c
+  draw/sw/lv_draw_sw_mask_rect.c
+  draw/convert/lv_draw_buf_convert.c
+  draw/sw/blend/lv_draw_sw_blend_to_rgb888.c
+  draw/sw/blend/lv_draw_sw_blend_to_argb8888.c
 )
 
 # STM32 DMA2D hardware accelerator (firmware only — contains ARM-specific code)
+# v8: draw/stm32_dma2d/lv_gpu_stm32_dma2d.c
+# v9: draw/dma2d/lv_draw_dma2d*.c (restructured)
 if(NOT NATIVE_BUILD)
   list(APPEND LVGL_SOURCES_MINIMAL
-    draw/stm32_dma2d/lv_gpu_stm32_dma2d.c
+    draw/dma2d/lv_draw_dma2d.c
+    draw/dma2d/lv_draw_dma2d_fill.c
+    draw/dma2d/lv_draw_dma2d_img.c
   )
 endif()
 
 list(APPEND LVGL_SOURCES_MINIMAL
   font/lv_font.c
-  font/lv_font_fmt_txt.c
+  font/fmt_txt/lv_font_fmt_txt.c
 
-  hal/lv_hal_disp.c
-  hal/lv_hal_tick.c
-
+  # ── misc — audited against actual v9.5 files ──
+  misc/lv_anim.c
+  misc/lv_anim_timeline.c
   misc/lv_area.c
+  misc/lv_array.c
+  misc/lv_async.c
+  misc/lv_bidi.c
+  misc/lv_circle_buf.c
   misc/lv_color.c
-  misc/lv_gc.c
+  misc/lv_color_op.c
+  misc/lv_event.c
+  misc/lv_fs.c
+  misc/lv_grad.c
+  misc/lv_iter.c
   misc/lv_ll.c
-  misc/lv_mem.c
-  misc/lv_txt.c
+  misc/lv_log.c
+  misc/lv_lru.c
+  misc/lv_math.c
+  misc/lv_matrix.c
+  misc/lv_palette.c
+  misc/lv_pending.c
+  misc/lv_profiler_builtin.c
+  misc/lv_profiler_builtin_posix.c
+  misc/lv_rb.c
+  misc/lv_style.c
+  misc/lv_style_gen.c
+  misc/lv_templ.c
+  misc/lv_text.c
+  misc/lv_text_ap.c
+  misc/lv_timer.c
+  misc/lv_tree.c
   misc/lv_utils.c
+  misc/cache/lv_cache.c
+  misc/cache/lv_cache_entry.c
+  misc/cache/class/lv_cache_lru_rb.c   # NEW in v9 — needed for image cache
+
+  # stdlib/ — NEW in v9
+  # NOTE: Must include exactly one mem/sprintf/string set.
+  # Using builtin (no external libc dependency).
+  stdlib/builtin/lv_mem_core_builtin.c
+  stdlib/clib/lv_mem_core_clib.c
+  stdlib/builtin/lv_sprintf_builtin.c
+  stdlib/builtin/lv_string_builtin.c
+  stdlib/lv_mem.c
 )
 
 # Add BIDI support for RTL languages (needed for bootloader LVGL draw functions)
@@ -51,155 +131,97 @@ if(TRANSLATION_IS_RTL)
   list(APPEND LVGL_SOURCES_MINIMAL misc/lv_bidi.c)
 endif()
 
+# ── Full source list for color LCD UI ──────────────────────────────────
 set(LVGL_SOURCES
   ${LVGL_SOURCES_MINIMAL}
 
+  # ── core (additional beyond minimal) ──
   core/lv_group.c
   core/lv_obj.c
-  core/lv_event.c
-  core/lv_indev.c
+  misc/lv_event.c              # v8: core/lv_event.c — moved to misc/
+  indev/lv_indev.c             # v8: core/lv_indev.c + hal/lv_hal_indev.c → merged
   core/lv_obj_scroll.c
   core/lv_obj_draw.c
-  core/lv_disp.c
   core/lv_obj_style.c
-  core/lv_theme.c
+  themes/lv_theme.c             # v8: core/lv_theme.c → moved to themes/
   core/lv_obj_style_gen.c
-  core/lv_indev_scroll.c
+  core/lv_observer.c
+  indev/lv_indev_scroll.c
   core/lv_obj_class.c
   core/lv_obj_tree.c
   core/lv_obj_pos.c
 
-  draw/lv_draw_mask.c
-  draw/sw/lv_draw_sw_gradient.c
-  # draw/sw/lv_draw_sw_dither.c
-  draw/lv_draw_layer.c
+  # ── draw (additional beyond minimal) ──
   draw/lv_draw_arc.c
-  draw/lv_draw_triangle.c
+  # draw/sw/lv_draw_sw_grad.c            # already in LVGL_SOURCES_MINIMAL
+  # draw/sw/lv_draw_sw_dither.c
 
-  # SDL specific
-  # draw/sdl/lv_draw_sdl_rect.c
-  # draw/sdl/lv_draw_sdl_arc.c
-  # draw/sdl/lv_draw_sdl.c
-  # draw/sdl/lv_draw_sdl_mask.c
-  # draw/sdl/lv_draw_sdl_polygon.c
-  # draw/sdl/lv_draw_sdl_stack_blur.c
-  # draw/sdl/lv_draw_sdl_utils.c
-  # draw/sdl/lv_draw_sdl_img.c
-  # draw/sdl/lv_draw_sdl_bg.c
-  # draw/sdl/lv_draw_sdl_label.c
-  # draw/sdl/lv_draw_sdl_texture_cache.c
-  # draw/sdl/lv_draw_sdl_line.c
-  # draw/sdl/lv_draw_sdl_composite.c
-
+  # ── font (all commented out — none loaded at runtime from C) ──
   # font/lv_font_loader.c
+  # font/unscii/lv_font_unscii_8.c
+  # font/unscii/lv_font_unscii_16.c
 
-  hal/lv_hal_indev.c
-
-  misc/lv_anim.c
-  misc/lv_timer.c
-  misc/lv_style_gen.c
-  misc/lv_templ.c
-  misc/lv_fs.c
-  misc/lv_printf.c
-  misc/lv_style.c
+  # ── misc (additional beyond minimal — avoid duplicates with MINIMAL) ──
+  stdlib/builtin/lv_tlsf.c
   # misc/lv_log.c
-  misc/lv_math.c
-  # misc/lv_lru.c
-  misc/lv_tlsf.c
-  misc/lv_anim_timeline.c
-  misc/lv_bidi.c
-  misc/lv_async.c
   # misc/lv_txt_ap.c
 
-  # font/lv_font_unscii_8.c
-  # font/lv_font_unscii_16.c
-  # font/lv_font_simsun_16_cjk.c
-  # font/lv_font_dejavu_16_persian_hebrew.c
-  # font/lv_font_montserrat_8.c
-  # font/lv_font_montserrat_10.c
-  # font/lv_font_montserrat_12.c
-  # font/lv_font_montserrat_12_subpx.c
-  # font/lv_font_montserrat_14.c
-  # font/lv_font_montserrat_16.c
-  # font/lv_font_montserrat_18.c
-  # font/lv_font_montserrat_20.c
-  # font/lv_font_montserrat_22.c
-  # font/lv_font_montserrat_24.c
-  # font/lv_font_montserrat_26.c
-  # font/lv_font_montserrat_28.c
-  # font/lv_font_montserrat_28_compressed.c
-  # font/lv_font_montserrat_30.c
-  # font/lv_font_montserrat_32.c
-  # font/lv_font_montserrat_34.c
-  # font/lv_font_montserrat_36.c
-  # font/lv_font_montserrat_38.c
-  # font/lv_font_montserrat_40.c
-  # font/lv_font_montserrat_42.c
-  # font/lv_font_montserrat_44.c
-  # font/lv_font_montserrat_46.c
-  # font/lv_font_montserrat_48.c
+  # ── widgets (v9: widgets are in subdirectories) ──
+  widgets/line/lv_line.c
+  widgets/dropdown/lv_dropdown.c
+  # widgets/objx_templ/lv_objx_templ.c   # template — not needed
+  widgets/canvas/lv_canvas.c
+  widgets/switch/lv_switch.c
+  widgets/buttonmatrix/lv_buttonmatrix.c
+  widgets/bar/lv_bar.c
+  widgets/roller/lv_roller.c
+  widgets/image/lv_image.c          # v8: widgets/lv_img.c — renamed
+  widgets/button/lv_button.c         # v8: widgets/lv_btn.c — renamed
+  widgets/checkbox/lv_checkbox.c
+  widgets/label/lv_label.c
+  widgets/table/lv_table.c
+  widgets/slider/lv_slider.c
+  widgets/textarea/lv_textarea.c
+  widgets/arc/lv_arc.c
 
-  widgets/lv_line.c
-  widgets/lv_dropdown.c
-  widgets/lv_objx_templ.c
-  widgets/lv_canvas.c
-  widgets/lv_switch.c
-  widgets/lv_btnmatrix.c
-  widgets/lv_bar.c
-  widgets/lv_roller.c
-  widgets/lv_img.c
-  widgets/lv_btn.c
-  widgets/lv_checkbox.c
-  widgets/lv_label.c
-  widgets/lv_table.c
-  widgets/lv_slider.c
-  widgets/lv_textarea.c
-  widgets/lv_arc.c
+  # ── Widgets moved from extra/widgets/ to widgets/ in v9 ──
+  widgets/tileview/lv_tileview.c
+  widgets/keyboard/lv_keyboard.c
 
-  extra/lv_extra.c
-  # extra/others/monkey/lv_monkey.c
-  # extra/others/gridnav/lv_gridnav.c
-  extra/others/snapshot/lv_snapshot.c
-  extra/layouts/grid/lv_grid.c
-  extra/layouts/flex/lv_flex.c
-  # extra/libs/bmp/lv_bmp.c
-  # extra/libs/ffmpeg/lv_ffmpeg.c
-  # extra/libs/gif/lv_gif.c
-  # extra/libs/gif/gifdec.c
-  # extra/libs/freetype/lv_freetype.c
-  extra/libs/qrcode/lv_qrcode.c
-  extra/libs/qrcode/qrcodegen.c
-  # extra/libs/sjpg/tjpgd.c
-  # extra/libs/sjpg/lv_sjpg.c
-  # extra/libs/fsdrv/lv_fs_win32.c
-  # extra/libs/fsdrv/lv_fs_stdio.c
-  # extra/libs/fsdrv/lv_fs_posix.c
-  extra/libs/fsdrv/lv_fs_fatfs.c
-  # extra/libs/rlottie/lv_rlottie.c
-  # extra/libs/png/lv_png.c
-  # extra/libs/png/lodepng.c
-  # extra/widgets/imgbtn/lv_imgbtn.c
-  # extra/widgets/menu/lv_menu.c
-  # extra/widgets/win/lv_win.c
-  # extra/widgets/colorwheel/lv_colorwheel.c
-  # extra/widgets/list/lv_list.c
-  # extra/widgets/chart/lv_chart.c
-  # extra/widgets/calendar/lv_calendar_header_arrow.c
-  # extra/widgets/calendar/lv_calendar.c
-  # extra/widgets/calendar/lv_calendar_header_dropdown.c
-  extra/widgets/tileview/lv_tileview.c
-  # extra/widgets/led/lv_led.c
-  # extra/widgets/spinner/lv_spinner.c
-  # extra/widgets/tabview/lv_tabview.c
-  # extra/widgets/meter/lv_meter.c
-  # extra/widgets/spinbox/lv_spinbox.c
-  # extra/widgets/animimg/lv_animimg.c
-  # extra/widgets/span/lv_span.c
-  extra/widgets/keyboard/lv_keyboard.c
-  # extra/widgets/msgbox/lv_msgbox.c
-  # extra/themes/basic/lv_theme_basic.c
-  # extra/themes/default/lv_theme_default.c
-  # extra/themes/mono/lv_theme_mono.c
+  # ── draw/snapshot (moved from extra/others/snapshot/) ──
+  draw/snapshot/lv_snapshot.c
+
+  # ── layouts (top-level in v9, was under extra/layouts/) ──
+  layouts/grid/lv_grid.c
+  layouts/flex/lv_flex.c
+  layouts/lv_layout.c
+
+  # ── libs (was extra/libs/) ──
+  libs/qrcode/lv_qrcode.c
+  libs/bin_decoder/lv_bin_decoder.c    # needed by lv_init() - bin decoder init
+
+  # ── misc/cache (image cache for qrcode decoder) ──
+  misc/cache/instance/lv_image_cache.c
+
+  # ── core event handling (lv_obj_send_event) ──
+  core/lv_obj_event.c
+  libs/qrcode/qrcodegen.c
+  libs/fsdrv/lv_fs_fatfs.c
+
+  # ── Drawing utilities (v9 additions) ──
+  draw/lv_draw_mask.c               # kept in v9
+  draw/lv_draw_triangle.c           # kept in v9
+  draw/lv_draw_blur.c               # needed by bar widget blur effect
+  misc/cache/instance/lv_image_header_cache.c  # needed for image decoder cache
+
+  # ── OS abstraction (lv_lock/lv_unlock) ──
+  osal/lv_os.c
+  osal/lv_os_none.c
+
+  # ── Iterator (needed by image cache) ──
+  misc/lv_iter.c
+  misc/lv_circle_buf.c           # needed by lv_iter
+  misc/lv_array.c                # needed by lv_circle_buf
 )
 
 set(LVGL_SRC_DIR thirdparty/lvgl/src)

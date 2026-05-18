@@ -89,6 +89,6 @@ class ListBox : public TableField
   void onLiveClicked(LiveWindow&) override;
   void onCancel() override;
 
-  void onDrawEnd(uint16_t row, uint16_t col,
-                 lv_obj_draw_part_dsc_t* dsc) override;
+  void onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                 lv_layer_t* layer) override;
 };

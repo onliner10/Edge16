@@ -25,9 +25,9 @@
 #include "bitmaps.h"
 #include "board.h"
 #include "dma2d.h"
+#include "edgetx_helpers.h"
 #include "fonts.h"
 #include "lvgl/src/draw/sw/lv_draw_sw.h"
-#include "edgetx_helpers.h"
 #include "strhelpers.h"
 
 #if defined(SIMU)
@@ -76,9 +76,9 @@ BitmapBuffer::BitmapBuffer(uint8_t format, uint16_t width, uint16_t height) :
 #if defined(SIMU)
   data = forceBitmapBufferDataMallocFailure
              ? nullptr
-             : (uint16_t *)malloc(align32(width * height * sizeof(uint16_t)));
+             : (uint16_t*)malloc(align32(width * height * sizeof(uint16_t)));
 #else
-  data = (uint16_t *)malloc(align32(width * height * sizeof(uint16_t)));
+  data = (uint16_t*)malloc(align32(width * height * sizeof(uint16_t)));
 #endif
   if (!data) {
     dataAllocated = false;
@@ -96,12 +96,12 @@ BitmapBuffer::BitmapBuffer(uint8_t format, uint16_t width, uint16_t height) :
   // Assume we need a canvas here
   canvas = createBitmapBufferCanvas(nullptr);
   if (canvas)
-    lv_canvas_set_buffer(canvas, data, width, height, LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(canvas, data, width, height, LV_COLOR_FORMAT_RGB565);
 #endif
 }
 
 BitmapBuffer::BitmapBuffer(uint8_t format, uint16_t width, uint16_t height,
-                           uint16_t *data) :
+                           uint16_t* data) :
     format(format),
     _width(width),
     _height(height),
@@ -128,7 +128,7 @@ BitmapBuffer::~BitmapBuffer()
   }
 }
 
-void BitmapBuffer::setData(uint16_t *d)
+void BitmapBuffer::setData(uint16_t* d)
 {
   if (!dataAllocated) {
     data = d;
@@ -158,8 +158,8 @@ void BitmapBuffer::setClippingRect(coord_t xmin, coord_t xmax, coord_t ymin,
   this->ymax = ymax;
 }
 
-void BitmapBuffer::getClippingRect(coord_t &xmin, coord_t &xmax, coord_t &ymin,
-                                   coord_t &ymax)
+void BitmapBuffer::getClippingRect(coord_t& xmin, coord_t& xmax, coord_t& ymin,
+                                   coord_t& ymax)
 {
   xmin = this->xmin;
   xmax = this->xmax;
@@ -205,7 +205,7 @@ void BitmapBuffer::setOffset(coord_t offsetX, coord_t offsetY)
   this->offsetY = offsetY;
 }
 
-void BitmapBuffer::drawBitmap(coord_t x, coord_t y, const BitmapBuffer *bmp,
+void BitmapBuffer::drawBitmap(coord_t x, coord_t y, const BitmapBuffer* bmp,
                               coord_t srcx, coord_t srcy, coord_t srcw,
                               coord_t srch, float scale)
 {
@@ -283,12 +283,12 @@ void BitmapBuffer::drawBitmap(coord_t x, coord_t y, const BitmapBuffer *bmp,
 
     if (format == BMP_ARGB4444) {
       for (int i = 0; i < scaledh; i++) {
-        pixel_t *p = getPixelPtrAbs(x, y + i);
-        const pixel_t *qstart =
+        pixel_t* p = getPixelPtrAbs(x, y + i);
+        const pixel_t* qstart =
             bmp->getPixelPtrAbs(srcx, srcy + int(i / scale));
 
         for (int j = 0; j < scaledw; j++) {
-          const pixel_t *q = qstart;
+          const pixel_t* q = qstart;
           MOVE_PIXEL_RIGHT(q, int(j / scale));
 
           if (bmp->format == BMP_RGB565) {
@@ -304,12 +304,12 @@ void BitmapBuffer::drawBitmap(coord_t x, coord_t y, const BitmapBuffer *bmp,
     } else {  // format == BM_RGB565
 
       for (int i = 0; i < scaledh; i++) {
-        pixel_t *p = getPixelPtrAbs(x, y + i);
-        const pixel_t *qstart =
+        pixel_t* p = getPixelPtrAbs(x, y + i);
+        const pixel_t* qstart =
             bmp->getPixelPtrAbs(srcx, srcy + int(i / scale));
 
         for (int j = 0; j < scaledw; j++) {
-          const pixel_t *q = qstart;
+          const pixel_t* q = qstart;
           MOVE_PIXEL_RIGHT(q, int(j / scale));
 
           if (bmp->format == BMP_RGB565) {
@@ -320,12 +320,12 @@ void BitmapBuffer::drawBitmap(coord_t x, coord_t y, const BitmapBuffer *bmp,
           }
           MOVE_TO_NEXT_RIGHT_PIXEL(p);
         }  // for j
-      }    // for i
-    }      // if format
-  }        //  else (scale != 0) {
+      }  // for i
+    }  // if format
+  }  //  else (scale != 0) {
 }
 
-void BitmapBuffer::drawAlphaPixel(pixel_t *p, uint8_t opacity, uint16_t color)
+void BitmapBuffer::drawAlphaPixel(pixel_t* p, uint8_t opacity, uint16_t color)
 {
   // TRACE("BitmapBuffer::drawAlphaPixel()");
   if (opacity == OPACITY_MAX) {
@@ -361,10 +361,24 @@ void BitmapBuffer::drawHorizontalLineAbs(coord_t x, coord_t y, coord_t w,
 {
   if (opacity == OPACITY_MAX) return;
 
-  if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+  if (!draw_ctx) {
+    pixel_t* p = getPixelPtrAbs(x, y);
+    for (coord_t col = 0; col < w; col++) {
+      if (pat == SOLID || ((col & 1) == 0)) {
+        if (opacity == 0) {
+          drawPixel(p, COLOR_VAL(flags));
+        } else {
+          drawAlphaPixel(p, OPACITY_MAX - opacity, COLOR_VAL(flags));
+        }
+      }
+      MOVE_TO_NEXT_RIGHT_PIXEL(p);
+    }
+    return;
   }
+
+#if !defined(BOOT)
+  x += draw_ctx->buf_area.x1;
+  y += draw_ctx->buf_area.y1;
 
   lv_draw_line_dsc_t line_dsc;
   lv_draw_line_dsc_init(&line_dsc);
@@ -378,19 +392,11 @@ void BitmapBuffer::drawHorizontalLineAbs(coord_t x, coord_t y, coord_t w,
     line_dsc.dash_width = 1;
   }
 
-  lv_point_t p[2];
-  p[0].x = x;
-  p[0].y = y;
-  p[1].x = x + w;
-  p[1].y = y;
-
-  if (draw_ctx) {
-    lv_draw_line(draw_ctx, &line_dsc, &p[0], &p[1]);
-  }
-#if !defined(BOOT)
-  else if (canvas) {
-    lv_canvas_draw_line(canvas, p, 2, &line_dsc);
-  }
+  line_dsc.p1.x = x;
+  line_dsc.p1.y = y;
+  line_dsc.p2.x = x + w;
+  line_dsc.p2.y = y;
+  lv_draw_line(draw_ctx, &line_dsc);
 #endif
 }
 
@@ -405,10 +411,24 @@ void BitmapBuffer::drawVerticalLine(coord_t x, coord_t y, coord_t h,
   coord_t w = 1;
   if (!applyClippingRect(x, y, w, h)) return;
 
-  if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+  if (!draw_ctx) {
+    pixel_t* p = getPixelPtrAbs(x, y);
+    for (coord_t line = 0; line < h; line++) {
+      if (pat == SOLID || ((line & 1) == 0)) {
+        if (opacity == 0) {
+          drawPixel(p, COLOR_VAL(flags));
+        } else {
+          drawAlphaPixel(p, OPACITY_MAX - opacity, COLOR_VAL(flags));
+        }
+      }
+      p += _width;
+    }
+    return;
   }
+
+#if !defined(BOOT)
+  x += draw_ctx->buf_area.x1;
+  y += draw_ctx->buf_area.y1;
 
   lv_draw_line_dsc_t line_dsc;
   lv_draw_line_dsc_init(&line_dsc);
@@ -422,19 +442,11 @@ void BitmapBuffer::drawVerticalLine(coord_t x, coord_t y, coord_t h,
     line_dsc.dash_width = 1;
   }
 
-  lv_point_t p[2];
-  p[0].x = x;
-  p[0].y = y;
-  p[1].x = x;
-  p[1].y = y + h;
-
-  if (draw_ctx) {
-    lv_draw_line(draw_ctx, &line_dsc, &p[0], &p[1]);
-  }
-#if !defined(BOOT)
-  else if (canvas) {
-    lv_canvas_draw_line(canvas, p, 2, &line_dsc);
-  }
+  line_dsc.p1.x = x;
+  line_dsc.p1.y = y;
+  line_dsc.p2.x = x;
+  line_dsc.p2.y = y + h;
+  lv_draw_line(draw_ctx, &line_dsc);
 #endif
 }
 
@@ -476,14 +488,39 @@ void BitmapBuffer::drawFilledRect(coord_t x, coord_t y, coord_t w, coord_t h,
     return;
   }
 
+  if (!draw_ctx) {
+    if (opacity == 0) {
+      for (coord_t line = y; line < y + h; line++) {
+        pixel_t* p = getPixelPtrAbs(x, line);
+        for (coord_t col = 0; col < w; col++) {
+          drawPixel(p, COLOR_VAL(flags));
+          MOVE_TO_NEXT_RIGHT_PIXEL(p);
+        }
+      }
+    } else {
+      for (coord_t line = y; line < y + h; line++) {
+        pixel_t* p = getPixelPtrAbs(x, line);
+        for (coord_t col = 0; col < w; col++) {
+          drawAlphaPixel(p, OPACITY_MAX - opacity, COLOR_VAL(flags));
+          MOVE_TO_NEXT_RIGHT_PIXEL(p);
+        }
+      }
+    }
+    return;
+  }
+
+#if !defined(BOOT)
   lv_draw_rect_dsc_t rect_dsc;
   lv_draw_rect_dsc_init(&rect_dsc);
   rect_dsc.bg_opa = ((OPACITY_MAX - opacity) * LV_OPA_COVER) / OPACITY_MAX;
   rect_dsc.bg_color = makeLvColor(flags);
+  rect_dsc.shadow_opa = LV_OPA_TRANSP;
+  rect_dsc.outline_opa = LV_OPA_TRANSP;
+  rect_dsc.border_opa = LV_OPA_TRANSP;
 
   if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+    x += draw_ctx->buf_area.x1;
+    y += draw_ctx->buf_area.y1;
   }
 
   lv_area_t coords = {
@@ -495,16 +532,16 @@ void BitmapBuffer::drawFilledRect(coord_t x, coord_t y, coord_t w, coord_t h,
 
   if (draw_ctx) {
     lv_draw_rect(draw_ctx, &rect_dsc, &coords);
-  }
-#if !defined(BOOT)
-  else if (canvas) {
-    lv_canvas_draw_rect(canvas, coords.x1, coords.y1, coords.x2 - coords.x1 + 1,
-                        coords.y2 - coords.y1 + 1, &rect_dsc);
+  } else if (canvas) {
+    lv_layer_t _layer;
+    lv_canvas_init_layer(canvas, &_layer);
+    lv_draw_rect(&_layer, &rect_dsc, &coords);
+    lv_canvas_finish_layer(canvas, &_layer);
   }
 #endif
 }
 
-coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char *s,
+coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char* s,
                                     uint8_t len, LcdFlags flags)
 {
   if (!s) return x;
@@ -518,24 +555,15 @@ coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char *s,
   coord_t pos = x;
   const coord_t orig_pos = pos;
 
-  lv_draw_label_dsc_t label_draw_dsc;
-  lv_draw_label_dsc_init(&label_draw_dsc);
-
-  const lv_font_t *font = getFont(flags);
-  label_draw_dsc.font = font;
-
-  auto color = COLOR_VAL(flags);
-  label_draw_dsc.color =
-      lv_color_make(GET_RED(color), GET_GREEN(color), GET_BLUE(color));
+  const lv_font_t* font = getFont(flags);
 
   if (draw_ctx) {
-    x += draw_ctx->buf_area->x1;
-    y += draw_ctx->buf_area->y1;
+    x += draw_ctx->buf_area.x1;
+    y += draw_ctx->buf_area.y1;
   }
 
   lv_point_t p;
-  lv_txt_get_size(&p, buffer, font, label_draw_dsc.letter_space,
-                  label_draw_dsc.line_space, LV_COORD_MAX, 0);
+  lv_text_get_size(&p, buffer, font, 0, 0, LV_COORD_MAX, (lv_text_flag_t)0);
 
   lv_coord_t lv_x = (lv_coord_t)x;
   lv_coord_t lv_y = (lv_coord_t)y;
@@ -550,6 +578,18 @@ coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char *s,
   coords.x2 += p.x - 1;
   coords.y2 += p.y - 1;
 
+#if !defined(BOOT)
+  lv_draw_label_dsc_t label_draw_dsc;
+  lv_draw_label_dsc_init(&label_draw_dsc);
+
+  label_draw_dsc.font = font;
+  auto color = COLOR_VAL(flags);
+  label_draw_dsc.color =
+      lv_color_make(GET_RED(color), GET_GREEN(color), GET_BLUE(color));
+  label_draw_dsc.text = buffer;
+  label_draw_dsc.text_length = len;
+  label_draw_dsc.text_local = true;
+
   if (flags & RIGHT) {
     label_draw_dsc.align = LV_TEXT_ALIGN_RIGHT;
     coords.x1 -= p.x;
@@ -559,14 +599,63 @@ coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char *s,
     coords.x1 -= p.x / 2;
     coords.x2 -= p.x / 2;
   }
-
-  if (draw_ctx) {
-    lv_draw_label(draw_ctx, &label_draw_dsc, &coords, buffer, nullptr);
+#else
+  if (flags & RIGHT) {
+    coords.x1 -= p.x;
+    coords.x2 -= p.x;
+  } else if (flags & CENTERED) {
+    coords.x1 -= p.x / 2;
+    coords.x2 -= p.x / 2;
   }
+#endif
+
 #if !defined(BOOT)
-  else if (canvas) {
-    lv_canvas_draw_text(canvas, coords.x1, coords.y1, coords.x2 - coords.x1 + 1,
-                        &label_draw_dsc, buffer);
+  if (draw_ctx) {
+    lv_draw_label(draw_ctx, &label_draw_dsc, &coords);
+  } else if (canvas) {
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas, &layer);
+    lv_draw_label(&layer, &label_draw_dsc, &coords);
+    lv_canvas_finish_layer(canvas, &layer);
+  }
+#else
+  {
+    coord_t pen_x = coords.x1;
+    uint32_t i = 0;
+    while (buffer[i] != '\0') {
+      uint32_t i_next = i;
+      uint32_t letter = lv_text_encoded_next(buffer, &i_next);
+      uint32_t letter_next = lv_text_encoded_next(&buffer[i_next], nullptr);
+
+      lv_font_glyph_dsc_t glyph;
+      if (lv_font_get_glyph_dsc(font, &glyph, letter, letter_next)) {
+        glyph.req_raw_bitmap = 1;
+        const uint8_t* bitmap = static_cast<const uint8_t*>(
+            glyph.resolved_font->get_glyph_bitmap(&glyph, nullptr));
+
+        if (bitmap && glyph.format == LV_FONT_GLYPH_FORMAT_A1) {
+          coord_t glyph_x = pen_x + glyph.ofs_x;
+          coord_t glyph_y = y + font->line_height - font->base_line -
+                            glyph.box_h - glyph.ofs_y;
+
+          for (uint16_t row = 0; row < glyph.box_h; row++) {
+            for (uint16_t col = 0; col < glyph.box_w; col++) {
+              uint32_t bit_index = row * glyph.box_w + col;
+              if (bitmap[bit_index / 8] & (0x80 >> (bit_index % 8))) {
+                drawPixel(glyph_x + col, glyph_y + row, COLOR_VAL(flags));
+              }
+            }
+          }
+        }
+
+        if (glyph.resolved_font->release_glyph) {
+          glyph.resolved_font->release_glyph(glyph.resolved_font, &glyph);
+        }
+        pen_x += glyph.adv_w;
+      }
+
+      i = i_next;
+    }
   }
 #endif
 
@@ -577,14 +666,14 @@ coord_t BitmapBuffer::drawSizedText(coord_t x, coord_t y, const char *s,
   return ((flags & RIGHT) ? orig_pos : pos) - offsetX;
 }
 
-coord_t BitmapBuffer::drawText(coord_t x, coord_t y, const char* s, LcdFlags flags)
+coord_t BitmapBuffer::drawText(coord_t x, coord_t y, const char* s,
+                               LcdFlags flags)
 {
   if (!s) return x;
   return drawSizedText(x, y, s, strlen(s), flags);
 }
 
-// Resize and convert to LVGL image data format with alpha blending to
-// background color
+// Resize and convert to LVGL9's planar RGB565A8 image data format.
 void BitmapBuffer::resizeToLVGL(coord_t w, coord_t h)
 {
   auto invalidateSize = [this]() {
@@ -605,7 +694,7 @@ void BitmapBuffer::resizeToLVGL(coord_t w, coord_t h)
                               17, 19, 21, 23, 25, 27, 29, 31};
   static uint8_t gcnv[16] = {0,  4,  8,  13, 17, 21, 25, 29,
                              34, 38, 42, 46, 50, 55, 59, 63};
-  static uint8_t alpha[16] = {0, 17, 34, 51, 68, 85, 102, 119,
+  static uint8_t alpha[16] = {0,   17,  34,  51,  68,  85,  102, 119,
                               136, 153, 170, 187, 204, 221, 238, 255};
 
   float vscale = float(h) / (float)height();
@@ -627,12 +716,18 @@ void BitmapBuffer::resizeToLVGL(coord_t w, coord_t h)
   }
 
 #if defined(SIMU)
-  pixel_t* ndata =
-      forceBitmapBufferResizeMallocFailure
-          ? nullptr
-          : (pixel_t*)malloc(align32(scaledw * scaledh * 3));
+  const uint32_t stride =
+      lv_draw_buf_width_to_stride(scaledw, LV_COLOR_FORMAT_RGB565A8);
+  const size_t lvglByteCount = stride * scaledh + (stride / 2) * scaledh;
+
+  pixel_t* ndata = forceBitmapBufferResizeMallocFailure
+                       ? nullptr
+                       : (pixel_t*)malloc(align32(lvglByteCount));
 #else
-  pixel_t* ndata = (pixel_t*)malloc(align32(scaledw * scaledh * 3));
+  const uint32_t stride =
+      lv_draw_buf_width_to_stride(scaledw, LV_COLOR_FORMAT_RGB565A8);
+  const size_t lvglByteCount = stride * scaledh + (stride / 2) * scaledh;
+  pixel_t* ndata = (pixel_t*)malloc(align32(lvglByteCount));
 #endif
 
   if (!ndata) {
@@ -641,14 +736,17 @@ void BitmapBuffer::resizeToLVGL(coord_t w, coord_t h)
   }
 
   uint8_t* dst = (uint8_t*)ndata;
+  uint8_t* alphaDst = dst + stride * scaledh;
   for (int i = 0; i < scaledh; i += 1) {
     pixel_t* src = &data[(coord_t)(i / scale) * width()];
+    uint8_t* colorLine = dst + i * stride;
+    uint8_t* alphaLine = alphaDst + i * (stride / 2);
     for (int j = 0; j < scaledw; j += 1) {
       ARGB_SPLIT(src[(coord_t)(j / scale)], a, r, g, b);
       auto c = RGB_JOIN(rbcnv[r], gcnv[g], rbcnv[b]);
-      *dst++ = c & 0xFF;
-      *dst++ = c >> 8;
-      *dst++ = alpha[a];
+      colorLine[j * 2] = c & 0xFF;
+      colorLine[j * 2 + 1] = c >> 8;
+      alphaLine[j] = alpha[a];
     }
   }
 
@@ -658,7 +756,7 @@ void BitmapBuffer::resizeToLVGL(coord_t w, coord_t h)
   _height = scaledh;
   xmax = scaledw;
   ymax = scaledh;
-  data_end = data + ((scaledw * scaledh * 3 + 1) / 2);
+  data_end = data + ((lvglByteCount + 1) / 2);
 }
 
 #if defined(SIMU)
@@ -683,7 +781,10 @@ bool bitmapBufferResizeAllocationFailurePreventsLvglOverreadForTest()
 
   if (bitmap.width() == 0 || bitmap.height() == 0) return true;
 
-  auto lvglByteCount = bitmap.width() * bitmap.height() * 3;
+  auto stride =
+      lv_draw_buf_width_to_stride(bitmap.width(), LV_COLOR_FORMAT_RGB565A8);
+  auto lvglByteCount =
+      stride * bitmap.height() + (stride / 2) * bitmap.height();
   volatile auto lastByte =
       reinterpret_cast<const uint8_t*>(bitmap.getData())[lvglByteCount - 1];
   (void)lastByte;

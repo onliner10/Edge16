@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <new>
 
@@ -149,7 +150,11 @@ class Layout : public WidgetsContainer
 
 class LayoutFactory
 {
+  friend class MainWindow;
+
  public:
+  using ScreenDataLoader = std::function<void()>;
+
   LayoutFactory(const char* id, const char* name, const LayoutOption* options,
                 uint8_t zoneCount, uint8_t* zoneMap);
   ~LayoutFactory();
@@ -168,21 +173,21 @@ class LayoutFactory
 
   void initPersistentData(int screenNum, bool setDefault) const;
 
-  // delete all custom screens from memory
-  static void deleteCustomScreens();
-  // delete all top bar widgets from memory
-  static void deleteTopBarWidgets();
-
-  // intended for existing models
-  static void loadCustomScreens();
-
-  // intented for new models
-  static void loadDefaultLayout();
+  // Rebuild transactions. Callers cannot interleave delete/load phases.
+  static void replaceCustomScreens();
+  static void replaceCustomScreens(UiMutationToken& token);
+  static void replaceCustomScreens(UiMutationToken& token,
+                                   ScreenDataLoader loadScreenData);
+  static void replaceTemplateScreens(UiMutationToken& token,
+                                     ScreenDataLoader loadScreenData);
+  static void replaceDefaultLayout();
+  static WidgetsContainer* replaceCustomScreen(UiMutationToken& token,
+                                               unsigned customScreenIndex,
+                                               const LayoutFactory& factory);
+  static bool screenReplacementActive();
 
   // List of registered layout factories
   static std::list<const LayoutFactory*>& getRegisteredLayouts();
-
-  WidgetsContainer* createCustomScreen(unsigned customScreenIndex) const;
 
  static LAYOUT_ORIENTATION_SCALED(BM_W, 51,
                                   22) static LAYOUT_ORIENTATION_SCALED(BM_H, 25,
@@ -197,6 +202,11 @@ class LayoutFactory
 
   static WidgetsContainer* loadLayout(Window* parent, int screenNum);
   static const LayoutFactory* getLayoutFactory(const char* name);
+  static void deleteCustomScreens();
+  static void deleteTopBarWidgets();
+  static void loadCustomScreens();
+  static void loadDefaultLayout();
+  WidgetsContainer* createCustomScreen(unsigned customScreenIndex) const;
 };
 
 //-----------------------------------------------------------------------------

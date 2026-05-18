@@ -133,7 +133,6 @@ class CompatiblePackLine : public ListLineButton
       return 0;
     });
     check(isActive());
-    delayLoad();
   }
 
   bool isActive() const override
@@ -156,8 +155,6 @@ class CompatiblePackLine : public ListLineButton
     nameText->setText(lineText);
     check(isActive());
   }
-
-  void delayedInit() override { refresh(); }
 
  protected:
   uint8_t monitor;

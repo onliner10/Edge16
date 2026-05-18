@@ -48,7 +48,7 @@ bool LuaEventHandler::_sliding = false;
 
 void LuaEventHandler::event_cb(lv_event_t* e)
 {
-  auto obj = lv_event_get_target(e);
+  lv_obj_t* obj = (lv_obj_t*)lv_event_get_target(e);
   auto win = (Window*)lv_obj_get_user_data(obj);
   if (!win) return;
 
@@ -196,16 +196,16 @@ void LuaEventHandler::removeHandler(Window* w)
 
 void LuaWidget::redraw_cb(lv_event_t* e)
 {
-  lv_obj_t* target = lv_event_get_target(e);
+  lv_obj_t* target = (lv_obj_t*)lv_event_get_target(e);
 
   LuaWidget* widget = (LuaWidget*)lv_obj_get_user_data(target);
 
   if (widget && !widget->useLvglLayout()) {
-    lv_draw_ctx_t* draw_ctx = lv_event_get_draw_ctx(e);
+    lv_layer_t* draw_ctx = lv_event_get_layer(e);
 
     lv_area_t a, clipping, obj_coords;
-    lv_area_copy(&a, draw_ctx->buf_area);
-    lv_area_copy(&clipping, draw_ctx->clip_area);
+    lv_area_copy(&a, &draw_ctx->buf_area);
+    lv_area_copy(&clipping, &draw_ctx->phy_clip_area);
     lv_obj_get_coords(target, &obj_coords);
 
     auto w = a.x2 - a.x1 + 1;
@@ -213,8 +213,9 @@ void LuaWidget::redraw_cb(lv_event_t* e)
 
     TRACE_WINDOWS("Draw %s", widget->getWindowDebugString().c_str());
 
-    BitmapBuffer buf = {BMP_RGB565, (uint16_t)w, (uint16_t)h,
-                        (uint16_t*)draw_ctx->buf};
+    auto* pixels =
+        reinterpret_cast<uint16_t*>(static_cast<void*>(draw_ctx->draw_buf->data));
+    BitmapBuffer buf = {BMP_RGB565, (uint16_t)w, (uint16_t)h, pixels};
 
     buf.setDrawCtx(draw_ctx);
 

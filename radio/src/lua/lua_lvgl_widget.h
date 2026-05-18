@@ -446,7 +446,7 @@ class LvglWidgetLineBase : public LvglSimpleWidgetObject,
  protected:
   int dashGap = 0;
   int dashWidth = 0;
-  lv_point_t pts[2];
+  lv_point_precise_t pts[2];
 
   virtual void setLine() = 0;
 
@@ -500,7 +500,7 @@ class LvglWidgetLine : public LvglSimpleWidgetObject,
  protected:
   size_t ptCnt = 0;
   size_t ptAlloc = 0;
-  lv_point_t* pts = nullptr;
+  lv_point_precise_t* pts = nullptr;
   uint32_t ptsHash = -1;
   lv_obj_t* parent = nullptr;
   int getPointsFunction = LUA_REFNIL;
@@ -529,7 +529,7 @@ class LvglWidgetTriangle : public LvglSimpleWidgetObject
   void clearRefs(lua_State* L) override;
 
  protected:
-  lv_point_t pts[3] = {0};
+  lv_point_precise_t pts[3] = {0};
   uint32_t ptsHash = -1;
   MaskBitmap* mask = nullptr;
   lv_obj_t* parent = nullptr;

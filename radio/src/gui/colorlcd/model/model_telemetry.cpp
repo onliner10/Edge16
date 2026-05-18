@@ -34,6 +34,9 @@
 #include "textedit.h"
 #include "toggleswitch.h"
 
+#include "thirdparty/lvgl/src/core/lv_obj_class_private.h"
+#include "thirdparty/lvgl/src/widgets/label/lv_label_private.h"
+
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
 #define ETX_STATE_VALUE_SMALL_FONT LV_STATE_USER_1
@@ -128,8 +131,8 @@ static const lv_obj_class_t ts_num_class = {
     .base_class = &lv_label_class,
     .constructor_cb = ts_num_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = TSStyle::NUM_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -140,7 +143,7 @@ static const lv_obj_class_t ts_num_class = {
 lv_obj_t* TSStyle::newNum(lv_obj_t* parent, uint8_t index)
 {
   auto obj = etx_create(&ts_num_class, parent);
-  lv_label_set_text(obj, std::to_string(index + 1).c_str());
+  if (obj) lv_label_set_text(obj, std::to_string(index + 1).c_str());
 
   return obj;
 }
@@ -155,8 +158,8 @@ static const lv_obj_class_t ts_id_class = {
     .base_class = &lv_label_class,
     .constructor_cb = ts_id_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = TSStyle::NUM_W,
     .height_def = TSStyle::ID_H,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -167,7 +170,7 @@ static const lv_obj_class_t ts_id_class = {
 lv_obj_t* TSStyle::newId(lv_obj_t* parent, const char* id)
 {
   auto obj = etx_create(&ts_id_class, parent);
-  lv_label_set_text(obj, id);
+  if (obj) lv_label_set_text(obj, id);
 
   return obj;
 }
@@ -181,8 +184,8 @@ static const lv_obj_class_t ts_name_class = {
     .base_class = &lv_label_class,
     .constructor_cb = ts_name_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = TSStyle::NAME_W,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -193,7 +196,7 @@ static const lv_obj_class_t ts_name_class = {
 lv_obj_t* TSStyle::newName(lv_obj_t* parent, const char* name)
 {
   auto obj = etx_create(&ts_name_class, parent);
-  lv_label_set_text(obj, name);
+  if (obj) lv_label_set_text(obj, name);
 
   return obj;
 }
@@ -208,8 +211,8 @@ static const lv_obj_class_t ts_value_class = {
     .base_class = &lv_label_class,
     .constructor_cb = ts_value_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = LV_SIZE_CONTENT,
     .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -220,7 +223,7 @@ static const lv_obj_class_t ts_value_class = {
 lv_obj_t* TSStyle::newValue(lv_obj_t* parent)
 {
   auto obj = etx_create(&ts_value_class, parent);
-  lv_label_set_text(obj, "");
+  if (obj) lv_label_set_text(obj, "");
 
   return obj;
 }
@@ -235,16 +238,14 @@ class SensorButton : public ListLineButton
     setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL);
 
     check(isActive());
-
-    delayLoad();
   }
 
  protected:
   bool showId = false;
-  lv_obj_t* numLabel = nullptr;
-  lv_obj_t* idLabel = nullptr;
-  lv_obj_t* valLabel = nullptr;
-  lv_obj_t* fresh = nullptr;
+  RequiredLvObj numLabel;
+  OptionalLvObj idLabel;
+  RequiredLvObj valLabel;
+  OptionalLvObj fresh;
   uint32_t lastRefresh = 0;
   std::string valString;
 
@@ -252,24 +253,69 @@ class SensorButton : public ListLineButton
 
   void setNumIdState()
   {
-    if (idLabel) {
-      showId = g_model.showInstanceIds;
-      if (showId) {
-        lv_obj_clear_flag(idLabel, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_state(numLabel, ETX_STATE_VALUE_SMALL_FONT);
-      } else {
-        lv_obj_add_flag(idLabel, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_state(numLabel, ETX_STATE_VALUE_SMALL_FONT);
-      }
-    }
+    idLabel.with([&](lv_obj_t* id) {
+      const bool nextShowId = g_model.showInstanceIds;
+      showId = nextShowId;
+      numLabel.with([&](lv_obj_t* num) {
+        if (nextShowId) {
+          lv_obj_clear_flag(id, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_state(num, ETX_STATE_VALUE_SMALL_FONT);
+        } else {
+          lv_obj_add_flag(id, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_state(num, ETX_STATE_VALUE_SMALL_FONT);
+        }
+      });
+    });
   }
 
-  void onLoadedCheckEvents(LiveWindow& live) override
+  void updateSensorLiveState()
   {
-    refresh();
+    if (showId != g_model.showInstanceIds) setNumIdState();
+
+    fresh.with([&](lv_obj_t* marker) {
+      if (telemetryItems[index].isFresh())
+        lv_obj_clear_flag(marker, LV_OBJ_FLAG_HIDDEN);
+      else
+        lv_obj_add_flag(marker, LV_OBJ_FLAG_HIDDEN);
+    });
+
+    uint32_t now = lv_tick_get();
+    TelemetryItem& telemetryItem = telemetryItems[index];
+
+    if ((now - lastRefresh < 200) && !telemetryItem.isFresh()) return;
+
+    lastRefresh = now;
+
+    std::string s;
+    bool isOld = false;
+
+    if (telemetryItem.isAvailable()) {
+      isOld = telemetryItem.isOld();
+      s = getSensorCustomValue(index, getValue(MIXSRC_FIRST_TELEM + 3 * index),
+                               LEFT);
+    } else {
+      s = "---";
+    }
+
+    valLabel.with([&](lv_obj_t* value) {
+      if (isOld)
+        lv_obj_add_state(value, ETX_STATE_VALUE_STALE_WARN);
+      else
+        lv_obj_clear_state(value, ETX_STATE_VALUE_STALE_WARN);
+
+      if (valString != s) {
+        valString = s;
+        lv_label_set_text(value, s.c_str());
+      }
+    });
   }
 
-  void delayedInit() override
+  void onLineLiveUpdate(LiveWindow& live) override
+  {
+    updateSensorLiveState();
+  }
+
+  void onLineLoaded() override
   {
     char s[20];
 
@@ -277,36 +323,53 @@ class SensorButton : public ListLineButton
           auto obj = live.lvobj();
           lv_obj_enable_style_refresh(false);
 
-          numLabel = tsStyle.newNum(obj, index);
-          lv_obj_set_pos(numLabel, PAD_TINY, PAD_TINY);
+          lv_obj_t* num = tsStyle.newNum(obj, index);
+          if (!requireLvObj(numLabel, num)) {
+            lv_obj_enable_style_refresh(true);
+            return false;
+          }
+          lv_obj_set_pos(num, PAD_TINY, PAD_TINY);
 
           TelemetrySensor* sensor = &g_model.telemetrySensors[index];
           if (sensor->type == TELEM_TYPE_CUSTOM) {
             sprintf(s, "ID: %d", sensor->instance);
 
-            idLabel = tsStyle.newId(obj, s);
-            lv_obj_set_pos(idLabel, PAD_TINY, TSStyle::ID_Y);
+            lv_obj_t* id = tsStyle.newId(obj, s);
+            if (!requireLvObj(id)) {
+              lv_obj_enable_style_refresh(true);
+              return false;
+            }
+            idLabel.reset(id);
+            lv_obj_set_pos(id, PAD_TINY, TSStyle::ID_Y);
           }
 
           setNumIdState();
 
-          strAppend(s, g_model.telemetrySensors[index].label,
-                    TELEM_LABEL_LEN);
+          strAppend(s, g_model.telemetrySensors[index].label, TELEM_LABEL_LEN);
           lv_obj_t* nm = tsStyle.newName(obj, s);
+          if (!requireLvObj(nm)) {
+            lv_obj_enable_style_refresh(true);
+            return false;
+          }
           lv_obj_set_pos(nm, TSStyle::NUM_W + PAD_SMALL, PAD_MEDIUM / 2);
 
           auto mask = getBuiltinIcon(ICON_DOT);
-          fresh = createFreshCanvas(obj);
-          if (fresh) {
-            lv_obj_set_pos(fresh, TSStyle::NUM_W + TSStyle::NAME_W + PAD_MEDIUM,
+          lv_obj_t* freshMarker = createFreshCanvas(obj);
+          fresh.reset(freshMarker);
+          if (freshMarker) {
+            lv_obj_set_pos(freshMarker, TSStyle::NUM_W + TSStyle::NAME_W + PAD_MEDIUM,
                            PAD_LARGE);
-            lv_canvas_set_buffer(fresh, (void*)mask->data, mask->width,
-                                 mask->height, LV_IMG_CF_ALPHA_8BIT);
-            lv_obj_add_flag(fresh, LV_OBJ_FLAG_HIDDEN);
+            lv_canvas_set_buffer(freshMarker, (void*)mask->data, mask->width,
+                                 mask->height, LV_COLOR_FORMAT_A8);
+            lv_obj_add_flag(freshMarker, LV_OBJ_FLAG_HIDDEN);
           }
 
-          valLabel = tsStyle.newValue(obj);
-          lv_obj_set_pos(valLabel,
+          lv_obj_t* value = tsStyle.newValue(obj);
+          if (!requireLvObj(valLabel, value)) {
+            lv_obj_enable_style_refresh(true);
+            return false;
+          }
+          lv_obj_set_pos(value,
                          TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
                          PAD_MEDIUM / 2);
 
@@ -314,51 +377,14 @@ class SensorButton : public ListLineButton
 
           lv_obj_enable_style_refresh(true);
           lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
+          return true;
         }))
       return;
   }
 
   void onRefresh() override
   {
-    if (showId != g_model.showInstanceIds) setNumIdState();
-
-    // Draw a 'fresh' marker
-    if (fresh) {
-      if (telemetryItems[index].isFresh())
-        lv_obj_clear_flag(fresh, LV_OBJ_FLAG_HIDDEN);
-      else
-        lv_obj_add_flag(fresh, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    uint32_t now = lv_tick_get();
-    TelemetryItem& telemetryItem = telemetryItems[index];
-
-    // Update value
-    if ((now - lastRefresh >= 200) || telemetryItem.isFresh()) {
-      // update at least every 200ms
-      lastRefresh = now;
-
-      std::string s;
-      bool isOld = false;
-
-      if (telemetryItem.isAvailable()) {
-        isOld = telemetryItem.isOld();
-        s = getSensorCustomValue(
-            index, getValue(MIXSRC_FIRST_TELEM + 3 * index), LEFT);
-      } else {
-        s = "---";
-      }
-
-      if (isOld)
-        lv_obj_add_state(valLabel, ETX_STATE_VALUE_STALE_WARN);
-      else
-        lv_obj_clear_state(valLabel, ETX_STATE_VALUE_STALE_WARN);
-
-      if (valString != s) {
-        valString = s;
-        lv_label_set_text(valLabel, s.c_str());
-      }
-    }
+    updateSensorLiveState();
   }
 };
 
@@ -375,7 +401,7 @@ bool modelTelemetryFreshCanvasCreateFailureLeavesNoMarkerForTest()
     }
 
     void initForTest() { delayedInit(); }
-    bool hasFreshMarker() const { return fresh != nullptr; }
+    bool hasFreshMarker() const { return fresh.isPresentForTest(); }
   };
 
   memclear(g_model.telemetrySensors, sizeof(g_model.telemetrySensors));
@@ -387,6 +413,47 @@ bool modelTelemetryFreshCanvasCreateFailureLeavesNoMarkerForTest()
   modelTelemetryForceFreshCanvasCreateFailureForTest(false);
 
   return button && !button->hasFreshMarker();
+}
+
+bool modelTelemetrySensorLiveUpdateDoesNotRefreshForTest()
+{
+  class TestSensorButton : public SensorButton
+  {
+   public:
+    TestSensorButton(Window* parent) :
+        SensorButton(parent,
+                     rect_t{0, 0, LCD_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, 0)
+    {
+    }
+
+    void initForTest() { delayedInit(); }
+    void liveUpdateForTest() { runLiveValueUpdate(); }
+  };
+
+  auto mainWindow = MainWindow::instance();
+  mainWindow->loadLvglScreen();
+
+  memclear(g_model.telemetrySensors, sizeof(g_model.telemetrySensors));
+  for (auto& item : telemetryItems) {
+    item.clear();
+  }
+  strAppend(g_model.telemetrySensors[0].label, "RSSI", TELEM_LABEL_LEN);
+
+  auto button = new (std::nothrow) TestSensorButton(mainWindow);
+  if (!button || !button->isAvailable()) {
+    delete button;
+    return false;
+  }
+
+  button->initForTest();
+  button->liveUpdateForTest();
+  button->liveUpdateForTest();
+
+  button->deleteLater();
+  mainWindow->runMainLoopTick();
+  mainWindow->runMainLoopTick();
+
+  return true;
 }
 #endif
 

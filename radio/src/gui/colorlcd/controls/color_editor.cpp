@@ -61,7 +61,7 @@ class ColorBar : public FormField
                           nullptr);
       lv_obj_add_event_cb(live.lvobj(), ColorBar::on_key, LV_EVENT_KEY, nullptr);
       lv_obj_add_event_cb(live.lvobj(), ColorBar::draw_end,
-                          LV_EVENT_DRAW_PART_END, nullptr);
+                          LV_EVENT_DRAW_POST_END, nullptr);
 
       etx_std_style(live.lvobj(), LV_PART_MAIN, PAD_ZERO);
     });
@@ -92,7 +92,7 @@ class ColorBar : public FormField
 
   static void pressing(lv_event_t* e)
   {
-    lv_obj_t* target = lv_event_get_target(e);
+    lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
     lv_indev_t* click_source = (lv_indev_t*)lv_event_get_param(e);
     if (!click_source ||
         (lv_indev_get_type(click_source) != LV_INDEV_TYPE_POINTER))
@@ -107,7 +107,7 @@ class ColorBar : public FormField
     lv_point_t point_act;
     lv_indev_get_point(click_source, &point_act);
 
-    lv_point_t rel_pos;
+    lv_point_precise_t rel_pos;
     rel_pos.x = point_act.x - obj_coords.x1;
     rel_pos.y = point_act.y - obj_coords.y1;
 
@@ -117,7 +117,7 @@ class ColorBar : public FormField
 
   static void on_key(lv_event_t* e)
   {
-    lv_obj_t* obj = lv_event_get_target(e);
+    lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
     ColorBar* bar = (ColorBar*)lv_obj_get_user_data(obj);
     if (!bar) return;
 
@@ -152,10 +152,9 @@ class ColorBar : public FormField
 
   static void draw_end(lv_event_t* e)
   {
-    lv_obj_draw_part_dsc_t* dsc = lv_event_get_draw_part_dsc(e);
-    if (dsc->type != LV_OBJ_DRAW_PART_RECTANGLE) return;
+    lv_layer_t* layer = lv_event_get_layer(e);
 
-    lv_obj_t* obj = lv_event_get_target(e);
+    lv_obj_t* obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
     ColorBar* bar = (ColorBar*)lv_obj_get_user_data(obj);
     if (!bar) return;
 
@@ -165,32 +164,35 @@ class ColorBar : public FormField
     line_dsc.width = 1;
     line_dsc.opa = LV_OPA_100;
 
-    auto area = dsc->draw_area;
-    lv_point_t p1, p2;
-    int h = area->y2 - area->y1 - 4;
+    lv_area_t area;
+    lv_obj_get_coords(obj, &area);
+    lv_point_precise_t p1, p2;
+    int h = area.y2 - area.y1 - 4;
 
     // draw background gradient
     for (int i = 0; i <= h; i += 1) {
-      p1.y = p2.y = i + area->y1 + 2;
+      p1.y = p2.y = i + area.y1 + 2;
       if (i == 0 || i == h) {
-        p1.x = area->x1 + 3;
-        p2.x = area->x2 - 2;
+        p1.x = area.x1 + 3;
+        p2.x = area.x2 - 2;
       } else {
-        p1.x = area->x1 + 2;
-        p2.x = area->x2 - 1;
+        p1.x = area.x1 + 2;
+        p2.x = area.x2 - 1;
       }
       auto c = bar->getRGB(bar->screenToValue(i));
       line_dsc.color = lv_color_make(GET_RED32(c), GET_GREEN32(c), GET_BLUE32(c));
-      lv_draw_line(dsc->draw_ctx, &line_dsc, &p1, &p2);
+      line_dsc.p1 = p1;
+      line_dsc.p2 = p2;
+      lv_draw_line(layer, &line_dsc);
     }
 
     // draw cursor
     lv_area_t cursor_area;
-    cursor_area.x1 = area->x1 + (lv_area_get_width(area) / 2) - ColorEditor::CRSR_SZ / 2;
+    cursor_area.x1 = area.x1 + (lv_area_get_width(&area) / 2) - ColorEditor::CRSR_SZ / 2;
     cursor_area.x2 = cursor_area.x1 + ColorEditor::CRSR_SZ - 1;
 
     auto pos = bar->valueToScreen(bar->value);
-    cursor_area.y1 = area->y1 + pos - PAD_THREE;
+    cursor_area.y1 = area.y1 + pos - PAD_THREE;
     cursor_area.y2 = cursor_area.y1 + ColorEditor::CRSR_SZ - 1;
 
     lv_draw_rect_dsc_t cursor_dsc;
@@ -203,7 +205,7 @@ class ColorBar : public FormField
     cursor_dsc.border_color = makeLvColor(COLOR_THEME_PRIMARY1);
     cursor_dsc.border_width = 1;
 
-    lv_draw_rect(dsc->draw_ctx, &cursor_dsc, &cursor_area);
+    lv_draw_rect(layer, &cursor_dsc, &cursor_area);
   }
 
   uint32_t maxValue = 0;

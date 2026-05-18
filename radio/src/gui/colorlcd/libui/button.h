@@ -94,6 +94,39 @@ class Button : public ButtonBase
 #endif
 };
 
+class CheckButton : public ButtonBase
+{
+ public:
+  CheckButton(Window* parent, const rect_t& rect,
+              std::function<uint8_t()> getValue,
+              std::function<void(uint8_t)> setValue);
+  ~CheckButton() override;
+
+#if defined(DEBUG_WINDOWS)
+  std::string getName() const override { return "CheckButton"; }
+#endif
+
+  uint8_t getValue() const { return _getValue ? _getValue() : 0; }
+  void setValue(uint8_t value)
+  {
+    if (_setValue) _setValue(value);
+  }
+  void update() const;
+
+ protected:
+  std::function<uint8_t()> _getValue;
+  std::function<void(uint8_t)> _setValue;
+  lv_subject_t checkedSubject = {};
+  bool checkedSubjectInitialized = false;
+  bool lvglValueChanged = false;
+
+  void onLivePress(LiveWindow& live) override;
+  void onLiveCheckEvents(LiveWindow& live) override;
+  static void checkedValueChanged(lv_event_t* e);
+  static void checkedSubjectChanged(lv_observer_t* observer,
+                                    lv_subject_t* subject);
+};
+
 class TextButton : public ButtonBase
 {
  public:

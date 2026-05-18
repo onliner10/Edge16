@@ -33,8 +33,8 @@ constexpr coord_t VALUE_Y = TITLE_Y + TITLE_H + PAD_TINY;
 constexpr coord_t VALUE_H = HEADER_HEIGHT - VALUE_Y - PAD_MEDIUM;
 NumberKeyboard* NumberKeyboard::_instance = nullptr;
 
-#define LV_KB_BTN(width) LV_BTNMATRIX_CTRL_POPOVER | width
-#define LV_KB_CTRL(width) LV_KEYBOARD_CTRL_BTN_FLAGS | width
+#define LV_KB_BTN(width) (lv_buttonmatrix_ctrl_t)(LV_BTNMATRIX_CTRL_POPOVER | (width))
+#define LV_KB_CTRL(width) (lv_buttonmatrix_ctrl_t)(LV_KEYBOARD_CTRL_BUTTON_FLAGS | (width))
 
 static char edit_value[32] = "";
 static char edit_title[32] = "";
@@ -131,7 +131,7 @@ static void on_keyboard_event(lv_event_t* e)
 {
   if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
 
-  auto keyboard = lv_event_get_target(e);
+  auto keyboard = static_cast<lv_obj_t*>(lv_event_get_target(e));
   auto numberKeyboard = (NumberKeyboard*)lv_event_get_user_data(e);
   if (!numberKeyboard) return;
 

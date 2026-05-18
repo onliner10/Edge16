@@ -68,7 +68,7 @@ class ChannelValue : public Window
           lv_obj_t* row = obj;
           lv_obj_remove_style_all(obj);
           lv_obj_clear_flag(obj,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+                            static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_layout(obj, LV_LAYOUT_FLEX);
           lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_ROW);
           lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
@@ -83,7 +83,7 @@ class ChannelValue : public Window
           lv_obj_t* trackObj = obj;
           lv_obj_remove_style_all(obj);
           lv_obj_clear_flag(obj,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+                            static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_bg_color(obj, lv_color_make(215, 228, 238),
                                     LV_PART_MAIN);
@@ -95,7 +95,7 @@ class ChannelValue : public Window
           lv_obj_remove_style_all(obj);
           lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_clear_flag(obj,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+                            static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_radius(obj, OUTPUT_PILL_RADIUS, LV_PART_MAIN);
           lv_obj_set_size(obj, 0, barHeight());
           etx_bg_color_from_flags(obj, barColor);

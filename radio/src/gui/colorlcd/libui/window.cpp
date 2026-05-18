@@ -20,13 +20,19 @@
 
 #include <new>
 
+#include "LvglWrapper.h"
 #include "button.h"
 #include "debug.h"
 #include "etx_lv_theme.h"
 #include "form.h"
 #include "keys.h"
+#include "mainwindow.h"
 #include "pagegroup.h"
 #include "static.h"
+
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/misc/lv_async.h"
 
 //-----------------------------------------------------------------------------
 
@@ -131,6 +137,11 @@ Window* Layer::walk(std::function<bool(Window* w)> check)
 //-----------------------------------------------------------------------------
 
 std::list<Window*> Window::trash;
+std::list<Window*> Window::pendingTrash;
+std::list<Window::DeferredMutation> Window::deferredMutationsReady;
+std::list<Window::DeferredMutation> Window::deferredMutationsPending;
+
+static constexpr coord_t UI_SCROLL_PRELOAD_MARGIN = LCD_H / 2;
 
 Window* Window::topWindow() { return Layer::back(); }
 
@@ -154,13 +165,14 @@ const lv_obj_class_t window_base_class = {
     .base_class = &lv_obj_class,
     .constructor_cb = nullptr,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = LV_DPI_DEF,
     .height_def = LV_DPI_DEF,
     .editable = LV_OBJ_CLASS_EDITABLE_FALSE,
     .group_def = LV_OBJ_CLASS_GROUP_DEF_FALSE,
-    .instance_size = sizeof(lv_obj_t)};
+    .instance_size = sizeof(lv_obj_t),
+    .theme_inheritable = LV_OBJ_CLASS_THEME_INHERITABLE_TRUE};
 
 lv_obj_t* window_create(lv_obj_t* parent)
 {
@@ -184,13 +196,13 @@ static lv_coord_t forcedScrollCorrection(lv_coord_t scroll_y,
 
 void Window::window_event_cb(lv_event_t* e)
 {
-  Window* window = (Window*)lv_obj_get_user_data(lv_event_get_target(e));
+  Window* window = (Window*)lv_obj_get_user_data(static_cast<lv_obj_t*>(lv_event_get_target(e)));
   if (window) window->eventHandler(e);
 }
 
 void Window::eventHandler(lv_event_t* e)
 {
-  lv_obj_t* target = lv_event_get_target(e);
+  lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
   lv_event_code_t code = lv_event_get_code(e);
 
   if (code == LV_EVENT_DELETE) return;
@@ -202,7 +214,7 @@ void Window::eventHandler(lv_event_t* e)
             // exclude pointer based scrolling (only focus scrolling)
             if (!lv_obj_is_scrolling(target) &&
                 ((windowFlags & NO_FORCED_SCROLL) == 0)) {
-              lv_point_t* p = (lv_point_t*)lv_event_get_param(e);
+              lv_point_precise_t* p = static_cast<lv_point_precise_t*>(lv_event_get_param(e));
               if (p) {
                 lv_coord_t scroll_y = lv_obj_get_scroll_y(target);
                 lv_coord_t scroll_bottom = lv_obj_get_scroll_bottom(target);
@@ -300,11 +312,14 @@ Window::~Window()
 {
   TRACE_WINDOWS("Destroy %p %s", this, getWindowDebugString().c_str());
 
+  disconnectUiConnections();
+  lv_async_call_cancel(Window::asyncDelayLoader, this);
+
   if (children.size() > 0) deleteChildren();
 
   if (lvobj != nullptr) {
     lv_obj_set_user_data(lvobj, nullptr);
-    lv_obj_del(lvobj);
+    lv_obj_delete(lvobj);
     lvobj = nullptr;
   }
 }
@@ -546,13 +561,54 @@ bool windowDelayedLoadGatesLoadedTasksForTest()
       !window->loaded() && !window->runLoadedTask() &&
       window->taskRuns == 1 && window->initRuns == 0;
 
-  lv_event_send(window->getLvObjForTest(), LV_EVENT_DRAW_MAIN_BEGIN, nullptr);
+  lv_timer_handler();
   const bool afterDrawRuns =
       window->loaded() && window->initRuns == 1 && window->runLoadedTask() &&
       window->taskRuns == 2;
 
   delete window;
   return immediateRuns && pendingDrops && afterDrawRuns;
+}
+
+bool windowCloseHandlerRunsAfterDeferredCycleForTest()
+{
+  auto window = new (std::nothrow) Window(nullptr, {0, 0, 10, 10});
+  if (!window) return false;
+
+  int calls = 0;
+  window->setCloseHandler([&]() { calls += 1; });
+  window->deleteLater();
+
+  const bool notInline = calls == 0;
+  Window::runDeferredCloseHandlersForTest();
+  const bool notSameCycle = calls == 0;
+  Window::runDeferredCloseHandlersForTest();
+  const bool ranOnce = calls == 1;
+
+  return notInline && notSameCycle && ranOnce;
+}
+
+bool windowClearUsesManagedAsyncChildDeletionForTest()
+{
+  auto parent = new (std::nothrow) ChildCountingParentForTest();
+  auto child = new (std::nothrow) Window(parent, {0, 0, 10, 10});
+  if (!parent || !child) {
+    delete child;
+    delete parent;
+    return false;
+  }
+
+  auto childObj = child->getLvObjForTest();
+  const bool attached = parent->childCount() == 1 && childObj != nullptr;
+
+  parent->clear();
+
+  const bool detachedFromOwner = parent->childCount() == 0;
+  const bool childHidden = childObj && lv_obj_has_flag(childObj, LV_OBJ_FLAG_HIDDEN);
+  const bool userDataCleared = childObj && lv_obj_get_user_data(childObj) == nullptr;
+
+  delete parent;
+  return attached && detachedFromOwner && childHidden && userDataCleared;
 }
 
 bool forcedScrollIgnoresNegativeEdgeDistancesForTest()
@@ -564,12 +620,13 @@ bool forcedScrollIgnoresNegativeEdgeDistancesForTest()
 }
 #endif
 
-void Window::delayLoader(lv_event_t* e)
+void Window::asyncDelayLoader(void* userData)
 {
-  auto w = (Window*)lv_obj_get_user_data(lv_event_get_target(e));
+  auto w = static_cast<Window*>(userData);
   if (!w) return;
   w->withLive([&](LiveWindow&) {
     if (!w->loaded) {
+      w->loadWhenVisible = false;
       w->markLoaded();
       w->delayedInit();
     }
@@ -579,10 +636,29 @@ void Window::delayLoader(lv_event_t* e)
 void Window::delayLoad()
 {
   loaded = false;
-  withLive([&](LiveWindow& live) {
-    lv_obj_add_event_cb(live.lvobj(), Window::delayLoader,
-                        LV_EVENT_DRAW_MAIN_BEGIN, nullptr);
-  });
+  loadWhenVisible = false;
+  lv_async_call_cancel(Window::asyncDelayLoader, this);
+  if (lv_async_call(Window::asyncDelayLoader, this) != LV_RESULT_OK) {
+    loadWhenVisible = true;
+  }
+}
+
+void Window::delayLoadWhenVisible()
+{
+  loaded = false;
+  loadWhenVisible = true;
+  lv_async_call_cancel(Window::asyncDelayLoader, this);
+}
+
+bool Window::loadVisibleIfNeeded(const LiveWindow& live, bool displayCandidate)
+{
+  (void)live;
+  if (loaded || !loadWhenVisible || !displayCandidate) return loaded;
+
+  loadWhenVisible = false;
+  markLoaded();
+  delayedInit();
+  return loaded;
 }
 
 void Window::markLoaded() { loaded = true; }
@@ -740,6 +816,8 @@ void Window::deleteLater()
 {
   if (_deleted) return;
 
+  lv_async_call_cancel(Window::asyncDelayLoader, this);
+  disconnectUiConnections();
   onDelete();
 
   _deleted = true;
@@ -753,31 +831,64 @@ void Window::deleteLater()
 
   popLayer();
 
-  if (handler) handler();
-
-  Window::trash.push_back(this);
-
-  if (lvobj != nullptr) {
-    auto obj = lvobj;
-    lvobj = nullptr;
-    lv_obj_del(obj);
+  if (handler) {
+    deferUiMutation([handler = std::move(handler)](UiMutationToken&) mutable {
+      handler();
+    });
   }
 
+  if (lvobj != nullptr) {
+    lv_obj_set_user_data(lvobj, nullptr);
+    lv_group_remove_obj(lvobj);
+    lv_obj_add_flag(lvobj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_SCROLLABLE);
+  }
+
+  Window::pendingTrash.push_back(this);
+
   onDeleted();
+}
+
+void Window::trackUiConnection(UiScopedConnection&& connection)
+{
+  uiConnections.add(std::move(connection));
+}
+
+void Window::disconnectUiConnections()
+{
+  uiConnections.disconnectAll();
 }
 
 void Window::clear()
 {
   deleteChildren();
-  if (lvobj != nullptr) {
-    lv_obj_clean(lvobj);
-  }
   invalidate();
 }
 
 void Window::deleteChildren()
 {
   while (!children.empty()) children.back()->deleteLater();
+}
+
+void Window::runDeferredCloseHandlers()
+{
+  std::list<DeferredMutation> running;
+  running.splice(running.end(), deferredMutationsReady);
+
+  UiMutationToken token;
+  for (auto& mutation : running) {
+    if (mutation) mutation(token);
+  }
+
+  deferredMutationsReady.splice(deferredMutationsReady.end(),
+                                deferredMutationsPending);
+}
+
+void Window::deferUiMutation(DeferredMutation mutation)
+{
+  if (mutation) deferredMutationsPending.push_back(std::move(mutation));
 }
 
 bool Window::hasFocus() const
@@ -1078,7 +1189,58 @@ void Window::font(FontIndex fontIndex, lv_style_selector_t selector)
 
 void Window::checkEvents()
 {
-  withLive([&](LiveWindow& live) { onLiveCheckEvents(live); });
+  if (deferUiSideWorkIfNeeded()) return;
+
+  withLive([&](LiveWindow& live) {
+    if (deferUiSideWorkIfNeeded()) return;
+
+    const bool visible = isLiveOnScreen(live);
+    updateLiveVisibility(live, visible);
+    if (!hasWindowFlag(CHECK_EVENTS_WHEN_OFFSCREEN) && !visible) return;
+    if (!loadVisibleIfNeeded(live, visible)) return;
+
+    if (deferUiSideWorkIfNeeded()) return;
+    onLiveCheckEvents(live);
+  });
+}
+
+bool Window::deferUiSideWorkIfNeeded()
+{
+  return lvglShouldDeferUiSideWork();
+}
+
+void Window::realizeVisibleContent()
+{
+  withLive([&](LiveWindow& live) {
+    const bool visible = isLiveOnScreen(live);
+    updateLiveVisibility(live, visible);
+
+    const bool displayCandidate =
+        visible || isLiveNearScreen(live, UI_SCROLL_PRELOAD_MARGIN);
+    if (!hasWindowFlag(CHECK_EVENTS_WHEN_OFFSCREEN) && !displayCandidate)
+      return;
+
+    if (!loadVisibleIfNeeded(live, displayCandidate)) return;
+
+    auto copy = children;
+    for (auto child : copy) {
+      if (child) child->realizeVisibleContent();
+    }
+  });
+}
+
+void Window::updateLiveVisibility(Window::LiveWindow& live, bool visible)
+{
+  const auto nextState = visible ? LiveVisibilityState::Visible
+                                 : LiveVisibilityState::Hidden;
+  if (liveVisibilityState == nextState) return;
+
+  liveVisibilityState = nextState;
+  onLiveVisibilityChanged(live, visible);
+}
+
+void Window::onLiveVisibilityChanged(Window::LiveWindow&, bool)
+{
 }
 
 void Window::onLiveCheckEvents(Window::LiveWindow&)
@@ -1136,7 +1298,7 @@ void Window::dispatchKeyboardEvent(event_t event)
     } else if (key != KEY_ENTER) {
       onLiveEvent(live, event);
     } else if (event == EVT_KEY_LONG(KEY_ENTER)) {
-      lv_event_send(live.lvobj(), LV_EVENT_LONG_PRESSED, nullptr);
+      lv_obj_send_event(live.lvobj(), LV_EVENT_LONG_PRESSED, nullptr);
     }
   });
 }
@@ -1144,7 +1306,7 @@ void Window::dispatchKeyboardEvent(event_t event)
 bool Window::sendLvEvent(lv_event_code_t code, void* param)
 {
   return withLive(
-      [&](LiveWindow& live) { lv_event_send(live.lvobj(), code, param); });
+      [&](LiveWindow& live) { lv_obj_send_event(live.lvobj(), code, param); });
 }
 
 void Window::addLvEventCb(lv_event_cb_t eventCb, lv_event_code_t filter,
@@ -1259,16 +1421,64 @@ bool Window::isVisible()
   });
 }
 
+static bool intersectArea(lv_area_t& a, const lv_area_t& b)
+{
+  if (a.x1 > b.x2 || a.x2 < b.x1 || a.y1 > b.y2 || a.y2 < b.y1)
+    return false;
+
+  if (a.x1 < b.x1) a.x1 = b.x1;
+  if (a.x2 > b.x2) a.x2 = b.x2;
+  if (a.y1 < b.y1) a.y1 = b.y1;
+  if (a.y2 > b.y2) a.y2 = b.y2;
+  return true;
+}
+
+bool Window::isLiveOnScreen(const LiveWindow& live) const
+{
+  auto obj = live.lvobj();
+  if (!obj || lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) return false;
+
+  lv_area_t visible;
+  lv_obj_get_coords(obj, &visible);
+
+  const lv_area_t screen = {0, 0, LCD_W - 1, LCD_H - 1};
+  if (!intersectArea(visible, screen)) return false;
+
+  for (lv_obj_t* parent = lv_obj_get_parent(obj); parent;
+       parent = lv_obj_get_parent(parent)) {
+    if (lv_obj_has_flag(parent, LV_OBJ_FLAG_HIDDEN)) return false;
+
+    lv_area_t parentArea;
+    lv_obj_get_coords(parent, &parentArea);
+    if (!intersectArea(visible, parentArea)) return false;
+  }
+
+  return true;
+}
+
+bool Window::isLiveNearScreen(const LiveWindow& live, coord_t margin) const
+{
+  auto obj = live.lvobj();
+  if (!obj || lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) return false;
+
+  lv_area_t visible;
+  lv_obj_get_coords(obj, &visible);
+
+  const lv_area_t screen = {-margin, -margin, LCD_W - 1 + margin,
+                            LCD_H - 1 + margin};
+  if (!intersectArea(visible, screen)) return false;
+
+  for (lv_obj_t* parent = lv_obj_get_parent(obj); parent;
+       parent = lv_obj_get_parent(parent)) {
+    if (lv_obj_has_flag(parent, LV_OBJ_FLAG_HIDDEN)) return false;
+  }
+
+  return true;
+}
+
 bool Window::isOnScreen()
 {
-  return withLive([&](LiveWindow& live) {
-    if (lv_obj_has_flag(live.lvobj(), LV_OBJ_FLAG_HIDDEN)) return false;
-
-    // Check window is at least partially visible
-    lv_area_t a;
-    lv_obj_get_coords(live.lvobj(), &a);
-    return a.x2 >= 0 && a.x1 < LCD_W && a.y2 >= 0 && a.y1 < LCD_H;
-  });
+  return withLive([&](LiveWindow& live) { return isLiveOnScreen(live); });
 }
 
 void Window::enable(bool enabled)
@@ -1294,13 +1504,16 @@ bool Window::requireLvObj(lv_obj_t* obj)
 
 void Window::failClosed()
 {
+  const bool firstFailure = availability == Availability::Available;
   availability = Availability::Unavailable;
   windowFlags |= NO_FOCUS | NO_CLICK;
-  if (!lvobj) return;
-  lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
-  lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_state(lvobj, LV_STATE_DISABLED);
-  lv_obj_add_flag(lvobj, LV_OBJ_FLAG_HIDDEN);
+  if (lvobj) {
+    lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    lv_obj_clear_flag(lvobj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_state(lvobj, LV_STATE_DISABLED);
+    lv_obj_add_flag(lvobj, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (firstFailure) onFailClosed();
 }
 
 #if defined(HARDWARE_TOUCH)

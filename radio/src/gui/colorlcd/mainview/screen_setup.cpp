@@ -126,7 +126,7 @@ class LayoutChoice : public Button
 
     lv_coord_t w = bitmap->width;
     lv_coord_t h = bitmap->height;
-    lv_canvas_set_buffer(canvas, (void*)&bitmap->data[0], w, h, LV_IMG_CF_ALPHA_8BIT);
+    lv_canvas_set_buffer(canvas, (void*)&bitmap->data[0], w, h, LV_COLOR_FORMAT_A8);
   }
 };
 
@@ -221,19 +221,26 @@ void ScreenSetupPage::build(Window* window)
           restoreOptions = true;
         }
 
-        factory->createCustomScreen(customScreenIndex);
+        Window::deferUiMutation([=](UiMutationToken& token) {
+          LayoutFactory::replaceCustomScreen(token, customScreenIndex,
+                                             *factory);
 
-        // If new screen is not App Mode then restore saved option values
-        layout = getCustomLayout(customScreenIndex);
-        if (restoreOptions && layout && !layout->isAppMode()) {
-          layoutData->options[LAYOUT_OPTION_TOPBAR].value.boolValue = hasTopbar;
-          layoutData->options[LAYOUT_OPTION_FM].value.boolValue = hasFM;
-          layoutData->options[LAYOUT_OPTION_SLIDERS].value.boolValue = hasSliders;
-          layoutData->options[LAYOUT_OPTION_TRIMS].value.boolValue = hasTrims;
-          layoutData->options[LAYOUT_OPTION_MIRRORED].value.boolValue = isMirrored;
-        }
+          // If new screen is not App Mode then restore saved option values
+          auto layout = getCustomLayout(customScreenIndex);
+          if (restoreOptions && layout && !layout->isAppMode()) {
+            layoutData->options[LAYOUT_OPTION_TOPBAR].value.boolValue =
+                hasTopbar;
+            layoutData->options[LAYOUT_OPTION_FM].value.boolValue = hasFM;
+            layoutData->options[LAYOUT_OPTION_SLIDERS].value.boolValue =
+                hasSliders;
+            layoutData->options[LAYOUT_OPTION_TRIMS].value.boolValue =
+                hasTrims;
+            layoutData->options[LAYOUT_OPTION_MIRRORED].value.boolValue =
+                isMirrored;
+          }
 
-        buildLayoutOptions();
+          buildLayoutOptions();
+        });
       };
 
   Window* btn = new (std::nothrow) LayoutChoice(line, getFactory, setLayout);
@@ -268,22 +275,20 @@ void ScreenSetupPage::build(Window* window)
           // Remove this screen from the model
           g_model.removeScreenLayout(customScreenIndex);
 
-          // Delete all custom screens
-          LayoutFactory::deleteCustomScreens();
+          Window::deferUiMutation([=](UiMutationToken& token) {
+            LayoutFactory::replaceCustomScreens(token);
 
-          // ... and reload
-          LayoutFactory::loadCustomScreens();
+            // adjust index if last screen deleted
+            if (customScreens[customScreenIndex] == nullptr) customScreenIndex -= 1;
 
-          // adjust index if last screen deleted
-          if (customScreens[customScreenIndex] == nullptr) customScreenIndex -= 1;
+            PageGroup* menu = (PageGroup*)window->getParent();
+            // Reset to setup page to ensure screen properly updates.
+            menu->setCurrentTab(QuickMenu::pageIndex(QM_UI_SETUP));
+            // Reset to original (or adjusted screen)
+            menu->setCurrentTab(QuickMenu::pageIndex((QMPage)(QM_UI_SCREEN1 + customScreenIndex)));
 
-          PageGroup* menu = (PageGroup*)window->getParent();
-          // Reset to setup page to ensure screen properly updates.
-          menu->setCurrentTab(QuickMenu::pageIndex(QM_UI_SETUP));
-          // Reset to original (or adjusted screen)
-          menu->setCurrentTab(QuickMenu::pageIndex((QMPage)(QM_UI_SCREEN1 + customScreenIndex)));
-
-          storageDirty(EE_MODEL);
+            storageDirty(EE_MODEL);
+          });
           return 0;
     });
     if (btn) {

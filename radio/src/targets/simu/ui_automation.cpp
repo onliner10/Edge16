@@ -1,15 +1,18 @@
 #include "simu_ui_automation.h"
 
 #if defined(COLORLCD)
+#include "gui/colorlcd/libui/table.h"
 #include "gui/colorlcd/libui/window.h"
 #include "gui/colorlcd/lcd.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/widgets/table/lv_table_private.h"
 #endif
 
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -93,6 +96,44 @@ std::string nodeId(const lv_obj_t* obj)
   return out.str();
 }
 
+std::string tableCellId(const lv_obj_t* obj, uint32_t row, uint32_t col)
+{
+  std::ostringstream out;
+  out << nodeId(obj) << ":cell:" << row << ":" << col;
+  return out.str();
+}
+
+struct TableCellRef {
+  std::string tableId;
+  uint32_t row = 0;
+  uint32_t col = 0;
+};
+
+std::optional<TableCellRef> parseTableCellId(const std::string& id)
+{
+  const auto marker = id.rfind(":cell:");
+  if (marker == std::string::npos) return std::nullopt;
+
+  const auto rowStart = marker + 6;
+  const auto colSep = id.find(':', rowStart);
+  if (colSep == std::string::npos) return std::nullopt;
+
+  const auto parseUint = [](const std::string& value, uint32_t& out) {
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+    if (end == value.c_str() || *end != '\0') return false;
+    out = static_cast<uint32_t>(parsed);
+    return true;
+  };
+
+  TableCellRef ref;
+  ref.tableId = id.substr(0, marker);
+  if (!parseUint(id.substr(rowStart, colSep - rowStart), ref.row))
+    return std::nullopt;
+  if (!parseUint(id.substr(colSep + 1), ref.col)) return std::nullopt;
+  return ref;
+}
+
 Window* automationWindow(lv_obj_t* obj)
 {
   return static_cast<Window*>(lv_obj_get_user_data(obj));
@@ -101,9 +142,9 @@ Window* automationWindow(lv_obj_t* obj)
 std::string lvglRole(const lv_obj_t* obj)
 {
   if (lv_obj_check_type(obj, &lv_label_class)) return "text";
-  if (lv_obj_check_type(obj, &lv_btn_class)) return "button";
+  if (lv_obj_check_type(obj, &lv_button_class)) return "button";
   if (lv_obj_check_type(obj, &lv_canvas_class)) return "image";
-  if (lv_obj_check_type(obj, &lv_img_class)) return "image";
+  if (lv_obj_check_type(obj, &lv_image_class)) return "image";
   return "object";
 }
 
@@ -134,7 +175,7 @@ bool nodeClickable(lv_obj_t* obj)
 {
   auto* w = automationWindow(obj);
   if (w) return w->automationClickable();
-  return lv_obj_check_type(obj, &lv_btn_class) &&
+  return lv_obj_check_type(obj, &lv_button_class) &&
          lv_obj_has_flag(obj, LV_OBJ_FLAG_CLICKABLE);
 }
 
@@ -167,6 +208,26 @@ lv_obj_t* topObjectAtPoint(lv_obj_t* obj, int x, int y)
   return obj;
 }
 
+lv_obj_t* topChildObjectAtPoint(lv_obj_t* obj, int x, int y)
+{
+  if (!containsPoint(obj, x, y)) return nullptr;
+
+  const auto childCount = lv_obj_get_child_cnt(obj);
+  for (uint32_t i = childCount; i > 0; i -= 1) {
+    if (auto* found = topObjectAtPoint(lv_obj_get_child(obj, i - 1), x, y))
+      return found;
+  }
+
+  return nullptr;
+}
+
+lv_obj_t* topDisplayObjectAtPoint(int x, int y)
+{
+  if (auto* found = topChildObjectAtPoint(lv_layer_sys(), x, y)) return found;
+  if (auto* found = topChildObjectAtPoint(lv_layer_top(), x, y)) return found;
+  return topObjectAtPoint(lv_scr_act(), x, y);
+}
+
 bool isAncestorOf(lv_obj_t* ancestor, lv_obj_t* obj)
 {
   while (obj) {
@@ -180,7 +241,7 @@ bool centerPointIsReachable(lv_obj_t* obj, const lv_area_t& bounds)
 {
   const int x = (bounds.x1 + bounds.x2) / 2;
   const int y = (bounds.y1 + bounds.y2) / 2;
-  return isAncestorOf(obj, topObjectAtPoint(lv_scr_act(), x, y));
+  return isAncestorOf(obj, topDisplayObjectAtPoint(x, y));
 }
 
 int computeVisibleRatioPct(lv_obj_t* obj, const lv_area_t& bounds)
@@ -220,6 +281,82 @@ bool centerInScreen(const lv_area_t& bounds)
   const int cy = (bounds.y1 + bounds.y2) / 2;
   return cx >= scrArea.x1 && cx <= scrArea.x2 &&
          cy >= scrArea.y1 && cy <= scrArea.y2;
+}
+
+void appendActionabilityState(std::ostringstream& out, lv_obj_t* obj,
+                               const lv_area_t& bounds,
+                               bool rawClickable,
+                               bool centeredReachable);
+
+void tableCellArea(lv_obj_t* obj, uint32_t row, uint32_t col, lv_area_t* area)
+{
+  auto* table = reinterpret_cast<lv_table_t*>(obj);
+  area->x1 = 0;
+  for (uint32_t c = 0; c < col; c += 1) {
+    area->x1 += table->col_w[c];
+  }
+  area->x1 += lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
+  area->x1 -= lv_obj_get_scroll_x(obj);
+  area->x2 = area->x1 + table->col_w[col] - 1;
+
+  area->y1 = 0;
+  for (uint32_t r = 0; r < row; r += 1) {
+    area->y1 += table->row_h[r];
+  }
+  area->y1 += lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
+  area->y1 -= lv_obj_get_scroll_y(obj);
+  area->y2 = area->y1 + table->row_h[row] - 1;
+
+  lv_area_t objArea;
+  lv_obj_get_coords(obj, &objArea);
+  lv_area_move(area, objArea.x1, objArea.y1);
+}
+
+void appendTableCellNode(std::ostringstream& out, lv_obj_t* obj,
+                         uint32_t row, uint32_t col, bool& first)
+{
+  const char* value = lv_table_get_cell_value(obj, row, col);
+  if (!value || !value[0]) return;
+
+  lv_area_t bounds;
+  tableCellArea(obj, row, col, &bounds);
+
+  const bool rawClickable = lv_obj_has_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+  const bool rawLongClickable = nodeLongClickable(obj);
+  const bool reachable = centerPointIsReachable(obj, bounds);
+  const bool clickable = rawClickable && reachable && centerInScreen(bounds);
+  const bool longClickable =
+      rawLongClickable && reachable && centerInScreen(bounds);
+
+  if (!first) out << ",";
+  first = false;
+
+  out << "{"
+      << "\"id\":\"" << jsonEscape(tableCellId(obj, row, col)) << "\""
+      << ",\"parent\":\"" << jsonEscape(nodeId(obj)) << "\""
+      << ",\"role\":\"button\""
+      << ",\"text\":\"" << jsonEscape(value) << "\""
+      << ",\"bounds\":[" << bounds.x1 << "," << bounds.y1 << ","
+      << (bounds.x2 - bounds.x1 + 1) << ","
+      << (bounds.y2 - bounds.y1 + 1) << "]"
+      << ",\"visible\":true"
+      << ",\"enabled\":"
+      << (lv_obj_has_state(obj, LV_STATE_DISABLED) ? "false" : "true")
+      << ",\"checked\":false"
+      << ",\"focused\":false"
+      << ",\"actions\":[";
+  bool firstAction = true;
+  if (clickable) {
+    out << "\"click\"";
+    firstAction = false;
+  }
+  if (longClickable) {
+    if (!firstAction) out << ",";
+    out << "\"long_click\"";
+  }
+  out << "]";
+  appendActionabilityState(out, obj, bounds, rawClickable, reachable);
+  out << "}";
 }
 
 void appendActionabilityState(std::ostringstream& out, lv_obj_t* obj,
@@ -328,6 +465,22 @@ void appendNode(std::ostringstream& out, lv_obj_t* obj, lv_obj_t* parent,
   for (uint32_t i = 0; i < childCount; i += 1) {
     appendNode(out, lv_obj_get_child(obj, i), obj, first);
   }
+
+  if (lv_obj_has_class(obj, &lv_table_class)) {
+    const auto rows = lv_table_get_row_count(obj);
+    const auto cols = lv_table_get_column_count(obj);
+    for (uint32_t row = 0; row < rows; row += 1) {
+      for (uint32_t col = 0; col < cols; col += 1) {
+        appendTableCellNode(out, obj, row, col, first);
+      }
+    }
+  }
+}
+
+void appendRootNode(std::ostringstream& out, lv_obj_t* obj, bool& first)
+{
+  if (!obj) return;
+  appendNode(out, obj, nullptr, first);
 }
 
 std::string buildSnapshot()
@@ -356,7 +509,9 @@ std::string buildSnapshot()
       << "\""
       << ",\"nodes\":[";
   bool first = true;
-  appendNode(out, screen, nullptr, first);
+  appendRootNode(out, screen, first);
+  appendRootNode(out, lv_layer_top(), first);
+  appendRootNode(out, lv_layer_sys(), first);
   out << "]}";
   return out.str();
 }
@@ -373,10 +528,73 @@ lv_obj_t* findNode(lv_obj_t* obj, const std::string& id)
   return nullptr;
 }
 
+lv_obj_t* findNodeInDisplay(const std::string& id)
+{
+  if (auto* found = findNode(lv_scr_act(), id)) return found;
+  if (auto* found = findNode(lv_layer_top(), id)) return found;
+  return findNode(lv_layer_sys(), id);
+}
+
+bool invokeTableCellAction(const TableCellRef& ref, const std::string& action,
+                           std::string& extra, std::string& error)
+{
+  auto* node = findNodeInDisplay(ref.tableId);
+  if (!node) {
+    error = "unknown UI table node: " + ref.tableId;
+    return false;
+  }
+  if (!lv_obj_is_visible(node) || !lv_obj_has_class(node, &lv_table_class)) {
+    error = "UI table node is not visible: " + ref.tableId;
+    return false;
+  }
+
+  lv_area_t bounds;
+  tableCellArea(node, ref.row, ref.col, &bounds);
+  if (!centerPointIsReachable(node, bounds) || !centerInScreen(bounds)) {
+    error = "UI table cell is not reachable: " + tableCellId(node, ref.row, ref.col);
+    return false;
+  }
+
+  auto* table = static_cast<TableField*>(automationWindow(node));
+  if (!table) {
+    error = "UI table cell has no automation window: " + tableCellId(node, ref.row, ref.col);
+    return false;
+  }
+
+  table->select(ref.row, ref.col, true);
+  if (action == "click") {
+    table->onPress(ref.row, ref.col);
+  } else if (action == "long_click") {
+    table->onLongPress();
+  } else {
+    error = "unknown UI action: " + action;
+    return false;
+  }
+
+  const int x = (bounds.x1 + bounds.x2) / 2;
+  const int y = (bounds.y1 + bounds.y2) / 2;
+  std::ostringstream out;
+  out << "\"node\":\"" << jsonEscape(tableCellId(node, ref.row, ref.col)) << "\""
+      << ",\"x\":" << x
+      << ",\"y\":" << y;
+  extra = out.str();
+
+  if (auto* screen = lv_scr_act()) {
+    lv_obj_invalidate(screen);
+    lv_obj_update_layout(screen);
+  }
+  lvglRefreshNowIfIdle();
+  return true;
+}
+
 bool invokeAction(const std::string& id, const std::string& action,
                   std::string& extra, std::string& error)
 {
-  auto* node = findNode(lv_scr_act(), id);
+  if (auto tableCell = parseTableCellId(id)) {
+    return invokeTableCellAction(*tableCell, action, extra, error);
+  }
+
+  auto* node = findNodeInDisplay(id);
   if (!node) {
     error = "unknown UI node: " + id;
     return false;
@@ -419,7 +637,7 @@ bool invokeAction(const std::string& id, const std::string& action,
     else
       window->onLongPress();
   } else {
-    lv_event_send(node, click ? LV_EVENT_CLICKED : LV_EVENT_LONG_PRESSED,
+    lv_obj_send_event(node, click ? LV_EVENT_CLICKED : LV_EVENT_LONG_PRESSED,
                   nullptr);
   }
 

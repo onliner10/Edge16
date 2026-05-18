@@ -82,6 +82,26 @@ EXTRA_OPTIONS='-DEDGE16_SANITIZERS=address,undefined -DEDGE16_SAFETY_CHECKS=ON -
 EXTRA_OPTIONS='-DEDGE16_SANITIZERS=thread -DEDGE16_SAFETY_CHECKS=ON -DDISABLE_COMPANION=ON'
 ```
 
+### Native hang debugging
+
+If a native gtest run hangs, treat it as safety-relevant until proven to be a test-harness issue. Do not just kill the process and move on. Capture the current thread stacks first:
+
+```sh
+nix develop -c tools/debug-gtests-hang.sh --wait 30 -- --gtest_filter='PulsesTest.*'
+```
+
+The helper runs `build/native/gtests-radio`, waits for the configured interval, attaches `gdb`, writes the stdout/stderr log and `thread apply all bt full` output under `build/debug/`, then terminates the stuck process. Override defaults when needed:
+
+```sh
+nix develop -c tools/debug-gtests-hang.sh \
+  --binary build/native/gtests-radio \
+  --wait 10 \
+  --out-dir build/debug \
+  -- --gtest_filter='Color*:PulsesTest.*'
+```
+
+Use `nix develop -c gdb --version` to confirm the debugger is available. If `gdb` cannot attach because of host ptrace restrictions, record that explicitly and rerun the reduced failing filter under a host where ptrace is allowed.
+
 Firmware strict build:
 
 ```sh
@@ -121,6 +141,8 @@ nix develop -c tools/ui-harness/edgetx-mcp
 ```
 
 Interactive UI rule: start one persistent simulator session, wait for `startup_completed: true`, skip storage warnings with `edgetx_skip_storage_warning_if_present`, inspect `edgetx_ui_tree`, interact with selector clicks, then screenshot. Use `automation_id` first, exact `text` second, `text_contains` only with `role` or `index`. Use raw coordinates only when pointer timing/hit testing is the subject.
+
+For risky navigation, overlays, model switching, shutdown, or any surprising UI-tree result, capture a screenshot before interpreting the tree. The tree can include covered/background nodes, so a tree-only check is not enough to prove what the user sees.
 
 Bad UI verification:
 
@@ -225,6 +247,7 @@ Use a small explicit enum state machine, bounded queue, and a non-blocking hando
 ## UI/LVGL rules
 
 - Use the existing `Window`/LVGL ownership model. Do not leak raw `lv_obj_t*` or `RequiredWindow`-style handles outside low-level boundaries.
+- Keep LVGL availability/lifetime checks centralized in the ownership gateway. Widget code should express LVGL-backed actions through `Window::withLive`, `runWhenLoaded`, `initRequiredLvObj`, `RequiredWindow`, `RequiredLvObj`, or another single-purpose owner helper. Do not scatter local `isAvailable()` guards such as `if (!isAvailable()) return;` inside individual widgets; that leaves future callers free to forget the invariant. If a widget operation must fail closed when its LVGL object is unavailable, make the helper enforce that invariant once.
 - Run `tools/check-ui-escape-hatches.py` after UI lifetime changes.
 - Do not keep callbacks that can fire after object destruction. Clearly define ownership and cancellation.
 - For repeated UI predicates/lifetime guards, run:
@@ -317,4 +340,3 @@ Safety risk assessment
 ```
 
 Respond in the user's language for explanations. Keep code comments and identifiers in English unless the surrounding file uses another convention.
-

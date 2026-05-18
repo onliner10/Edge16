@@ -91,7 +91,7 @@ class SwitchChoiceMenuToolbar : public MenuToolbar
   void longPress()
   {
     lv_indev_t* indev = lv_indev_get_act();
-    if (indev->driver->type == LV_INDEV_TYPE_KEYPAD) {
+    if (lv_indev_get_type(indev) == LV_INDEV_TYPE_KEYPAD) {
       invertChoice();
     }
   }

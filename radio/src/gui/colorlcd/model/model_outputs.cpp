@@ -31,11 +31,21 @@
 #include "messaging.h"
 #include "output_edit.h"
 #include "toggleswitch.h"
+#include "ui_events.h"
 
-#define SET_DIRTY() storageDirty(EE_MODEL)
+#define SET_DIRTY()                \
+  do {                             \
+    storageDirty(EE_MODEL);        \
+    publishModelOutputsChanged();  \
+  } while (0)
 
 #define ETX_STATE_MINMAX_BOLD LV_STATE_USER_1
 #define ETX_STATE_NAME_FONT_SMALL LV_STATE_USER_1
+
+static void publishModelOutputsChanged()
+{
+  UiEventHub::publish(UiTopic::ModelOutputsChanged);
+}
 
 class OutputLineButton : public ListLineButton
 {
@@ -47,7 +57,7 @@ class OutputLineButton : public ListLineButton
   lv_obj_t* center = nullptr;
   StaticIcon* curve = nullptr;
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -129,9 +139,6 @@ class OutputLineButton : public ListLineButton
     new OutputChannelBar(this, rect_t{BAR_X, PAD_MEDIUM, CH_BAR_WIDTH, CH_BAR_HEIGHT},
                                index, false, false);
 
-    checkEvents();
-
-    refresh();
   }
 
  public:
@@ -142,8 +149,6 @@ class OutputLineButton : public ListLineButton
     padAll(PAD_ZERO);
 
     refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { refresh(); });
-
-    delayLoad();
   }
 
   void onRefresh() override
@@ -262,6 +267,7 @@ void ModelOutputsPage::build(Window* window)
         [=] {
           moveTrimsToOffsets();
           Messaging::send(Messaging::REFRESH);
+          publishModelOutputsChanged();
         });
     return 0;
   });
@@ -290,21 +296,25 @@ void ModelOutputsPage::build(Window* window)
         output->symetrical = 0;
         storageDirty(EE_MODEL);
         btn->refresh();
+        publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_STICKS_TO_OFS, [=]() {
         copySticksToOffset(ch);
         storageDirty(EE_MODEL);
         btn->refresh();
+        publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_TRIMS_TO_OFS, [=]() {
         copyTrimsToOffset(ch);
         storageDirty(EE_MODEL);
         btn->refresh();
+        publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_MIN_MAX_TO_OUTPUTS, [=]() {
         copyMinMaxToOutputs(ch);
         storageDirty(EE_MODEL);
         btn->refresh();
+        publishModelOutputsChanged();
       });
       return 0;
     });
@@ -313,5 +323,8 @@ void ModelOutputsPage::build(Window* window)
 
 void ModelOutputsPage::editOutput(uint8_t channel, OutputLineButton* btn)
 {
-  (new OutputEditWindow(channel))->setCloseHandler([=]() { btn->refresh(); });
+  (new OutputEditWindow(channel))->setCloseHandler([=]() {
+    btn->refresh();
+    publishModelOutputsChanged();
+  });
 }

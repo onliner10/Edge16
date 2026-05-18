@@ -265,10 +265,10 @@ class AnaCalibratedViewWindow : public AnaViewWindow
 
     TouchState rawTouchState = getInternalTouchState();
     if (rawTouchState.event != TE_NONE && rawTouchState.event != TE_SLIDE_END) {
-      touchPts[0] = {(lv_coord_t)(rawTouchState.x - 10), (lv_coord_t)(rawTouchState.y - 8)};
-      touchPts[1] = {(lv_coord_t)(rawTouchState.x + 10), (lv_coord_t)(rawTouchState.y + 8)};
-      touchPts[2] = {(lv_coord_t)(rawTouchState.x - 10), (lv_coord_t)(rawTouchState.y + 8)};
-      touchPts[3] = {(lv_coord_t)(rawTouchState.x + 10), (lv_coord_t)(rawTouchState.y - 8)};
+      touchPts[0] = {(lv_value_precise_t)(rawTouchState.x - 10), (lv_value_precise_t)(rawTouchState.y - 8)};
+      touchPts[1] = {(lv_value_precise_t)(rawTouchState.x + 10), (lv_value_precise_t)(rawTouchState.y + 8)};
+      touchPts[2] = {(lv_value_precise_t)(rawTouchState.x - 10), (lv_value_precise_t)(rawTouchState.y + 8)};
+      touchPts[3] = {(lv_value_precise_t)(rawTouchState.x + 10), (lv_value_precise_t)(rawTouchState.y - 8)};
 
       touchLines[0].with([&](lv_obj_t* line) {
         lv_line_set_points(line, &touchPts[0], 2);
@@ -300,7 +300,7 @@ class AnaCalibratedViewWindow : public AnaViewWindow
 
  protected:
 #if defined(HARDWARE_TOUCH)
-  lv_point_t touchPts[4];
+  lv_point_precise_t touchPts[4];
   RequiredLvObj touchLines[2];
 #endif
   int16_t column3(int i) override { return anaIn(i); }

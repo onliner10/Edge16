@@ -147,7 +147,7 @@ BitmapBuffer *BitmapBuffer::loadBitmap(const char *filename, BitmapFormats fmt)
   } else {  // assume 3 bytes, packed in groups of 4
     for (int row = 0; row < h; ++row) {
       for (int col = 0; col < w; ++col) {
-        *dest = RGB(p[0], p[1], p[2]);
+        *dest = RGB(p[0] & 0xF8, p[1] & 0xFC, p[2] & 0xF8);
         MOVE_TO_NEXT_RIGHT_PIXEL(dest);
         p += 4;
       }
@@ -160,16 +160,16 @@ BitmapBuffer *BitmapBuffer::loadBitmap(const char *filename, BitmapFormats fmt)
 
 //-----------------------------------------------------------------------------
 
-static lv_res_t decoder_info(struct _lv_img_decoder_t *decoder, const void *src,
-                             lv_img_header_t *header)
+static lv_result_t decoder_info(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *dsc,
+                             lv_image_header_t *header)
 {
   LV_UNUSED(decoder); /*Unused*/
 
-  lv_img_src_t src_type = lv_img_src_get_type(src); /*Get the source type*/
+  lv_image_src_t src_type = dsc->src_type;
 
   /*If it's a file...*/
-  if (src_type == LV_IMG_SRC_FILE) {
-    const char *fn = ((const char *)src) + 1;
+  if (src_type == LV_IMAGE_SRC_FILE) {
+    const char *fn = ((const char *)dsc->src) + 1;
     FIL imgFile;
 
     FRESULT result = f_open(&imgFile, fn, FA_OPEN_EXISTING | FA_READ);
@@ -178,72 +178,68 @@ static lv_res_t decoder_info(struct _lv_img_decoder_t *decoder, const void *src,
       int res = stbi_info_from_callbacks(&stbCallbacks, &imgFile, &x, &y, &nn);
       f_close(&imgFile);
 
-      if (res == LV_RES_INV) {
+      if (res == 0) {
         TRACE_ERROR("decoder_info(%s) failed: %s\n", fn, stbi_failure_reason());
-        return LV_RES_INV;
+        return LV_RESULT_INVALID;
       }
 
-      header->always_zero = 0;
       header->cf =
-          (nn == 4) ? LV_IMG_CF_TRUE_COLOR_ALPHA : LV_IMG_CF_TRUE_COLOR;
+          (nn == 4) ? LV_COLOR_FORMAT_RGB565A8 : LV_COLOR_FORMAT_RGB565;
       header->w = x;
       header->h = y;
 
-      return LV_RES_OK;
+      return LV_RESULT_OK;
     } else {
       TRACE_ERROR("decoder_info(%s) failed to open image file\n", fn);
     }
   }
   /*If it's a file in a C array...*/
-  else if (src_type == LV_IMG_SRC_VARIABLE) {
+  else if (src_type == LV_IMAGE_SRC_VARIABLE) {
     // Not implemented...
   }
 
-  return LV_RES_INV;
+  return LV_RESULT_INVALID;
 }
 
-static uint8_t *convert_bitmap(uint8_t *img, int w, int h, int n)
+static uint8_t *fill_draw_buf(lv_draw_buf_t *decoded, uint8_t *img, int n)
 {
-  uint8_t *bmp = (uint8_t *)lv_mem_alloc(((n == 4) ? 3 : 2) * w * h);
-  if (bmp == nullptr) {
-    TRACE_ERROR("convert_bitmap: lv_mem_alloc failed\n");
-    return nullptr;
-  }
-
+  int32_t w = decoded->header.w;
+  int32_t h = decoded->header.h;
+  uint8_t *dst = decoded->data;
   const uint8_t *p = img;
-  if (n == 4) {
-    uint8_t *dest = bmp;
-    for (int row = 0; row < h; ++row) {
-      for (int col = 0; col < w; ++col) {
-        uint16_t c = RGB(p[0], p[1], p[2]);
-        *dest++ = c & 0xFF;
-        *dest++ = c >> 8;
-        *dest++ = p[3];
-        p += 4;
-      }
+
+  // Fill RGB565 pixels
+  for (int32_t row = 0; row < h; ++row) {
+    for (int32_t col = 0; col < w; ++col) {
+      uint16_t c = RGB(p[0], p[1], p[2]);
+      *dst++ = c & 0xFF;
+      *dst++ = c >> 8;
+      p += 4;
     }
-  } else {
-    uint8_t *dest = bmp;
-    for (int row = 0; row < h; ++row) {
-      for (int col = 0; col < w; ++col) {
-        uint16_t c = RGB(p[0], p[1], p[2]);
-        *dest++ = c & 0xFF;
-        *dest++ = c >> 8;
-        p += 4;
+  }
+
+  // For RGB565A8, fill alpha plane after RGB data
+  if (n == 4) {
+    uint8_t *aplane = decoded->data + w * h * 2;
+    const uint8_t *ap = img;
+    for (int32_t row = 0; row < h; ++row) {
+      for (int32_t col = 0; col < w; ++col) {
+        *aplane++ = ap[3];  // alpha byte
+        ap += 4;
       }
     }
   }
 
-  return bmp;
+  return decoded->data;
 }
 
-static lv_res_t decoder_open(lv_img_decoder_t *decoder,
-                             lv_img_decoder_dsc_t *dsc)
+static lv_result_t decoder_open(lv_image_decoder_t *decoder,
+                             lv_image_decoder_dsc_t *dsc)
 {
   LV_UNUSED(decoder); /*Unused*/
 
   /*If it's a file...*/
-  if (dsc->src_type == LV_IMG_SRC_FILE) {
+  if (dsc->src_type == LV_IMAGE_SRC_FILE) {
     const char *fn = ((const char *)dsc->src) + 1;
     FIL imgFile;
 
@@ -256,31 +252,40 @@ static lv_res_t decoder_open(lv_img_decoder_t *decoder,
 
       if (!img) {
         TRACE_ERROR("decoder_open(%s) failed: %s\n", fn, stbi_failure_reason());
-        return LV_RES_INV;
+        return LV_RESULT_INVALID;
       }
 
-      dsc->img_data = convert_bitmap(img, w, h, n);
+      lv_color_format_t cf = (n == 4) ? LV_COLOR_FORMAT_RGB565A8 : LV_COLOR_FORMAT_RGB565;
+      lv_draw_buf_t *decoded = lv_draw_buf_create(w, h, cf, LV_STRIDE_AUTO);
+      if (!decoded) {
+        stbi_image_free(img);
+        TRACE_ERROR("decoder_open(%s) failed to allocate draw buf\n", fn);
+        return LV_RESULT_INVALID;
+      }
+
+      fill_draw_buf(decoded, img, n);
       stbi_image_free(img);
 
-      return dsc->img_data ? LV_RES_OK : LV_RES_INV;
+      dsc->decoded = decoded;
+      return LV_RESULT_OK;
     } else {
       TRACE_ERROR("decoder_open(%s) failed to open image file\n", fn);
     }
   }
   /*If it's a file in a C array...*/
-  else if (dsc->src_type == LV_IMG_SRC_VARIABLE) {
+  else if (dsc->src_type == LV_IMAGE_SRC_VARIABLE) {
     // Not implemented...
   }
 
-  return LV_RES_INV;
+  return LV_RESULT_INVALID;
 }
 
-static void decoder_close(lv_img_decoder_t *decoder, lv_img_decoder_dsc_t *dsc)
+static void decoder_close(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *dsc)
 {
   LV_UNUSED(decoder); /*Unused*/
-  if (dsc->img_data) {
-    lv_mem_free((uint8_t *)dsc->img_data);
-    dsc->img_data = NULL;
+  if (dsc->decoded) {
+    lv_draw_buf_destroy((lv_draw_buf_t *)dsc->decoded);
+    dsc->decoded = NULL;
   }
 }
 
@@ -289,8 +294,8 @@ static void decoder_close(lv_img_decoder_t *decoder, lv_img_decoder_dsc_t *dsc)
  */
 void lv_stb_init(void)
 {
-  lv_img_decoder_t *dec = lv_img_decoder_create();
-  lv_img_decoder_set_info_cb(dec, decoder_info);
-  lv_img_decoder_set_open_cb(dec, decoder_open);
-  lv_img_decoder_set_close_cb(dec, decoder_close);
+  lv_image_decoder_t *dec = lv_image_decoder_create();
+  lv_image_decoder_set_info_cb(dec, decoder_info);
+  lv_image_decoder_set_open_cb(dec, decoder_open);
+  lv_image_decoder_set_close_cb(dec, decoder_close);
 }

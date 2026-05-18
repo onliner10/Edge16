@@ -18,6 +18,7 @@ include_directories(
   ${RADIO_SRC_DIR}/gui/colorlcd/setup_menus
   ${RADIO_SRC_DIR}/gui/colorlcd/themes
   ${RADIO_SRC_DIR}/gui/colorlcd/controls
+  ${RADIO_SRC_DIR}/thirdparty/sigslot/include
 )
 
 file(GLOB THEMES_SRC RELATIVE ${RADIO_SRC_DIR}/gui/colorlcd
@@ -54,6 +55,7 @@ set(GUI_SRC
   colors.cpp
   fonts.cpp
   lcd.cpp
+  edgetx_lvgl_adapter.cpp
   lv_tick_source.cpp
   LvglWrapper.cpp
   startup_shutdown.cpp
@@ -196,11 +198,28 @@ endif()
 # include lvgl
 include(${RADIO_SRC_DIR}/gui/colorlcd/CMakeListsLVGL.txt)
 
+set(LVGL_BOOTLOADER_SOURCES
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/lv_init.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/font/lv_font.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/font/fmt_txt/lv_font_fmt_txt.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/draw/lv_draw_buf.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_area.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_bidi.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_color.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_text.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_text_ap.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/misc/lv_utils.c
+  ${RADIO_SRC_DIR}/thirdparty/lvgl/src/stdlib/builtin/lv_string_builtin.c
+)
 list(TRANSFORM LVGL_SOURCES_MINIMAL PREPEND ${RADIO_SRC_DIR}/)
 list(TRANSFORM LVGL_FONT_SOURCES_MINIMAL PREPEND ${RADIO_SRC_DIR}/)
 
 if(EDGE16_SAFETY_CHECKS)
-  set(EDGE16_LVGL_SOURCE_OPTIONS -Wno-null-dereference -Wno-cast-align)
+  set(EDGE16_LVGL_SOURCE_OPTIONS
+    -Wno-null-dereference
+    -Wno-cast-align
+    -Wno-duplicated-cond
+    -Wno-type-limits)
   set(EDGE16_STACK_SOURCE_OPTIONS)
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     list(APPEND EDGE16_STACK_SOURCE_OPTIONS -Wno-stack-usage -Wno-frame-larger-than)
@@ -216,7 +235,7 @@ if(EDGE16_SAFETY_CHECKS)
 endif()
 
 set(BOOTLOADER_SRC ${BOOTLOADER_SRC}
-  ${LVGL_SOURCES_MINIMAL}
+  ${LVGL_BOOTLOADER_SOURCES}
   ${LVGL_FONT_SOURCES_MINIMAL}
   ${RADIO_SRC_DIR}/gui/colorlcd/boot_lcd.cpp
   ${RADIO_SRC_DIR}/gui/colorlcd/fonts.cpp

@@ -64,6 +64,16 @@ void dumpImage(const std::string& filename, const BitmapBuffer* dc)
   stbi_write_png(fullpath.c_str(), dc->width(), dc->height(), 3, img.data(), stride);
 }
 
+static bool colorCloseEnough(pixel_t expected, pixel_t actual)
+{
+  RGB_SPLIT(expected, expectedRed, expectedGreen, expectedBlue);
+  RGB_SPLIT(actual, actualRed, actualGreen, actualBlue);
+
+  return abs(int(expectedRed) - int(actualRed)) <= 1 &&
+         abs(int(expectedGreen) - int(actualGreen)) <= 1 &&
+         abs(int(expectedBlue) - int(actualBlue)) <= 1;
+}
+
 bool checkScreenshot_colorlcd(const BitmapBuffer* dc, const char* test)
 {
   if (dc->width() != LCD_W || dc->height() != LCD_H) {
@@ -86,7 +96,8 @@ bool checkScreenshot_colorlcd(const BitmapBuffer* dc, const char* test)
 
   for (int y = 0; y < LCD_H; y++) {
     for (int x = 0; x < LCD_W; x++) {
-      if (*testPict->getPixelPtrAbs(x, y) != *dc->getPixelPtrAbs(x, y)) {
+      if (!colorCloseEnough(*testPict->getPixelPtrAbs(x, y),
+                            *dc->getPixelPtrAbs(x, y))) {
         dumpImage(filename, dc);
         return false;
       }

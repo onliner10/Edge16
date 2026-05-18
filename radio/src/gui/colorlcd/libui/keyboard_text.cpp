@@ -36,7 +36,7 @@ void TextKeyboard::changeMode()
 {
   // Change keyboard mode
   lv_keyboard_mode_t mode = lv_keyboard_get_mode(keyboard);
-  mode = (mode + 1) & 3;
+  mode = (lv_keyboard_mode_t)((mode + 1) & 3);
   lv_keyboard_set_mode(keyboard, mode);
 }
 
@@ -44,7 +44,7 @@ void TextKeyboard::backspace()
 {
   lv_keyboard_t* kb = (lv_keyboard_t*)keyboard;
   // Backspace
-  lv_textarea_del_char(kb->ta);
+  lv_textarea_delete_char(kb->ta);
 }
 
 void TextKeyboard::toggleCase()
@@ -54,7 +54,7 @@ void TextKeyboard::toggleCase()
   char c = lv_textarea_get_text(kb->ta)[lv_textarea_get_cursor_pos(kb->ta)];
   if (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'))) {
     c ^= 0x20;
-    lv_textarea_del_char_forward(kb->ta);
+    lv_textarea_delete_char_forward(kb->ta);
     lv_textarea_add_char(kb->ta, c);
     lv_textarea_cursor_left(kb->ta);
   }
@@ -64,7 +64,7 @@ void TextKeyboard::deleteChar()
 {
   lv_keyboard_t* kb = (lv_keyboard_t*)keyboard;
   // Delete
-  lv_textarea_del_char_forward(kb->ta);
+  lv_textarea_delete_char_forward(kb->ta);
 }
 
 void TextKeyboard::cursorLeft()

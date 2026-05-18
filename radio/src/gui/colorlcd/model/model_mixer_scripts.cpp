@@ -187,11 +187,9 @@ class ScriptLineButton : public ListLineButton
     setStylePadColumn(PAD_SMALL, 0);
 
     parent->updateLayout();
-
-    delayLoad();
   }
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -252,7 +250,6 @@ class ScriptLineButton : public ListLineButton
           return true;
         }))
       return;
-    refresh();
   }
 
   bool isActive() const override { return false; }

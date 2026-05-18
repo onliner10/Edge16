@@ -68,8 +68,10 @@ class BatteryMonitorWidget : public NativeWidget
           auto obj = lv_obj_create(parent);
           if (obj) {
             lv_obj_remove_style_all(obj);
-            lv_obj_clear_flag(obj,
-                              LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(
+                obj,
+                static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                           LV_OBJ_FLAG_SCROLLABLE));
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_style_bg_color(obj, pillColor(), LV_PART_MAIN);
             lv_obj_set_style_radius(obj, PILL_RADIUS, LV_PART_MAIN);
@@ -114,8 +116,10 @@ class BatteryMonitorWidget : public NativeWidget
           auto obj = lv_obj_create(parent);
           if (obj) {
             lv_obj_remove_style_all(obj);
-            lv_obj_clear_flag(obj,
-                              LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(
+                obj,
+                static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                           LV_OBJ_FLAG_SCROLLABLE));
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_style_bg_color(obj, trackColor(), LV_PART_MAIN);
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
@@ -131,8 +135,10 @@ class BatteryMonitorWidget : public NativeWidget
           auto obj = lv_obj_create(parent);
           if (obj) {
             lv_obj_remove_style_all(obj);
-            lv_obj_clear_flag(obj,
-                              LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(
+                obj,
+                static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                           LV_OBJ_FLAG_SCROLLABLE));
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_style_radius(obj, PILL_RADIUS, LV_PART_MAIN);
           }
@@ -170,8 +176,10 @@ class BatteryMonitorWidget : public NativeWidget
           auto obj = lv_obj_create(parent);
           if (obj) {
             lv_obj_remove_style_all(obj);
-            lv_obj_clear_flag(obj,
-                              LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(
+                obj,
+                static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                           LV_OBJ_FLAG_SCROLLABLE));
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_style_bg_color(obj, pillColor(), LV_PART_MAIN);
             lv_obj_set_style_radius(obj, PILL_RADIUS, LV_PART_MAIN);

@@ -48,7 +48,7 @@ void SliderBase::slider_changed_cb(lv_event_t* e)
   if (lv_event_get_code(e) == LV_EVENT_VALUE_CHANGED) {
     SliderBase* sl = (SliderBase*)lv_event_get_user_data(e);
     if (sl != nullptr) {
-      lv_obj_t* target = lv_event_get_target(e);
+      lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
       sl->setValue(lv_slider_get_value(target));
     }
   }
@@ -137,16 +137,35 @@ void SliderBase::setColor(LcdFlags color)
 //-----------------------------------------------------------------------------
 
 // Slider
-const lv_style_const_prop_t slider_knob_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_LARGE + 1),  LV_STYLE_CONST_PAD_BOTTOM(PAD_LARGE + 1),
-    LV_STYLE_CONST_PAD_LEFT(PAD_SMALL), LV_STYLE_CONST_PAD_RIGHT(PAD_SMALL),
-    LV_STYLE_CONST_RADIUS(PAD_SMALL),   LV_STYLE_CONST_BORDER_WIDTH(PAD_TINY),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(slider_knob, slider_knob_props);
+static lv_style_t slider_knob;
+static lv_style_t vslider_knob;
+static bool slider_styles_inited = false;
+
+static void init_slider_styles()
+{
+  if (slider_styles_inited) return;
+  slider_styles_inited = true;
+
+  lv_style_init(&slider_knob);
+  lv_style_set_pad_top(&slider_knob, PAD_LARGE + 1);
+  lv_style_set_pad_bottom(&slider_knob, PAD_LARGE + 1);
+  lv_style_set_pad_left(&slider_knob, PAD_SMALL);
+  lv_style_set_pad_right(&slider_knob, PAD_SMALL);
+  lv_style_set_radius(&slider_knob, PAD_SMALL);
+  lv_style_set_border_width(&slider_knob, PAD_TINY);
+
+  lv_style_init(&vslider_knob);
+  lv_style_set_pad_top(&vslider_knob, PAD_SMALL);
+  lv_style_set_pad_bottom(&vslider_knob, PAD_SMALL);
+  lv_style_set_pad_left(&vslider_knob, PAD_LARGE + 1);
+  lv_style_set_pad_right(&vslider_knob, PAD_LARGE + 1);
+  lv_style_set_radius(&vslider_knob, PAD_SMALL);
+  lv_style_set_border_width(&vslider_knob, PAD_TINY);
+}
 
 static void slider_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
+  init_slider_styles();
   etx_solid_bg(obj, COLOR_THEME_SECONDARY1_INDEX);
   etx_obj_add_style(obj, styles->rounded, LV_PART_MAIN);
   etx_bg_color(obj, COLOR_THEME_PRIMARY2_INDEX,
@@ -182,8 +201,8 @@ static const lv_obj_class_t slider_class = {
     .base_class = &lv_slider_class,
     .constructor_cb = slider_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = PAD_LARGE,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -265,16 +284,10 @@ void Slider::delayedInit()
 //-----------------------------------------------------------------------------
 
 // Vertical Slider
-const lv_style_const_prop_t vslider_knob_props[] = {
-    LV_STYLE_CONST_PAD_TOP(PAD_SMALL), LV_STYLE_CONST_PAD_BOTTOM(PAD_SMALL),
-    LV_STYLE_CONST_PAD_LEFT(PAD_LARGE + 1),  LV_STYLE_CONST_PAD_RIGHT(PAD_LARGE + 1),
-    LV_STYLE_CONST_RADIUS(PAD_SMALL),   LV_STYLE_CONST_BORDER_WIDTH(PAD_TINY),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(vslider_knob, vslider_knob_props);
 
 static void vslider_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
+  init_slider_styles();
   etx_solid_bg(obj, COLOR_THEME_SECONDARY1_INDEX);
   etx_obj_add_style(obj, styles->rounded, LV_PART_MAIN);
   etx_bg_color(obj, COLOR_THEME_PRIMARY2_INDEX,
@@ -310,8 +323,8 @@ static const lv_obj_class_t vslider_class = {
     .base_class = &lv_slider_class,
     .constructor_cb = vslider_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = PAD_LARGE,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,

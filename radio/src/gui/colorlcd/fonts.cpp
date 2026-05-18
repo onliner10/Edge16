@@ -378,10 +378,6 @@ void decompressFont(int idx, etxLvglFont* fonts)
   lv_font_fmt_txt_dsc_t* lvglFontDsc =
       takeFontObject<lv_font_fmt_txt_dsc_t>(next);
 
-  // 'Create' lv_font_fmt_txt_glyph_cache_t structure
-  lv_font_fmt_txt_glyph_cache_t* lvglCache =
-      takeFontObject<lv_font_fmt_txt_glyph_cache_t>(next);
-
   // 'Create' lv_font_fmt_txt_kern_classes_t structure (optional)
   lv_font_fmt_txt_kern_classes_t* lvglKernClasses = nullptr;
   if (etxFont->kern_classes) {
@@ -420,7 +416,6 @@ void decompressFont(int idx, etxLvglFont* fonts)
   lvglFontDsc->kern_dsc = lvglKernClasses;
   lvglFontDsc->kern_classes = etxFont->kern_classes;
   lvglFontDsc->bitmap_format = etxFont->bitmap_format;
-  lvglFontDsc->cache = lvglCache;
   // Fill in other properties
   lvglFontDsc->kern_scale = etxFont->kern_scale;
   lvglFontDsc->cmap_num = etxFont->cmap_num;
@@ -452,7 +447,7 @@ void decompressFont(int idx, etxLvglFont* fonts)
     lvglCmaps[i].range_length = etxFont->cmaps[i].range_length;
     lvglCmaps[i].glyph_id_start = etxFont->cmaps[i].glyph_id_start;
     lvglCmaps[i].list_length = etxFont->cmaps[i].list_length;
-    lvglCmaps[i].type = etxFont->cmaps[i].type;
+    lvglCmaps[i].type = (lv_font_fmt_txt_cmap_type_t)etxFont->cmaps[i].type;
   }
 
 #if defined(ENABLE_FALLBACK)
@@ -514,7 +509,9 @@ uint8_t getFontHeightCondensed(LcdFlags flags)
 int getTextWidth(const char* s, int len, LcdFlags flags)
 {
   auto font = getFont(flags);
-  lv_coord_t letter_space = 0;
+  lv_text_attributes_t attrs;
+  lv_text_attributes_init(&attrs);
+  attrs.text_flags = LV_TEXT_FLAG_EXPAND;
   if (!len) len = strlen(s);
-  return lv_txt_get_width(s, len, font, letter_space, LV_TEXT_FLAG_EXPAND);
+  return lv_text_get_width(s, len, font, &attrs);
 }

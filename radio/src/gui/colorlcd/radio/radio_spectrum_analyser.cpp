@@ -324,11 +324,11 @@ class SpectrumWindow : public Window
   static LAYOUT_VAL_SCALED(LINE_SPACE, 40) static LAYOUT_VAL_SCALED(WARN_YO, 20)
 
       lv_style_t style;
-  lv_point_t maxPts[2 * LCD_W / 4];
-  lv_point_t barPts[2 * LCD_W / 4];
-  lv_point_t peakPts[2 * LCD_W / 4];
-  lv_point_t hAxisPts[2 * SPECTRUM_HEIGHT / LINE_SPACE];
-  lv_point_t vAxisPts[2 * 8];
+  lv_point_precise_t maxPts[2 * LCD_W / 4];
+  lv_point_precise_t barPts[2 * LCD_W / 4];
+  lv_point_precise_t peakPts[2 * LCD_W / 4];
+  lv_point_precise_t hAxisPts[2 * SPECTRUM_HEIGHT / LINE_SPACE];
+  lv_point_precise_t vAxisPts[2 * 8];
   RequiredLvObj maxLines[LCD_W / 4];
   RequiredLvObj barLines[LCD_W / 4];
   RequiredLvObj peakLines[LCD_W / 4];

@@ -222,7 +222,7 @@ class NumberArea : public FormField
   static void numberedit_cb(lv_event_t* e)
   {
     auto numEdit = static_cast<NumberArea*>(
-        Window::fromAvailableLvObj(lv_event_get_target(e)));
+        Window::fromAvailableLvObj(static_cast<lv_obj_t*>(lv_event_get_target(e))));
     if (!numEdit) return;
 
     uint32_t key = lv_event_get_key(e);
@@ -300,7 +300,7 @@ void NumberEdit::openEdit()
   edit->show();
   if (edit->focus()) {
     edit->withLive([](Window::LiveWindow& liveEdit) {
-      lv_obj_add_state(liveEdit.lvobj(), LV_STATE_FOCUSED | LV_STATE_EDITED);
+      lv_obj_add_state(liveEdit.lvobj(), static_cast<lv_state_t>(LV_STATE_FOCUSED | LV_STATE_EDITED));
     });
   }
   lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_get_act());

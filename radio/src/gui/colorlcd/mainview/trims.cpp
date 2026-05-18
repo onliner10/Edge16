@@ -99,7 +99,7 @@ class TrimIcon : public SliderIcon
  protected:
   RequiredLvObj bar1;
   RequiredLvObj bar2;
-  lv_point_t barPoints[4];
+  lv_point_precise_t barPoints[4];
 };
 
 MainViewTrim::MainViewTrim(Window* parent, const rect_t& rect, uint8_t idx,

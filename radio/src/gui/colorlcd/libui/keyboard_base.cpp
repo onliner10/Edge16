@@ -24,6 +24,10 @@
 #include "keys.h"
 #include "mainwindow.h"
 
+#include "lvgl/src/core/lv_obj_class_private.h"
+#include "lvgl/src/core/lv_obj_private.h"
+#include "lvgl/src/widgets/keyboard/lv_keyboard_private.h"
+
 static void keyboard_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
   etx_solid_bg(obj, COLOR_THEME_SECONDARY3_INDEX);
@@ -37,8 +41,8 @@ static const lv_obj_class_t keyboard_class = {
     .base_class = &lv_keyboard_class,
     .constructor_cb = keyboard_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = 0,
     .height_def = 0,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -290,7 +294,8 @@ bool Keyboard::setField(const FieldBinding& binding)
           lv_obj_get_coords(binding.obj, &coords);
 
           // place keyboard bellow the field with some margin
-          setTop(max(coords.y2 + 21, LCD_H - height()));
+          setTop(max(static_cast<coord_t>(coords.y2 + 21),
+                     static_cast<coord_t>(LCD_H - height())));
 
           // save scroll position
           fieldContainer->withLive([&](Window::LiveWindow& liveContainer) {

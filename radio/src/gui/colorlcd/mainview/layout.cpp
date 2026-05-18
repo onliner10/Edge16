@@ -31,6 +31,7 @@ WidgetsContainer* customScreens[MAX_CUSTOM_SCREENS] = {};
 
 const LayoutOption defaultLayoutOptions[] = {LAYOUT_COMMON_OPTIONS,
                                              LAYOUT_OPTIONS_END};
+static bool screenReplacementInProgress = false;
 
 //-----------------------------------------------------------------------------
 
@@ -180,6 +181,82 @@ void LayoutFactory::loadCustomScreens()
   // }
 
   viewMain->updateTopbarVisibility();
+}
+
+void LayoutFactory::replaceCustomScreens()
+{
+  UiMutationToken token;
+  replaceCustomScreens(token);
+}
+
+void LayoutFactory::replaceCustomScreens(UiMutationToken& token)
+{
+  deleteCustomScreens();
+  if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
+  if (g_model.hasScreenData(0))
+    loadCustomScreens();
+  else
+    loadDefaultLayout();
+}
+
+void LayoutFactory::replaceCustomScreens(UiMutationToken& token,
+                                         ScreenDataLoader loadScreenData)
+{
+  deleteCustomScreens();
+  if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
+  screenReplacementInProgress = true;
+  if (loadScreenData) loadScreenData();
+  screenReplacementInProgress = false;
+  if (g_model.hasScreenData(0))
+    loadCustomScreens();
+  else
+    loadDefaultLayout();
+}
+
+void LayoutFactory::replaceTemplateScreens(UiMutationToken& token,
+                                           ScreenDataLoader loadScreenData)
+{
+  deleteCustomScreens();
+  deleteTopBarWidgets();
+  if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
+  screenReplacementInProgress = true;
+  if (loadScreenData) loadScreenData();
+  screenReplacementInProgress = false;
+  if (g_model.hasScreenData(0))
+    loadCustomScreens();
+  else
+    loadDefaultLayout();
+}
+
+void LayoutFactory::replaceDefaultLayout()
+{
+  UiMutationToken token;
+  deleteCustomScreens();
+  deleteTopBarWidgets();
+  if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
+  loadDefaultLayout();
+}
+
+WidgetsContainer* LayoutFactory::replaceCustomScreen(
+    UiMutationToken& token, unsigned customScreenIndex,
+    const LayoutFactory& factory)
+{
+  if (customScreenIndex >= MAX_CUSTOM_SCREENS) return nullptr;
+
+  auto& screen = customScreens[customScreenIndex];
+  if (screen != nullptr) {
+    screen->deleteLater();
+    screen = nullptr;
+    if (!MainWindow::instance()->settleUiLifecycleForRebuild(token))
+      return nullptr;
+  }
+
+  return factory.createCustomScreen(customScreenIndex);
+}
+
+bool LayoutFactory::screenReplacementActive()
+{
+  return screenReplacementInProgress;
 }
 
 //

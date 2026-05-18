@@ -40,6 +40,7 @@
             packages = [
               pkgs.arduino-cli
               pkgs.cmake
+              pkgs.gdb
               armPkgs.gcc-arm-embedded
               pkgs.git
               pkgs.ninja

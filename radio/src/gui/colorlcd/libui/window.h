@@ -36,6 +36,19 @@ class FormLine;
 class MainWindow;
 class PageGroup;
 
+class UiMutationToken final
+{
+ private:
+  friend class Window;
+  friend class MainWindow;
+  friend class LayoutFactory;
+  UiMutationToken() = default;
+
+ public:
+  UiMutationToken(const UiMutationToken&) = delete;
+  UiMutationToken& operator=(const UiMutationToken&) = delete;
+};
+
 typedef uint32_t WindowFlags;
 
 typedef lv_obj_t* (*LvglCreate)(lv_obj_t*);
@@ -49,6 +62,7 @@ constexpr WindowFlags NO_FOCUS = 1u << 1u;
 constexpr WindowFlags NO_SCROLL = 1u << 2u;
 constexpr WindowFlags NO_CLICK = 1u << 3u;
 constexpr WindowFlags NO_FORCED_SCROLL = 1u << 4u;
+constexpr WindowFlags CHECK_EVENTS_WHEN_OFFSCREEN = 1u << 5u;
 
 //-----------------------------------------------------------------------------
 
@@ -243,6 +257,9 @@ class Window
   typedef std::function<void()> CloseHandler;
   void setCloseHandler(CloseHandler h) { closeHandler = std::move(h); }
 
+  typedef std::function<void(UiMutationToken&)> DeferredMutation;
+  static void deferUiMutation(DeferredMutation mutation);
+
   typedef std::function<void(bool)> FocusHandler;
   void setFocusHandler(FocusHandler h) { focusHandler = std::move(h); }
 
@@ -251,6 +268,8 @@ class Window
 
   virtual void clear();
   void deleteLater();
+  void trackUiConnection(UiScopedConnection&& connection);
+  void disconnectUiConnections();
 
   bool hasFocus() const;
   bool focus();
@@ -374,6 +393,7 @@ class Window
   void addLvEventCb(lv_event_cb_t eventCb, lv_event_code_t filter,
                     void* userData);
   virtual void checkEvents();
+  void realizeVisibleContent();
 
 #if defined(SIMU)
   void setAutomationId(std::string value);
@@ -425,6 +445,7 @@ class Window
 #endif
 
 #if defined(SIMU)
+  static void runDeferredCloseHandlersForTest() { runDeferredCloseHandlers(); }
   lv_obj_t* getLvObjForTest() const { return lvobj; }
 #endif
 
@@ -456,6 +477,10 @@ class Window
 
  private:
   static std::list<Window*> trash;
+  static std::list<Window*> pendingTrash;
+  static std::list<DeferredMutation> deferredMutationsReady;
+  static std::list<DeferredMutation> deferredMutationsPending;
+  static void runDeferredCloseHandlers();
 
  protected:
   rect_t rect;
@@ -479,9 +504,18 @@ class Window
   bool _deleted = false;
   Availability availability = Availability::Available;
   bool longPressHandled = false;
+  UiConnectionBag uiConnections;
 
  private:
   bool loaded = true;
+  bool loadWhenVisible = false;
+  enum class LiveVisibilityState : uint8_t
+  {
+    Unknown,
+    Hidden,
+    Visible,
+  };
+  LiveVisibilityState liveVisibilityState = LiveVisibilityState::Unknown;
 
  protected:
   bool layerCreated = false;
@@ -502,11 +536,16 @@ class Window
   virtual bool addChild(Window* window);
   virtual void onDelete() {}
   virtual void onDeleted() {}
+  virtual void onFailClosed() {}
   virtual void onLiveShow(LiveWindow& live, bool visible);
   virtual void onLiveEvent(LiveWindow& live, event_t event);
   virtual void onLiveClicked(LiveWindow& live);
   virtual bool onLiveLongPress(LiveWindow& live);
+  virtual void onLiveVisibilityChanged(LiveWindow& live, bool visible);
   virtual void onLiveCheckEvents(LiveWindow& live);
+  bool isLiveOnScreen(const LiveWindow& live) const;
+  bool isLiveNearScreen(const LiveWindow& live, coord_t margin) const;
+  void updateLiveVisibility(LiveWindow& live, bool visible);
 
   bool requireLvObj(lv_obj_t* obj);
   bool requireLvGroup(lv_group_t* group)
@@ -649,6 +688,14 @@ class Window
     return invokeLiveHandlerWith(live, std::forward<Fn>(handler));
   }
 
+  template <typename T, typename Fn>
+  static void withAvailableObserver(lv_observer_t* observer, Fn&& handler)
+  {
+    auto self = static_cast<T*>(lv_observer_get_user_data(observer));
+    if (!self || !self->acceptsEvents()) return;
+    handler(*self);
+  }
+
   template <typename Fn>
   static bool invokeLoadedHandlerWith(LoadedWindow& loaded, Fn&& handler)
   {
@@ -678,8 +725,11 @@ class Window
     return false;
   }
 
-  static void delayLoader(lv_event_t* e);
+  static void asyncDelayLoader(void* userData);
+  bool loadVisibleIfNeeded(const LiveWindow& live, bool displayCandidate);
+  bool deferUiSideWorkIfNeeded();
   void delayLoad();
+  void delayLoadWhenVisible();
   virtual void delayedInit() {}
 
 #if defined(SIMU)

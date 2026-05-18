@@ -93,8 +93,6 @@ class USBChannelEditStatusBar : public Window
   int8_t _channel;
 };
 
-static void btnsel_event_cb(lv_event_t* e);
-
 class USBChannelButtonSel : public ButtonMatrix
 {
  public:
@@ -125,7 +123,6 @@ class USBChannelButtonSel : public ButtonMatrix
 
     addStyle(styles->circle, LV_PART_ITEMS);
 
-    addLvEventCb(btnsel_event_cb, LV_EVENT_DRAW_PART_BEGIN, this);
 
     memset(m_btns, 0, USBJ_BUTTON_SIZE);
     for (uint8_t ch = 0; ch < USBJ_MAX_JOYSTICK_CHANNELS; ch++) {
@@ -170,12 +167,6 @@ class USBChannelButtonSel : public ButtonMatrix
     for (i = cch->btn_num; i <= last; i++) m_btns[i] |= 2;
   }
 
-  void setColor(lv_obj_draw_part_dsc_t* dsc)
-  {
-    uint8_t state = getBtnState((uint8_t)dsc->id);
-    dsc->rect_dsc->bg_color = bg_color[state];
-    dsc->label_dsc->color = fg_color[state];
-  }
 
  protected:
   uint8_t m_channel = 0;
@@ -185,20 +176,7 @@ class USBChannelButtonSel : public ButtonMatrix
   lv_color_t fg_color[4];
 };
 
-static void btnsel_event_cb(lv_event_t* e)
-{
-  lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_DRAW_PART_BEGIN) {
-    lv_obj_draw_part_dsc_t* dsc = lv_event_get_draw_part_dsc(e);
-
-    if (dsc->class_p == &lv_btnmatrix_class &&
-        dsc->type == LV_BTNMATRIX_DRAW_PART_BTN) {
-      auto btsel = (USBChannelButtonSel*)lv_event_get_user_data(e);
-      if (btsel) btsel->setColor(dsc);
-    }
-  }
-}
 
 #define USBCH_LINES 3
 #define SET_VALUE_WUPDATE(value) \
@@ -379,11 +357,9 @@ class USBChannelLineButton : public ListLineButton
     setGridDscArray(b_col_dsc, b_row_dsc);
     setStylePadRow(0, 0);
     setStylePadColumn(PAD_SMALL, 0);
-
-    delayLoad();
   }
 
-  void delayedInit() override
+  void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -436,7 +412,6 @@ class USBChannelLineButton : public ListLineButton
         }))
       return;
 
-    refresh();
   }
 
   void onRefresh() override

@@ -27,14 +27,15 @@ static void choice_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
 {
   etx_std_style(obj, LV_PART_MAIN, PAD_TINY);
   lv_obj_set_style_pad_hor(obj, PAD_MEDIUM, LV_PART_MAIN);
+  lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
 }
 
 static const lv_obj_class_t choice_class = {
     .base_class = &lv_obj_class,
     .constructor_cb = choice_constructor,
     .destructor_cb = nullptr,
-    .user_data = nullptr,
     .event_cb = nullptr,
+    .user_data = nullptr,
     .width_def = LV_SIZE_CONTENT,
     .height_def = EdgeTxStyles::UI_ELEMENT_HEIGHT,
     .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
@@ -78,6 +79,7 @@ ChoiceBase::ChoiceBase(Window* parent, const rect_t& rect,
     _getValue(std::move(_getValue)),
     _setValue(std::move(_setValue))
 {
+  setAutomationRole("button");
   padLeft(PAD_TINY);
   padRight(PAD_SMALL);
 
@@ -99,6 +101,18 @@ ChoiceBase::ChoiceBase(Window* parent, const rect_t& rect,
     etx_font(obj, FONT_XS_INDEX, LV_STATE_USER_1);
   });
 }
+
+#if defined(SIMU)
+std::string ChoiceBase::automationText() const
+{
+  std::string text;
+  label.with([&](lv_obj_t* obj) {
+    const char* value = lv_label_get_text(obj);
+    if (value) text = value;
+  });
+  return text;
+}
+#endif
 
 void ChoiceBase::onLiveCheckEvents(Window::LiveWindow& live)
 {

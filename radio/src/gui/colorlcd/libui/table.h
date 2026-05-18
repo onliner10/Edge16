@@ -39,8 +39,14 @@ class TableField : public Window
   virtual bool onPressLong(uint16_t row, uint16_t col) { return false; }
 
   virtual void onSelected(uint16_t row, uint16_t col) {}
-  virtual void onDrawBegin(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc) {}
-  virtual void onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc) {}
+  virtual void onDrawBegin(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                         lv_layer_t* layer)
+  {
+  }
+  virtual void onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                         lv_layer_t* layer)
+  {
+  }
 
   void adjustScroll();
 

@@ -76,7 +76,7 @@ void ListBox::setSelected(std::set<uint32_t> selected)
     auto obj = live.lvobj();
     for (int i = 0; i < getRowCount(); i++) {
       if (selected.find(i) != selected.end())
-        lv_table_add_cell_ctrl(obj, i, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
+        lv_table_set_cell_ctrl(obj, i, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
       else
         lv_table_clear_cell_ctrl(obj, i, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
     }
@@ -132,7 +132,7 @@ void ListBox::onPress(uint16_t row, uint16_t col)
       if (chk)
         lv_table_clear_cell_ctrl(obj, row, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
       else
-        lv_table_add_cell_ctrl(obj, row, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
+        lv_table_set_cell_ctrl(obj, row, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
 
       if (_multiSelectHandler) {
         _multiSelectHandler(getSelection(), lastSelection);
@@ -163,21 +163,22 @@ void ListBox::onCancel()
   if (!handled) TableField::onCancel();
 }
 
-void ListBox::onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc)
+void ListBox::onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
+                       lv_layer_t* layer)
 {
   withLive([&](LiveWindow& live) {
     auto obj = live.lvobj();
 
     if ((multiSelect == false && row != activeItem) ||
         (multiSelect == true &&
-         !lv_table_has_cell_ctrl(obj, dsc->id, 0, LV_TABLE_CELL_CTRL_CUSTOM_1)))
+         !lv_table_has_cell_ctrl(obj, row, 0, LV_TABLE_CELL_CTRL_CUSTOM_1)))
       return;
 
     lv_area_t coords;
 
     lv_draw_label_dsc_t label_dsc;
     lv_draw_label_dsc_init(&label_dsc);
-    label_dsc.font = dsc->label_dsc->font;
+    label_dsc.font = lv_obj_get_style_text_font(obj, LV_PART_ITEMS);
     label_dsc.align = LV_TEXT_ALIGN_RIGHT;
 
     const char* sym = LV_SYMBOL_OK;
@@ -198,15 +199,16 @@ void ListBox::onDrawEnd(uint16_t row, uint16_t col, lv_obj_draw_part_dsc_t* dsc)
     } else {
       h = getFontHeight(FONT(STD));
       xo = 2;
-      yo = (lv_area_get_height(dsc->draw_area) - h) / 2;
+      yo = (lv_area_get_height(cell_area) - h) / 2;
     }
 
-    coords.x2 = dsc->draw_area->x2 - xo - PAD_MEDIUM;
+    coords.x2 = cell_area->x2 - xo - PAD_MEDIUM;
     coords.x1 = coords.x2 - w + 1;
-    coords.y1 = dsc->draw_area->y1 + yo;
+    coords.y1 = cell_area->y1 + yo;
     coords.y2 = coords.y1 + h - 1;
 
-    lv_draw_label(dsc->draw_ctx, &label_dsc, &coords, sym, nullptr);
+    label_dsc.text = sym;
+    lv_draw_label(layer, &label_dsc, &coords);
   });
 }
 

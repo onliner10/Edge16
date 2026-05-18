@@ -84,7 +84,7 @@ class GaugeWidget : public NativeWidget
           if (!requireLvObj(track, box)) return false;
           lv_obj_remove_style_all(box);
           lv_obj_clear_flag(box,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+                            static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_bg_color(box, trackColor(), LV_PART_MAIN);
           lv_obj_set_style_radius(box, PILL_RADIUS, LV_PART_MAIN);
@@ -94,7 +94,7 @@ class GaugeWidget : public NativeWidget
           lv_obj_remove_style_all(obj);
           lv_obj_set_pos(obj, 0, 0);
           lv_obj_clear_flag(obj,
-                            LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+                            static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_radius(obj, PILL_RADIUS, LV_PART_MAIN);
           etx_obj_add_style(obj, styles->bg_opacity_cover, LV_PART_MAIN);
 

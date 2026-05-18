@@ -62,7 +62,6 @@ static pixel_t _LCD_BUF2[DISPLAY_BUFFER_SIZE] __SDRAM;
 pixel_t* simuLcdBuf = _LCD_BUF1;
 static pixel_t* simuLcdBackBuf = _LCD_BUF2;
 
-#if defined(LCD_VERTICAL_INVERT)
 static void _copy_screen_area(uint16_t* dst, uint16_t* src, const lv_area_t& copy_area)
 {
   lv_coord_t x1 = copy_area.x1;
@@ -80,6 +79,7 @@ static void _copy_screen_area(uint16_t* dst, uint16_t* src, const lv_area_t& cop
   }
 }
 
+#if defined(LCD_VERTICAL_INVERT)
 static void _copy_area(uint16_t* dst, uint16_t* src, const rect_t& copy_area)
 {
   lv_coord_t x1 = copy_area.x;
@@ -97,65 +97,86 @@ static void _copy_area(uint16_t* dst, uint16_t* src, const rect_t& copy_area)
 }
 #endif
 
-static void simuRefreshLcd(lv_disp_drv_t * disp_drv, uint16_t *buffer, const rect_t& copy_area)
+static void _swap_buffers()
+{
+  if (simuLcdBuf == _LCD_BUF1) {
+    simuLcdBuf = _LCD_BUF2;
+    simuLcdBackBuf = _LCD_BUF1;
+  } else {
+    simuLcdBuf = _LCD_BUF1;
+    simuLcdBackBuf = _LCD_BUF2;
+  }
+}
+
+static void _sync_invalidated_areas_to_back_buffer()
+{
+  LcdInvalidatedAreas inv = lcdCaptureFlushAreas();
+  if (inv.empty()) return;
+
+  uint16_t* src = simuLcdBuf;
+  uint16_t* dst = simuLcdBackBuf;
+  if (inv.overflowed) {
+    lv_area_t full_screen = {0, 0, LCD_W - 1, LCD_H - 1};
+    _copy_screen_area(dst, src, full_screen);
+    return;
+  }
+
+  for (int i = 0; i < inv.count; i++) {
+    lv_area_t refr_area;
+    lv_area_copy(&refr_area, &inv.areas[i]);
+    _copy_screen_area(dst, src, refr_area);
+  }
+}
+
+static void simuRefreshLcd(lv_display_t * disp_drv, uint16_t *buffer, const rect_t& copy_area)
 {
   {
     std::lock_guard<std::mutex> lock(simuLcdMutex);
 
 #if !defined(LCD_VERTICAL_INVERT) // rename into "Use direct mode" ???
-    // Direct mode uses LVGL full-screen draw buffers. Copy into simulator-owned
-    // buffers so the host thread never reads LVGL memory after flush returns.
-    memcpy(simuLcdBackBuf, buffer, DISPLAY_BUFFER_SIZE * sizeof(pixel_t));
-    std::swap(simuLcdBuf, simuLcdBackBuf);
+    lv_area_t flush_area = {
+        copy_area.x,
+        copy_area.y,
+        static_cast<lv_coord_t>(copy_area.x + copy_area.w - 1),
+        static_cast<lv_coord_t>(copy_area.y + copy_area.h - 1),
+    };
+    _copy_screen_area(simuLcdBackBuf, buffer, flush_area);
 
-    // Trigger async refresh and notify host
-    simuLcdRefresh = true;
-    simuLcdNotify();
+    if (lv_display_flush_is_last(disp_drv)) {
+      _swap_buffers();
+
+      // Trigger async refresh and notify host
+      simuLcdRefresh = true;
+      simuLcdNotify();
+
+      // Keep both direct-mode buffers coherent for the next partial redraw.
+      _sync_invalidated_areas_to_back_buffer();
+    }
 #else
     _copy_area(simuLcdBackBuf, buffer, copy_area);
 
-    if (lv_disp_flush_is_last(disp_drv)) {
-      // swap back/front
-      if (simuLcdBuf == _LCD_BUF1) {
-        simuLcdBuf = _LCD_BUF2;
-        simuLcdBackBuf = _LCD_BUF1;
-      } else {
-        simuLcdBuf = _LCD_BUF1;
-        simuLcdBackBuf = _LCD_BUF2;
-      }
+    if (lv_display_flush_is_last(disp_drv)) {
+      _swap_buffers();
 
       // Trigger async refresh and notify host
       simuLcdRefresh = true;
       simuLcdNotify();
 
       // Copy refreshed & rotated areas into new back buffer
-      uint16_t* src = simuLcdBuf;
-      uint16_t* dst = simuLcdBackBuf;
-
-      lv_disp_t* disp = _lv_refr_get_disp_refreshing();
-      for(int i = 0; i < disp->inv_p; i++) {
-        if(disp->inv_area_joined[i]) continue;
-
-        lv_area_t refr_area;
-        lv_area_copy(&refr_area, &disp->inv_areas[i]);
-
-        // TRACE("{%d,%d,%d,%d}", refr_area.x1,
-        //       refr_area.y1, refr_area.x2, refr_area.y2);
-
-        // _rotate_area_180(refr_area);
-        _copy_screen_area(dst, src, refr_area);
-      }
+      // Uses edge16-collected flush areas instead of private LVGL
+      // display internals (which are not part of the v9 public API).
+      _sync_invalidated_areas_to_back_buffer();
     }
 #endif    
   }
 
-  lv_disp_flush_ready(disp_drv);
+  lv_display_flush_ready(disp_drv);
 }
 
-static void simuLcdExitHandler(lv_disp_drv_t* disp_drv)
+static void simuLcdExitHandler(lv_display_t* disp_drv)
 {
   if (simuIsShuttingDown()) {
-    lv_disp_flush_ready(disp_drv);
+    lv_display_flush_ready(disp_drv);
   }
 }
 

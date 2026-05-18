@@ -105,7 +105,7 @@ bool CurveRenderer::init(Window::LiveWindow& parent, const rect_t& rect,
   lv_line_set_points(extra4, &bgPoints[15], 2);
 
   // Curve points
-  lnPoints = new (std::nothrow) lv_point_t[dw];
+  lnPoints = new (std::nothrow) lv_point_precise_t[dw];
   if (!lnPoints) return false;
 
   ptLine = lv_line_create(parentObj);

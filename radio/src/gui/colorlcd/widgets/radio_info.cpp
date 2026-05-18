@@ -850,7 +850,7 @@ class RadioInfoWidget : public Widget
     }
     uint8_t pct = txBatteryPercent(g_vbat100mV);
     if (pct >= 60) {
-      lv_obj_clear_state(batteryFill, LV_STATE_USER_1 | LV_STATE_USER_2);
+      lv_obj_clear_state(batteryFill, static_cast<lv_state_t>(LV_STATE_USER_1 | LV_STATE_USER_2));
     } else if (pct >= 30) {
       lv_obj_add_state(batteryFill, LV_STATE_USER_1);
       lv_obj_clear_state(batteryFill, LV_STATE_USER_2);

@@ -45,8 +45,8 @@ class CurveRenderer
   // Drawing rectangle position & size
   lv_coord_t dx, dy, dw, dh;
   std::function<int(int)> valueFunc;
-  lv_point_t bgPoints[17];
-  lv_point_t* lnPoints = nullptr;
+  lv_point_precise_t bgPoints[17];
+  lv_point_precise_t* lnPoints = nullptr;
   lv_obj_t* ptLine = nullptr;
 
   coord_t getPointY(int y) const;
@@ -74,7 +74,7 @@ class Curve : public Window
   std::function<int(int)> valueFunc;
   std::function<int()> positionFunc;
   StaticText* positionValue = nullptr;
-  lv_point_t posLinePoints[4];
+  lv_point_precise_t posLinePoints[4];
   lv_obj_t* posVLine = nullptr;
   lv_obj_t* posHLine = nullptr;
   lv_obj_t* posPoint = nullptr;

@@ -197,20 +197,6 @@ void etx_img_color(lv_obj_t* obj, LcdColorIndex colorIdx,
 lv_obj_t* etx_label_create(lv_obj_t* parent, FontIndex fontIdx = FONT_STD_INDEX);
 lv_obj_t* etx_label_create(Window* parent, FontIndex fontIdx);
 
-// Create a style with a single property
-#define LV_STYLE_CONST_SINGLE_INIT(var_name, prop, value)               \
-  const lv_style_t var_name = {.v_p = {.value1 = {.num = value}},       \
-                               .prop1 = prop,                           \
-                               .has_group = 1 << ((prop & 0x1FF) >> 4), \
-                               .prop_cnt = 1}
-
-// Create a style with multiple properties
-// Copied from lv_style.h and modified to compile with ARM GCC C++
-#define LV_STYLE_CONST_MULTI_INIT(var_name, prop_array)            \
-  const lv_style_t var_name = {.v_p = {.const_props = prop_array}, \
-                               .prop1 = LV_STYLE_PROP_ANY,         \
-                               .has_group = 0xFF,                  \
-                               .prop_cnt = (sizeof(prop_array) / sizeof((prop_array)[0]))}
 
 extern const lv_obj_class_t window_base_class;
 extern const lv_obj_class_t field_edit_class;
@@ -251,37 +237,37 @@ class EdgeTxStyles
   lv_style_t font[FONTS_COUNT];
 
   // Static styles
-  static const lv_style_t pad_zero;
-  static const lv_style_t pad_tiny;
-  static const lv_style_t pad_small;
-  static const lv_style_t pad_medium;
-  static const lv_style_t pad_large;
-  static const lv_style_t pad_left_2;
-  static const lv_style_t pad_button;
-  static const lv_style_t pad_textarea;
-  static const lv_style_t text_align_left;
-  static const lv_style_t text_align_right;
-  static const lv_style_t text_align_center;
-  static const lv_style_t bg_opacity_transparent;
-  static const lv_style_t bg_opacity_20;
-  static const lv_style_t bg_opacity_50;
-  static const lv_style_t bg_opacity_75;
-  static const lv_style_t bg_opacity_90;
-  static const lv_style_t bg_opacity_cover;
-  static const lv_style_t fg_opacity_transparent;
-  static const lv_style_t fg_opacity_cover;
-  static const lv_style_t rounded;
-  static const lv_style_t circle;
-  static const lv_style_t disabled;
-  static const lv_style_t qmdisabled;
-  static const lv_style_t pressed;
-  static const lv_style_t scrollbar;
-  static const lv_style_t border;
-  static const lv_style_t border_transparent;
-  static const lv_style_t border_thin;
-  static const lv_style_t outline;
-  static const lv_style_t state_focus_frame;
-  static const lv_style_t state_edit_frame;
+  lv_style_t pad_zero;
+  lv_style_t pad_tiny;
+  lv_style_t pad_small;
+  lv_style_t pad_medium;
+  lv_style_t pad_large;
+  lv_style_t pad_left_2;
+  lv_style_t pad_button;
+  lv_style_t pad_textarea;
+  lv_style_t text_align_left;
+  lv_style_t text_align_right;
+  lv_style_t text_align_center;
+  lv_style_t bg_opacity_transparent;
+  lv_style_t bg_opacity_20;
+  lv_style_t bg_opacity_50;
+  lv_style_t bg_opacity_75;
+  lv_style_t bg_opacity_90;
+  lv_style_t bg_opacity_cover;
+  lv_style_t fg_opacity_transparent;
+  lv_style_t fg_opacity_cover;
+  lv_style_t rounded;
+  lv_style_t circle;
+  lv_style_t disabled;
+  lv_style_t qmdisabled;
+  lv_style_t pressed;
+  lv_style_t scrollbar;
+  lv_style_t border;
+  lv_style_t border_transparent;
+  lv_style_t border_thin;
+  lv_style_t outline;
+  lv_style_t state_focus_frame;
+  lv_style_t state_edit_frame;
 
   EdgeTxStyles();
 

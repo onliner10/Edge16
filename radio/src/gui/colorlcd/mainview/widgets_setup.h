@@ -80,7 +80,7 @@ class SetupWidgetsPageSlot : public ButtonBase
   WidgetSlotIndex slot;
   bool openSettings = false;
   lv_style_t borderStyle;
-  lv_point_t borderPts[5];
+  lv_point_precise_t borderPts[5];
   OptionalLvObj border;
 
   void setFocusState();

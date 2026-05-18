@@ -24,8 +24,9 @@ class ToggleSwitch : public FormField
 {
  public:
   ToggleSwitch(Window* parent, const rect_t& rect,
-           std::function<uint8_t()> getValue,
-           std::function<void(uint8_t)> setValue);
+               std::function<uint8_t()> getValue,
+               std::function<void(uint8_t)> setValue);
+  ~ToggleSwitch() override;
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return "ToggleSwitch"; }
@@ -33,10 +34,7 @@ class ToggleSwitch : public FormField
 
   void onLiveClicked(LiveWindow&) override;
 
-  uint8_t getValue() const
-  {
-    return _getValue ? _getValue() : 0;
-  }
+  uint8_t getValue() const { return _getValue ? _getValue() : 0; }
 
   void setValue(uint8_t value)
   {
@@ -62,8 +60,13 @@ class ToggleSwitch : public FormField
  protected:
   std::function<uint8_t()> _getValue;
   std::function<void(uint8_t)> _setValue;
+  lv_subject_t checkedSubject = {};
+  bool checkedSubjectInitialized = false;
+  bool lvglValueChanged = false;
 
   void onLiveCheckEvents(LiveWindow& live) override;
 
-  static void toggleswitch_event_handler(lv_event_t* e);
+  static void checkedValueChanged(lv_event_t* e);
+  static void checkedSubjectChanged(lv_observer_t* observer,
+                                    lv_subject_t* subject);
 };

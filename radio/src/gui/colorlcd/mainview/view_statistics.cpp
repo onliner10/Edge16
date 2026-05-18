@@ -133,9 +133,9 @@ class ThrottleCurveWindow : public Window
 
  protected:
   unsigned previousTraceWr = 0;
-  lv_point_t graph[MAXTRACE];
-  lv_point_t axis[3];
-  lv_point_t ticks[MAXTRACE * 2 / 6];
+  lv_point_precise_t graph[MAXTRACE];
+  lv_point_precise_t axis[3];
+  lv_point_precise_t ticks[MAXTRACE * 2 / 6];
   RequiredLvObj line;
   int16_t graphSize = 0;
 };

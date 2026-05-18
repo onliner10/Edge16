@@ -1078,11 +1078,11 @@ uint32_t LvglWidgetLine::getPts(lua_State* L)
       pts = nullptr;
     }
     if (!pts) {
-      pts = new lv_point_t[ptCnt];
+      pts = new lv_point_precise_t[ptCnt];
       ptAlloc = ptCnt;
     }
     for (size_t i = 0; i < ptCnt; i += 1) getPt(L, i);
-    return hash(pts, ptCnt * sizeof(lv_point_t));
+    return hash(pts, ptCnt * sizeof(lv_point_precise_t));
   } else {
     ptCnt = 0;
     return -1;
@@ -1536,7 +1536,7 @@ void LvglWidgetTriangle::build(lua_State* L)
     if (!ensureLvObj(parent, lv_canvas_create)) return;
     withLvObj([&](lv_obj_t* obj) {
       lv_canvas_set_buffer(obj, (void*)mask->data, mask->width, mask->height,
-                           LV_IMG_CF_ALPHA_8BIT);
+                           LV_COLOR_FORMAT_A8);
     });
 
     // Set position and, size

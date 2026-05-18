@@ -30,66 +30,33 @@
 #include "switchchoice.h"
 #include "timeedit.h"
 #include "toggleswitch.h"
+#include "ui_events.h"
 #include "view_main.h"
 
 #define SET_DIRTY() setDirty()
 
+static void publishSpecialFunctionsChanged()
+{
+  UiEventHub::publish(UiTopic::SpecialFunctionsChanged);
+}
+
 //-----------------------------------------------------------------------------
 
-static const char *_failsafe_module[] = {
+static const char* _failsafe_module[] = {
     "Int.",
     "Ext.",
 };
 
-static const lv_style_const_prop_t sf_enable_state_style_props[] = {
-    LV_STYLE_CONST_OUTLINE_WIDTH(3),
-    LV_STYLE_CONST_OUTLINE_OPA(LV_OPA_COVER),
-    LV_STYLE_CONST_OUTLINE_PAD(1),
-    LV_STYLE_PROP_INV,
-};
-LV_STYLE_CONST_MULTI_INIT(sf_enable_state_style, sf_enable_state_style_props);
-
-static void sf_enable_state_constructor(const lv_obj_class_t *class_p,
-                                        lv_obj_t *obj)
-{
-  etx_obj_add_style(obj, sf_enable_state_style, LV_PART_MAIN);
-  etx_obj_add_style(obj, styles->outline_color_light, LV_PART_MAIN);
-  etx_obj_add_style(obj, styles->border, LV_PART_MAIN);
-  etx_obj_add_style(obj, styles->border_color[COLOR_THEME_SECONDARY1_INDEX], LV_PART_MAIN);
-  etx_obj_add_style(obj, styles->bg_opacity_cover, LV_PART_MAIN);
-  etx_bg_color(obj, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
-}
-
-static const lv_obj_class_t sf_enable_state = {
-    .base_class = &lv_obj_class,
-    .constructor_cb = sf_enable_state_constructor,
-    .destructor_cb = nullptr,
-    .user_data = nullptr,
-    .event_cb = nullptr,
-    .width_def = FunctionLineButton::EN_SZ,
-    .height_def = FunctionLineButton::EN_SZ,
-    .editable = LV_OBJ_CLASS_EDITABLE_FALSE,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_FALSE,
-    .instance_size = sizeof(lv_obj_t),
-};
-
-static lv_obj_t *sf_enable_state_create(lv_obj_t *parent)
-{
-  return etx_create(&sf_enable_state, parent);
-}
-
-FunctionLineButton::FunctionLineButton(Window *parent, const rect_t &rect,
-                                       const CustomFunctionData *cfn,
-                                       uint8_t index, const char *prefix) :
+FunctionLineButton::FunctionLineButton(Window* parent, const rect_t& rect,
+                                       CustomFunctionData* cfn,
+                                       uint8_t index, const char* prefix) :
     ListLineButton(parent, index), cfn(cfn), prefix(prefix)
 {
   setHeight(FunctionsPage::SF_BUTTON_H);
   padAll(PAD_ZERO);
-
-  delayLoad();
 }
 
-void FunctionLineButton::delayedInit()
+void FunctionLineButton::onLineLoaded()
 {
   if (!withLive([&](LiveWindow& live) {
         auto obj = live.lvobj();
@@ -127,14 +94,15 @@ void FunctionLineButton::delayedInit()
         lv_obj_set_pos(sfRepeat, RP_X, RP_Y);
         lv_obj_set_size(sfRepeat, RP_W, EdgeTxStyles::STD_FONT_HEIGHT);
 
-        sfEnable = sf_enable_state_create(obj);
-        if (!requireLvObj(sfEnable)) {
+        sfEnable = new CheckButton(
+            this, {EN_X, EN_Y, EN_SZ, EN_SZ},
+            [=]() -> uint8_t { return functionEnabled(); },
+            [=](uint8_t enabled) { setFunctionEnabled(enabled); });
+        if (!sfEnable || !sfEnable->isAvailable()) {
           lv_obj_enable_style_refresh(true);
           return false;
         }
-        lv_obj_clear_flag(sfEnable, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_set_user_data(sfEnable, this);
-        lv_obj_set_pos(sfEnable, EN_X, EN_Y);
+        sfEnable->setWindowFlag(NO_FOCUS);
 
         lv_obj_update_layout(obj);
 
@@ -144,6 +112,21 @@ void FunctionLineButton::delayedInit()
       }))
     return;
 
+}
+
+bool FunctionLineButton::functionEnabled() const { return CFN_ACTIVE(cfn); }
+
+void FunctionLineButton::setFunctionEnabled(bool enabled)
+{
+  if (functionEnabled() == enabled) {
+    if (sfEnable) sfEnable->update();
+    return;
+  }
+
+  CFN_ACTIVE(cfn) = enabled ? 1 : 0;
+  setDirty();
+  if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED)
+    LUA_LOAD_MODEL_SCRIPTS();
   refresh();
 }
 
@@ -181,7 +164,7 @@ void FunctionLineButton::onRefresh()
       if (CFN_PARAM(cfn) < FUNC_RESET_PARAM_FIRST_TELEM) {
         strcat(s, STR_VFSWRESET[CFN_PARAM(cfn)]);
       } else {
-        TelemetrySensor *sensor =
+        TelemetrySensor* sensor =
             &g_model.telemetrySensors[CFN_PARAM(cfn) -
                                       FUNC_RESET_PARAM_FIRST_TELEM];
         strAppend(s + strlen(s), sensor->label, TELEM_LABEL_LEN);
@@ -230,7 +213,9 @@ void FunctionLineButton::onRefresh()
 
 #if defined(FUNCTION_SWITCHES)
     case FUNC_PUSH_CUST_SWITCH:
-    strAppend(s + strlen(s), switchGetDefaultName(switchGetSwitchFromCustomIdx(CFN_CS_INDEX(cfn))));
+      strAppend(s + strlen(s),
+                switchGetDefaultName(
+                    switchGetSwitchFromCustomIdx(CFN_CS_INDEX(cfn))));
       break;
 #endif
 
@@ -273,10 +258,7 @@ void FunctionLineButton::onRefresh()
 
   s[0] = 0;
 
-  if (CFN_ACTIVE(cfn))
-    lv_obj_add_state(sfEnable, LV_STATE_CHECKED);
-  else
-    lv_obj_clear_state(sfEnable, LV_STATE_CHECKED);
+  if (sfEnable) sfEnable->update();
 
   if (HAS_REPEAT_PARAM(func)) {
     if (func == FUNC_PLAY_SCRIPT || func == FUNC_RGB_LED) {
@@ -308,11 +290,11 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 #define SD_LOGS_PERIOD_MAX 255     // 25.5s slowest period
 #define SD_LOGS_PERIOD_DEFAULT 10  // 1s    default period for newly created SF
 
-#define PUSH_CS_DURATION_MIN 0       // 0     no duration : as long as switch is true
-#define PUSH_CS_DURATION_MAX 255     // 25.5s longest duration
+#define PUSH_CS_DURATION_MIN 0  // 0     no duration : as long as switch is true
+#define PUSH_CS_DURATION_MAX 255  // 25.5s longest duration
 
 FunctionEditPage::FunctionEditPage(uint8_t index, EdgeTxIcon icon,
-                                   const char *title, const char *prefix) :
+                                   const char* title, const char* prefix) :
     Page(icon), index(index)
 {
   buildHeader(header, title, prefix);
@@ -320,10 +302,7 @@ FunctionEditPage::FunctionEditPage(uint8_t index, EdgeTxIcon icon,
   delayLoad();
 }
 
-void FunctionEditPage::delayedInit()
-{
-  buildBody(body);
-}
+void FunctionEditPage::delayedInit() { buildBody(body); }
 
 void FunctionEditPage::onLiveCheckEvents(Window::LiveWindow& live)
 {
@@ -338,8 +317,8 @@ void FunctionEditPage::onLiveCheckEvents(Window::LiveWindow& live)
   }
 }
 
-void FunctionEditPage::buildHeader(Window *window, const char *title,
-                                   const char *prefix)
+void FunctionEditPage::buildHeader(Window* window, const char* title,
+                                   const char* prefix)
 {
   header->setTitle(title);
   headerSF = header->setTitle2(prefix + std::to_string(index + 1));
@@ -348,15 +327,16 @@ void FunctionEditPage::buildHeader(Window *window, const char *title,
   headerSF->font(FONT_BOLD_INDEX, ETX_STATE_SF_ACTIVE);
 }
 
-void FunctionEditPage::addSourceChoice(FormLine *line, const char *title,
-                                       CustomFunctionData *cfn, int16_t vmax)
+void FunctionEditPage::addSourceChoice(FormLine* line, const char* title,
+                                       CustomFunctionData* cfn, int16_t vmax)
 {
   new StaticText(line, rect_t{}, title);
-  new SourceChoice(line, rect_t{}, 0, vmax, GET_SET_DEFAULT(CFN_PARAM(cfn)), true);
+  new SourceChoice(line, rect_t{}, 0, vmax, GET_SET_DEFAULT(CFN_PARAM(cfn)),
+                   true);
 }
 
-NumberEdit *FunctionEditPage::addNumberEdit(FormLine *line, const char *title,
-                                            CustomFunctionData *cfn,
+NumberEdit* FunctionEditPage::addNumberEdit(FormLine* line, const char* title,
+                                            CustomFunctionData* cfn,
                                             int16_t vmin, int16_t vmax)
 {
   new StaticText(line, rect_t{}, title);
@@ -371,7 +351,7 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
   auto line = specialFunctionOneWindow->newLine(grid);
 
-  CustomFunctionData *cfn = customFunctionData();
+  CustomFunctionData* cfn = customFunctionData();
   uint8_t func = CFN_FUNC(cfn);
 
   // Func param
@@ -478,14 +458,14 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
         line = specialFunctionOneWindow->newLine(grid);
         new StaticText(line, rect_t{}, STR_VALUE);
         new TimeEdit(line, rect_t{}, 0, 9 * 60 * 60 - 1,
-                    GET_SET_DEFAULT(CFN_PARAM(cfn)));
+                     GET_SET_DEFAULT(CFN_PARAM(cfn)));
       } else {
         new StaticText(line, rect_t{}, STR_NO_TIMERS);
       }
       break;
     }
 
-    static const char* const strModules[] = { "Int.", "Ext." };
+      static const char* const strModules[] = {"Int.", "Ext."};
     case FUNC_SET_FAILSAFE:
       new StaticText(line, rect_t{}, STR_MODULE);
       new Choice(line, rect_t{}, strModules, 0, NUM_MODULES - 1,
@@ -502,26 +482,25 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
 
 #if defined(FUNCTION_SWITCHES)
     case FUNC_PUSH_CUST_SWITCH: {
-        new StaticText(line, rect_t{}, STR_SWITCH);
-        auto choice = new Choice(line, rect_t{}, 0, switchGetMaxSwitches() - 1,
-                    [=]() { return switchGetSwitchFromCustomIdx(CFN_CS_INDEX(cfn)); },
-                    [=](int n) { CFN_CS_INDEX(cfn) = switchGetCustomSwitchIdx(n); },
-                    STR_SWITCH);
-        choice->setTextHandler([=](int n) {
-          return std::string(switchGetDefaultName(n));
-        });
-        choice->setAvailableHandler(switchIsCustomSwitch);
+      new StaticText(line, rect_t{}, STR_SWITCH);
+      auto choice = new Choice(
+          line, rect_t{}, 0, switchGetMaxSwitches() - 1,
+          [=]() { return switchGetSwitchFromCustomIdx(CFN_CS_INDEX(cfn)); },
+          [=](int n) { CFN_CS_INDEX(cfn) = switchGetCustomSwitchIdx(n); },
+          STR_SWITCH);
+      choice->setTextHandler(
+          [=](int n) { return std::string(switchGetDefaultName(n)); });
+      choice->setAvailableHandler(switchIsCustomSwitch);
 
-        line = specialFunctionOneWindow->newLine(grid);
+      line = specialFunctionOneWindow->newLine(grid);
 
-        auto edit = addNumberEdit(line, STR_INTERVAL, cfn, PUSH_CS_DURATION_MIN,
+      auto edit = addNumberEdit(line, STR_INTERVAL, cfn, PUSH_CS_DURATION_MIN,
                                 PUSH_CS_DURATION_MAX);
 
-        edit->setDisplayHandler([=](int32_t value) {
-          return formatNumberAsString(CFN_PARAM(cfn), PREC1, 0, nullptr, "s");
-        });
-      }
-      break;
+      edit->setDisplayHandler([=](int32_t value) {
+        return formatNumberAsString(CFN_PARAM(cfn), PREC1, 0, nullptr, "s");
+      });
+    } break;
 #endif
 
     case FUNC_LOGS: {
@@ -550,28 +529,27 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
     case FUNC_ADJUST_GVAR: {
       if (validateSFGV(cfn)) SET_DIRTY();
       new StaticText(line, rect_t{}, STR_GLOBALVAR);
-      auto gvarchoice = new Choice(line, rect_t{}, 0, MAX_GVARS - 1,
-                                   GET_DEFAULT(CFN_GVAR_INDEX(cfn)),
-                                   [=](int32_t newValue){
-                                     CFN_GVAR_INDEX(cfn) = newValue;
-                                     SET_DIRTY();
-                                     updateSpecialFunctionOneWindow();
-                                   });
+      auto gvarchoice =
+          new Choice(line, rect_t{}, 0, MAX_GVARS - 1,
+                     GET_DEFAULT(CFN_GVAR_INDEX(cfn)), [=](int32_t newValue) {
+                       CFN_GVAR_INDEX(cfn) = newValue;
+                       SET_DIRTY();
+                       updateSpecialFunctionOneWindow();
+                     });
       gvarchoice->setTextHandler([](int32_t value) {
         return std::string(getSourceString(value + MIXSRC_FIRST_GVAR));
       });
       line = specialFunctionOneWindow->newLine(grid);
 
       new StaticText(line, rect_t{}, STR_MODE);
-      auto modechoice = new Choice(line, rect_t{}, FUNC_ADJUST_GVAR_CONSTANT,
-                                   FUNC_ADJUST_GVAR_INCDEC,
-                                   GET_DEFAULT(CFN_GVAR_MODE(cfn)),
-                                   [=](int32_t newValue) {
-                                     CFN_GVAR_MODE(cfn) = newValue;
-                                     CFN_PARAM(cfn) = 0;
-                                     SET_DIRTY();
-                                     updateSpecialFunctionOneWindow();
-                                   });
+      auto modechoice = new Choice(
+          line, rect_t{}, FUNC_ADJUST_GVAR_CONSTANT, FUNC_ADJUST_GVAR_INCDEC,
+          GET_DEFAULT(CFN_GVAR_MODE(cfn)), [=](int32_t newValue) {
+            CFN_GVAR_MODE(cfn) = newValue;
+            CFN_PARAM(cfn) = 0;
+            SET_DIRTY();
+            updateSpecialFunctionOneWindow();
+          });
       line = specialFunctionOneWindow->newLine(grid);
 
       modechoice->setTextHandler([](int32_t value) {
@@ -659,22 +637,22 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
 
   line = specialFunctionOneWindow->newLine(grid);
   new StaticText(line, rect_t{}, STR_ENABLE);
-  new ToggleSwitch(line, rect_t{}, GET_DEFAULT(CFN_ACTIVE(cfn)),
-            [=](int newValue) {
-              CFN_ACTIVE(cfn) = newValue;
-              SET_DIRTY();
-              if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED)
-                LUA_LOAD_MODEL_SCRIPTS();
-            });
+  new ToggleSwitch(
+      line, rect_t{}, GET_DEFAULT(CFN_ACTIVE(cfn)), [=](int newValue) {
+        CFN_ACTIVE(cfn) = newValue;
+        SET_DIRTY();
+        if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED)
+          LUA_LOAD_MODEL_SCRIPTS();
+      });
 }
 
-void FunctionEditPage::buildBody(Window *form)
+void FunctionEditPage::buildBody(Window* form)
 {
   form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_LARGE);
 
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
 
-  CustomFunctionData *cfn = customFunctionData();
+  CustomFunctionData* cfn = customFunctionData();
 
   // Switch
   auto line = form->newLine(grid);
@@ -698,21 +676,25 @@ void FunctionEditPage::buildBody(Window *form)
   // Function
   line = form->newLine(grid);
   new StaticText(line, rect_t{}, STR_FUNC);
-  auto functionChoice =
-      new Choice(line, rect_t{}, 0, FUNC_MAX - 1, GET_DEFAULT(getFuncSortIdx(CFN_FUNC(cfn))),
-                  [=](int32_t newValue) {
-                    Functions newFunc = cfn_sorted[newValue];
-                    // If changing from Lua script then reload to remove old reference
-                    if ((CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED) && newFunc != FUNC_PLAY_SCRIPT && newFunc != FUNC_RGB_LED)
-                      LUA_LOAD_MODEL_SCRIPTS();
-                    CFN_FUNC(cfn) = newFunc;
-                    CFN_RESET(cfn);
-                    SET_DIRTY();
-                    updateSpecialFunctionOneWindow();
-                  });
-  functionChoice->setTextHandler([=](int val) { return funcGetLabel(cfn_sorted[val]); });
-  functionChoice->setAvailableHandler(
-      [=](int value) { return isAssignableFunctionAvailable(cfn_sorted[value]); });
+  auto functionChoice = new Choice(
+      line, rect_t{}, 0, FUNC_MAX - 1,
+      GET_DEFAULT(getFuncSortIdx(CFN_FUNC(cfn))), [=](int32_t newValue) {
+        Functions newFunc = cfn_sorted[newValue];
+        // If changing from Lua script then reload to remove old reference
+        if ((CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT ||
+             CFN_FUNC(cfn) == FUNC_RGB_LED) &&
+            newFunc != FUNC_PLAY_SCRIPT && newFunc != FUNC_RGB_LED)
+          LUA_LOAD_MODEL_SCRIPTS();
+        CFN_FUNC(cfn) = newFunc;
+        CFN_RESET(cfn);
+        SET_DIRTY();
+        updateSpecialFunctionOneWindow();
+      });
+  functionChoice->setTextHandler(
+      [=](int val) { return funcGetLabel(cfn_sorted[val]); });
+  functionChoice->setAvailableHandler([=](int value) {
+    return isAssignableFunctionAvailable(cfn_sorted[value]);
+  });
 
   specialFunctionOneWindow = new Window(form, rect_t{});
   updateSpecialFunctionOneWindow();
@@ -720,13 +702,13 @@ void FunctionEditPage::buildBody(Window *form)
 
 //-----------------------------------------------------------------------------
 
-FunctionsPage::FunctionsPage(CustomFunctionData *functions, const PageDef& pageDef,
-                             const char *prefix) :
+FunctionsPage::FunctionsPage(CustomFunctionData* functions,
+                             const PageDef& pageDef, const char* prefix) :
     PageGroupItem(pageDef), functions(functions), prefix(prefix)
 {
 }
 
-void FunctionsPage::rebuild(Window *window)
+void FunctionsPage::rebuild(Window* window)
 {
   // When window.clear() is called the last button on screen is given focus
   // (???) This causes the page to jump to the end when rebuilt. Set flag to
@@ -737,14 +719,14 @@ void FunctionsPage::rebuild(Window *window)
   isRebuilding = false;
 }
 
-void FunctionsPage::newSF(Window *window, bool pasteSF)
+void FunctionsPage::newSF(Window* window, bool pasteSF)
 {
-  Menu *menu = new Menu();
+  Menu* menu = new Menu();
   menu->setTitle(title);
 
   // search for unused switches
   for (uint8_t i = 0; i < MAX_SPECIAL_FUNCTIONS; i++) {
-    CustomFunctionData *cfn = customFunctionData(i);
+    CustomFunctionData* cfn = customFunctionData(i);
     if (cfn->swtch == 0) {
       menu->addLineBuffered(prefix + std::to_string(i + 1), [=]() {
         if (pasteSF) {
@@ -760,57 +742,61 @@ void FunctionsPage::newSF(Window *window, bool pasteSF)
 
 void FunctionsPage::pasteSpecialFunctionData(uint8_t index)
 {
-  CustomFunctionData *cfn = customFunctionData(index);
+  CustomFunctionData* cfn = customFunctionData(index);
   if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
   *cfn = clipboard.data.cfn;
   if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
   storageDirty(EE_MODEL);
+  if (functions == g_model.customFn) publishSpecialFunctionsChanged();
 }
 
-void FunctionsPage::pasteSpecialFunction(Window *window, uint8_t index)
+void FunctionsPage::pasteSpecialFunction(Window* window, uint8_t index)
 {
   pasteSpecialFunctionData(index);
   focusIndex = index;
   rebuild(window);
 }
 
-void FunctionsPage::pasteSpecialFunction(Window *window, uint8_t index,
+void FunctionsPage::pasteSpecialFunction(Window* window, uint8_t index,
                                          FunctionLineButton&)
 {
   pasteSpecialFunctionData(index);
   focusIndex = index;
 }
 
-void FunctionsPage::editSpecialFunction(Window *window, uint8_t index)
+void FunctionsPage::editSpecialFunction(Window* window, uint8_t index)
 {
   auto edit = editPage(index);
   edit->setCloseHandler([=]() {
-    CustomFunctionData *cfn = customFunctionData(index);
+    CustomFunctionData* cfn = customFunctionData(index);
     if (cfn->swtch != 0) focusIndex = index;
     rebuild(window);
+    if (functions == g_model.customFn) publishSpecialFunctionsChanged();
   });
 }
 
-void FunctionsPage::editSpecialFunction(Window *window, uint8_t index,
+void FunctionsPage::editSpecialFunction(Window* window, uint8_t index,
                                         FunctionLineButton& button)
 {
   auto edit = editPage(index);
   auto buttonPtr = &button;
   edit->setCloseHandler([=]() {
-    CustomFunctionData *cfn = customFunctionData(index);
+    CustomFunctionData* cfn = customFunctionData(index);
     if (cfn->swtch != 0) {
       focusIndex = index;
       buttonPtr->refresh();
-      return; // Skip full rebuild
+      if (functions == g_model.customFn) publishSpecialFunctionsChanged();
+      return;  // Skip full rebuild
     }
     rebuild(window);
+    if (functions == g_model.customFn) publishSpecialFunctionsChanged();
   });
 }
 
-void FunctionsPage::plusPopup(Window *window)
+void FunctionsPage::plusPopup(Window* window)
 {
   if (clipboard.type == CLIPBOARD_TYPE_CUSTOM_FUNCTION) {
-    Menu *menu = new Menu();
+    Menu* menu = new Menu();
     menu->addLine(STR_NEW, [=]() { newSF(window, false); });
     menu->addLine(STR_PASTE, [=]() { newSF(window, true); });
   } else {
@@ -818,7 +804,7 @@ void FunctionsPage::plusPopup(Window *window)
   }
 }
 
-void FunctionsPage::build(Window *window)
+void FunctionsPage::build(Window* window)
 {
   window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
 
@@ -828,13 +814,15 @@ void FunctionsPage::build(Window *window)
   if (!isRebuilding) focusIndex = prevFocusIndex;
 
   for (uint8_t i = 0; i < MAX_SPECIAL_FUNCTIONS; i++) {
-    CustomFunctionData *cfn = customFunctionData(i);
+    CustomFunctionData* cfn = customFunctionData(i);
 
     bool isActive = (cfn->swtch != 0);
 
     if (isActive) {
       auto button = functionButton(
-          window, rect_t{0, 0, window->width() - PAD_LARGE - PAD_SMALL, SF_BUTTON_H}, i);
+          window,
+          rect_t{0, 0, window->width() - PAD_LARGE - PAD_SMALL, SF_BUTTON_H},
+          i);
 
       button->setGridCell(LV_GRID_ALIGN_CENTER, 0, 1, LV_GRID_ALIGN_CENTER, 0,
                           1);
@@ -851,7 +839,7 @@ void FunctionsPage::build(Window *window)
       });
 
       button->setPressHandler([=]() {
-        Menu *menu = new Menu();
+        Menu* menu = new Menu();
         menu->addLine(STR_EDIT,
                       [=]() { editSpecialFunction(window, i, *button); });
         if (isActive) {
@@ -864,7 +852,7 @@ void FunctionsPage::build(Window *window)
           menu->addLine(STR_PASTE,
                         [=]() { pasteSpecialFunction(window, i, *button); });
         }
-        CustomFunctionData *cfn = customFunctionData(i);
+        CustomFunctionData* cfn = customFunctionData(i);
         if (CFN_ACTIVE(cfn)) {
           menu->addLine(STR_DISABLE, [=]() {
             CFN_ACTIVE(cfn) = 0;
@@ -875,7 +863,8 @@ void FunctionsPage::build(Window *window)
           menu->addLine(STR_ENABLE, [=]() {
             CFN_ACTIVE(cfn) = 1;
             SET_DIRTY();
-            if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED)
+            if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT ||
+                CFN_FUNC(cfn) == FUNC_RGB_LED)
               LUA_LOAD_MODEL_SCRIPTS();
             rebuild(window);
           });
@@ -933,12 +922,12 @@ void FunctionsPage::build(Window *window)
   }
 
   if (hasEmptyFunction) {
-    addButton =
-        new TextButton(window, rect_t{0, 0, window->width() - PAD_SMALL * 2, SF_BUTTON_H},
-                       LV_SYMBOL_PLUS, [=]() {
-                         plusPopup(window);
-                         return 0;
-                       });
+    addButton = new TextButton(
+        window, rect_t{0, 0, window->width() - PAD_SMALL * 2, SF_BUTTON_H},
+        LV_SYMBOL_PLUS, [=]() {
+          plusPopup(window);
+          return 0;
+        });
 
     addButton->setLongPressHandler([=]() -> uint8_t {
       plusPopup(window);
@@ -960,7 +949,7 @@ void FunctionsPage::build(Window *window)
 class SpecialFunctionLineButton : public FunctionLineButton
 {
  public:
-  SpecialFunctionLineButton(Window *parent, const rect_t &rect, uint8_t index) :
+  SpecialFunctionLineButton(Window* parent, const rect_t& rect, uint8_t index) :
       FunctionLineButton(parent, rect, &g_model.customFn[index], index, "SF")
   {
   }
@@ -971,6 +960,12 @@ class SpecialFunctionLineButton : public FunctionLineButton
     return modelFunctionsContext.activeSwitches.load(
                std::memory_order_relaxed) &
            ((MASK_CFN_TYPE)1 << index);
+  }
+
+  void setDirty() const override
+  {
+    storageDirty(EE_MODEL);
+    publishSpecialFunctionsChanged();
   }
 };
 
@@ -998,7 +993,7 @@ class SpecialFunctionEditPage : public FunctionEditPage
     return ::isSwitchAvailable(value, ModelCustomFunctionsContext);
   }
 
-  CustomFunctionData *customFunctionData() const override
+  CustomFunctionData* customFunctionData() const override
   {
     return &g_model.customFn[index];
   }
@@ -1008,7 +1003,11 @@ class SpecialFunctionEditPage : public FunctionEditPage
     return ::isAssignableFunctionAvailable(function, true);
   }
 
-  void setDirty() const override { storageDirty(EE_MODEL); }
+  void setDirty() const override
+  {
+    storageDirty(EE_MODEL);
+    publishSpecialFunctionsChanged();
+  }
 };
 
 //-----------------------------------------------------------------------------
@@ -1018,32 +1017,36 @@ SpecialFunctionsPage::SpecialFunctionsPage(const PageDef& pageDef) :
 {
 }
 
-CustomFunctionData *SpecialFunctionsPage::customFunctionData(
+CustomFunctionData* SpecialFunctionsPage::customFunctionData(
     uint8_t index) const
 {
   return &g_model.customFn[index];
 }
 
-FunctionEditPage *SpecialFunctionsPage::editPage(uint8_t index) const
+FunctionEditPage* SpecialFunctionsPage::editPage(uint8_t index) const
 {
   return new SpecialFunctionEditPage(index);
 }
 
-FunctionLineButton *SpecialFunctionsPage::functionButton(Window *parent,
-                                                         const rect_t &rect,
+FunctionLineButton* SpecialFunctionsPage::functionButton(Window* parent,
+                                                         const rect_t& rect,
                                                          uint8_t index) const
 {
   return new SpecialFunctionLineButton(parent, rect, index);
 }
 
-void SpecialFunctionsPage::setDirty() const { storageDirty(EE_MODEL); }
+void SpecialFunctionsPage::setDirty() const
+{
+  storageDirty(EE_MODEL);
+  publishSpecialFunctionsChanged();
+}
 
 //-----------------------------------------------------------------------------
 
 class GlobalFunctionLineButton : public FunctionLineButton
 {
  public:
-  GlobalFunctionLineButton(Window *parent, const rect_t &rect, uint8_t index) :
+  GlobalFunctionLineButton(Window* parent, const rect_t& rect, uint8_t index) :
       FunctionLineButton(parent, rect, &g_eeGeneral.customFn[index], index,
                          "GF")
   {
@@ -1056,6 +1059,8 @@ class GlobalFunctionLineButton : public FunctionLineButton
                std::memory_order_relaxed) &
            ((MASK_CFN_TYPE)1 << index);
   }
+
+  void setDirty() const override { storageDirty(EE_GENERAL); }
 };
 
 //-----------------------------------------------------------------------------
@@ -1082,7 +1087,7 @@ class GlobalFunctionEditPage : public FunctionEditPage
     return ::isSwitchAvailable(value, GeneralCustomFunctionsContext);
   }
 
-  CustomFunctionData *customFunctionData() const override
+  CustomFunctionData* customFunctionData() const override
   {
     return &g_eeGeneral.customFn[index];
   }
@@ -1102,18 +1107,18 @@ GlobalFunctionsPage::GlobalFunctionsPage(const PageDef& pageDef) :
 {
 }
 
-CustomFunctionData *GlobalFunctionsPage::customFunctionData(uint8_t index) const
+CustomFunctionData* GlobalFunctionsPage::customFunctionData(uint8_t index) const
 {
   return &g_eeGeneral.customFn[index];
 }
 
-FunctionEditPage *GlobalFunctionsPage::editPage(uint8_t index) const
+FunctionEditPage* GlobalFunctionsPage::editPage(uint8_t index) const
 {
   return new GlobalFunctionEditPage(index);
 }
 
-FunctionLineButton *GlobalFunctionsPage::functionButton(Window *parent,
-                                                        const rect_t &rect,
+FunctionLineButton* GlobalFunctionsPage::functionButton(Window* parent,
+                                                        const rect_t& rect,
                                                         uint8_t index) const
 {
   return new GlobalFunctionLineButton(parent, rect, index);
