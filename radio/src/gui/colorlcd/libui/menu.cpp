@@ -120,13 +120,14 @@ class MenuBody : public TableField
         return;
       }
 
-      table->row_act = index;
+      const uint32_t row = static_cast<uint32_t>(index);
+      table->row_act = row;
       table->col_act = 0;
 
       lv_coord_t h_before = 0;
-      for (uint16_t i = 0; i < table->row_act; i++) h_before += table->row_h[i];
+      for (uint32_t i = 0; i < row; i++) h_before += table->row_h[i];
 
-      lv_coord_t row_h = table->row_h[table->row_act];
+      lv_coord_t row_h = table->row_h[row];
       lv_coord_t scroll_y = lv_obj_get_scroll_y(obj);
 
       lv_obj_update_layout(obj);

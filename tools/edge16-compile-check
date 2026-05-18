@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  tools/edge16-compile-check check-file [--target tx16s|tx16smk3] [--reconfigure] <source-file>
+  tools/edge16-compile-check build [--target tx16s|tx16smk3] [--build-target TARGET] [--reconfigure]
+
+Fast, cached compile diagnostics for Pi/agent use.
+
+Notes:
+  - Runs directly when Pi is already inside the nix shell; outside it, uses
+    direnv (`use flake`) to enter the cached flake environment.
+  - Reuses persistent CMake/Ninja build directories under build/cpp-lsp and
+    build/pi-compile-check, so repeated checks are incremental.
+  - check-file uses clangd against compile_commands.json for fast per-file
+    compiler diagnostics without compiling the whole firmware.
+EOF
+}
+
+if [[ "${1:-}" == "--inside-dev-shell" ]]; then
+  shift
+elif [[ -n "${IN_NIX_SHELL:-}" ]]; then
+  # Pi is normally launched from direnv/nix already. In that case run directly so
+  # repeated checks reuse the live shell and cached CMake/Ninja state.
+  :
+elif command -v direnv >/dev/null 2>&1; then
+  # Outside the shell, prefer direnv because it reuses the flake environment cache
+  # instead of evaluating a fresh `nix develop` for every invocation.
+  exec direnv exec "${repo_root}" "$0" --inside-dev-shell "$@"
+else
+  echo "edge16-compile-check must run inside the project nix shell." >&2
+  echo "Run: direnv allow ${repo_root}" >&2
+  echo "or:  nix develop ${repo_root}" >&2
+  exit 127
+fi
+
+if ! command -v cmake >/dev/null 2>&1 || ! command -v edge16-clangd >/dev/null 2>&1; then
+  echo "edge16-compile-check is not in the Edge16 dev shell (missing cmake or edge16-clangd)." >&2
+  echo "Use direnv for this flake: direnv allow ${repo_root}" >&2
+  exit 127
+fi
+
+mode="${1:-}"
+if [[ -z "${mode}" || "${mode}" == "-h" || "${mode}" == "--help" || "${mode}" == "help" ]]; then
+  usage
+  exit 0
+fi
+shift
+
+target="tx16s"
+build_target="firmware"
+reconfigure=0
+source_file=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      target="${2:-}"
+      shift 2
+      ;;
+    --build-target)
+      build_target="${2:-}"
+      shift 2
+      ;;
+    --reconfigure)
+      reconfigure=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      if [[ -z "${source_file}" ]]; then
+        source_file="$1"
+        shift
+      else
+        echo "Unexpected argument: $1" >&2
+        usage >&2
+        exit 2
+      fi
+      ;;
+  esac
+done
+
+case " ${EDGE16_SUPPORTED_TARGETS:-tx16s tx16smk3} " in
+  *" ${target} "*) ;;
+  *)
+    echo "Unsupported Edge16 target: ${target}" >&2
+    exit 2
+    ;;
+esac
+
+# shellcheck source=tools/build-common.sh
+source "${repo_root}/tools/build-common.sh"
+
+run_cmake_configure() {
+  local build_dir="$1"
+  local target_name="$2"
+  local build_type="${3:-Debug}"
+  local build_options
+
+  BUILD_OPTIONS="-DCMAKE_BUILD_TYPE=${build_type} -DCMAKE_RULE_MESSAGES=OFF -Wno-dev "
+  BUILD_OPTIONS+="-DEdgeTX_SUPERBUILD=OFF -DNATIVE_BUILD=OFF "
+  BUILD_OPTIONS+="-DCMAKE_TOOLCHAIN_FILE=${repo_root}/cmake/toolchain/arm-none-eabi.cmake "
+  BUILD_OPTIONS+="-DDISABLE_COMPANION=ON -DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON "
+
+  get_target_build_options "${target_name}"
+  read -r -a build_options <<< "${BUILD_OPTIONS}"
+
+  cmake -S "${repo_root}" -B "${build_dir}" -G "${CMAKE_GENERATOR:-Ninja}" "${build_options[@]}"
+}
+
+case "${mode}" in
+  check-file)
+    if [[ -z "${source_file}" ]]; then
+      echo "check-file requires <source-file>" >&2
+      usage >&2
+      exit 2
+    fi
+    if [[ "${source_file}" == /* ]]; then
+      case "${source_file}" in
+        "${repo_root}"/*) source_file="${source_file#"${repo_root}/"}" ;;
+        *)
+          echo "Source file must be inside repository: ${source_file}" >&2
+          exit 2
+          ;;
+      esac
+    fi
+    if [[ ! -f "${repo_root}/${source_file}" ]]; then
+      echo "Source file does not exist: ${source_file}" >&2
+      exit 2
+    fi
+
+    lsp_build_dir="${EDGE16_CPP_LSP_BUILD_DIR:-${repo_root}/build/cpp-lsp/${target}}"
+    expected_link="build/cpp-lsp/${target}/compile_commands.json"
+    current_link="$(readlink "${repo_root}/compile_commands.json" 2>/dev/null || true)"
+    if [[ ${reconfigure} -eq 1 || ! -f "${lsp_build_dir}/compile_commands.json" || "${current_link}" != "${expected_link}" ]]; then
+      EDGE16_CPP_LSP_BUILD_DIR="${lsp_build_dir}" "${repo_root}/tools/edge16-cpp-lsp" setup "${target}"
+    fi
+
+    echo "[edge16-compile-check] clangd check target=${target} file=${source_file}"
+    "${repo_root}/tools/edge16-cpp-lsp" check "${source_file}"
+    ;;
+
+  build)
+    build_dir="${EDGE16_COMPILE_CHECK_BUILD_DIR:-${repo_root}/build/pi-compile-check/${target}}"
+    if [[ ${reconfigure} -eq 1 || ! -f "${build_dir}/CMakeCache.txt" ]]; then
+      run_cmake_configure "${build_dir}" "${target}" "Debug"
+    fi
+
+    determine_max_jobs
+    echo "[edge16-compile-check] ninja build target=${target} build-target=${build_target} dir=${build_dir}"
+    if [[ -n "${MAX_JOBS}" ]]; then
+      cmake --build "${build_dir}" --target "${build_target}" --parallel "${MAX_JOBS}" -- -k 0
+    else
+      cmake --build "${build_dir}" --target "${build_target}" --parallel -- -k 0
+    fi
+    ;;
+
+  *)
+    echo "Unknown mode: ${mode}" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

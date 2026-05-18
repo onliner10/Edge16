@@ -27,7 +27,21 @@ For long tasks, keep context tight. If the session is getting large, write a han
 
 ## Commands to use
 
+At the start of each session in this repository, run:
+
+```sh
+git submodule update --init --recursive
+```
+
 Use `nix develop` for builds, simulator work, C++ semantic tooling, and Python tools. Do not rely on host-installed compilers, Python packages, clangd, or Serena.
+
+Prefer the Edge16 Pi tools over hand-written shell command blocks:
+
+- Use `compile_check` for focused C/C++ compile diagnostics and cached firmware builds instead of spelling out `tools/edge16-cpp-lsp`, CMake, or Ninja commands by hand.
+- Use `edge16_check` for common verification presets (`commit-tests`, `strict-firmware`, `asan-ubsan`, `tsan`, `safe-division`, `ui-escape-hatches`, `docs`, `diff-check`) instead of manually composing long `nix develop ... uv ...` shell commands.
+- Use `github_failure` when the user provides a GitHub Actions run URL and asks what failed, instead of dumping full CI logs with raw `gh` commands.
+
+Shell fallbacks are allowed only when the Pi tool is unavailable, does not cover the needed check, or deeper raw diagnostics are required. State the fallback reason.
 
 ### Worktree-first workflow
 
@@ -50,37 +64,25 @@ git branch -d task-${SUFFIX}
 
 ### Build and semantic setup
 
-```sh
-git submodule update --init --recursive
-nix develop -c tools/edge16-cpp-lsp setup tx16s
-nix develop -c tools/edge16-cpp-lsp setup tx16smk3
-nix develop -c tools/edge16-cpp-lsp check radio/src/crc.cpp
-```
+Use `compile_check` first for edited C/C++ files:
+
+- `compile_check` with `mode=check-file`, `target=tx16s`, and the edited source file.
+- Repeat with `target=tx16smk3` when target preprocessor state can differ.
+- Use `compile_check` with `mode=build` for cached firmware/CMake build targets when a full incremental build is needed.
 
 Use `tx16s` for MK2 (`PCB=X10`, `PCBREV=TX16S`) and `tx16smk3` for MK3 (`PCB=TX16SMK3`). If a change touches `radio/src/targets/common/arm/stm32`, `radio/src/pulses`, `radio/src/tasks`, `mixer.cpp`, `mixer_scheduler.cpp`, HAL, storage/USB, or shared GUI code, verify both targets.
 
 ### Focused firmware/native checks
 
-```sh
-export EDGE16_THREADS=${EDGE16_THREADS:-24}
-export EDGE16_XDG_CONFIG_HOME=${EDGE16_XDG_CONFIG_HOME:-/tmp/edge16-xdg}
-export EDGE16_NIX_HARDENING='bindnow format libcxxhardeningfast pic relro stackclashprotection stackprotector strictflexarrays1 strictoverflow zerocallusedregs'
+Use `edge16_check` presets instead of manually spelling out long shell commands:
 
-nix develop -c env \
-  XDG_CONFIG_HOME="$EDGE16_XDG_CONFIG_HOME" \
-  NIX_HARDENING_ENABLE="$EDGE16_NIX_HARDENING" \
-  FLAVOR=tx16s EDGE16_UV_ACTIVE=1 \
-  EXTRA_OPTIONS='-DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON -DDISABLE_COMPANION=ON' \
-  CMAKE_BUILD_PARALLEL_LEVEL="$EDGE16_THREADS" \
-  uv run --with-requirements requirements.txt bash ./tools/commit-tests.sh
-```
+- `edge16_check` with `check=commit-tests`, `target=tx16s`
+- `edge16_check` with `check=commit-tests`, `target=tx16smk3` when firmware behavior can differ
+- `edge16_check` with `check=asan-ubsan` for memory/UB risk
+- `edge16_check` with `check=tsan` for race/concurrency risk
+- `edge16_check` with `check=strict-firmware` for strict firmware builds
 
-Repeat with `FLAVOR=tx16smk3` when firmware behavior can differ. Use sanitizer variants for native bugs:
-
-```sh
-EXTRA_OPTIONS='-DEDGE16_SANITIZERS=address,undefined -DEDGE16_SAFETY_CHECKS=ON -DDISABLE_COMPANION=ON'
-EXTRA_OPTIONS='-DEDGE16_SANITIZERS=thread -DEDGE16_SAFETY_CHECKS=ON -DDISABLE_COMPANION=ON'
-```
+Use shell only if the preset is insufficient, unavailable, or you need a reduced/custom reproducer; state why.
 
 ### Native hang debugging
 
@@ -102,28 +104,13 @@ nix develop -c tools/debug-gtests-hang.sh \
 
 Use `nix develop -c gdb --version` to confirm the debugger is available. If `gdb` cannot attach because of host ptrace restrictions, record that explicitly and rerun the reduced failing filter under a host where ptrace is allowed.
 
-Firmware strict build:
-
-```sh
-nix develop -c env \
-  XDG_CONFIG_HOME="$EDGE16_XDG_CONFIG_HOME" \
-  NIX_HARDENING_ENABLE="$EDGE16_NIX_HARDENING" \
-  GITHUB_REF=refs/heads/local-ci \
-  FLAVOR=tx16s FIRMWARE_TARGET=firmware EDGE16_UV_ACTIVE=1 \
-  EXTRA_OPTIONS='-DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON' \
-  CMAKE_BUILD_PARALLEL_LEVEL="$EDGE16_THREADS" \
-  uv run --with-requirements requirements.txt bash ./tools/build-gh.sh
-```
-
 Policy and docs checks:
 
-```sh
-nix develop -c python3 tools/check-safe-division.py
-nix develop -c python3 tools/check-ui-escape-hatches.py
-NIXPKGS_ALLOW_UNFREE=1 nix shell --impure nixpkgs#semgrep -c semgrep scan --error --jobs 24 --config p/c --config .semgrep/edge16-firmware.yml --include 'radio/src/**' --exclude 'radio/src/thirdparty/**' --exclude 'radio/src/translations/**' --exclude 'radio/src/tests/**'
-nix develop -c uv run --with-requirements docs-requirements.txt mkdocs build --strict
-git diff --check
-```
+- `edge16_check` with `check=safe-division`
+- `edge16_check` with `check=ui-escape-hatches`
+- `edge16_check` with `check=docs`
+- `edge16_check` with `check=diff-check`
+- Semgrep firmware policy still uses the workflow/source-of-truth command unless a Pi preset is added for it.
 
 For clang-tidy, cppcheck, GCC analyzer, and CodeQL, mirror `.github/workflows/build_fw.yml` exactly. Do not invent shortened analyzer flags.
 
@@ -282,17 +269,9 @@ Choose the smallest tier that proves the change, then escalate when risk demands
 
 ### Tier 0 — docs, scripts, local tooling
 
-Run the touched script/tool directly, plus:
+Run the touched script/tool directly, plus `edge16_check` with `check=diff-check`.
 
-```sh
-git diff --check
-```
-
-For docs:
-
-```sh
-nix develop -c uv run --with-requirements docs-requirements.txt mkdocs build --strict
-```
+For docs, use `edge16_check` with `check=docs`.
 
 ### Tier 1 — UI, storage, Lua, audio, simulator-facing behavior
 
@@ -302,10 +281,10 @@ Run relevant native tests, simulator harness, screenshots, and policy checks. Fo
 
 Run focused tests plus both supported targets. At minimum:
 
-- `tools/commit-tests.sh` for `tx16s` and `tx16smk3`
-- strict firmware build for `tx16s` and `tx16smk3`
-- sanitizer variant that matches the risk (`address,undefined` for memory/UB, `thread` for races)
-- `check-safe-division.py`
+- `edge16_check` with `check=commit-tests` for `tx16s` and `tx16smk3`
+- `edge16_check` with `check=strict-firmware` for `tx16s` and `tx16smk3`
+- `edge16_check` sanitizer preset that matches the risk (`asan-ubsan` for memory/UB, `tsan` for races)
+- `edge16_check` with `check=safe-division`
 - Semgrep firmware policy
 - analyzer workflow from `.github/workflows/build_fw.yml` for broad or risky changes
 

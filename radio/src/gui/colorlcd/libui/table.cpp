@@ -149,7 +149,7 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
             const lv_area_t& clip = layer->_clip_area;
 
             lv_coord_t y = obj_coords.y1 + pad_top - scroll_y;
-            for (uint16_t r = 0; r < table->row_cnt; r++) {
+            for (uint32_t r = 0; r < table->row_cnt; r++) {
               const lv_coord_t row_h = table->row_h[r];
               const lv_coord_t y2 = y + row_h - 1;
               if (y > clip.y2) break;
@@ -167,8 +167,8 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
                 if (cell_area.x1 > clip.x2) break;
                 if (!area_intersects(cell_area, clip)) continue;
 
-                tf->onDrawBegin(r, c, &cell_area, layer);
-                tf->onDrawEnd(r, c, &cell_area, layer);
+                tf->onDrawBegin(static_cast<uint16_t>(r), c, &cell_area, layer);
+                tf->onDrawEnd(static_cast<uint16_t>(r), c, &cell_area, layer);
               }
               y += row_h;
             }
@@ -290,10 +290,11 @@ void TableField::adjustScroll()
     }
 
     // only vertical scroll for now
+    const uint32_t row = table->row_act;
     lv_coord_t h_before = 0;
-    for (uint16_t i = 0; i < table->row_act; i++) h_before += table->row_h[i];
+    for (uint32_t i = 0; i < row; i++) h_before += table->row_h[i];
 
-    lv_coord_t row_h = table->row_h[table->row_act];
+    lv_coord_t row_h = table->row_h[row];
     lv_coord_t scroll_y = lv_obj_get_scroll_y(obj);
 
     lv_obj_update_layout(obj);

@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Print compact failure excerpts for a GitHub Actions run using gh.
+
+Examples:
+  build/agent-tools/gh-failure https://github.com/onliner10/Edge16/actions/runs/26059763383
+  build/agent-tools/gh-failure onliner10/Edge16 26059763383
+
+Requires: gh authenticated with permission to read Actions logs.
+"""
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+from typing import Any
+
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+TS_PREFIX = re.compile(r"^([^\t]*\t[^\t]*\t)?\ufeff?\d{4}-\d{2}-\d{2}T[^ ]+Z ?")
+URL_RE = re.compile(r"https://github\.com/([^/]+/[^/]+)/actions/runs/(\d+)")
+NOISE = re.compile(
+    r"(Failed to hardlink files|Controls the level of verbosity|pattern.*progress|"
+    r"error while loading|browser-errors-url|expect-error|warning: Failed to hardlink|"
+    r"LD_PRELOAD cannot be preloaded|Telemetry/CompilerErrors|metric query \\\"Compiler errors|"
+    r"Interpreted diagnostic query|Interpreted metric query)",
+    re.I,
+)
+STRONG = re.compile(
+    r"(AutoUic error|CodeQL produced \d+ finding|^\s*-\s+radio/src/.*:.*cpp/|"
+    r"could not be found in the following directories|Process completed with exit code|"
+    r"AddressSanitizer|ThreadSanitizer|UndefinedBehaviorSanitizer|runtime error:|"
+    r"SUMMARY:|\bFAILED\b|\bFAIL\b|Assertion|Traceback|fatal:|\berror:)",
+    re.I,
+)
+WEAK = re.compile(r"(\bfailed\b|\berror\b|exit code)", re.I)
+
+
+def die(msg: str, code: int = 2) -> None:
+    print(msg, file=sys.stderr)
+    raise SystemExit(code)
+
+
+def parse(argv: list[str]) -> tuple[str, str]:
+    if len(argv) == 2:
+        m = URL_RE.match(argv[1])
+        if not m:
+            die(__doc__.strip())
+        return m.group(1), m.group(2)
+    if len(argv) == 3 and "/" in argv[1] and argv[2].isdigit():
+        return argv[1], argv[2]
+    die(__doc__.strip())
+
+
+def gh(*args: str, check: bool = True) -> str:
+    p = subprocess.run(["gh", *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if check and p.returncode:
+        die(p.stderr.strip() or p.stdout.strip() or f"gh {' '.join(args)} failed", p.returncode)
+    return p.stdout
+
+
+def clean(line: str) -> str:
+    line = ANSI.sub("", line).rstrip()
+    line = TS_PREFIX.sub("", line)
+    # gh log format is usually: job<TAB>step<TAB>message
+    parts = line.split("\t", 2)
+    if len(parts) == 3:
+        line = parts[2]
+    return line
+
+
+def ranges_for_hits(lines: list[str], hits: list[int], ctx: int) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    for i in sorted(set(hits)):
+        a, b = max(0, i - ctx), min(len(lines), i + ctx + 1)
+        if out and a <= out[-1][1] + 1:
+            out[-1] = (out[-1][0], max(out[-1][1], b))
+        else:
+            out.append((a, b))
+    return out
+
+
+def excerpt(raw: str, ctx: int = 4) -> list[str]:
+    lines = [clean(x) for x in raw.splitlines()]
+    strong = [i for i, line in enumerate(lines) if STRONG.search(line) and not NOISE.search(line)]
+    hits = strong or [i for i, line in enumerate(lines) if WEAK.search(line) and not NOISE.search(line)]
+    if not hits:
+        return [x for x in lines[-80:] if x]
+    result: list[str] = []
+    for n, (a, b) in enumerate(ranges_for_hits(lines, hits, ctx)):
+        if n:
+            result.append("--- snip ---")
+        result.extend(f"{i+1}: {lines[i]}" for i in range(a, b) if lines[i])
+    return result
+
+
+def main(argv: list[str]) -> int:
+    repo, run_id = parse(argv)
+    data = json.loads(gh("run", "view", run_id, "--repo", repo, "--json", "jobs"))
+    failed: list[dict[str, Any]] = [j for j in data.get("jobs", []) if j.get("conclusion") == "failure"]
+    if not failed:
+        print("No failed jobs found.")
+        return 0
+    for job in failed:
+        jid = str(job["databaseId"])
+        print(f"\n===== {job['name']} (job {jid}) =====")
+        steps = [s.get("name") for s in job.get("steps", []) if s.get("conclusion") == "failure"]
+        if steps:
+            print("failed step(s): " + ", ".join(s for s in steps if s))
+        raw = gh("run", "view", "--repo", repo, "--job", jid, "--log-failed", check=False)
+        print("\n".join(excerpt(raw)))
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

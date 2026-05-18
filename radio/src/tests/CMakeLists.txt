@@ -65,6 +65,9 @@ if(EDGE16_SAFETY_CHECKS)
     PROPERTIES COMPILE_OPTIONS -Wno-implicit-fallthrough)
 endif()
 
+set_source_files_properties(${RADIO_SRC_DIR}/tests/colorlcd_ui_events.cpp
+  PROPERTIES SKIP_AUTOUIC ON)
+
 set(TEST_SRC_FILES ${TEST_SRC_FILES}
   ${SIMU_SRC}
 )
