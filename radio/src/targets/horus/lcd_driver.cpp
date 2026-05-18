@@ -68,7 +68,7 @@ typedef uint16_t pixel_t;
 static pixel_t _LCD_BUF_1[DISPLAY_BUFFER_SIZE] __SDRAM;
 static pixel_t _LCD_BUF_2[DISPLAY_BUFFER_SIZE] __SDRAM;
 
-static pixel_t _line_buffer[LCD_W];
+static pixel_t _line_buffers[2][LCD_W];
 
 #if !defined(BOOT)
 static RotatedFrameBuffers g_rotatedFb(_LCD_BUF_1, _LCD_BUF_2);
@@ -90,9 +90,11 @@ static void _copy_rotate_180(uint16_t* dst, uint16_t* src, const rect_t& copy_ar
 
   for (auto line = 0; line < copy_area.h; line++) {
 
-    DMAWait();
-
-    auto px_dst = _line_buffer;
+    // DMACopyBitmap() waits before programming DMA2D.  Alternating scratch
+    // lines lets the CPU reverse this line while DMA2D transfers the previous
+    // one from the other scratch buffer.
+    auto line_buffer = _line_buffers[line & 1];
+    auto px_dst = line_buffer;
 
     auto line_end = px_dst + (copy_area.w & ~1);
     while (px_dst != line_end) {
@@ -110,7 +112,7 @@ static void _copy_rotate_180(uint16_t* dst, uint16_t* src, const rect_t& copy_ar
 
     // ... and DMA back into SDRAM
     DMACopyBitmap(dst, copy_area.w, 1, 0, 0,
-                  _line_buffer, copy_area.w, 1, 0, 0,
+                  line_buffer, copy_area.w, 1, 0, 0,
                   copy_area.w, 1);
 
     src += copy_area.w * 2;

@@ -583,6 +583,7 @@ if(NATIVE_BUILD)
   add_library(radiolib_native OBJECT EXCLUDE_FROM_ALL
     ${RADIOLIB_NATIVE_SRC}
   )
+  set_property(TARGET radiolib_native PROPERTY AUTOUIC OFF)
 
   # Add SIMU and NATIVE_THREAD here PUBLIC, so it can be imported by other targets
   # via INTERFACE_COMPILE_OPTIONS
