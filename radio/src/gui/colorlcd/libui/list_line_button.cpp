@@ -27,6 +27,7 @@
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "mainwindow.h"
+#include "os/time.h"
 #include "lvgl/src/core/lv_obj_class_private.h"
 #include "lvgl/src/widgets/button/lv_button_private.h"
 
@@ -122,6 +123,7 @@ void ListLineButton::setLiveValueUpdatesEnabled(bool enabled)
   if (!enabled) {
     liveConnection.disconnect();
     liveSubscription.reset();
+    lastLiveValueUpdate = 0;
     return;
   }
 
@@ -136,6 +138,17 @@ void ListLineButton::setLiveValueUpdatesEnabled(bool enabled)
 void ListLineButton::runLiveValueUpdate()
 {
   if (!isLineReady()) return;
+
+  const uint16_t period = liveValueUpdatePeriodMs();
+  if (period > 0) {
+    const uint32_t now = time_get_ms();
+    if (lastLiveValueUpdate != 0 &&
+        uint32_t(now - lastLiveValueUpdate) < period)
+      return;
+    lastLiveValueUpdate = now;
+  }
+
+  if (!refreshPending && !needsLiveValueUpdate()) return;
 
   withLive([&](LiveWindow& live) {
     if (!isLiveOnScreen(live)) return;

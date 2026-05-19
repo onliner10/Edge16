@@ -228,7 +228,8 @@ class FlightModeBtn : public ListLineButton
           auto obj = live.lvobj();
           lv_obj_enable_style_refresh(false);
 
-          check(isActive());
+          lastActive = isActive();
+          check(lastActive);
 
           fmID = etx_create(&fm_id_class, obj);
           if (!requireLvObj(fmID)) {
@@ -293,6 +294,18 @@ class FlightModeBtn : public ListLineButton
 
   bool isActive() const override { return (getFlightMode() == index); }
 
+  uint16_t liveValueUpdatePeriodMs() const override { return 200; }
+
+  bool needsLiveValueUpdate() const override
+  {
+    if (isActive() != lastActive) return true;
+    for (int t = 0; t < keysGetMaxTrims() && t < MAX_FMTRIMS; t += 1) {
+      if (lastTrim[t] != g_model.flightModeData[index].trim[t].value)
+        return true;
+    }
+    return false;
+  }
+
   void setTrimValue(uint8_t t)
   {
     lastTrim[t] = g_model.flightModeData[index].trim[t].value;
@@ -312,6 +325,11 @@ class FlightModeBtn : public ListLineButton
   {
     if (!refreshing) {
       refreshing = true;
+      const bool active = isActive();
+      if (active != lastActive) {
+        lastActive = active;
+        check(active);
+      }
       for (int t = 0; t < keysGetMaxTrims() && t < MAX_FMTRIMS; t += 1) {
         if (lastTrim[t] != g_model.flightModeData[index].trim[t].value) {
           setTrimValue(t);
@@ -374,6 +392,7 @@ class FlightModeBtn : public ListLineButton
 
  protected:
   bool refreshing = false;
+  bool lastActive = false;
 
   lv_obj_t* fmID = nullptr;
   lv_obj_t* fmName = nullptr;

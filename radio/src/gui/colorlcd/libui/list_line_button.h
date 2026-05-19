@@ -51,6 +51,8 @@ class ListLineButton : public ButtonBase
   virtual void onLineLiveUpdate(LiveWindow& live);
   virtual void onLoadedCheckEvents(LiveWindow& live) {}
   virtual void onRefresh() = 0;
+  virtual uint16_t liveValueUpdatePeriodMs() const { return 0; }
+  virtual bool needsLiveValueUpdate() const { return true; }
   void onDelete() override;
   void onFailClosed() override;
   bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
@@ -92,6 +94,7 @@ class ListLineButton : public ButtonBase
   LineState lineState = LineState::Placeholder;
   UpdatePhase updatePhase = UpdatePhase::Idle;
   bool refreshPending = true;
+  uint32_t lastLiveValueUpdate = 0;
   UiScopedConnection liveConnection;
   UiLiveSubscription liveSubscription;
 };
