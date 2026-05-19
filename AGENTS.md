@@ -268,12 +268,21 @@ Use `--show-local` only when intentionally reviewing duplication inside one file
 
 ## Search and code intelligence
 
-When C++ semantic MCP is available, prefer Serena/clangd over raw grep:
+Prefer the Serena Pi extension for project-aware code intelligence whenever it is available. Serena runs the project LSP/clangd context and should be used before raw text search for C/C++ understanding and refactors.
 
-- `find_symbol`, `find_declaration`, `find_referencing_symbols` for symbol work.
-- `get_symbols_overview` before reading large files.
-- `get_diagnostics_for_file` before a full build after edits.
-- `search_for_pattern` as the fallback for text patterns.
+Serena session setup:
+
+- Confirm the active project/config with `get_current_config` or activate this checkout with `activate_project` if needed.
+- If Serena says onboarding has not been performed, run `onboarding` and follow its instructions, including reading `mem:memory_maintenance` before writing project memories.
+- Read relevant Serena memories (`mem:core` first when needed) instead of rediscovering stable project conventions.
+
+Serena tool preferences:
+
+- Use `get_symbols_overview` before reading large C/C++ files.
+- Use `find_symbol`, `find_declaration`, and `find_referencing_symbols` for symbol work and call-graph/cross-reference recon.
+- Use `get_diagnostics_for_file` before a full build after C/C++ edits when available.
+- Use Serena `replace_content`/symbol edit tools for targeted code edits when they fit the change.
+- Use `search_for_pattern` as the Serena fallback for text patterns.
 
 Use `rg` for non-C++ files, build scripts, docs, generated data, and quick broad discovery. Do not read massive files end-to-end when a symbol overview or targeted search will do.
 
