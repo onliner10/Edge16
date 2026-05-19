@@ -34,6 +34,7 @@
 #include "view_channels.h"
 #include "view_main.h"
 
+#include <limits>
 #include <new>
 
 #if defined(DEBUG)
@@ -346,11 +347,13 @@ void PageGroupHeaderBase::openPageSelector()
 
   Menu::open([=](Menu& pageMenu) {
     pageMenu.setTitle(parentTitle);
-    for (uint8_t i = 0; i < pages.size(); i += 1) {
+    for (size_t i = 0; i < pages.size(); i += 1) {
+      if (i > std::numeric_limits<uint8_t>::max()) break;
+      const uint8_t pageIndex = static_cast<uint8_t>(i);
       auto page = pages[i];
       if (!page || !page->isVisible()) continue;
-      pageMenu.addLine(page->getTitle(), [=]() { menu->setCurrentTab(i); },
-                       [=]() { return currentIndex == i; });
+      pageMenu.addLine(page->getTitle(), [=]() { menu->setCurrentTab(pageIndex); },
+                       [=]() { return currentIndex == pageIndex; });
     }
   }, false, LCD_W * 2 / 3);
 }
