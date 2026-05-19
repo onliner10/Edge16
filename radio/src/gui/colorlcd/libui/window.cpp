@@ -1222,10 +1222,7 @@ void Window::realizeVisibleContent()
 
     if (!loadVisibleIfNeeded(live, displayCandidate)) return;
 
-    auto copy = children;
-    for (auto child : copy) {
-      if (child) child->realizeVisibleContent();
-    }
+    forEachChildSnapshot([](Window* child) { child->realizeVisibleContent(); });
   });
 }
 
@@ -1245,10 +1242,7 @@ void Window::onLiveVisibilityChanged(Window::LiveWindow&, bool)
 
 void Window::onLiveCheckEvents(Window::LiveWindow&)
 {
-  auto copy = children;
-  for (auto child : copy) {
-    if (child) child->checkEvents();
-  }
+  forEachChildSnapshot([](Window* child) { child->checkEvents(); });
 }
 
 void Window::onEvent(event_t event)

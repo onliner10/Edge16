@@ -24,6 +24,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "definitions.h"
 #include "edgetx_helpers.h"
@@ -492,6 +493,33 @@ class Window
 
  protected:
   std::list<Window*> children;
+
+  // Visit a mutation-safe child snapshot. The common path uses a stack
+  // buffer to avoid per-frame std::list copy allocations; unusually large
+  // child lists fall back to a heap snapshot while keeping the same semantics.
+  template <typename Fn>
+  void forEachChildSnapshot(Fn&& fn)
+  {
+    constexpr size_t stackCapacity = 64;
+    Window* stack[stackCapacity];
+
+    const size_t count = children.size();
+    if (count > stackCapacity) {
+      std::vector<Window*> snapshot;
+      snapshot.reserve(count);
+      for (auto child : children) snapshot.push_back(child);
+      for (auto child : snapshot) {
+        if (child) fn(child);
+      }
+      return;
+    }
+
+    size_t snapshotCount = 0;
+    for (auto child : children) stack[snapshotCount++] = child;
+    for (size_t i = 0; i < snapshotCount; ++i) {
+      if (stack[i]) fn(stack[i]);
+    }
+  }
 
   WindowFlags windowFlags = 0;
   LcdFlags textFlags = 0;
