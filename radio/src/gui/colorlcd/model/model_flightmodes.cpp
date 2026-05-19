@@ -21,6 +21,8 @@
 
 #include "model_flightmodes.h"
 
+#include <array>
+
 #include "button.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
@@ -225,71 +227,23 @@ class FlightModeBtn : public ListLineButton
   void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          lv_obj_enable_style_refresh(false);
-
           lastActive = isActive();
           check(lastActive);
-
-          fmID = etx_create(&fm_id_class, obj);
-          if (!requireLvObj(fmID)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(fmID, FMID_X, FMID_Y);
-          char label[8];
-          getFlightModeString(label, index + 1);
-          lv_label_set_text(fmID, label);
-
-          fmName = etx_create(&fm_name_class, obj);
-          if (!requireLvObj(fmName)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(fmName, NAME_X, NAME_Y);
-          fmSwitch = etx_create(&fm_switch_class, obj);
-          if (!requireLvObj(fmSwitch)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(fmSwitch, SWTCH_X, SWTCH_Y);
-
-          for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
-            fmTrimMode[i] = etx_create(&fm_trim_mode_class, obj);
-            if (!requireLvObj(fmTrimMode[i])) {
-              lv_obj_enable_style_refresh(true);
-              return false;
-            }
-            lv_obj_set_pos(fmTrimMode[i], TRIM_X + i * TRIM_W, TRIM_Y);
-            fmTrimValue[i] = etx_create(&fm_trim_value_class, obj);
-            if (!requireLvObj(fmTrimValue[i])) {
-              lv_obj_enable_style_refresh(true);
-              return false;
-            }
-            lv_obj_set_pos(fmTrimValue[i], TRIM_X + i * TRIM_W,
-                           TRIM_Y + TRIM_H);
-          }
-
-          fmFadeIn = etx_create(&fm_fade_class, obj);
-          if (!requireLvObj(fmFadeIn)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(fmFadeIn, FADE_X, FADE_Y);
-          fmFadeOut = etx_create(&fm_fade_class, obj);
-          if (!requireLvObj(fmFadeOut)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(fmFadeOut, FADE_X + FADE_W + PAD_TINY, FADE_Y);
-          lv_obj_update_layout(obj);
-
-          lv_obj_enable_style_refresh(true);
-          lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
+          refreshCachedText();
+          lv_obj_invalidate(live.lvobj());
           return true;
         }))
       return;
 
+  }
+
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) == LV_EVENT_DRAW_MAIN_END && isLineReady()) {
+      drawRow(live, event);
+    }
+    return false;
   }
 
   bool isActive() const override { return (getFlightMode() == index); }
@@ -300,7 +254,8 @@ class FlightModeBtn : public ListLineButton
   {
     if (isActive() != lastActive) return true;
     for (int t = 0; t < keysGetMaxTrims() && t < MAX_FMTRIMS; t += 1) {
-      if (lastTrim[t] != g_model.flightModeData[index].trim[t].value)
+      const auto& trim = g_model.flightModeData[index].trim[t];
+      if (lastTrim[t] != trim.value || lastTrimMode[t] != trim.mode)
         return true;
     }
     return false;
@@ -315,10 +270,10 @@ class FlightModeBtn : public ListLineButton
     bool showValue = (index == 0) || ((mode & 1) || (mode >> 1 == index));
 
     if (checked && showValue)
-      lv_label_set_text(fmTrimValue[t],
-                        formatNumberAsString(lastTrim[t]).c_str());
+      formatNumberAsString(fmTrimValueText[t].data(),
+                           fmTrimValueText[t].size(), lastTrim[t]);
     else
-      lv_label_set_text(fmTrimValue[t], "");
+      fmTrimValueText[t][0] = '\0';
   }
 
   void onLoadedCheckEvents(LiveWindow& live) override
@@ -326,48 +281,29 @@ class FlightModeBtn : public ListLineButton
     if (!refreshing) {
       refreshing = true;
       const bool active = isActive();
-      if (active != lastActive) {
+      bool changed = active != lastActive;
+      if (changed) {
         lastActive = active;
         check(active);
       }
       for (int t = 0; t < keysGetMaxTrims() && t < MAX_FMTRIMS; t += 1) {
-        if (lastTrim[t] != g_model.flightModeData[index].trim[t].value) {
+        const auto& trim = g_model.flightModeData[index].trim[t];
+        if (lastTrim[t] != trim.value || lastTrimMode[t] != trim.mode) {
+          lastTrimMode[t] = trim.mode;
+          setText(fmTrimModeText[t], getFMTrimStr(trim.mode, false).c_str());
           setTrimValue(t);
+          changed = true;
         }
       }
+      if (changed) lv_obj_invalidate(live.lvobj());
       refreshing = false;
     }
   }
 
   void onRefresh() override
   {
-    const auto& fm = g_model.flightModeData[index];
-
-    if (fm.name[0] != '\0') {
-      lv_label_set_text(fmName, fm.name);
-    } else {
-      lv_label_set_text(fmName, "");
-    }
-
-    if ((index > 0) && (fm.swtch != SWSRC_NONE)) {
-      char label[16];
-      getSwitchPositionName(label, fm.swtch);
-      lv_label_set_text(fmSwitch, label);
-    } else {
-      lv_label_set_text(fmSwitch, "");
-    }
-
-    for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
-      setTrimValue(i);
-      lv_label_set_text(fmTrimMode[i], getFMTrimStr(fm.trim[i].mode, false).c_str());
-    }
-
-    lv_label_set_text(
-        fmFadeIn,
-        formatNumberAsString(fm.fadeIn, PREC1, 0, nullptr, "s").c_str());
-    lv_label_set_text(
-        fmFadeOut,
-        formatNumberAsString(fm.fadeOut, PREC1, 0, nullptr, "s").c_str());
+    refreshCachedText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
   static LAYOUT_SIZE_SCALED(BTN_H, 36, 56)
@@ -391,136 +327,113 @@ class FlightModeBtn : public ListLineButton
   static constexpr coord_t FADE_X = ListLineButton::GRP_W - PAD_BORDER * 2 - FADE_W * 2 - PAD_TINY * 2;
 
  protected:
+  template <size_t N>
+  void setText(std::array<char, N>& dest, const char* text)
+  {
+    dest[0] = '\0';
+    strAppend(dest.data(), text ? text : "", N - 1);
+  }
+
+  void refreshCachedText()
+  {
+    const auto& fm = g_model.flightModeData[index];
+
+    fmIDText[0] = '\0';
+    getFlightModeString(fmIDText.data(), index + 1);
+    setAutomationText(fmIDText.data());
+
+    setText(fmNameText, fm.name[0] != '\0' ? fm.name : "");
+
+    if ((index > 0) && (fm.swtch != SWSRC_NONE)) {
+      char label[16] = {};
+      getSwitchPositionName(label, fm.swtch);
+      setText(fmSwitchText, label);
+    } else {
+      fmSwitchText[0] = '\0';
+    }
+
+    for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
+      lastTrimMode[i] = fm.trim[i].mode;
+      setText(fmTrimModeText[i], getFMTrimStr(fm.trim[i].mode, false).c_str());
+      setTrimValue(i);
+    }
+
+    formatNumberAsString(fmFadeInText.data(), fmFadeInText.size(), fm.fadeIn,
+                         PREC1, 0, nullptr, "s");
+    formatNumberAsString(fmFadeOutText.data(), fmFadeOutText.size(),
+                         fm.fadeOut, PREC1, 0, nullptr, "s");
+  }
+
+  void drawLabel(lv_layer_t* layer, const lv_area_t& objCoords,
+                 lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                 coord_t h, const char* text,
+                 lv_text_align_t align = LV_TEXT_ALIGN_LEFT)
+  {
+    if (!text || text[0] == '\0') return;
+
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + h - 1};
+
+    label.align = align;
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
+  }
+
+  void drawRow(LiveWindow& live, lv_event_t* event)
+  {
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return;
+
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
+
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    const lv_font_t* xsFont = getFont(FONT(XS));
+    label.font = stdFont;
+
+    drawLabel(layer, objCoords, label, FMID_X, FMID_Y, FMID_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, fmIDText.data());
+    label.font = xsFont;
+    drawLabel(layer, objCoords, label, NAME_X, NAME_Y, NAME_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, fmNameText.data());
+    label.font = stdFont;
+    drawLabel(layer, objCoords, label, SWTCH_X, SWTCH_Y, SWTCH_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, fmSwitchText.data());
+
+    for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
+      drawLabel(layer, objCoords, label, TRIM_X + i * TRIM_W, TRIM_Y, TRIM_W,
+                TRIM_H, fmTrimModeText[i].data(), LV_TEXT_ALIGN_CENTER);
+      label.font = xsFont;
+      drawLabel(layer, objCoords, label, TRIM_X + i * TRIM_W, TRIM_Y + TRIM_H,
+                TRIM_W, TRIM_H, fmTrimValueText[i].data(),
+                LV_TEXT_ALIGN_CENTER);
+      label.font = stdFont;
+    }
+
+    drawLabel(layer, objCoords, label, FADE_X, FADE_Y, FADE_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, fmFadeInText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+    drawLabel(layer, objCoords, label, FADE_X + FADE_W + PAD_TINY, FADE_Y,
+              FADE_W, EdgeTxStyles::STD_FONT_HEIGHT, fmFadeOutText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+  }
+
   bool refreshing = false;
   bool lastActive = false;
-
-  lv_obj_t* fmID = nullptr;
-  lv_obj_t* fmName = nullptr;
-  lv_obj_t* fmSwitch = nullptr;
-  lv_obj_t* fmTrimMode[MAX_FMTRIMS] = {nullptr};
-  lv_obj_t* fmTrimValue[MAX_FMTRIMS] = {nullptr};
-  lv_obj_t* fmFadeIn = nullptr;
-  lv_obj_t* fmFadeOut = nullptr;
   int lastTrim[MAX_FMTRIMS] = {0};
-
-  static const lv_obj_class_t fm_id_class;
-  static const lv_obj_class_t fm_name_class;
-  static const lv_obj_class_t fm_switch_class;
-  static const lv_obj_class_t fm_fade_class;
-  static const lv_obj_class_t fm_trim_mode_class;
-  static const lv_obj_class_t fm_trim_value_class;
-};
-
-static void fm_id_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_left, LV_PART_MAIN);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_id_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_id_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::FMID_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void fm_name_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_left, LV_PART_MAIN);
-  etx_font(obj, FONT_XS_INDEX);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_name_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_name_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::NAME_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void fm_switch_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_left, LV_PART_MAIN);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_switch_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_switch_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::SWTCH_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void fm_fade_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_right, LV_PART_MAIN);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_fade_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_fade_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::FADE_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void fm_trim_mode_constructor(const lv_obj_class_t* class_p,
-                                     lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_center, LV_PART_MAIN);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_trim_mode_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_trim_mode_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::TRIM_W,
-    .height_def = FlightModeBtn::TRIM_H,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void fm_trim_value_constructor(const lv_obj_class_t* class_p,
-                                      lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_center, LV_PART_MAIN);
-  etx_font(obj, FONT_XS_INDEX);
-}
-
-const lv_obj_class_t FlightModeBtn::fm_trim_value_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = fm_trim_value_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = FlightModeBtn::TRIM_W,
-    .height_def = FlightModeBtn::TRIM_H,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
+  uint8_t lastTrimMode[MAX_FMTRIMS] = {0};
+  std::array<char, 8> fmIDText = {};
+  std::array<char, 32> fmNameText = {};
+  std::array<char, 16> fmSwitchText = {};
+  std::array<std::array<char, 16>, MAX_FMTRIMS> fmTrimModeText = {};
+  std::array<std::array<char, 16>, MAX_FMTRIMS> fmTrimValueText = {};
+  std::array<char, 16> fmFadeInText = {};
+  std::array<char, 16> fmFadeOutText = {};
 };
 
 ModelFlightModesPage::ModelFlightModesPage(const PageDef& pageDef) :
