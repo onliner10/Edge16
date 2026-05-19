@@ -17,13 +17,15 @@ tools/ui-harness/edgetx-ui build tx16s
 tools/ui-harness/edgetx-ui build tx16smk3
 tools/ui-harness/edgetx-ui smoke --target tx16s
 tools/ui-harness/edgetx-ui run-flow tools/ui-harness/flows/tx16s-smoke.json
+tools/ui-harness/edgetx-ui review-report --shot build/ui-harness/screenshots/home.png::"Home screen looks correct"
 tools/ui-harness/edgetx-mcp
 ```
 
 `edgetx-mcp` is a stdio MCP server. It exposes build/start/stop, key, rotary,
 touch, wait, screenshot, status, live UI-tree, screen summary, selector click,
-selector long-click, visibility assertion, wait-for, storage-warning skip, and
-run-flow tools. It uses the same Python core as the CLI.
+selector long-click, visibility assertion, wait-for, storage-warning skip,
+run-flow, and screenshot review-report tools. It uses the same Python core as
+the CLI.
 
 ### Agent-friendly patterns
 
