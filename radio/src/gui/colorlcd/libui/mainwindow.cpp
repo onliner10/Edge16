@@ -184,14 +184,11 @@ uint32_t MainWindow::runUiTick(TickMode mode)
     opaque->checkEvents();
   }
 
-  auto copy = children;
-  for (auto it = copy.begin(); it != copy.end();) {
-    auto child = *it;
-    ++it;
-    if (child && child->isBubblePopup()) {
+  forEachChildSnapshot([](Window* child) {
+    if (child->isBubblePopup()) {
       child->checkEvents();
     }
-  }
+  });
 
   static bool batteryPromptPending = false;
   if (!batteryPromptPending && !isModelArmedState()) {
