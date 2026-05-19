@@ -24,6 +24,7 @@
 #include "etx_lv_theme.h"
 #include "keyboard_base.h"
 #include "mainwindow.h"
+#include "menu.h"
 #include "model_select.h"
 #include "os/time.h"
 #include "radio_tools.h"
@@ -53,6 +54,24 @@ static void on_draw_end(lv_event_t* e)
         end_ms - start_ms, dsms - end_ms, dems - dsms, dems - start_ms);
 }
 #endif
+
+static constexpr coord_t PAGE_SELECTOR_CHEVRON_W = 10;
+static constexpr coord_t PAGE_SELECTOR_CHEVRON_H = 6;
+static const lv_point_precise_t pageSelectorChevronPoints[] = {
+    {0, 0},
+    {PAGE_SELECTOR_CHEVRON_W / 2, PAGE_SELECTOR_CHEVRON_H},
+    {PAGE_SELECTOR_CHEVRON_W, 0},
+};
+
+static unsigned visiblePageCount(const std::vector<PageGroupItem*>& pages)
+{
+  unsigned count = 0;
+  for (auto page : pages) {
+    if (page && page->isVisible()) count += 1;
+  }
+  return count;
+}
+
 
 //-----------------------------------------------------------------------------
 
@@ -111,7 +130,7 @@ class PageGroupIconButton : public ButtonBase
 //-----------------------------------------------------------------------------
 
 PageGroupHeaderBase::PageGroupHeaderBase(Window* parent, coord_t height, EdgeTxIcon icon, const char* parentTitle, PageGroupBase* menu) :
-    Window(parent, {0, 0, LCD_W, height}), menu(menu)
+    Window(parent, {0, 0, LCD_W, height}), parentTitle(parentTitle), menu(menu)
 {
     solidBg(COLOR_THEME_SECONDARY1_INDEX);
 
@@ -229,6 +248,34 @@ void PageGroupHeaderBase::setTitle(const char* title)
   std::string s = replaceAll(title, "\n", " ");
   titleLabel.with([&](lv_obj_t* obj) { lv_label_set_text(obj, s.c_str()); });
 #else
+  if (pageSelectorEnabled) {
+    constexpr coord_t titleX = PageHeader::PAGE_TITLE_LEFT;
+    constexpr coord_t titleW =
+        LCD_W - PageHeader::PAGE_TITLE_LEFT -
+        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2;
+    constexpr coord_t chevronGap = PAD_SMALL;
+    constexpr coord_t maxTextW = titleW - PAGE_SELECTOR_CHEVRON_W - chevronGap;
+
+    titleLabel.with([&](lv_obj_t* obj) {
+      lv_label_set_text(obj, title);
+      lv_obj_set_width(obj, maxTextW);
+    });
+
+    pageSelectorChevron.with([&](lv_obj_t* obj) {
+      if (visiblePageCount(pages) <= 1) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        return;
+      }
+
+      lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+      coord_t textW = getTextWidth(title, 0, LcdFlags(FONT_L_INDEX) << 8u);
+      if (textW > maxTextW) textW = maxTextW;
+      lv_obj_set_pos(obj, titleX + textW + chevronGap,
+                     (PageGroup::PAGE_GROUP_TOP_BAR_H -
+                      PAGE_SELECTOR_CHEVRON_H) / 2 + 1);
+    });
+    return;
+  }
   titleLabel.with([&](lv_obj_t* obj) { lv_label_set_text(obj, title); });
 #endif
 }
@@ -238,10 +285,86 @@ void PageGroupHeaderBase::setIcon(EdgeTxIcon newIcon)
   if (hdrIcon) hdrIcon->setIcon(newIcon);
 }
 
+void PageGroupHeaderBase::enablePageSelector()
+{
+  pageSelectorEnabled = true;
+
+  parentLabel.with([](lv_obj_t* obj) { lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN); });
+  titleLabel.with([](lv_obj_t* obj) {
+    constexpr coord_t titleW =
+        LCD_W - PageHeader::PAGE_TITLE_LEFT -
+        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2;
+    const coord_t titleH = getFontHeight(LcdFlags(FONT_L_INDEX) << 8u);
+    etx_font(obj, FONT_L_INDEX);
+    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+    lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT,
+                   (PageGroup::PAGE_GROUP_TOP_BAR_H - titleH) / 2);
+    lv_obj_set_size(obj, titleW - PAGE_SELECTOR_CHEVRON_W - PAD_SMALL,
+                    titleH);
+  });
+
+  withLive([&](LiveWindow& live) {
+    auto obj = lv_line_create(live.lvobj());
+    if (!obj) return;
+    pageSelectorChevron.reset(obj);
+    lv_line_set_points(obj, pageSelectorChevronPoints, 3);
+    lv_obj_set_size(obj, PAGE_SELECTOR_CHEVRON_W, PAGE_SELECTOR_CHEVRON_H);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_line_width(obj, 2, LV_PART_MAIN);
+    lv_obj_set_style_line_color(obj, makeLvColor(COLOR_THEME_PRIMARY2),
+                                LV_PART_MAIN);
+    lv_obj_set_style_line_rounded(obj, true, LV_PART_MAIN);
+  });
+
+  auto selectorButton = new (std::nothrow) ButtonBase(
+      this,
+      {PageHeader::PAGE_TITLE_LEFT, 0,
+       LCD_W - PageHeader::PAGE_TITLE_LEFT -
+           PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2,
+       PageGroup::PAGE_GROUP_TOP_BAR_H},
+      [=]() -> uint8_t {
+        openPageSelector();
+        return 0;
+      },
+      window_create);
+  if (selectorButton) {
+    selectorButton->setAutomationId("nav.page_selector");
+    selectorButton->setAutomationText("Page selector");
+    selectorButton->setWindowFlag(NO_FOCUS);
+    selectorButton->withLive([](Window::LiveWindow& live) {
+      lv_obj_add_flag(live.lvobj(), LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_clear_flag(live.lvobj(), LV_OBJ_FLAG_SCROLLABLE);
+    });
+  }
+}
+
+void PageGroupHeaderBase::openPageSelector()
+{
+  if (visiblePageCount(pages) <= 1) return;
+
+  Menu::open([=](Menu& pageMenu) {
+    pageMenu.setTitle(parentTitle);
+    for (uint8_t i = 0; i < pages.size(); i += 1) {
+      auto page = pages[i];
+      if (!page || !page->isVisible()) continue;
+      pageMenu.addLine(page->getTitle(), [=]() { menu->setCurrentTab(i); },
+                       [=]() { return currentIndex == i; });
+    }
+  }, false, LCD_W * 2 / 3);
+}
+
 void PageGroupHeaderBase::addTab(PageGroupItem* page)
 {
   if (!page) return;
+  const unsigned oldVisiblePages = visiblePageCount(pages);
   pages.emplace_back(page);
+
+  if (pageSelectorEnabled && oldVisiblePages <= 1 && visiblePageCount(pages) > 1 &&
+      currentIndex < pages.size() && pages[currentIndex]) {
+    setTitle(pages[currentIndex]->getTitle().c_str());
+  }
 
 #if VERSION_MAJOR == 2
   uint8_t idx = buttons.size();
@@ -295,6 +418,7 @@ class PageGroupHeader : public PageGroupHeaderBase
   PageGroupHeader(PageGroup* menu, EdgeTxIcon icon, const char* parentTitle) :
       PageGroupHeaderBase(menu, PageGroup::PAGE_GROUP_BODY_Y, icon, parentTitle, menu)
   {
+    enablePageSelector();
   }
 
 #if defined(DEBUG_WINDOWS)

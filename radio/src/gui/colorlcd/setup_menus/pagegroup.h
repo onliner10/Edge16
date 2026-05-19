@@ -107,6 +107,9 @@ class PageGroupHeaderBase : public Window
   void setTitle(const char* title);
   void setIcon(EdgeTxIcon newIcon);
 
+  void enablePageSelector();
+  void openPageSelector();
+
   virtual void chgTab(int dir) = 0;
 
   void nextTab() { chgTab(1); }
@@ -136,9 +139,12 @@ class PageGroupHeaderBase : public Window
   uint8_t currentIndex = 0;
   RequiredLvObj titleLabel;
   OptionalLvObj parentLabel;
+  OptionalLvObj pageSelectorChevron;
   HeaderIcon* hdrIcon = nullptr;
+  std::string parentTitle;
   std::vector<PageGroupItem*> pages;
   PageGroupBase* menu;
+  bool pageSelectorEnabled = false;
 #if VERSION_MAJOR ==2
   SelectedTabIcon* selectedIcon = nullptr;
   Window* carousel = nullptr;
