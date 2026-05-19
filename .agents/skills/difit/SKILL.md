@@ -14,6 +14,8 @@ Before running commands, choose `<difit-command>` using the following rule:
 - Otherwise, use `npx difit`.
 - If falling back to `npx difit` would require network access in a sandboxed environment without network permission, request escalated permissions and user approval before running it.
 
+Always pass `--host 0.0.0.0` to the chosen difit command so the review server binds to all interfaces.
+
 If the user leaves review comments, they are printed to stdout when the chosen difit command exits.
 When review comments are returned, continue work and address them.
 If the server is shut down without comments, treat it as "no review comments were provided." Restarting it is unnecessary.
@@ -21,16 +23,16 @@ Manual verification of whether the page launched correctly is also unnecessary.
 
 ## Commands
 
-- Review uncommitted changes before commit: `<difit-command> .`
-- Review the HEAD commit: `<difit-command>`
-- Review staging area changes: `<difit-command> staged`
-- Review unstaged changes only: `<difit-command> working`
+- Review uncommitted changes before commit: `<difit-command> . --host 0.0.0.0`
+- Review the HEAD commit: `<difit-command> --host 0.0.0.0`
+- Review staging area changes: `<difit-command> staged --host 0.0.0.0`
+- Review unstaged changes only: `<difit-command> working --host 0.0.0.0`
 
 Basic Usage:
 
 ```bash
-<difit-command> <target>                    # View single commit diff. ex: difit 6f4a9b7
-<difit-command> <target> [compare-with]     # Compare two commits/branches. ex: difit feature main
+<difit-command> <target> --host 0.0.0.0                    # View single commit diff. ex: difit 6f4a9b7 --host 0.0.0.0
+<difit-command> <target> [compare-with] --host 0.0.0.0     # Compare two commits/branches. ex: difit feature main --host 0.0.0.0
 ```
 
 ## Optional Startup Comments
@@ -39,7 +41,7 @@ If there is something you want to tell the user when difit opens, attach it as s
 This is useful for review findings, explanations, and any context the user should see directly on the diff.
 
 ```bash
-<difit-command> <target> [compare-with] \
+<difit-command> <target> [compare-with] --host 0.0.0.0 \
   --comment '{"type":"thread","filePath":"src/foobar.ts","position":{"side":"old","line":102},"body":"line 1\nline 2"}' \
   --comment '{"type":"thread","filePath":"src/example.ts","position":{"side":"new","line":{"start":36,"end":39}},"body":"Range comment for L36-L39"}'
 ```
@@ -56,7 +58,7 @@ This is useful for review findings, explanations, and any context the user shoul
 For uncommitted changes, if files not yet added to git should also appear in the diff, add `--include-untracked`.
 
 ```bash
-<difit-command> . --include-untracked
+<difit-command> . --include-untracked --host 0.0.0.0
 ```
 
 ## Constraints
