@@ -276,15 +276,17 @@ Serena session setup:
 - If Serena says onboarding has not been performed, run `onboarding` and follow its instructions, including reading `mem:memory_maintenance` before writing project memories.
 - Read relevant Serena memories (`mem:core` first when needed) instead of rediscovering stable project conventions.
 
-Serena tool preferences:
+Serena-first navigation policy:
 
-- Use `get_symbols_overview` before reading large C/C++ files.
+- For C/C++ and other language-server-supported code, start with Serena structure tools before raw file reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, and `search_for_pattern`.
+- Inspect only the relevant symbol bodies or narrow line ranges needed for the task. Prefer targeted reads with `offset`/`limit` over whole-file reads.
+- Before reading a sizeable source file end-to-end, briefly state why semantic tools are insufficient, such as: Serena did not find the symbol, file-level macro layout matters, generated structure matters, or the file is small enough that a full read is cheaper than repeated probes.
+- Full-file reads remain allowed when genuinely useful, especially for docs, configs, shell scripts, build files, generated metadata, unsupported languages, small files, or when semantic lookup fails.
 - Use `find_symbol`, `find_declaration`, and `find_referencing_symbols` for symbol work and call-graph/cross-reference recon.
 - Use `get_diagnostics_for_file` before a full build after C/C++ edits when available.
 - Use Serena `replace_content`/symbol edit tools for targeted code edits when they fit the change.
-- Use `search_for_pattern` as the Serena fallback for text patterns.
 
-Use `rg` for non-C++ files, build scripts, docs, generated data, and quick broad discovery. Do not read massive files end-to-end when a symbol overview or targeted search will do.
+Use `rg` for non-C++ files, build scripts, docs, generated data, and quick broad discovery. Even there, prefer narrow reads when looking for a specific section.
 
 ## Verification tiers
 
