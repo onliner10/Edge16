@@ -183,8 +183,13 @@ jobs:
           body: |
             Edge16 "${{ steps.version.outputs.codename }}" ${{ steps.version.outputs.version }} is firmware and Companion support for RadioMaster TX16S MK2 and RadioMaster TX16S MK3 only.
 
+            Docs: https://onliner10.github.io/Edge16/
+            See the docs for the full Edge16-vs-EdgeTX delta.
+            Issues: https://github.com/onliner10/Edge16/issues/new/choose
+            Discussions: https://github.com/onliner10/Edge16/discussions
+
             ${{ (contains(inputs.tag, '-rc') || contains(inputs.tag, '-beta') || contains(inputs.tag, '-alpha')) && '> [!WARNING]
-            > This is a pre-release for TX16S MK2/MK3 testers. Back up your radio and model settings before flashing, bench-test your models after updating, and report regressions before using it in the field.' || '' }}
+            > This is experimental alpha/pre-release firmware for TX16S MK2/MK3 testers. It has been maintainer-tested and works for the maintainer, but it has not had broad field testing. Back up your radio and model settings before flashing, bench-test every model, verify arming/failsafe/RF/telemetry/battery alerts, and be ready to roll back before flying.' || '' }}
 
             > [!WARNING]
             > Supported radios are exactly RadioMaster TX16S MK2 and RadioMaster TX16S MK3. Do not flash these firmware files on any other EdgeTX radio.
@@ -213,8 +218,12 @@ jobs:
 
             ## Known Limitations and Issues
             ${{ (contains(inputs.tag, '-rc') || contains(inputs.tag, '-beta') || contains(inputs.tag, '-alpha')) && '> [!WARNING]
-            - Please track release-candidate issues before publishing this release as stable.' || '' }}
+            - This is not a stable release. Please report alpha issues and wait for wider testing before treating it as field-proven firmware.' || '' }}
 
-            ## UI/UX behavioral changes and/or new capabilities:
+            ## UI/UX behavioral changes and/or new capabilities
+            - Global top bar setup for TX16S color LCD status widgets.
+            - Battery monitor/guard: LiPo pack library, telemetry voltage matching, startup/replug confirmation, capacity/voltage alerts, and optional arming block.
+            - TX16S UI refresh: focused dashboard, larger touch targets, settings search/filter, single-tier navigation, swipe gestures, and clearer state indicators.
+            - Smoother TX16S screen feel: LVGL 9.5, asynchronous drawing, preloaded fonts, and rendering cleanup for more fluid menus/widgets/touch interaction.
           files: release-assets/*.zip
           fail_on_unmatched_files: true

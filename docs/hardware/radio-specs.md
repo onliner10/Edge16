@@ -1,19 +1,13 @@
-# Radio Hardware Specifications for EdgeTX
+# Radio Hardware Specifications for Edge16
 
-The radio hardware specifications — covering supported targets, MCU types, flash and RAM sizes, and peripheral availability — are maintained on the EdgeTX website:
+Edge16 supports only RadioMaster TX16S MK2 and RadioMaster TX16S MK3.
 
-**[Radio Hardware Specifications for EdgeTX](https://edgetx.org/Radio-hardware-specifications-for-EdgeTX/)**
+| Radio | Build flavor | MCU family | Display | Firmware artifact | Notes |
+|---|---|---|---|---|---|
+| RadioMaster TX16S MK2 | `tx16s` | STM32F4 | 480×320 color touch LCD | `tx16s-*.bin` | Classic TX16S color target. |
+| RadioMaster TX16S MK3 | `tx16smk3` | STM32H7 | 480×320 color touch LCD | `tx16smk3-*.uf2` | Different update path from MK2; use MK3 artifact only. |
 
-The table on that page includes, for each supported radio, details such as:
+> [!WARNING]
+> Do not flash Edge16 firmware on other EdgeTX radios. Release automation intentionally publishes only TX16S MK2/MK3 artifacts.
 
-- **MCU** — processor model and clock speed
-- **Flash** — total flash memory available and amount used by EdgeTX
-- **RAM** — total SRAM and CCM RAM
-- **Internal module** — RF protocol of the built-in module (if any)
-- **External module bay** — whether a JR-style external module bay is present
-- **SD card** — whether an SD card slot is present
-- **Audio** — speaker and/or audio jack availability
-- **USB** — USB connectivity type
-- **Bluetooth** — whether Bluetooth is present
-- **GPS** — whether an internal GPS module is present
-- **Color display** — whether the radio has a color screen
+For deeper upstream hardware background, see EdgeTX hardware documentation, but treat any non-TX16S target information as upstream reference only, not Edge16 support.

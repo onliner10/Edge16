@@ -8,8 +8,7 @@ body:
         Thanks for taking the time to fill out this feature request!
 
         If your idea is still at the formulation stage, or you're not sure it would
-        be useful to many users, you can raise it as a discussion topic under [Ideas](https://github.com/EdgeTX/edgetx/discussions/categories/ideas)
-        or you can raise it on the [Discord server](https://discord.gg/wF9wUKnZ6H).
+        be useful to many users, raise it in [Edge16 Discussions](https://github.com/onliner10/Edge16/discussions).
   - type: checkboxes
     attributes:
       label: Is there an existing issue for this feature request?

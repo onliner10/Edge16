@@ -1,7 +1,7 @@
-site_name: EdgeTX Developer Documentation
-site_url: https://docs.edgetx.org/
-repo_url: https://github.com/EdgeTX/edgetx
-repo_name: EdgeTX/edgetx
+site_name: Edge16 Developer Documentation
+site_url: https://onliner10.github.io/Edge16/
+repo_url: https://github.com/onliner10/Edge16
+repo_name: onliner10/Edge16
 edit_uri: edit/main/docs/
 
 theme:
@@ -50,53 +50,35 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Contributing:
-    - Getting Started with Git: contributing/getting-started-with-git.md
-    - Workflow for GitHub Noobs: contributing/workflow-for-github-noobs.md
-    - Git Command Reference: contributing/some-git-commands.md
-  - Building EdgeTX:
+  - Release:
+    - Edge16 v1.0.0-alpha.1 Features: release/features.md
+    - How Edge16 differs from EdgeTX: release/edge16-vs-edgetx.md
+  - Building Edge16:
     - Overview: building/index.md
-    - Online:
-      - In a Web Browser (CodeSpaces): building/codespaces.md
-    - Windows:
-      - Windows (Native): building/windows.md
-      - Windows (Docker): building/windows-docker.md
-      - WSL: building/linux-wsl.md
-    - Linux:
-      - Ubuntu 22.04: building/linux-ubuntu-22.04.md
-      - Ubuntu 24.04: building/linux-ubuntu-24.04.md
-    - macOS:
-      - Sequoia / Tahoe: building/macos-sequoia.md
-      - Sonoma: building/macos-sonoma.md
-      - Catalina: building/macos-catalina.md
-    - Reference:
-      - Compilation Options: building/compilation-options.md
-    - Obsolete:
-      - Qt Creator: building/qt-creator.md
+    - Ubuntu 24.04: building/linux-ubuntu-24.04.md
   - Hardware Reference:
     - Radio Specifications: hardware/radio-specs.md
-    - DMA Mappings:
-      - RadioMaster TX16S: hardware/dma-mapping-tx16s.md
-      - FlySky NV14: hardware/dma-mapping-nv14.md
-    - IRQ Usage:
-      - RadioMaster TX16S: hardware/irq-usage-tx16s.md
-  - Hardware Mods:
-    - Flysky Hall Sticks: mods/flysky-hall-sticks.md
-    - Flysky FRM303 Mod for TX16S: mods/flysky-frm303-tx16s.md
-    - Flysky PL18 & PL18EV: mods/flysky-pl18.md
-    - Flysky NB4+: mods/flysky-nb4plus.md
-    - Flashing EdgeTX to Flysky PL18/Paladin-EV: mods/flashing-flysky-pl18.md
+    - RadioMaster TX16S DMA Mapping: hardware/dma-mapping-tx16s.md
+    - RadioMaster TX16S IRQ Usage: hardware/irq-usage-tx16s.md
   - Troubleshooting:
     - Unbrick Your Radio: troubleshooting/unbrick.md
-  - Development:
-    - CLI Commands: development/cli-commands.md
-    - Control Inputs: development/control-inputs.md
-    - External Module Protocols: development/external-module-protocols.md
-    - YAML Parser/Generator: development/yaml-parser-generator.md
-    - Mixer Synchronisation: development/mixer-synchronisation.md
 
 exclude_docs: |
   README.md
+  contributing/**
+  development/**
+  mods/**
+  building/compilation-options.md
+  building/codespaces.md
+  building/linux-ubuntu-22.04.md
+  building/linux-wsl.md
+  building/macos-catalina.md
+  building/macos-sequoia.md
+  building/macos-sonoma.md
+  building/qt-creator.md
+  building/windows.md
+  building/windows-docker.md
+  hardware/dma-mapping-nv14.md
 
 extra_css:
   - assets/stylesheets/extra.css
@@ -112,6 +94,4 @@ extra:
     alias: true
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/EdgeTX/edgetx
-    - icon: fontawesome/brands/discord
-      link: https://discord.gg/wF9wUKnZ6H
+      link: https://github.com/onliner10/Edge16

@@ -8,7 +8,7 @@ body:
         Thanks for taking the time to fill out this bug report!
 
         Please note that this is not the place to make feature requests or ask for
-        help. For this, please use the [Discord server](https://discord.gg/wF9wUKnZ6H) or [Discussion forum](https://github.com/EdgeTX/edgetx/discussions).
+        help. For this, please use [Edge16 Discussions](https://github.com/onliner10/Edge16/discussions).
   - type: checkboxes
     attributes:
       label: Is there an existing issue for this problem?
@@ -58,22 +58,7 @@ body:
       label: Version
       description: What version of Edge16 software are you running?
       options:
-        - 2.12.0
-        - 2.11.5
-        - 2.11.4
-        - 2.11.3
-        - 2.11.2
-        - 2.11.1
-        - 2.11.0
-        - 2.10.6
-        - 2.10.5
-        - 2.10.4
-        - 2.10.3
-        - 2.10.2
-        - 2.10.1
-        - 2.10.0
-        - 2.9.4
-        - 2.8.5
+        - 1.0.0-alpha.1
         - Nightly (Please give date/commit below)
         - Other (Please specify below)
     validations:

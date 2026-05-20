@@ -60,8 +60,8 @@
 #define CPN_MAX_ANALOGS                (CPN_MAX_STICKS + CPN_MAX_POTS + CPN_MAX_SLIDERS + CPN_MAX_MOUSE_ANALOGS + CPN_MAX_GYRO_ANALOGS)
 // =========
 
-#define CPN_STR_APP_NAME               QCoreApplication::translate("Companion", "EdgeTX Companion")
-#define CPN_STR_SIMU_NAME              QCoreApplication::translate("Companion", "EdgeTX Simulator")
+#define CPN_STR_APP_NAME               QCoreApplication::translate("Companion", "Edge16 Companion")
+#define CPN_STR_SIMU_NAME              QCoreApplication::translate("Companion", "Edge16 Simulator")
 #define CPN_STR_TTL_INFO               QCoreApplication::translate("Companion", "Information")        // shared Title Case words, eg. for a window title or section heading
 #define CPN_STR_TTL_WARNING            QCoreApplication::translate("Companion", "Warning")
 #define CPN_STR_TTL_ERROR              QCoreApplication::translate("Companion", "Error")
@@ -72,8 +72,8 @@
 #define CPN_STR_RAD_MOD_SETTINGS       QCoreApplication::translate("Companion", "Radio and Models settings")
 #define BIN_FILES_FILTER               "BIN " % CPN_STR_FILES % " (*.bin);;"
 #define UF2_FILES_FILTER               "UF2 " % CPN_STR_FILES % " (*.uf2);;"
-#define ETX_FILES_FILTER               "EdgeTX " % CPN_STR_FILES % " (*.etx);;"
-#define YML_FILES_FILTER               "EdgeTX YAML " % CPN_STR_FILES % " (*.yml);;"
+#define ETX_FILES_FILTER               "Edge16 " % CPN_STR_FILES % " (*.etx);;"
+#define YML_FILES_FILTER               "Edge16 YAML " % CPN_STR_FILES % " (*.yml);;"
 #define EEPROM_FILES_FILTER            CPN_STR_RAD_MOD_SETTINGS % " " % CPN_STR_FILES % " (*.etx *.yml);;" % ETX_FILES_FILTER % YML_FILES_FILTER
 #define FIRMWARE_FILES_FILTER          "Firmware " % CPN_STR_FILES % " (*.bin *.uf2);;" % BIN_FILES_FILTER % UF2_FILES_FILTER
 #define EXTERNAL_EEPROM_FILES_FILTER   "EEPROM " % CPN_STR_FILES % " (*.bin);;" % BIN_FILES_FILTER
@@ -94,9 +94,9 @@
 
 #define CPN_STR_SRC_INDICATOR_NEG      QCoreApplication::translate("RawSource", "-")             // Source negative value indicator.
 
-#define EDGETX_HOME_PAGE_URL           QStringLiteral("https://edgetx.org")
-#define EDGETX_DONATE_URL              QStringLiteral("https://opencollective.com/edgetx/donate")
-#define EDGETX_COMMIT_URL              QStringLiteral("https://github.com/EdgeTX/edgetx/commit/")
-#define EDGETX_ISSUES_URL              QStringLiteral("https://github.com/EdgeTX/edgetx/issues/new/choose")
+#define EDGETX_HOME_PAGE_URL           QStringLiteral("https://github.com/onliner10/Edge16")
+#define EDGETX_DONATE_URL              QStringLiteral("https://github.com/onliner10/Edge16")
+#define EDGETX_COMMIT_URL              QStringLiteral("https://github.com/onliner10/Edge16/commit/")
+#define EDGETX_ISSUES_URL              QStringLiteral("https://github.com/onliner10/Edge16/issues/new/choose")
 
 #define CPN_ADC_REFACTOR_VERSION       "2.10.0"
