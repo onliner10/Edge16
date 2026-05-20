@@ -309,62 +309,46 @@ class LogicalSwitchButton : public ListLineButton
 
   void onLineLoaded() override
   {
-    if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          lv_obj_enable_style_refresh(false);
+    onRefresh();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
+  }
 
-          lsName = etx_label_create(obj);
-          etx_obj_add_style(lsName, styles->text_align_left, LV_PART_MAIN);
-          lv_obj_set_pos(lsName, NM_X, NM_Y);
-          lv_obj_set_size(lsName, NM_W, EdgeTxStyles::STD_FONT_HEIGHT);
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+      return false;
+    }
 
-          lsFunc = etx_label_create(obj);
-          etx_obj_add_style(lsFunc, styles->text_align_left, LV_PART_MAIN);
-          lv_obj_set_pos(lsFunc, FN_X, FN_Y);
-          lv_obj_set_size(lsFunc, FN_W, EdgeTxStyles::STD_FONT_HEIGHT);
-          lv_obj_set_style_text_font(lsFunc, getFont(FONT(BOLD)),
-                                     LV_STATE_USER_1);
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return false;
 
-          lsV1 = etx_label_create(obj);
-          etx_obj_add_style(lsV1, styles->text_align_center, LV_PART_MAIN);
-          etx_font(lsV1, FONT_XS_INDEX, ETX_STATE_V1_SMALL_FONT);
-          lv_obj_set_pos(lsV1, V1_X, V1_Y);
-          lv_obj_set_size(lsV1, V1_W, EdgeTxStyles::STD_FONT_HEIGHT);
-          lv_obj_set_style_text_font(lsV1, getFont(FONT(BOLD)),
-                                     LV_STATE_USER_1);
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
 
-          lsV2 = etx_label_create(obj);
-          etx_obj_add_style(lsV2, styles->text_align_center, LV_PART_MAIN);
-          lv_obj_set_pos(lsV2, V2_X, V2_Y);
-          lv_obj_set_size(lsV2, V2_W, EdgeTxStyles::STD_FONT_HEIGHT);
-          lv_obj_set_style_text_font(lsV2, getFont(FONT(BOLD)),
-                                     LV_STATE_USER_1);
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    const lv_font_t* xsFont = getFont(FONT(XS));
+    const lv_font_t* boldFont = getFont(FONT(BOLD));
 
-          lsAnd = etx_label_create(obj);
-          etx_obj_add_style(lsAnd, styles->text_align_center, LV_PART_MAIN);
-          lv_obj_set_pos(lsAnd, AND_X, AND_Y);
-          lv_obj_set_size(lsAnd, AND_W, EdgeTxStyles::STD_FONT_HEIGHT);
-          lv_obj_set_style_text_font(lsAnd, getFont(FONT(BOLD)),
-                                     LV_STATE_USER_1);
-
-          lsDuration = etx_label_create(obj);
-          etx_obj_add_style(lsDuration, styles->text_align_center,
-                            LV_PART_MAIN);
-          lv_obj_set_pos(lsDuration, DUR_X, DUR_Y);
-          lv_obj_set_size(lsDuration, DUR_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          lsDelay = etx_label_create(obj);
-          etx_obj_add_style(lsDelay, styles->text_align_center, LV_PART_MAIN);
-          lv_obj_set_pos(lsDelay, DEL_X, DEL_Y);
-          lv_obj_set_size(lsDelay, DEL_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          lv_obj_update_layout(obj);
-
-          lv_obj_enable_style_refresh(true);
-          lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
-        }))
-      return;
-
+    label.font = stdFont;
+    drawText(layer, objCoords, label, NM_X, NM_Y, NM_W, lsNameText);
+    label.font = funcBold ? boldFont : stdFont;
+    drawText(layer, objCoords, label, FN_X, FN_Y, FN_W, lsFuncText);
+    label.align = LV_TEXT_ALIGN_CENTER;
+    label.font = v1Bold ? boldFont : (v1Small ? xsFont : stdFont);
+    drawText(layer, objCoords, label, V1_X, V1_Y, V1_W, lsV1Text);
+    label.font = v2Bold ? boldFont : stdFont;
+    drawText(layer, objCoords, label, V2_X, V2_Y, V2_W, lsV2Text);
+    label.font = andBold ? boldFont : stdFont;
+    drawText(layer, objCoords, label, AND_X, AND_Y, AND_W, lsAndText);
+    label.font = stdFont;
+    drawText(layer, objCoords, label, DUR_X, DUR_Y, DUR_W, lsDurationText);
+    drawText(layer, objCoords, label, DEL_X, DEL_Y, DEL_W, lsDelayText);
+    return false;
   }
 
   bool isActive() const override
@@ -377,25 +361,23 @@ class LogicalSwitchButton : public ListLineButton
     LogicalSwitchData* ls = lswAddress(index);
     uint8_t lsFamily = lswFamily(ls->func);
 
-    if (lsFamily == LS_FAMILY_STICKY && getLSStickyState(index))
-      lv_obj_add_state(lsFunc, LV_STATE_USER_1);
-    else
-      lv_obj_clear_state(lsFunc, LV_STATE_USER_1);
+    bool newFuncBold = (lsFamily == LS_FAMILY_STICKY && getLSStickyState(index));
+    bool newV1Bold = ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_EDGE || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v1));
+    bool newV2Bold = ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v2));
+    bool newAndBold = getSwitch(ls->andsw);
+    bool active = isActive();
 
-    if ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_EDGE || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v1))
-      lv_obj_add_state(lsV1, LV_STATE_USER_1);
-    else
-      lv_obj_clear_state(lsV1, LV_STATE_USER_1);
-
-    if ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v2))
-      lv_obj_add_state(lsV2, LV_STATE_USER_1);
-    else
-      lv_obj_clear_state(lsV2, LV_STATE_USER_1);
-
-    if (getSwitch(ls->andsw))
-      lv_obj_add_state(lsAnd, LV_STATE_USER_1);
-    else
-      lv_obj_clear_state(lsAnd, LV_STATE_USER_1);
+    if (newFuncBold != funcBold || newV1Bold != v1Bold ||
+        newV2Bold != v2Bold || newAndBold != andBold || active != lastActive) {
+      funcBold = newFuncBold;
+      v1Bold = newV1Bold;
+      v2Bold = newV2Bold;
+      andBold = newAndBold;
+      lastActive = active;
+      check(active);
+      updateAutomationText();
+      lv_obj_invalidate(live.lvobj());
+    }
   }
 
   void onRefresh() override
@@ -405,29 +387,26 @@ class LogicalSwitchButton : public ListLineButton
     LogicalSwitchData* ls = lswAddress(index);
     uint8_t lsFamily = lswFamily(ls->func);
 
-    lv_label_set_text(
-        lsName, getSwitchPositionName(SWSRC_FIRST_LOGICAL_SWITCH + index));
-    lv_label_set_text(lsFunc, STR_VCSWFUNC[ls->func]);
+    setText(lsNameText, getSwitchPositionName(SWSRC_FIRST_LOGICAL_SWITCH + index));
+    setText(lsFuncText, STR_VCSWFUNC[ls->func]);
 
     // CSW params - V1
     switch (lsFamily) {
       case LS_FAMILY_BOOL:
       case LS_FAMILY_STICKY:
       case LS_FAMILY_EDGE:
-        lv_label_set_text(lsV1, getSwitchPositionName(ls->v1));
+        setText(lsV1Text, getSwitchPositionName(ls->v1));
+        v1Small = false;
         break;
       case LS_FAMILY_TIMER:
-        lv_label_set_text(lsV1, formatNumberAsString(lswTimerValue(ls->v1),
-                                                     PREC1, 0, nullptr, "s")
-                                    .c_str());
+        setText(lsV1Text, formatNumberAsString(lswTimerValue(ls->v1), PREC1,
+                                               0, nullptr, "s").c_str());
+        v1Small = false;
         break;
       default: {
-        char* s = getSourceString(ls->v1);
-        if (getTextWidth(s, 0, FONT(STD)) > 88)
-          lv_obj_add_state(lsV1, ETX_STATE_V1_SMALL_FONT);
-        else
-          lv_obj_clear_state(lsV1, ETX_STATE_V1_SMALL_FONT);
-        lv_label_set_text(lsV1, s);
+        char* text = getSourceString(ls->v1);
+        v1Small = getTextWidth(text, 0, FONT(STD)) > 88;
+        setText(lsV1Text, text);
       } break;
     }
 
@@ -435,50 +414,48 @@ class LogicalSwitchButton : public ListLineButton
     switch (lsFamily) {
       case LS_FAMILY_BOOL:
       case LS_FAMILY_STICKY:
-        lv_label_set_text(lsV2, getSwitchPositionName(ls->v2));
+        setText(lsV2Text, getSwitchPositionName(ls->v2));
         break;
       case LS_FAMILY_EDGE:
         getsEdgeDelayParam(s, ls);
-        lv_label_set_text(lsV2, s);
+        setText(lsV2Text, s);
         break;
       case LS_FAMILY_TIMER:
-        lv_label_set_text(lsV2, formatNumberAsString(lswTimerValue(ls->v2),
-                                                     PREC1, 0, nullptr, "s")
-                                    .c_str());
+        setText(lsV2Text, formatNumberAsString(lswTimerValue(ls->v2), PREC1,
+                                               0, nullptr, "s").c_str());
         break;
       case LS_FAMILY_COMP:
-        lv_label_set_text(lsV2, getSourceString(ls->v2));
+        setText(lsV2Text, getSourceString(ls->v2));
         break;
       default:
-        lv_label_set_text(
-            lsV2,
-            getSourceCustomValueString(
-                ls->v1,
-                (ls->v1 <= MIXSRC_LAST_CH ? calc100toRESX(ls->v2) : ls->v2),
-                0));
+        setText(lsV2Text,
+                getSourceCustomValueString(
+                    ls->v1,
+                    (ls->v1 <= MIXSRC_LAST_CH ? calc100toRESX(ls->v2) : ls->v2),
+                    0));
         break;
     }
 
     // AND switch
-    lv_label_set_text(lsAnd, getSwitchPositionName(ls->andsw));
+    setText(lsAndText, getSwitchPositionName(ls->andsw));
 
     // CSW duration
     if (ls->duration > 0) {
-      lv_label_set_text(
-          lsDuration,
-          formatNumberAsString(ls->duration, PREC1, 0, nullptr, "s").c_str());
+      setText(lsDurationText,
+              formatNumberAsString(ls->duration, PREC1, 0, nullptr, "s").c_str());
     } else {
-      lv_label_set_text(lsDuration, "");
+      lsDurationText[0] = '\0';
     }
 
     // CSW delay
     if (lsFamily != LS_FAMILY_EDGE && ls->delay > 0) {
-      lv_label_set_text(
-          lsDelay,
-          formatNumberAsString(ls->delay, PREC1, 0, nullptr, "s").c_str());
+      setText(lsDelayText,
+              formatNumberAsString(ls->delay, PREC1, 0, nullptr, "s").c_str());
     } else {
-      lv_label_set_text(lsDelay, "");
+      lsDelayText[0] = '\0';
     }
+    updateAutomationText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
   static LAYOUT_SIZE_SCALED(LS_BUTTON_H, 32, 44)
@@ -506,13 +483,50 @@ class LogicalSwitchButton : public ListLineButton
   static constexpr coord_t DEL_Y = AND_Y;
 
  protected:
-  lv_obj_t* lsName = nullptr;
-  lv_obj_t* lsFunc = nullptr;
-  lv_obj_t* lsV1 = nullptr;
-  lv_obj_t* lsV2 = nullptr;
-  lv_obj_t* lsAnd = nullptr;
-  lv_obj_t* lsDuration = nullptr;
-  lv_obj_t* lsDelay = nullptr;
+  template <size_t N>
+  void setText(char (&dest)[N], const char* text)
+  {
+    dest[0] = '\0';
+    strAppend(dest, text ? text : "", N - 1);
+  }
+
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                const char* text)
+  {
+    if (!text || text[0] == '\0') return;
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[224];
+    snprintf(text, sizeof(text),
+             "%s | %s | v1=%s | v2=%s | and=%s | dur=%s | delay=%s | active=%u",
+             lsNameText, lsFuncText, lsV1Text, lsV2Text, lsAndText,
+             lsDurationText, lsDelayText, unsigned(lastActive));
+    setAutomationText(text);
+#endif
+  }
+
+  char lsNameText[16] = {};
+  char lsFuncText[32] = {};
+  char lsV1Text[32] = {};
+  char lsV2Text[32] = {};
+  char lsAndText[32] = {};
+  char lsDurationText[16] = {};
+  char lsDelayText[16] = {};
+  bool lastActive = false;
+  bool funcBold = false;
+  bool v1Bold = false;
+  bool v2Bold = false;
+  bool andBold = false;
+  bool v1Small = false;
 };
 
 ModelLogicalSwitchesPage::ModelLogicalSwitchesPage(const PageDef& pageDef) :

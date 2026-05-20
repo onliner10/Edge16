@@ -113,6 +113,7 @@ class InputMixButtonBase : public ListLineButton
   void updateHeight();
   virtual void updatePos(coord_t x, coord_t y) = 0;
 
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
   void onLoadedCheckEvents(LiveWindow& live) override;
 
   // total: 90 x 17
@@ -147,16 +148,21 @@ class InputMixButtonBase : public ListLineButton
 
  protected:
 
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                coord_t h, const char* text);
+  void invalidateLine();
+  void updateAutomationText();
+
   lv_obj_t* fm_canvas = nullptr;
   void* fm_buffer = nullptr;
   uint16_t fm_modes = 0;
-
-  RequiredLvObj weight;
-  RequiredLvObj source;
-  RequiredLvObj opts;
-
-  bool ensureLineLabel(RequiredLvObj& label, coord_t x, coord_t y, coord_t w,
-                       coord_t h);
+  char weightText[32] = {};
+  char sourceText[32] = {};
+  char optsText[64] = {};
+  bool weightSmall = false;
+  bool sourceSmall = false;
+  bool optsSmall = false;
 };
 
 class InputMixGroupBase : public Window

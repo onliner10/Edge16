@@ -59,59 +59,69 @@ FunctionLineButton::FunctionLineButton(Window* parent, const rect_t& rect,
 void FunctionLineButton::onLineLoaded()
 {
   if (!withLive([&](LiveWindow& live) {
-        auto obj = live.lvobj();
-        lv_obj_enable_style_refresh(false);
-
-        sfName = etx_label_create(obj);
-        if (!requireLvObj(sfName)) {
-          lv_obj_enable_style_refresh(true);
-          return false;
-        }
-        lv_obj_set_pos(sfName, NM_X, NM_Y);
-        lv_obj_set_size(sfName, NM_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-        sfSwitch = etx_label_create(obj);
-        if (!requireLvObj(sfSwitch)) {
-          lv_obj_enable_style_refresh(true);
-          return false;
-        }
-        lv_obj_set_pos(sfSwitch, SW_X, SW_Y);
-        lv_obj_set_size(sfSwitch, SW_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-        sfFunc = etx_label_create(obj);
-        if (!requireLvObj(sfFunc)) {
-          lv_obj_enable_style_refresh(true);
-          return false;
-        }
-        lv_obj_set_pos(sfFunc, FN_X, FN_Y);
-        lv_obj_set_size(sfFunc, FN_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-        sfRepeat = etx_label_create(obj);
-        if (!requireLvObj(sfRepeat)) {
-          lv_obj_enable_style_refresh(true);
-          return false;
-        }
-        lv_obj_set_pos(sfRepeat, RP_X, RP_Y);
-        lv_obj_set_size(sfRepeat, RP_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
         sfEnable = new CheckButton(
             this, {EN_X, EN_Y, EN_SZ, EN_SZ},
             [=]() -> uint8_t { return functionEnabled(); },
             [=](uint8_t enabled) { setFunctionEnabled(enabled); });
-        if (!sfEnable || !sfEnable->isAvailable()) {
-          lv_obj_enable_style_refresh(true);
-          return false;
-        }
+        if (!sfEnable || !sfEnable->isAvailable()) return false;
         sfEnable->setWindowFlag(NO_FOCUS);
-
-        lv_obj_update_layout(obj);
-
-        lv_obj_enable_style_refresh(true);
-        lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
+        onRefresh();
+        lv_obj_invalidate(live.lvobj());
         return true;
       }))
     return;
 
+}
+
+bool FunctionLineButton::onLiveCustomEvent(LiveWindow& live, lv_event_t* event)
+{
+  if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+  if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+    return false;
+  }
+
+  lv_layer_t* layer = lv_event_get_layer(event);
+  if (!layer) return false;
+
+  lv_obj_t* obj = live.lvobj();
+  lv_area_t objCoords;
+  lv_obj_get_coords(obj, &objCoords);
+
+  lv_draw_label_dsc_t label;
+  lv_draw_label_dsc_init(&label);
+  label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+  label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+
+  drawText(layer, objCoords, label, NM_X, NM_Y, NM_W, sfNameText);
+  drawText(layer, objCoords, label, SW_X, SW_Y, SW_W, sfSwitchText);
+  drawText(layer, objCoords, label, FN_X, FN_Y, FN_W, sfFuncText);
+  label.align = LV_TEXT_ALIGN_RIGHT;
+  drawText(layer, objCoords, label, RP_X, RP_Y, RP_W, sfRepeatText);
+  return false;
+}
+
+void FunctionLineButton::drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                                  lv_draw_label_dsc_t& label, coord_t x,
+                                  coord_t y, coord_t w, const char* text)
+{
+  if (!text || text[0] == '\0') return;
+  lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                      objCoords.x1 + x + w - 1,
+                      objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
+  label.text = text;
+  lv_draw_label(layer, &label, &coords);
+  label.align = LV_TEXT_ALIGN_LEFT;
+}
+
+void FunctionLineButton::updateAutomationText()
+{
+#if defined(SIMU)
+  char text[224];
+  snprintf(text, sizeof(text), "%s | switch=%s | function=%s | repeat=%s | enabled=%u",
+           sfNameText, sfSwitchText, sfFuncText, sfRepeatText,
+           unsigned(functionEnabled()));
+  setAutomationText(text);
+#endif
 }
 
 bool FunctionLineButton::functionEnabled() const { return CFN_ACTIVE(cfn); }
@@ -136,8 +146,10 @@ void FunctionLineButton::onRefresh()
 
   char s[64];
 
-  lv_label_set_text(sfName, (prefix + std::to_string(index + 1)).c_str());
-  lv_label_set_text(sfSwitch, getSwitchPositionName(CFN_SWITCH(cfn)));
+  snprintf(sfNameText, sizeof(sfNameText), "%s%d", prefix, index + 1);
+  sfSwitchText[0] = '\0';
+  strAppend(sfSwitchText, getSwitchPositionName(CFN_SWITCH(cfn)),
+            sizeof(sfSwitchText) - 1);
 
   strcpy(s, funcGetLabel(func));
   strcat(s, " - ");
@@ -254,7 +266,8 @@ void FunctionLineButton::onRefresh()
       break;
   }
 
-  lv_label_set_text(sfFunc, s);
+  sfFuncText[0] = '\0';
+  strAppend(sfFuncText, s, sizeof(sfFuncText) - 1);
 
   s[0] = 0;
 
@@ -275,7 +288,10 @@ void FunctionLineButton::onRefresh()
     }
   }
 
-  lv_label_set_text(sfRepeat, s);
+  sfRepeatText[0] = '\0';
+  strAppend(sfRepeatText, s, sizeof(sfRepeatText) - 1);
+  updateAutomationText();
+  withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
 }
 
 //-----------------------------------------------------------------------------

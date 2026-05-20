@@ -242,42 +242,42 @@ class SensorButton : public ListLineButton
 
  protected:
   bool showId = false;
-  RequiredLvObj numLabel;
-  OptionalLvObj idLabel;
-  RequiredLvObj valLabel;
   OptionalLvObj fresh;
   uint32_t lastRefresh = 0;
   std::string valString;
+  char numText[8] = {};
+  char idText[20] = {};
+  char nameText[TELEM_LABEL_LEN + 1] = {};
+  bool valueOld = false;
+  bool freshVisible = false;
+  bool lastActive = false;
 
   bool isActive() const override { return telemetryItems[index].isAvailable(); }
 
   void setNumIdState()
   {
-    idLabel.with([&](lv_obj_t* id) {
-      const bool nextShowId = g_model.showInstanceIds;
-      showId = nextShowId;
-      numLabel.with([&](lv_obj_t* num) {
-        if (nextShowId) {
-          lv_obj_clear_flag(id, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_state(num, ETX_STATE_VALUE_SMALL_FONT);
-        } else {
-          lv_obj_add_flag(id, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_clear_state(num, ETX_STATE_VALUE_SMALL_FONT);
-        }
-      });
-    });
+    const bool nextShowId = g_model.showInstanceIds;
+    if (showId == nextShowId) return;
+    showId = nextShowId;
+    updateAutomationText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
   void updateSensorLiveState()
   {
-    if (showId != g_model.showInstanceIds) setNumIdState();
+    setNumIdState();
 
-    fresh.with([&](lv_obj_t* marker) {
-      if (telemetryItems[index].isFresh())
-        lv_obj_clear_flag(marker, LV_OBJ_FLAG_HIDDEN);
-      else
-        lv_obj_add_flag(marker, LV_OBJ_FLAG_HIDDEN);
-    });
+    bool nextFreshVisible = telemetryItems[index].isFresh();
+    if (freshVisible != nextFreshVisible) {
+      freshVisible = nextFreshVisible;
+      fresh.with([&](lv_obj_t* marker) {
+        if (freshVisible)
+          lv_obj_clear_flag(marker, LV_OBJ_FLAG_HIDDEN);
+        else
+          lv_obj_add_flag(marker, LV_OBJ_FLAG_HIDDEN);
+      });
+      updateAutomationText();
+    }
 
     uint32_t now = lv_tick_get();
     TelemetryItem& telemetryItem = telemetryItems[index];
@@ -297,17 +297,15 @@ class SensorButton : public ListLineButton
       s = "---";
     }
 
-    valLabel.with([&](lv_obj_t* value) {
-      if (isOld)
-        lv_obj_add_state(value, ETX_STATE_VALUE_STALE_WARN);
-      else
-        lv_obj_clear_state(value, ETX_STATE_VALUE_STALE_WARN);
-
-      if (valString != s) {
-        valString = s;
-        lv_label_set_text(value, s.c_str());
-      }
-    });
+    bool active = isActive();
+    if (valString != s || valueOld != isOld || active != lastActive) {
+      valString = s;
+      valueOld = isOld;
+      lastActive = active;
+      check(active);
+      updateAutomationText();
+      withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
+    }
   }
 
   void onLineLiveUpdate(LiveWindow& live) override
@@ -317,42 +315,20 @@ class SensorButton : public ListLineButton
 
   void onLineLoaded() override
   {
-    char s[20];
+    TelemetrySensor* sensor = &g_model.telemetrySensors[index];
+    snprintf(numText, sizeof(numText), "%u", unsigned(index + 1));
+    if (sensor->type == TELEM_TYPE_CUSTOM) {
+      snprintf(idText, sizeof(idText), "ID: %d", sensor->instance);
+    } else {
+      idText[0] = '\0';
+    }
+    nameText[0] = '\0';
+    strAppend(nameText, sensor->label, TELEM_LABEL_LEN);
+    showId = !g_model.showInstanceIds;
+    setNumIdState();
 
     if (!withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
-          lv_obj_enable_style_refresh(false);
-
-          lv_obj_t* num = tsStyle.newNum(obj, index);
-          if (!requireLvObj(numLabel, num)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(num, PAD_TINY, PAD_TINY);
-
-          TelemetrySensor* sensor = &g_model.telemetrySensors[index];
-          if (sensor->type == TELEM_TYPE_CUSTOM) {
-            sprintf(s, "ID: %d", sensor->instance);
-
-            lv_obj_t* id = tsStyle.newId(obj, s);
-            if (!requireLvObj(id)) {
-              lv_obj_enable_style_refresh(true);
-              return false;
-            }
-            idLabel.reset(id);
-            lv_obj_set_pos(id, PAD_TINY, TSStyle::ID_Y);
-          }
-
-          setNumIdState();
-
-          strAppend(s, g_model.telemetrySensors[index].label, TELEM_LABEL_LEN);
-          lv_obj_t* nm = tsStyle.newName(obj, s);
-          if (!requireLvObj(nm)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(nm, TSStyle::NUM_W + PAD_SMALL, PAD_MEDIUM / 2);
-
           auto mask = getBuiltinIcon(ICON_DOT);
           lv_obj_t* freshMarker = createFreshCanvas(obj);
           fresh.reset(freshMarker);
@@ -363,23 +339,78 @@ class SensorButton : public ListLineButton
                                  mask->height, LV_COLOR_FORMAT_A8);
             lv_obj_add_flag(freshMarker, LV_OBJ_FLAG_HIDDEN);
           }
-
-          lv_obj_t* value = tsStyle.newValue(obj);
-          if (!requireLvObj(valLabel, value)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(value,
-                         TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
-                         PAD_MEDIUM / 2);
-
-          lv_obj_update_layout(obj);
-
-          lv_obj_enable_style_refresh(true);
-          lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
           return true;
         }))
       return;
+
+    updateSensorLiveState();
+  }
+
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+      return false;
+    }
+
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return false;
+
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
+
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    label.font = showId ? getFont(FONT(XS)) : stdFont;
+    label.align = LV_TEXT_ALIGN_CENTER;
+    drawText(layer, objCoords, label, PAD_TINY, PAD_TINY, TSStyle::NUM_W,
+             EdgeTxStyles::STD_FONT_HEIGHT, numText);
+    if (showId) {
+      label.font = getFont(FONT(XXS));
+      drawText(layer, objCoords, label, PAD_TINY, TSStyle::ID_Y,
+               TSStyle::NUM_W, TSStyle::ID_H, idText);
+    }
+
+    label.font = stdFont;
+    label.align = LV_TEXT_ALIGN_LEFT;
+    drawText(layer, objCoords, label, TSStyle::NUM_W + PAD_SMALL,
+             PAD_MEDIUM / 2, TSStyle::NAME_W, EdgeTxStyles::STD_FONT_HEIGHT,
+             nameText);
+
+    label.color = valueOld ? makeLvColor(COLOR_THEME_WARNING)
+                           : lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    drawText(layer, objCoords, label,
+             TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
+             PAD_MEDIUM / 2, LCD_W, EdgeTxStyles::STD_FONT_HEIGHT,
+             valString.c_str());
+    return false;
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[192];
+    snprintf(text, sizeof(text),
+             "%s | id=%s | name=%s | value=%s | fresh=%u | old=%u | active=%u",
+             numText, showId ? idText : "", nameText, valString.c_str(),
+             unsigned(freshVisible), unsigned(valueOld), unsigned(lastActive));
+    setAutomationText(text);
+#endif
+  }
+
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                coord_t h, const char* text)
+  {
+    if (!text || text[0] == '\0') return;
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + h - 1};
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
   }
 
   void onRefresh() override

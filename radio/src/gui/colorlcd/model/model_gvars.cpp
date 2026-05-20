@@ -89,20 +89,21 @@ class GVarButton : public ListLineButton
 
  protected:
   uint8_t currentFlightMode = 0;  // used for checking updates
-  lv_obj_t* valueTexts[MAX_FLIGHT_MODES] = {};
   gvar_t values[MAX_FLIGHT_MODES] = {};
+  char nameText[16] = {};
+  char valueTexts[MAX_FLIGHT_MODES][16] = {};
+  bool smallValueText[MAX_FLIGHT_MODES] = {};
 
   int numFlightModes() { return modelFMEnabled() ? MAX_FLIGHT_MODES : 1; }
 
   void onLoadedCheckEvents(LiveWindow& live) override
   {
+    bool changed = false;
     if (modelFMEnabled()) {
       uint8_t newFM = getFlightMode();
       if (currentFlightMode != newFM) {
-        lv_obj_add_state(valueTexts[newFM], LV_STATE_CHECKED);
-        lv_obj_clear_state(valueTexts[currentFlightMode], LV_STATE_CHECKED);
-
         currentFlightMode = newFM;
+        changed = true;
       }
     }
 
@@ -110,99 +111,129 @@ class GVarButton : public ListLineButton
       FlightModeData* fmData = &g_model.flightModeData[flightMode];
       if (values[flightMode] != fmData->gvars[index]) {
         updateValueText(flightMode);
+        changed = true;
       }
+    }
+    if (changed) {
+      updateAutomationText();
+      lv_obj_invalidate(live.lvobj());
     }
   }
 
   void onLineLoaded() override
   {
-    if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          lv_obj_enable_style_refresh(false);
-
-          currentFlightMode = getFlightMode();
-
-          auto nm = etx_label_create(obj);
-          if (!requireLvObj(nm)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_label_set_text(nm, getGVarString(index));
-          lv_obj_set_pos(nm, PAD_TINY, GVAR_NM_Y);
-          lv_obj_set_size(nm, GVAR_NAME_SIZE, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          if (modelFMEnabled()) {
-            for (int flightMode = 0; flightMode < MAX_FLIGHT_MODES;
-                 flightMode++) {
-              valueTexts[flightMode] = etx_create(&gv_value_class, obj);
-              if (!requireLvObj(valueTexts[flightMode])) {
-                lv_obj_enable_style_refresh(true);
-                return false;
-              }
-              lv_obj_set_pos(valueTexts[flightMode],
-                             (flightMode % GVAR_COLS) * GVAR_VAL_W +
-                                 GVAR_NAME_SIZE + PAD_TINY * 2,
-                             (flightMode / GVAR_COLS) * GVAR_VAL_H + GVAR_YO);
-
-              if (flightMode == currentFlightMode) {
-                lv_obj_add_state(valueTexts[flightMode], LV_STATE_CHECKED);
-              }
-
-              updateValueText(flightMode);
-            }
-          } else {
-            valueTexts[0] = etx_label_create(obj);
-            if (!requireLvObj(valueTexts[0])) {
-              lv_obj_enable_style_refresh(true);
-              return false;
-            }
-            lv_obj_set_pos(valueTexts[0], GVAR_NAME_SIZE + PAD_MEDIUM,
-                           (BTN_H - EdgeTxStyles::STD_FONT_HEIGHT -
-                            PAD_SMALL) /
-                               2);
-
-            updateValueText(0);
-          }
-
-          lv_obj_update_layout(obj);
-
-          lv_obj_enable_style_refresh(true);
-          lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
-          return true;
-        }))
-      return;
+    currentFlightMode = getFlightMode();
+    nameText[0] = '\0';
+    strAppend(nameText, getGVarString(index), sizeof(nameText) - 1);
+    setAutomationText(nameText);
+    for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
+      updateValueText(flightMode);
+    }
+    updateAutomationText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
   void updateValueText(uint8_t flightMode)
   {
-    lv_obj_t* field = valueTexts[flightMode];
     gvar_t value = g_model.flightModeData[flightMode].gvars[index];
     values[flightMode] = value;
+    valueTexts[flightMode][0] = '\0';
+    smallValueText[flightMode] = false;
 
     if (value > GVAR_MAX) {
       uint8_t fm = value - GVAR_MAX - 1;
       if (fm >= flightMode) fm += 1;
-      char label[16] = {};
-      getFlightModeString(label, fm + 1);
-
-      lv_label_set_text(field, label);
+      getFlightModeString(valueTexts[flightMode], fm + 1);
     } else {
       uint8_t unit = g_model.gvars[index].unit;
       const char* suffix = (unit == 1) ? "%" : "";
       uint8_t prec = g_model.gvars[index].prec;
       if (prec)
-        lv_label_set_text_fmt(field, "%d.%01u%s", value / 10,
-                              (value < 0) ? (-value) % 10 : value % 10, suffix);
+        snprintf(valueTexts[flightMode], sizeof(valueTexts[flightMode]),
+                 "%d.%01u%s", value / 10,
+                 (value < 0) ? (-value) % 10 : value % 10, suffix);
       else
-        lv_label_set_text_fmt(field, "%d%s", value, suffix);
+        snprintf(valueTexts[flightMode], sizeof(valueTexts[flightMode]),
+                 "%d%s", value, suffix);
       if (unit) {
-        if (value <= -1000 || value >= 1000 || (prec && (value <= -100))) {
-          lv_obj_add_state(field, ETX_STATE_VALUE_SMALL_FONT);
-        } else {
-          lv_obj_clear_state(field, ETX_STATE_VALUE_SMALL_FONT);
-        }
+        smallValueText[flightMode] =
+            value <= -1000 || value >= 1000 || (prec && (value <= -100));
       }
     }
+  }
+
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+      return false;
+    }
+
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return false;
+
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
+
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    const lv_font_t* xsFont = getFont(FONT(XS));
+    label.font = stdFont;
+    drawText(layer, objCoords, label, PAD_TINY, GVAR_NM_Y, GVAR_NAME_SIZE,
+             EdgeTxStyles::STD_FONT_HEIGHT, nameText, LV_TEXT_ALIGN_LEFT);
+
+    for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
+      coord_t x = (flightMode % GVAR_COLS) * GVAR_VAL_W +
+                  GVAR_NAME_SIZE + PAD_TINY * 2;
+      coord_t y = (flightMode / GVAR_COLS) * GVAR_VAL_H + GVAR_YO;
+      if (modelFMEnabled() && flightMode == currentFlightMode) {
+        lv_draw_rect_dsc_t rect;
+        lv_draw_rect_dsc_init(&rect);
+        rect.bg_color = makeLvColor(COLOR_THEME_ACTIVE);
+        rect.bg_opa = LV_OPA_COVER;
+        lv_area_t rectArea = {objCoords.x1 + x, objCoords.y1 + y,
+                              objCoords.x1 + x + GVAR_VAL_W - 1,
+                              objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
+        lv_draw_rect(layer, &rect, &rectArea);
+      }
+      label.font = smallValueText[flightMode] ? xsFont : stdFont;
+      drawText(layer, objCoords, label, x, y, GVAR_VAL_W,
+               EdgeTxStyles::STD_FONT_HEIGHT, valueTexts[flightMode],
+               LV_TEXT_ALIGN_CENTER);
+    }
+    return false;
+  }
+
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                coord_t h, const char* text, lv_text_align_t align)
+  {
+    if (!text || text[0] == '\0') return;
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + h - 1};
+    label.align = align;
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[192];
+    int written = snprintf(text, sizeof(text), "%s | fm=%u", nameText,
+                           unsigned(currentFlightMode + 1));
+    for (int flightMode = 0; flightMode < numFlightModes() &&
+                             written >= 0 && size_t(written) < sizeof(text);
+         flightMode++) {
+      written += snprintf(text + written, sizeof(text) - written, " | %u:%s",
+                          unsigned(flightMode + 1), valueTexts[flightMode]);
+    }
+    setAutomationText(text);
+#endif
   }
 
   bool isActive() const override { return false; }

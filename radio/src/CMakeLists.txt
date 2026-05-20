@@ -702,10 +702,12 @@ if(EDGE16_GCC_ANALYZER)
       set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
         -Wno-analyzer-use-of-uninitialized-value)
     elseif(src MATCHES "(^|/)gui/colorlcd/libui/mainwindow\\.cpp$")
-      # GCC 14 -fanalyzer misclassifies iteration over a local std::list copy
-      # as infinite even though the iterator is advanced before child handling.
+      # GCC 14 -fanalyzer misclassifies mutation-safe child snapshots in
+      # Window::forEachChildSnapshot: local std::list copies can look infinite,
+      # and local std::vector storage can look nullable after reserve/push_back.
       set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
-        -Wno-analyzer-infinite-loop)
+        -Wno-analyzer-infinite-loop
+        -Wno-analyzer-possible-null-dereference)
     elseif(src MATCHES "(^|/)gui/colorlcd/libui/numberedit\\.cpp$")
       # GCC 14 -fanalyzer reports uninitialized state inside libstdc++
       # std::string/to_string paths; NumberEdit initializes returned strings.

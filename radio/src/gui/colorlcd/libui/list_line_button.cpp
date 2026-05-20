@@ -350,43 +350,95 @@ static void setLineLabelText(RequiredLvObj& label, const char* text,
   });
 }
 
-bool InputMixButtonBase::ensureLineLabel(RequiredLvObj& label, coord_t x,
-                                         coord_t y, coord_t w, coord_t h)
+void InputMixButtonBase::invalidateLine()
 {
-  if (label.isPresent()) return true;
+  withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
+}
 
-  return initRequiredLvObj(label, list_line_label_create, [&](lv_obj_t* obj) {
-    lv_obj_set_pos(obj, x, y);
-    lv_obj_set_size(obj, w, h);
-    etx_font(obj, FONT_XS_INDEX, LV_STATE_USER_1);
-  });
+static bool input_mix_text_needs_small_font(const char* text, coord_t width)
+{
+  return getTextWidth(text, 0, FONT(STD)) > width;
 }
 
 void InputMixButtonBase::setWeight(gvar_t value, gvar_t min, gvar_t max)
 {
-  if (!isLineReady()) return;
-  if (!ensureLineLabel(weight, WGT_X, WGT_Y, WGT_W, WGT_H)) return;
-
-  char s[32];
-  getValueOrSrcVarString(s, sizeof(s), value, 0, "%");
-  setLineLabelText(weight, s, WGT_W);
+  getValueOrSrcVarString(weightText, sizeof(weightText), value, 0, "%");
+  weightSmall = input_mix_text_needs_small_font(weightText, WGT_W);
+  updateAutomationText();
+  invalidateLine();
 }
 
 void InputMixButtonBase::setSource(mixsrc_t idx)
 {
-  if (!isLineReady()) return;
-  if (!ensureLineLabel(source, SRC_X, SRC_Y, SRC_W, SRC_H)) return;
-
-  char* s = getSourceString(idx);
-  setLineLabelText(source, s, SRC_W);
+  sourceText[0] = '\0';
+  strAppend(sourceText, getSourceString(idx), sizeof(sourceText) - 1);
+  sourceSmall = input_mix_text_needs_small_font(sourceText, SRC_W);
+  updateAutomationText();
+  invalidateLine();
 }
 
 void InputMixButtonBase::setOpts(const char* s)
 {
-  if (!isLineReady()) return;
-  if (!ensureLineLabel(opts, OPT_X, OPT_Y, OPT_W, OPT_H)) return;
+  optsText[0] = '\0';
+  strAppend(optsText, s ? s : "", sizeof(optsText) - 1);
+  optsSmall = input_mix_text_needs_small_font(optsText, OPT_W);
+  updateAutomationText();
+  invalidateLine();
+}
 
-  setLineLabelText(opts, s, OPT_W);
+void InputMixButtonBase::updateAutomationText()
+{
+#if defined(SIMU)
+  char text[160];
+  snprintf(text, sizeof(text), "%s | %s | %s | fm=0x%04x", weightText,
+           sourceText, optsText, unsigned(fm_modes));
+  setAutomationText(text);
+#endif
+}
+
+bool InputMixButtonBase::onLiveCustomEvent(LiveWindow& live, lv_event_t* event)
+{
+  if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+  if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+    return false;
+  }
+
+  lv_layer_t* layer = lv_event_get_layer(event);
+  if (!layer) return false;
+
+  lv_obj_t* obj = live.lvobj();
+  lv_area_t objCoords;
+  lv_obj_get_coords(obj, &objCoords);
+
+  lv_draw_label_dsc_t label;
+  lv_draw_label_dsc_init(&label);
+  label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+  const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+  const lv_font_t* xsFont = getFont(FONT(XS));
+
+  label.font = weightSmall ? xsFont : stdFont;
+  drawText(layer, objCoords, label, WGT_X, WGT_Y, WGT_W, WGT_H, weightText);
+  label.font = sourceSmall ? xsFont : stdFont;
+  drawText(layer, objCoords, label, SRC_X, SRC_Y, SRC_W, SRC_H, sourceText);
+  label.font = optsSmall ? xsFont : stdFont;
+  drawText(layer, objCoords, label, OPT_X, OPT_Y, OPT_W, OPT_H, optsText);
+
+  return false;
+}
+
+void InputMixButtonBase::drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                                  lv_draw_label_dsc_t& label, coord_t x,
+                                  coord_t y, coord_t w, coord_t h,
+                                  const char* text)
+{
+  if (!text || text[0] == '\0') return;
+
+  lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                      objCoords.x1 + x + w - 1,
+                      objCoords.y1 + y + h - 1};
+  label.align = LV_TEXT_ALIGN_LEFT;
+  label.text = text;
+  lv_draw_label(layer, &label, &coords);
 }
 
 void InputMixButtonBase::setFlightModes(uint16_t modes)
@@ -399,6 +451,7 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
     if (!modelFMEnabled()) return;
     if (modes == fm_modes) return;
     fm_modes = modes;
+    updateAutomationText();
 
     if (!fm_modes) {
       if (!fm_canvas) return;
@@ -414,6 +467,7 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
       auto newCanvas = lv_canvas_create(obj);
       if (!newCanvas) {
         fm_modes = 0;
+        updateAutomationText();
         updateHeight();
         return;
       }
@@ -428,6 +482,7 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
       if (!newBuffer) {
         lv_obj_del(newCanvas);
         fm_modes = 0;
+        updateAutomationText();
         updateHeight();
         return;
       }
@@ -506,6 +561,7 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
   });
   if (!handled) {
     fm_modes = 0;
+    updateAutomationText();
     return;
   }
 }

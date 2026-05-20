@@ -21,6 +21,8 @@
 
 #include "model_outputs.h"
 
+#include <array>
+
 #include "dialog.h"
 #include "channel_bar.h"
 #include "edgetx.h"
@@ -49,98 +51,6 @@ static void publishModelOutputsChanged()
 
 class OutputLineButton : public ListLineButton
 {
-  lv_obj_t* source = nullptr;
-  lv_obj_t* revert = nullptr;
-  lv_obj_t* min = nullptr;
-  lv_obj_t* max = nullptr;
-  lv_obj_t* offset = nullptr;
-  lv_obj_t* center = nullptr;
-  StaticIcon* curve = nullptr;
-
-  void onLineLoaded() override
-  {
-    if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          lv_obj_enable_style_refresh(false);
-
-          source = etx_label_create(obj);
-          if (!requireLvObj(source)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_obj_set_pos(source, SRC_X, SRC_Y);
-          lv_obj_set_size(source, SRC_W, SRC_H);
-
-#if !NARROW_LAYOUT
-          etx_font(source, FONT_XS_INDEX, ETX_STATE_NAME_FONT_SMALL);
-          lv_obj_set_style_pad_top(source, -PAD_TINY,
-                                   ETX_STATE_NAME_FONT_SMALL);
-          lv_obj_set_style_text_line_space(source, -PAD_THREE,
-                                           ETX_STATE_NAME_FONT_SMALL);
-#endif
-
-          min = etx_label_create(obj);
-          if (!requireLvObj(min)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          etx_obj_add_style(min, styles->text_align_right, LV_PART_MAIN);
-          etx_font(min, FONT_BOLD_INDEX, ETX_STATE_MINMAX_BOLD);
-          lv_obj_set_pos(min, MIN_X, MIN_Y);
-          lv_obj_set_size(min, MIN_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          max = etx_label_create(obj);
-          if (!requireLvObj(max)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          etx_obj_add_style(max, styles->text_align_right, LV_PART_MAIN);
-          etx_font(max, FONT_BOLD_INDEX, ETX_STATE_MINMAX_BOLD);
-          lv_obj_set_pos(max, MAX_X, MAX_Y);
-          lv_obj_set_size(max, MAX_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          offset = etx_label_create(obj);
-          if (!requireLvObj(offset)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          etx_obj_add_style(offset, styles->text_align_right, LV_PART_MAIN);
-          lv_obj_set_pos(offset, OFF_X, OFF_Y);
-          lv_obj_set_size(offset, OFF_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          center = etx_label_create(obj);
-          if (!requireLvObj(center)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          etx_obj_add_style(center, styles->text_align_right, LV_PART_MAIN);
-          lv_obj_set_pos(center, CTR_X, CTR_Y);
-          lv_obj_set_size(center, CTR_W, EdgeTxStyles::STD_FONT_HEIGHT);
-
-          revert = lv_img_create(obj);
-          if (!requireLvObj(revert)) {
-            lv_obj_enable_style_refresh(true);
-            return false;
-          }
-          lv_img_set_src(revert, LV_SYMBOL_SHUFFLE);
-          lv_obj_set_pos(revert, REV_X, REV_Y);
-
-          lv_obj_update_layout(obj);
-
-          lv_obj_enable_style_refresh(true);
-          lv_obj_refresh_style(obj, LV_PART_ANY, LV_STYLE_PROP_ANY);
-          return true;
-        }))
-      return;
-
-    curve =
-        new StaticIcon(this, CRV_X, CRV_Y, ICON_TEXTLINE_CURVE, COLOR_THEME_SECONDARY1_INDEX);
-
-    new OutputChannelBar(this, rect_t{BAR_X, PAD_MEDIUM, CH_BAR_WIDTH, CH_BAR_HEIGHT},
-                               index, false, false);
-
-  }
-
  public:
   OutputLineButton(Window* parent, uint8_t channel) :
       ListLineButton(parent, channel)
@@ -151,47 +61,31 @@ class OutputLineButton : public ListLineButton
     refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { refresh(); });
   }
 
+  void onLineLoaded() override
+  {
+    curve =
+        new StaticIcon(this, CRV_X, CRV_Y, ICON_TEXTLINE_CURVE, COLOR_THEME_SECONDARY1_INDEX);
+
+    new OutputChannelBar(this, rect_t{BAR_X, PAD_MEDIUM, CH_BAR_WIDTH, CH_BAR_HEIGHT},
+                               index, false, false);
+
+    refreshCachedText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
+  }
+
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) == LV_EVENT_DRAW_MAIN_END && isLineReady()) {
+      drawRow(live, event);
+    }
+    return false;
+  }
+
   void onRefresh() override
   {
-    const LimitData* output = limitAddress(index);
-    if (g_model.limitData[index].name[0] != '\0') {
-#if !NARROW_LAYOUT
-      lv_obj_add_state(source, ETX_STATE_NAME_FONT_SMALL);
-#endif
-      char chanStr[LEN_CHANNEL_NAME + 16];
-      char* s = strAppend(chanStr, getSourceString(MIXSRC_FIRST_CH + index));
-      s = strAppend(s, "\n");
-      s = strAppend(s, STR_CH);
-      strAppendUnsigned(s, index + 1);
-      lv_label_set_text(source, chanStr);
-    } else {
-#if !NARROW_LAYOUT
-      lv_obj_clear_state(source, ETX_STATE_NAME_FONT_SMALL);
-#endif
-      lv_label_set_text(source, getSourceString(MIXSRC_FIRST_CH + index));
-    }
-    if (output->revert) {
-      lv_obj_clear_flag(revert, LV_OBJ_FLAG_HIDDEN);
-    } else {
-      lv_obj_add_flag(revert, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    char s[32];
-    getValueOrGVarString(s, sizeof(s), output->min, PREC1,
-                         nullptr, -LIMITS_MIN_MAX_OFFSET, true);
-    lv_label_set_text(min, s);
-
-    getValueOrGVarString(s, sizeof(s), output->max, PREC1,
-                         nullptr, +LIMITS_MIN_MAX_OFFSET, true);
-    lv_label_set_text(max, s);
-
-    getValueOrGVarString(s, sizeof(s), output->offset, PREC1, nullptr, 0, true);
-    lv_label_set_text(offset, s);
-
-    lv_label_set_text_fmt(center, "%d%s", PPM_CENTER + output->ppmCenter,
-                          output->symetrical ? " =" : CHAR_DELTA);
-
-    curve->show(output->curve);
+    refreshCachedText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
   static LAYOUT_SIZE_SCALED(CH_LINE_H, 32, 50)
@@ -223,8 +117,12 @@ class OutputLineButton : public ListLineButton
   static constexpr coord_t CRV_Y = REV_Y + 1;
 
  protected:
-  int value = -10000;
-  Messaging refreshMsg;
+  template <size_t N>
+  void setText(std::array<char, N>& dest, const char* text)
+  {
+    dest[0] = '\0';
+    strAppend(dest.data(), text ? text : "", N - 1);
+  }
 
   bool isActive() const override { return false; }
 
@@ -235,20 +133,140 @@ class OutputLineButton : public ListLineButton
       value = newValue;
 
       int chanVal = calcRESXto100(getRawChannelOutput(index));
-
-      if (chanVal < -DEADBAND) {
-        lv_obj_add_state(min, ETX_STATE_MINMAX_BOLD);
-      } else {
-        lv_obj_clear_state(min, ETX_STATE_MINMAX_BOLD);
-      }
-
-      if (chanVal > DEADBAND) {
-        lv_obj_add_state(max, ETX_STATE_MINMAX_BOLD);
-      } else {
-        lv_obj_clear_state(max, ETX_STATE_MINMAX_BOLD);
+      bool newMinBold = chanVal < -DEADBAND;
+      bool newMaxBold = chanVal > DEADBAND;
+      if (minBold != newMinBold || maxBold != newMaxBold) {
+        minBold = newMinBold;
+        maxBold = newMaxBold;
+        updateAutomationText();
+        lv_obj_invalidate(live.lvobj());
       }
     }
   }
+
+  void refreshCachedText()
+  {
+    const LimitData* output = limitAddress(index);
+    sourceSmall = g_model.limitData[index].name[0] != '\0';
+    if (sourceSmall) {
+      char chanStr[LEN_CHANNEL_NAME + 16] = {};
+      char* s = strAppend(chanStr, getSourceString(MIXSRC_FIRST_CH + index));
+      s = strAppend(s, "\n");
+      s = strAppend(s, STR_CH);
+      strAppendUnsigned(s, index + 1);
+      setText(sourceText, chanStr);
+    } else {
+      setText(sourceText, getSourceString(MIXSRC_FIRST_CH + index));
+    }
+    setAutomationText(sourceText.data());
+
+    revertVisible = output->revert;
+
+    getValueOrGVarString(minText.data(), minText.size(), output->min, PREC1,
+                         nullptr, -LIMITS_MIN_MAX_OFFSET, true);
+    getValueOrGVarString(maxText.data(), maxText.size(), output->max, PREC1,
+                         nullptr, +LIMITS_MIN_MAX_OFFSET, true);
+    getValueOrGVarString(offsetText.data(), offsetText.size(), output->offset,
+                         PREC1, nullptr, 0, true);
+    snprintf(centerText.data(), centerText.size(), "%d%s",
+             PPM_CENTER + output->ppmCenter,
+             output->symetrical ? " =" : CHAR_DELTA);
+
+    curveValue = output->curve;
+    if (curve) curve->show(curveValue);
+    updateAutomationText();
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[224];
+    snprintf(text, sizeof(text),
+             "%s | min=%s%s | max=%s%s | offset=%s | center=%s | revert=%u | curve=%d",
+             sourceText.data(), minText.data(), minBold ? "*" : "",
+             maxText.data(), maxBold ? "*" : "", offsetText.data(),
+             centerText.data(), unsigned(revertVisible), int(curveValue));
+    setAutomationText(text);
+#endif
+  }
+
+  void drawLabel(lv_layer_t* layer, const lv_area_t& objCoords,
+                 lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                 coord_t h, const char* text,
+                 lv_text_align_t align = LV_TEXT_ALIGN_LEFT)
+  {
+    if (!text || text[0] == '\0') return;
+
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + h - 1};
+    label.align = align;
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
+  }
+
+  void drawRow(LiveWindow& live, lv_event_t* event)
+  {
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return;
+
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
+
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    const lv_font_t* xsFont = getFont(FONT(XS));
+    const lv_font_t* boldFont = getFont(FONT(BOLD));
+
+    label.font = sourceSmall ? xsFont : stdFont;
+#if !NARROW_LAYOUT
+    label.line_space = sourceSmall ? -PAD_THREE : 0;
+#endif
+    drawLabel(layer, objCoords, label, SRC_X, SRC_Y, SRC_W, SRC_H,
+              sourceText.data());
+#if !NARROW_LAYOUT
+    label.line_space = 0;
+#endif
+
+    label.font = minBold ? boldFont : stdFont;
+    drawLabel(layer, objCoords, label, MIN_X, MIN_Y, MIN_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, minText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+    label.font = maxBold ? boldFont : stdFont;
+    drawLabel(layer, objCoords, label, MAX_X, MAX_Y, MAX_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, maxText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+
+    label.font = stdFont;
+    drawLabel(layer, objCoords, label, OFF_X, OFF_Y, OFF_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, offsetText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+    drawLabel(layer, objCoords, label, CTR_X, CTR_Y, CTR_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, centerText.data(),
+              LV_TEXT_ALIGN_RIGHT);
+    if (revertVisible) {
+      drawLabel(layer, objCoords, label, REV_X, REV_Y, REV_W,
+                EdgeTxStyles::STD_FONT_HEIGHT, LV_SYMBOL_SHUFFLE,
+                LV_TEXT_ALIGN_CENTER);
+    }
+  }
+
+  StaticIcon* curve = nullptr;
+  int value = -10000;
+  bool minBold = false;
+  bool maxBold = false;
+  bool sourceSmall = false;
+  bool revertVisible = false;
+  int8_t curveValue = 0;
+  std::array<char, LEN_CHANNEL_NAME + 16> sourceText = {};
+  std::array<char, 32> minText = {};
+  std::array<char, 32> maxText = {};
+  std::array<char, 32> offsetText = {};
+  std::array<char, 16> centerText = {};
+  Messaging refreshMsg;
 };
 
 ModelOutputsPage::ModelOutputsPage(const PageDef& pageDef) :
