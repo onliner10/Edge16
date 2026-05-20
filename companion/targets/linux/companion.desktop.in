@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=EdgeTX Companion @VERSION@
+Name=Edge16 Companion @VERSION@
 GenericName=Transmitter Companion App
 Comment=The Ultimate Transmitter Companion
 Icon=@COMPANION_NAME@
 Exec=@COMPANION_NAME@
 Terminal=false
-StartupWMClass=EdgeTX Companion
+StartupWMClass=Edge16 Companion
 StartupNotify=false
 Categories=Utility;

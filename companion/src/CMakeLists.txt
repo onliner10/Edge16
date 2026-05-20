@@ -427,12 +427,12 @@ elseif(WIN32)
 elseif(APPLE)
   # Qt + Cmake + Mac is poorly documented. A lot of this is guesswork
   # and trial and error. Do not hesitate to fix it for the better
-  set(COMPANION_DISPLAY_NAME "EdgeTX Companion")
+  set(COMPANION_DISPLAY_NAME "Edge16 Companion")
   # This the name that the user will see in the generated DMG and what the application
   # will be called under /Applications. We include the version string to make installing
   # different versions side-by-side
   set(COMPANION_OSX_APP_BUNDLE_NAME "${COMPANION_DISPLAY_NAME} ${VERSION_FAMILY}")
-  set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.edgetx.companion")
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.edge16.companion")
 
   set_target_properties(${COMPANION_NAME} PROPERTIES
       OUTPUT_NAME "${COMPANION_OSX_APP_BUNDLE_NAME}"

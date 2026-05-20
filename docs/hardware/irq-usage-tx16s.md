@@ -99,7 +99,7 @@ hide:
 |   89 | LTDC_ER_IRQHandler                                                 | -                     | -        | 0xE000E459 | LTDC error                                  | 0x000001A4 |
 |   90 | DMA2D_IRQHandler                                                   | -                     | -        | 0xE000E45A | DMA2D                                       | 0x000001A8 |
 
-All interrupt priorities higher than [configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY](https://github.com/EdgeTX/edgetx/blob/c5c142d38d2c3b5150180f43731182240a9ccbb2/radio/src/FreeRTOSConfig.h#L98-L102) must not call any FreeRTOS functions!
+All interrupt priorities higher than `configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY` in `radio/src/FreeRTOSConfig.h` must not call any FreeRTOS functions!
 Note that on Cortex ARM architectures higher priorities have lower value.
 
 With an in-circuit-debugger, the read out on a TX16S with only internal module configured resulted in the following NVIC register readouts (all values as hex values):

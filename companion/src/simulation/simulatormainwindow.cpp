@@ -543,11 +543,11 @@ void SimulatorMainWindow::showHelp(bool show)
 void SimulatorMainWindow::showAbout(bool show)
 {
   QString aboutStr = "<center><img src=\":/images/simulator-title.png\"></center><br/>";
-  aboutStr.append(tr("EdgeTX Home Page: <a href='%1'>%1</a>").arg(EDGETX_HOME_PAGE_URL));
+  aboutStr.append(tr("Edge16 Project: <a href='%1'>%1</a>").arg(EDGETX_HOME_PAGE_URL));
   aboutStr.append("<br/><br/>");
-  aboutStr.append(tr("The EdgeTX project was originally forked from <a href='%1'>OpenTX</a>").arg("https://github.com/opentx/opentx"));
+  aboutStr.append(tr("Edge16 is based on EdgeTX, which was originally forked from <a href='%1'>OpenTX</a>").arg("https://github.com/opentx/opentx"));
   aboutStr.append("<br/><br/>");
-  aboutStr.append(tr("If you've found this program useful, please support by <a href='%1'>donating</a>").arg(EDGETX_DONATE_URL));
+  aboutStr.append(tr("Report issues and follow releases at <a href='%1'>the Edge16 repository</a>").arg(EDGETX_HOME_PAGE_URL));
   aboutStr.append("<br/><br/>");
 #if defined(VERSION_TAG)
   aboutStr.append(QString("Version %1 \"%2\", %3").arg(VERSION_TAG).arg(CODENAME).arg(__DATE__));
@@ -559,11 +559,11 @@ void SimulatorMainWindow::showAbout(bool show)
   aboutStr.append("<br/><br/>");
   aboutStr.append(tr("File new <a href='%1'>Issue or Request</a>").arg(EDGETX_ISSUES_URL));
   aboutStr.append("<br/><br/>");
-  aboutStr.append(tr("Copyright") + QString(" &copy; 2021-%1 EdgeTX<br/>").arg(BUILD_YEAR));
+  aboutStr.append(tr("Copyright") + QString(" &copy; 2021-%1 EdgeTX contributors; Edge16 fork contributors<br/>").arg(BUILD_YEAR));
 
   QMessageBox msgBox(this);
   msgBox.setWindowIcon(CompanionIcon("information.png"));
-  msgBox.setWindowTitle(tr("About EdgeTX Simulator"));
+  msgBox.setWindowTitle(tr("About Edge16 Simulator"));
   msgBox.setText(aboutStr);
   msgBox.exec();
 }

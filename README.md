@@ -1,61 +1,57 @@
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Edgetx/edgetx)](https://github.com/EdgeTX/edgetx/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/EdgeTX/edgetx/total)](https://github.com/EdgeTX/edgetx/releases)
-[![GitHub license](https://img.shields.io/github/license/Edgetx/edgetx)](https://github.com/EdgeTX/edgetx/blob/main/LICENSE)
-[![Commit Tests](https://github.com/EdgeTX/edgetx/actions/workflows/build_fw.yml/badge.svg)](https://github.com/EdgeTX/edgetx/actions/workflows/build_fw.yml)
-[![GitHub CodesSpaces ready-to-code](https://img.shields.io/badge/GitHub%20CodesSpaces-ready--to--code-blue?logo=github)](https://codespaces.new/EdgeTX/edgetx)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/onliner10/Edge16)](https://github.com/onliner10/Edge16/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/onliner10/Edge16/total)](https://github.com/onliner10/Edge16/releases)
+[![GitHub license](https://img.shields.io/github/license/onliner10/Edge16)](https://github.com/onliner10/Edge16/blob/main/LICENSE)
+[![Commit Tests](https://github.com/onliner10/Edge16/actions/workflows/build_fw.yml/badge.svg)](https://github.com/onliner10/Edge16/actions/workflows/build_fw.yml)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
-[![Discord](https://img.shields.io/discord/839849772864503828.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/wF9wUKnZ6H)
-[![Support us on OpenCollective](https://img.shields.io/opencollective/all/edgetx)](https://opencollective.com/edgetx)
 
+# Welcome to Edge16
 
-<p align="center">
-<a href="https://raw.githubusercontent.com/EdgeTX/edgetx.github.io/master/docs/assets/logo.png"><img src="https://raw.githubusercontent.com/EdgeTX/edgetx.github.io/master/docs/assets/logo.png" align="center" height="150" width="150" ></a>
+**Focused TX16S MK2/MK3 firmware fork based on EdgeTX.**
 
-# Welcome to EdgeTX!
-**The cutting edge open-source firmware for your R/C radio!**
+Edge16 is a RadioMaster TX16S MK2/MK3-only fork of EdgeTX. Goal: polished color-LCD UX, practical safety guardrails, and tighter release artifacts for pilots using these two radios.
 
+> [!WARNING]
+> Edge16 supports only RadioMaster TX16S MK2 (`tx16s`) and RadioMaster TX16S MK3 (`tx16smk3`). Do not flash Edge16 builds on any other EdgeTX radio.
 
-### About EdgeTX
-EdgeTX is the cutting edge of OpenTX. It is the place where innovative ideas and cutting-edge features are developed and field-tested by the enthusiasts of our hobby. EdgeTX is a community project – ideas from the community, developed by the community, and enjoyed by the community! The community will always have a say in what EdgeTX is and what EdgeTX will be in the future. Without community feedback and involvement EdgeTX cannot exist.
+> [!WARNING]
+> Edge16 v1.0.0-alpha.1 is experimental alpha firmware. I have tested it myself and it works for me, but it has not had broad field testing. Back up your radio and model settings, bench-test every model, verify arming/failsafe/RF/telemetry/battery alerts, and be ready to roll back before flying.
 
-### Edge16 Build Note
-Edge16 currently supports only RadioMaster TX16S MK2 (`tx16s`) and TX16S MK3 (`tx16smk3`). Contributor builds should use `uv`; the build scripts re-exec through `uv run --with-requirements requirements.txt` so CMake sees the correct Python dependencies.
+## What is new in Edge16 v1.0.0-alpha.1
+
+- **Global top bar setup** — configure persistent top-bar widgets once at radio level, including compact status widgets for time, model, RF, battery, and volume.
+- **Battery monitor and guard** — define LiPo packs, match packs by telemetry voltage/cell count, confirm pack choice at startup/replug, track consumed capacity, alert on runtime limits, and block arming until battery state is confirmed when configured.
+- **TX16S-focused UI refresh** — dashboard-style home screen, larger touch targets, clearer state indicators, settings search/filter, single-tier quick navigation, swipe gestures, and cleaner model cards.
+- **Smoother, more modern screen feel** — Edge16 upgrades the color-screen engine to LVGL 9.5 and changes how drawing work is scheduled, so menus, widgets, and touch interaction feel more fluid on TX16S.
+- **TX16S-only release assets** — release zips contain firmware for TX16S MK2/MK3 only plus matching Companion support.
+
+See [Edge16 v1.0.0-alpha.1 features](docs/release/features.md) for details and safety notes, and [How Edge16 differs from EdgeTX](docs/release/edge16-vs-edgetx.md) for the broader delta.
+
+## Build
+
+Contributor builds should use `uv`; build scripts re-exec through `uv run --with-requirements requirements.txt` so CMake sees correct Python dependencies.
 
 Example firmware build:
-```
+
+```sh
 FLAVOR=tx16s \
 EXTRA_OPTIONS="-DARM_TOOLCHAIN_DIR=/Applications/ArmGNUToolchain/14.2.Rel1/arm-none-eabi/bin/" \
 tools/build-gh.sh
 ```
 
-### Community
-- [Discord](https://discord.gg/wF9wUKnZ6H)   
+Supported flavors:
 
-- [Facebook](https://www.facebook.com/groups/edgetx)
+- `tx16s` — RadioMaster TX16S MK2 (`.bin`)
+- `tx16smk3` — RadioMaster TX16S MK3 (`.uf2`)
 
-- [Github Discussions](https://github.com/EdgeTX/edgetx/discussions)
-  
-### Navigation Links
+## Project links
 
-- [Community Guidelines](https://github.com/EdgeTX/edgetx.github.io/wiki/Community-Guidlines)
+- [Releases](https://github.com/onliner10/Edge16/releases)
+- [Issues](https://github.com/onliner10/Edge16/issues/new/choose)
+- [Discussions](https://github.com/onliner10/Edge16/discussions)
+- [Developer documentation](https://onliner10.github.io/Edge16/)
 
-- [Installation Guide](https://manual.edgetx.org/installing-and-updating-edgetx/update-from-opentx-to-edgetx)
+## Upstream and acknowledgements
 
-- [Installation Video](https://www.youtube.com/watch?v=Y9OvW9XCjOs)
+Edge16 is forked from [EdgeTX](https://github.com/EdgeTX/edgetx). Many firmware, Companion, Lua, SD-card, and documentation components originate from EdgeTX and OpenTX contributors.
 
-- [Reporting Issues / Requesting features](https://github.com/EdgeTX/edgetx/issues/new/choose)
-
-- [Lua Documentation Site](https://luadoc.edgetx.org/)
-  
-- Buddy: [Info](https://github.com/EdgeTX/buddy) - [Downloads](https://github.com/EdgeTX/buddy/releases) 
-
-- SD Card: [Info](https://github.com/EdgeTX/edgetx-sdcard) - [Downloads](https://github.com/EdgeTX/edgetx-sdcard/releases)
-
-- Sound Packs:  [Info](https://github.com/EdgeTX/edgetx-sdcard-sounds) - [Downloads](https://github.com/EdgeTX/edgetx-sdcard-sounds/releases)
-
-- [Developer Documentation](https://edgetx.org/edgetx/latest/) - [Docker Build Environment](https://github.com/EdgeTX/build-edgetx)
-
-
-## Acknowledgements
-Some icon assets provided by [ICONS8](https://icons8.com).</br>
-Lua Documentation site powered with the kind support of [GitBook](https://www.gitbook.com).
+Some icon assets provided by [ICONS8](https://icons8.com). Lua documentation site powered with support from [GitBook](https://www.gitbook.com).

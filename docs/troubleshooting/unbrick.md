@@ -6,16 +6,16 @@ John at RCVideoReviews has created a nice video, visually explaining the steps o
 
 [![Video of the steps explained on this page](../assets/images/flashing/rcvr_yt_unbrick.jpg)](https://www.youtube.com/watch?v=H9_sxXY_K-8 "RCVR: How-to UNBRICK Radiomaster TX16s ZORRO TX12 BOXER")
 
-1. Download and install a copy of STM32CubeProgrammer, the official flashing tool by ST, the manufacturer of the microcontrollers in EdgeTX radios. Get it here:
+1. Download and install a copy of STM32CubeProgrammer, the official flashing tool by ST, the manufacturer of the microcontrollers in Edge16 radios. Get it here:
 [https://www.st.com/en/development-tools/stm32cubeprog.html](https://www.st.com/en/development-tools/stm32cubeprog.html)
 
 During the installation of STM32CubeProgrammer, make sure your radio is not connected to your computer.
 
-The benefit of using STM32CubeProgrammer, instead of numerous other tools, is that it comes with reliably working Device Firmware Upgrade (DFU) drivers, required to perform the recovery of the radio. This has shown to be especially critical on Microsoft Windows operating systems. DFU is a hardware feature of the STM32 chips (the main microcontrollers in EdgeTX radios) that cannot be altered, erased or otherwise tampered with, thus it is always there and will allow you to easily recover from flashing mishaps.
+The benefit of using STM32CubeProgrammer, instead of numerous other tools, is that it comes with reliably working Device Firmware Upgrade (DFU) drivers, required to perform the recovery of the radio. This has shown to be especially critical on Microsoft Windows operating systems. DFU is a hardware feature of the STM32 chips (the main microcontrollers in Edge16 radios) that cannot be altered, erased or otherwise tampered with, thus it is always there and will allow you to easily recover from flashing mishaps.
 
 You might be requested to make an account at ST to be able to download STM32CubeProgrammer.
 
-2. Next, grab yourself a correct EdgeTX binary file to flash your radio with. You can use for example [EdgeTX Flasher](https://github.com/EdgeTX/flasher/releases) or directly browse to [EdgeTX GitHub](https://github.com/EdgeTX/edgetx/releases) page to fetch a binary of your choice. Save the binary on your local drive in a location you can easily find it.
+2. Next, download the exact Edge16 firmware artifact for your radio from [Edge16 releases](https://github.com/onliner10/Edge16/releases). Use `tx16s-*.bin` only for TX16S MK2. Use `tx16smk3-*.uf2` only for TX16S MK3. Save the file somewhere easy to find.
 
 3. Connect your radio via USB to your PC while your radio is turned off. In case your radio has multiple USB ports, make sure you are using the data USB port and not the charging port. For example, on popular RadioMaster TX16S, you should use the top USB-C port next to the antenna. Make sure your USB cable is equipped also with data pins. Some more simpler USB cables only have power pins for charging, but the data pins for communication are not wired up. Such cables won't unfortunately work for radio recovery.
 
@@ -27,17 +27,17 @@ If the _Port_ drop-down box lists `No DFU`, then please re-check your cabling an
 
 If you hear a bling sound from your system, when connecting an USB device, such as an USB stick, then the same sound should be emitted, when you connect your radio in DFU mode to your computer.
 
-5. Click the green `Connect` button on top right. You might be greeted with some seemingly random content, do not get alarmed - this is all perfectly fine and just showing some of the first bytes of memory that are currently saved on the microcontroller. Most importantly, the lower right corner should now list under field `CPU` either `Cortex-M3` or `Cortex-M4` (according to your radio):
+5. Click the green `Connect` button on top right. You might be greeted with some seemingly random content, do not get alarmed - this is all perfectly fine and just showing some of the first bytes of memory that are currently saved on the microcontroller. Most importantly, the lower right corner should now list the STM32 CPU family for your radio, for example `Cortex-M4` on TX16S MK2 or `Cortex-M7` on TX16S MK3:
 
 [![STM32CubeProgrammer step 2](../assets/images/flashing/STM32CubeProgrammer_02.png)](../assets/images/flashing/STM32CubeProgrammer_02.png)
 
-6. Next we load the EdgeTX binary into STM32CubeProgrammer. For this, first let's open the left menu fully, by clicking the button with three white horizontal bars on top left. After clicking it, the menu should open and the 3 bars become vertical bars:
+6. Next we load the Edge16 binary into STM32CubeProgrammer. For this, first let's open the left menu fully, by clicking the button with three white horizontal bars on top left. After clicking it, the menu should open and the 3 bars become vertical bars:
 
 [![STM32CubeProgrammer step 3](../assets/images/flashing/STM32CubeProgrammer_03.png)](../assets/images/flashing/STM32CubeProgrammer_03.png)
 
 Click `Erasing & programming` (a green icon, with a down arrow and a flat rectangular shaped device under it).
 
-7. Next, click blue `Browse` button behind _File path_ field and navigate and open the previously downloaded EdgeTX binary for your radio. Leave `Verify programming` selected and make sure `Run after programming` is not selected:
+7. Next, click blue `Browse` button behind _File path_ field and navigate and open the previously downloaded Edge16 binary for your radio. Leave `Verify programming` selected and make sure `Run after programming` is not selected:
 
 [![STM32CubeProgrammer step 4](../assets/images/flashing/STM32CubeProgrammer_04.png)](../assets/images/flashing/STM32CubeProgrammer_04.png)
 
@@ -67,6 +67,6 @@ In case you are only seeing the latter pop-up, then it is likely just covering t
 
 You can now remove the USB cable from your radio and power it up.
 
-You should be greeted with EdgeTX running on your radio again.
+You should be greeted with Edge16 running on your radio again.
 
-![EdgeTX logo](../assets/images/EdgeTX_logo.png)
+![Edge16 logo](../assets/images/EdgeTX_logo.png)

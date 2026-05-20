@@ -1,7 +1,13 @@
 {
     "targets": [
-        ["RadioMaster TX16S MK2", "tx16s-"],
-        ["RadioMaster TX16S MK3", "tx16smk3-"]
+        [
+            "RadioMaster TX16S MK2",
+            "tx16s-"
+        ],
+        [
+            "RadioMaster TX16S MK3",
+            "tx16smk3-"
+        ]
     ],
-    "changelog": "- Major initial bug fixes"
+    "changelog": "- Edge16 v1.0.0-alpha.1 experimental alpha for TX16S MK2/MK3; maintainer-tested, use carefully\n- Adds global top bar setup and compact TX16S status widgets\n- Adds battery monitor/guard with LiPo pack library, telemetry voltage matching, confirmation prompts, capacity/voltage alerts, and optional arming block\n- Refreshes TX16S color-LCD UX with dashboard, larger touch targets, settings search/filter, state indicators, swipe gestures, and single-tier navigation\n- Makes TX16S color-screen interaction feel smoother with LVGL 9.5, asynchronous drawing, font preload, and rendering cleanup"
 }

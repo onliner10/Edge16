@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>EdgeTX Simulator</string>
+   <string>Edge16 Simulator</string>
   </property>
   <property name="windowIcon">
    <iconset resource="../companion.qrc">

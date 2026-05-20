@@ -17,7 +17,7 @@ case "$1" in
         exec "${APPDIR}/usr/bin/@SIMULATOR_NAME@" "$@"
         ;;
     --help)
-        echo "EdgeTX Companion @VERSION@ AppImage"
+        echo "Edge16 Companion @VERSION@ AppImage"
         echo ""
         echo "AppImage Options:"
         echo "  --simulator      Launch Simulator instead"
@@ -27,7 +27,7 @@ case "$1" in
         exec "${APPDIR}/usr/bin/@COMPANION_NAME@" --help
         ;;
     --apprun-help)
-        echo "EdgeTX Companion AppImage Usage: $0 [OPTIONS]"
+        echo "Edge16 Companion AppImage Usage: $0 [OPTIONS]"
         echo ""
         echo "Routing Options:"
         echo "  (no options)     Launch Companion"
