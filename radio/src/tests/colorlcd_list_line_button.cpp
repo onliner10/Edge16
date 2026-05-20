@@ -26,7 +26,7 @@
 #include <unistd.h>
 
 bool listLineButtonMissingFmBufferLeavesNoCanvasForTest();
-bool listLineButtonLabelAllocationFailureFailsClosedForTest();
+bool listLineButtonDirectTextSettersDoNotRequireLabelsForTest();
 bool listLineGroupLabelAllocationFailureFailsClosedForTest();
 bool listLinePageLookupRequiresGroupAndLineForTest();
 bool listLineButtonRefreshBeforeVisibleLoadRunsOnFirstLoadForTest();
@@ -48,14 +48,14 @@ TEST(ColorListLineButton, FlightModeCanvasAllocationFailureLeavesNoCanvas)
   EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
-TEST(ColorListLineButton, LabelAllocationFailureFailsClosed)
+TEST(ColorListLineButton, DirectTextSettersDoNotRequireLabels)
 {
   const pid_t pid = fork();
   ASSERT_GE(pid, 0);
 
   if (pid == 0) {
     alarm(2);
-    _exit(listLineButtonLabelAllocationFailureFailsClosedForTest() ? 0 : 1);
+    _exit(listLineButtonDirectTextSettersDoNotRequireLabelsForTest() ? 0 : 1);
   }
 
   int status = 0;
