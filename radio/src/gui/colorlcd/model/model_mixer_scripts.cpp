@@ -181,83 +181,109 @@ class ScriptLineButton : public ListLineButton
     padTop(PAD_SMALL);
     padLeft(PAD_TINY);
     padRight(PAD_TINY);
-    setLayout(LV_LAYOUT_GRID);
-    setGridDscArray(b_col_dsc, row_dsc);
-    setStylePadRow(0, 0);
-    setStylePadColumn(PAD_SMALL, 0);
 
     parent->updateLayout();
   }
 
   void onLineLoaded() override
   {
-    if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          auto lbl = etx_label_create(obj);
-          if (!requireLvObj(lbl)) return false;
-          etx_obj_add_style(lbl, styles->text_align_left, LV_PART_MAIN);
-          lv_obj_set_grid_cell(lbl, LV_GRID_ALIGN_START, 0, 1,
-                               LV_GRID_ALIGN_CENTER, 0, 1);
+    snprintf(luaText, sizeof(luaText), "LUA%d", index + 1);
+    if (runtimeData) {
+      nameText[0] = '\0';
+      fileText[0] = '\0';
+      strAppend(nameText, scriptData.name, LEN_SCRIPT_NAME);
+      strAppend(fileText, scriptData.file, LEN_SCRIPT_FILENAME);
+      switch (runtimeData->state) {
+        case SCRIPT_SYNTAX_ERROR:
+          setText(stateText, STR_SCRIPT_ERROR);
+          break;
+        case SCRIPT_NOFILE:
+          setText(stateText, STR_NEEDS_FILE);
+          break;
+        case SCRIPT_OK:
+          setText(stateText, "-");
+          break;
+        default:
+          stateText[0] = '\0';
+          break;
+      }
+    }
+    updateAutomationText();
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
+  }
 
-          lv_label_set_text(
-              lbl, (std::string("LUA") + std::to_string(index + 1)).c_str());
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  {
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+      return false;
+    }
 
-          if (runtimeData) {
-            char s[20];
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return false;
 
-            lbl = etx_label_create(obj);
-            if (!requireLvObj(lbl)) return false;
-            etx_obj_add_style(lbl, styles->text_align_left, LV_PART_MAIN);
-            lv_obj_set_grid_cell(lbl, LV_GRID_ALIGN_START, 1, 1,
-                                 LV_GRID_ALIGN_CENTER, 0, 1);
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
 
-            strAppend(s, scriptData.name, LEN_SCRIPT_NAME);
-            lv_label_set_text(lbl, s);
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
 
-            lbl = etx_label_create(obj);
-            if (!requireLvObj(lbl)) return false;
-            etx_obj_add_style(lbl, styles->text_align_left, LV_PART_MAIN);
-            lv_obj_set_grid_cell(lbl, LV_GRID_ALIGN_START, 2, 1,
-                                 LV_GRID_ALIGN_CENTER, 0, 1);
-
-            strAppend(s, scriptData.file, LEN_SCRIPT_FILENAME);
-            lv_label_set_text(lbl, s);
-
-            lbl = etx_label_create(obj);
-            if (!requireLvObj(lbl)) return false;
-            etx_obj_add_style(lbl, styles->text_align_left, LV_PART_MAIN);
-            lv_obj_set_grid_cell(lbl, LV_GRID_ALIGN_START, 3, 1,
-                                 LV_GRID_ALIGN_CENTER, 0, 1);
-
-            // TODO: runtimeData->instructions has no value
-            switch (runtimeData->state) {
-              case SCRIPT_SYNTAX_ERROR:
-                lv_label_set_text(lbl, STR_SCRIPT_ERROR);
-                break;
-              case SCRIPT_NOFILE:
-                lv_label_set_text(lbl, STR_NEEDS_FILE);
-                break;
-              case SCRIPT_OK:
-                lv_label_set_text(lbl, "-");
-                break;
-              default:
-                lv_label_set_text(lbl, "");
-                break;
-            }
-          }
-
-          lv_obj_update_layout(obj);
-          return true;
-        }))
-      return;
+    constexpr coord_t col0 = PAD_TINY;
+    constexpr coord_t col1 = col0 + 40 + PAD_SMALL;
+    constexpr coord_t col2 = col1 + 84 + PAD_SMALL;
+    constexpr coord_t col3 = col2 + 84 + PAD_SMALL;
+    constexpr coord_t y = PAD_SMALL;
+    drawText(layer, objCoords, label, col0, y, 40, luaText);
+    drawText(layer, objCoords, label, col1, y, 84, nameText);
+    drawText(layer, objCoords, label, col2, y, 84, fileText);
+    drawText(layer, objCoords, label, col3, y, ListLineButton::GRP_W - col3,
+             stateText);
+    return false;
   }
 
   bool isActive() const override { return false; }
   void onRefresh() override {}
 
  protected:
+  template <size_t N>
+  void setText(char (&dest)[N], const char* text)
+  {
+    dest[0] = '\0';
+    strAppend(dest, text ? text : "", N - 1);
+  }
+
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                const char* text)
+  {
+    if (!text || text[0] == '\0') return;
+    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
+                        objCoords.x1 + x + w - 1,
+                        objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
+    label.align = LV_TEXT_ALIGN_LEFT;
+    label.text = text;
+    lv_draw_label(layer, &label, &coords);
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[160];
+    snprintf(text, sizeof(text), "%s | name=%s | file=%s | state=%s",
+             luaText, nameText, fileText, stateText);
+    setAutomationText(text);
+#endif
+  }
+
   const ScriptData& scriptData;
   const ScriptInternalData* runtimeData;
+  char luaText[12] = {};
+  char nameText[LEN_SCRIPT_NAME + 1] = {};
+  char fileText[LEN_SCRIPT_FILENAME + 1] = {};
+  char stateText[24] = {};
 };
 
 ModelMixerScriptsPage::ModelMixerScriptsPage(const PageDef& pageDef) :

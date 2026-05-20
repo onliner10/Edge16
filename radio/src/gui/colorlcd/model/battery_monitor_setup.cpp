@@ -123,11 +123,6 @@ class CompatiblePackLine : public ListLineButton
     padAll(PAD_ZERO);
     setWidth(ListLineButton::GRP_W);
 
-    nameText = new StaticText(this, {PAD_MEDIUM, PACK_TEXT_Y,
-                                    ListLineButton::GRP_W - 2 * PAD_MEDIUM,
-                                    EdgeTxStyles::STD_FONT_HEIGHT},
-                             "", COLOR_THEME_PRIMARY1_INDEX);
-
     setPressHandler([this]() -> uint8_t {
       togglePack();
       return 0;
@@ -141,25 +136,49 @@ class CompatiblePackLine : public ListLineButton
     return (mask & specMask()) != 0;
   }
 
-  void onRefresh() override
+  void onLineLoaded() override { onRefresh(); }
+
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
   {
-    if (!nameText) {
-      return;
+    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
+    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
+      return false;
     }
 
+    lv_layer_t* layer = lv_event_get_layer(event);
+    if (!layer) return false;
+
+    lv_obj_t* obj = live.lvobj();
+    lv_area_t objCoords;
+    lv_obj_get_coords(obj, &objCoords);
+
+    lv_draw_label_dsc_t label;
+    lv_draw_label_dsc_init(&label);
+    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    label.text = lineText;
+    lv_area_t coords = {objCoords.x1 + PAD_MEDIUM, objCoords.y1 + PACK_TEXT_Y,
+                        objCoords.x2 - PAD_MEDIUM,
+                        objCoords.y1 + PACK_TEXT_Y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
+    lv_draw_label(layer, &label, &coords);
+    return false;
+  }
+
+  void onRefresh() override
+  {
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
-    char lineText[64] = {};
     snprintf(lineText, sizeof(lineText), "%s %dS %dmAh",
              batteryTypeToString((BatteryType)pack.batteryType),
              pack.cellCount, pack.capacity);
-    nameText->setText(lineText);
+    updateAutomationText();
     check(isActive());
+    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
  protected:
   uint8_t monitor;
   uint8_t slot;
-  StaticText* nameText = nullptr;
+  char lineText[64] = {};
 
   static constexpr coord_t PACK_LINE_H = EdgeTxStyles::UI_ELEMENT_HEIGHT +
                                          PAD_TINY * 2;
@@ -191,6 +210,17 @@ class CompatiblePackLine : public ListLineButton
     invalidateFlightBatteryMonitor(monitor);
     SET_DIRTY();
     check(isActive());
+    updateAutomationText();
+  }
+
+  void updateAutomationText()
+  {
+#if defined(SIMU)
+    char text[96];
+    snprintf(text, sizeof(text), "%s | selected=%u", lineText,
+             unsigned(isActive()));
+    setAutomationText(text);
+#endif
   }
 };
 

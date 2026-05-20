@@ -45,6 +45,7 @@ class FunctionLineButton : public ListLineButton
 #endif
 
   void onLineLoaded() override;
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
 
   void onRefresh() override;
   bool functionEnabled() const;
@@ -71,10 +72,15 @@ class FunctionLineButton : public ListLineButton
   CustomFunctionData *cfn;
   const char *prefix;
 
-  lv_obj_t *sfName = nullptr;
-  lv_obj_t *sfSwitch = nullptr;
-  lv_obj_t *sfFunc = nullptr;
-  lv_obj_t *sfRepeat = nullptr;
+  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
+                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
+                const char* text);
+  void updateAutomationText();
+
+  char sfNameText[16] = {};
+  char sfSwitchText[32] = {};
+  char sfFuncText[96] = {};
+  char sfRepeatText[32] = {};
   CheckButton *sfEnable = nullptr;
 
   virtual bool isActive() const override = 0;
