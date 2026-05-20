@@ -597,7 +597,7 @@ bool listLineButtonMissingFmBufferLeavesNoCanvasForTest()
   return !button->hasFlightModeCanvas() && !button->hasFlightModeBuffer();
 }
 
-bool listLineButtonLabelAllocationFailureFailsClosedForTest()
+bool listLineButtonDirectTextSettersDoNotRequireLabelsForTest()
 {
   class TestInputMixButton : public InputMixButtonBase
   {
@@ -621,15 +621,14 @@ bool listLineButtonLabelAllocationFailureFailsClosedForTest()
   button->forceFirstLoadForTest();
   listLineButtonForceLabelCreateFailureForTest(true);
   button->setWeight(100, -100, 100);
-  listLineButtonForceLabelCreateFailureForTest(false);
-
   button->setSource(MIXSRC_FIRST_INPUT);
   button->setOpts("Opt");
+  listLineButtonForceLabelCreateFailureForTest(false);
   button->setFlightModes(1);
   button->checkEvents();
 
-  bool ok = !button->isAvailable() && !button->isVisible() &&
-            !button->automationClickable();
+  bool ok = button->isAvailable() && button->isVisible() &&
+            button->automationText().find("Opt") != std::string::npos;
   delete button;
   return ok;
 }
