@@ -13,7 +13,7 @@
 #include "telemetry/battery_monitor.h"
 
 BatteryConfirmDialog::BatteryConfirmDialog(uint8_t monitor, uint16_t packMask)
-    : FullScreenDialog(WARNING_TYPE_ASTERISK, "Battery connected", "",
+    : FullScreenDialog(WARNING_TYPE_ASTERISK, "Select battery", "",
                        "", nullptr),
       monitor(monitor), packMask(packMask)
 {
@@ -23,28 +23,44 @@ BatteryConfirmDialog::BatteryConfirmDialog(uint8_t monitor, uint16_t packMask)
 
 void BatteryConfirmDialog::buildBody()
 {
-  auto div = Window::makeLive<Window>(
-      this, rect_t{0, ALERT_FRAME_TOP, LCD_W, ALERT_FRAME_HEIGHT});
-  if (div) {
-    div->setWindowFlag(NO_FOCUS);
-    div->withLive([](Window::LiveWindow& live) {
+  auto background = Window::makeLive<Window>(this, rect_t{0, 0, LCD_W, LCD_H});
+  if (background) {
+    background->setWindowFlag(NO_FOCUS | NO_SCROLL);
+    background->withLive([](Window::LiveWindow& live) {
       etx_solid_bg(live.lvobj(), COLOR_THEME_PRIMARY2_INDEX);
     });
   }
 
+  constexpr coord_t margin = PAD_LARGE;
+  constexpr coord_t titleTop = PAD_LARGE;
+  constexpr coord_t titleHeight = 36;
+  constexpr coord_t subtitleTop = titleTop + titleHeight;
+  constexpr coord_t subtitleHeight = 24;
+  constexpr coord_t listTop = subtitleTop + subtitleHeight + PAD_SMALL;
+  constexpr coord_t listWidth = LCD_W - margin * 2;
+  constexpr coord_t listHeight = LCD_H - listTop - PAD_LARGE;
+  constexpr coord_t rowHeight = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_LARGE;
+
   Window::makeLive<StaticText>(
-      this,
-      rect_t{ALERT_TITLE_LEFT, ALERT_TITLE_TOP,
-             LCD_W - ALERT_TITLE_LEFT - PAD_MEDIUM,
-             LCD_H - ALERT_TITLE_TOP - PAD_MEDIUM},
-      "Battery connected", COLOR_THEME_WARNING_INDEX, FONT(XL));
+      this, rect_t{margin, titleTop, listWidth, titleHeight},
+      "Select battery", COLOR_THEME_PRIMARY1_INDEX, FONT(XL) | CENTERED);
+
+  Window::makeLive<StaticText>(
+      this, rect_t{margin, subtitleTop, listWidth, subtitleHeight},
+      "Choose connected pack", COLOR_THEME_PRIMARY1_INDEX, FONT(STD) | CENTERED);
 
   auto body = Window::makeLive<Window>(
-      this, rect_t{0, ALERT_MESSAGE_TOP, LCD_W,
-                   LCD_H - ALERT_MESSAGE_TOP - PAD_LARGE - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_LARGE});
+      this, rect_t{margin, listTop, listWidth, listHeight});
   if (!body) return;
 
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN_WRAP, PAD_TINY);
+  body->padAll(PAD_ZERO);
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, listWidth, listHeight);
+  body->withLive([](Window::LiveWindow& live) {
+    auto obj = live.lvobj();
+    lv_obj_set_scroll_dir(obj, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_ELASTIC);
+  });
 
   bool specSeen[MAX_BATTERY_PACKS] = {};
   for (uint8_t slot = 0; slot < MAX_BATTERY_PACKS; slot++) {
@@ -65,7 +81,8 @@ void BatteryConfirmDialog::buildBody()
              pack->cellCount, pack->capacity);
 
     auto btn = Window::makeLive<TextButton>(
-        body, rect_t{}, label, [=]() -> uint8_t {
+        body, rect_t{0, 0, LV_PCT(100), rowHeight},
+        label, [=]() -> uint8_t {
           onConfirmPack(slot + 1);
           return 0;
         });
@@ -77,7 +94,8 @@ void BatteryConfirmDialog::buildBody()
 
   if (flightBatteryPromptAllowsManual(monitor)) {
     auto btn = Window::makeLive<TextButton>(
-        body, rect_t{}, "Use model setting", [=]() -> uint8_t {
+        body, rect_t{0, 0, LV_PCT(100), rowHeight},
+        "Use model setting", [=]() -> uint8_t {
           onConfirmPack(0);
           return 0;
         });

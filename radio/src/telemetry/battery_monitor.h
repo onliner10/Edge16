@@ -19,6 +19,9 @@ constexpr uint16_t FLIGHT_BATTERY_LIPO_BACKUP_MIN_PER_CELL_CV = 330;
 constexpr uint16_t FLIGHT_BATTERY_NO_BATTERY_MAX_CV = 100;
 constexpr uint16_t FLIGHT_BATTERY_LIPO_MATCH_MIN_PER_CELL_CV = 300;
 constexpr uint16_t FLIGHT_BATTERY_LIPO_MATCH_MAX_PER_CELL_CV = 435;
+constexpr uint16_t FLIGHT_BATTERY_LIION_MATCH_MIN_PER_CELL_CV = 250;
+constexpr uint16_t FLIGHT_BATTERY_LIION_MATCH_MAX_PER_CELL_CV = 420;
+constexpr uint16_t FLIGHT_BATTERY_LIION_LOW_PER_CELL_CV = 330;
 constexpr uint8_t FLIGHT_BATTERY_PRESENT_DEBOUNCE_SECONDS = 2;
 constexpr uint8_t FLIGHT_BATTERY_NO_BATTERY_DEBOUNCE_SECONDS = 3;
 constexpr uint8_t FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS = 5;
@@ -90,7 +93,7 @@ enum class BatteryLipoMatchResult { None, Exact, Ambiguous };
 inline uint16_t batteryTypeMatchMinPerCellCv(BatteryType type)
 {
   switch (type) {
-    case BATTERY_TYPE_LIION: return 250;
+    case BATTERY_TYPE_LIION: return FLIGHT_BATTERY_LIION_MATCH_MIN_PER_CELL_CV;
     case BATTERY_TYPE_LIFE:  return 270;
     case BATTERY_TYPE_NIMH:  return 100;
     case BATTERY_TYPE_PB:    return 170;
@@ -102,7 +105,7 @@ inline uint16_t batteryTypeMatchMinPerCellCv(BatteryType type)
 inline uint16_t batteryTypeMatchMaxPerCellCv(BatteryType type)
 {
   switch (type) {
-    case BATTERY_TYPE_LIION: return 420;
+    case BATTERY_TYPE_LIION: return FLIGHT_BATTERY_LIION_MATCH_MAX_PER_CELL_CV;
     case BATTERY_TYPE_LIFE:  return 365;
     case BATTERY_TYPE_NIMH:  return 160;
     case BATTERY_TYPE_PB:    return 240;
@@ -111,8 +114,9 @@ inline uint16_t batteryTypeMatchMaxPerCellCv(BatteryType type)
   }
 }
 
-inline bool flightBatteryPackMatchesLipo(uint16_t packVoltageCv, uint8_t cellCount,
-                                          BatteryType type)
+inline bool flightBatteryPackMatchesChemistry(uint16_t packVoltageCv,
+                                               uint8_t cellCount,
+                                               BatteryType type)
 {
   if (cellCount == 0 || packVoltageCv < FLIGHT_BATTERY_NO_BATTERY_MAX_CV) {
     return false;
@@ -124,9 +128,17 @@ inline bool flightBatteryPackMatchesLipo(uint16_t packVoltageCv, uint8_t cellCou
              uint16_t(batteryTypeMatchMaxPerCellCv(type) * cellCount);
 }
 
+inline bool flightBatteryPackMatchesLipo(uint16_t packVoltageCv,
+                                          uint8_t cellCount,
+                                          BatteryType type)
+{
+  return flightBatteryPackMatchesChemistry(packVoltageCv, cellCount, type);
+}
+
 inline bool flightBatteryPackMatchesLipo(uint16_t packVoltageCv, uint8_t cellCount)
 {
-  return flightBatteryPackMatchesLipo(packVoltageCv, cellCount, BATTERY_TYPE_LIPO);
+  return flightBatteryPackMatchesChemistry(packVoltageCv, cellCount,
+                                           BATTERY_TYPE_LIPO);
 }
 
 constexpr BatteryLipoMatchResult flightBatteryMatchLipoCandidates(
@@ -156,7 +168,7 @@ inline uint16_t flightBatteryVoltageThresholdPerCellCentivolts(BatteryType type)
 {
   switch (type) {
     case BATTERY_TYPE_LIION:
-      return 300;
+      return FLIGHT_BATTERY_LIION_LOW_PER_CELL_CV;
     case BATTERY_TYPE_LIFE:
       return 280;
     case BATTERY_TYPE_NIMH:
@@ -183,9 +195,10 @@ inline const char* batteryTypeToString(BatteryType type)
 
 inline bool batterySpecEquals(const BatteryPackData& a, const BatteryPackData& b)
 {
+  // Pack identity is chemistry + capacity + cell count.
   return a.batteryType == b.batteryType &&
-         a.cellCount == b.cellCount &&
-         a.capacity == b.capacity;
+         a.capacity == b.capacity &&
+         a.cellCount == b.cellCount;
 }
 
 inline bool flightBatteryCapacityThresholdReached(int32_t consumed,

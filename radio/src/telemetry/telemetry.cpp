@@ -77,7 +77,7 @@ struct telemetry_buffer {
 };
 
 static void checkFlightBatteryMissingTelemetryAfterArming();
-static bool isValidManualLipoConfig(const BatteryMonitorData& config);
+static bool isValidManualBatteryConfig(const BatteryMonitorData& config);
 
 std::atomic<uint8_t> telemetryStreaming{0};
 std::atomic<uint8_t> telemetryState{TELEMETRY_INIT};
@@ -126,7 +126,7 @@ static bool flightBatteryMonitorArmingAllowed(const BatteryMonitorData& config,
                                               FlightBatterySessionState state)
 {
   if (!config.enabled) return true;
-  if (config.compatiblePackMask == 0 && !isValidManualLipoConfig(config)) {
+  if (config.compatiblePackMask == 0 && !isValidManualBatteryConfig(config)) {
     return false;
   }
   return state != FlightBatterySessionState::NeedsConfirmation &&
@@ -137,7 +137,7 @@ static bool flightBatteryMonitorArmingAllowed(const BatteryMonitorData& config,
 static ArmingBlockReason flightBatteryMonitorBlockReason(
     const BatteryMonitorData& config, FlightBatterySessionState state)
 {
-  if (config.compatiblePackMask == 0 && !isValidManualLipoConfig(config)) {
+  if (config.compatiblePackMask == 0 && !isValidManualBatteryConfig(config)) {
     return ArmingBlockReason::BatteryNeedsConfiguration;
   }
 
@@ -839,7 +839,7 @@ static bool isFlightBatteryVoltageUnit(uint8_t unit)
   return unit == UNIT_VOLTS || unit == UNIT_CELLS;
 }
 
-static bool isValidManualLipoConfig(const BatteryMonitorData& config)
+static bool isValidManualBatteryConfig(const BatteryMonitorData& config)
 {
   return config.batteryType <= BATTERY_TYPE_PB && config.cellCount > 0 &&
          config.capacity > 0;
@@ -937,8 +937,8 @@ static uint8_t buildVoltageCompatiblePackMask(const BatteryMonitorData& config,
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
     if (!pack.active) continue;
 
-    if (!flightBatteryPackMatchesLipo(packVoltageCv, pack.cellCount,
-                                      (BatteryType)pack.batteryType))
+    if (!flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
+                                           (BatteryType)pack.batteryType))
       continue;
 
     matchingMask |= slotBit;
@@ -974,13 +974,13 @@ static bool confirmedPackMatchesVoltage(const BatteryMonitorData& config,
     if (slot >= MAX_BATTERY_PACKS) return false;
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
     return pack.active &&
-           flightBatteryPackMatchesLipo(packVoltageCv, pack.cellCount,
-                                        (BatteryType)pack.batteryType);
+           flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
+                                             (BatteryType)pack.batteryType);
   }
 
-  return isValidManualLipoConfig(config) &&
-         flightBatteryPackMatchesLipo(packVoltageCv, config.cellCount,
-                                      (BatteryType)config.batteryType);
+  return isValidManualBatteryConfig(config) &&
+         flightBatteryPackMatchesChemistry(packVoltageCv, config.cellCount,
+                                           (BatteryType)config.batteryType);
 }
 
 static bool packVoltageLooksLikeNewFlightBattery(uint16_t packVoltageCv,
@@ -989,7 +989,7 @@ static bool packVoltageLooksLikeNewFlightBattery(uint16_t packVoltageCv,
 {
   if (cellCount == 0) return false;
 
-  if (!flightBatteryPackMatchesLipo(packVoltageCv, cellCount, type)) {
+  if (!flightBatteryPackMatchesChemistry(packVoltageCv, cellCount, type)) {
     return false;
   }
 
@@ -1016,7 +1016,7 @@ static bool replugVoltageLooksLikeNewFlightBattery(
     return false;
   }
 
-  return isValidManualLipoConfig(config) &&
+  return isValidManualBatteryConfig(config) &&
          packVoltageLooksLikeNewFlightBattery(
              packVoltageCv, config.cellCount, (BatteryType)config.batteryType);
 }
@@ -1097,9 +1097,10 @@ static void classifyPresentFlightBattery(uint8_t monitorIndex,
     }
     runtime.state = FlightBatterySessionState::NeedsConfirmation;
     runtime.promptPackMask = matchingMask;
-  } else if (config.compatiblePackMask == 0 && isValidManualLipoConfig(config)) {
-    if (flightBatteryPackMatchesLipo(packVoltageCv, config.cellCount,
-                                     (BatteryType)config.batteryType)) {
+  } else if (config.compatiblePackMask == 0 &&
+             isValidManualBatteryConfig(config)) {
+    if (flightBatteryPackMatchesChemistry(packVoltageCv, config.cellCount,
+                                          (BatteryType)config.batteryType)) {
       if (runtime.state != FlightBatterySessionState::NeedsConfirmation ||
           runtime.promptPackMask != 0) {
         runtime.promptShown = false;
@@ -1252,7 +1253,7 @@ static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSl
     runtime.confirmedPackSlot = selectedPackSlot;
     storageDirty(EE_MODEL);
   } else {
-    if (!isValidManualLipoConfig(config)) return;
+    if (!isValidManualBatteryConfig(config)) return;
     config.selectedPackSlot = 0;
     runtime.confirmedPackSlot = 0;
   }
@@ -1307,7 +1308,7 @@ bool flightBatteryPromptAllowsManual(uint8_t monitor)
 {
   if (monitor >= MAX_BATTERY_MONITORS) return false;
   BatteryMonitorData& config = g_model.batteryMonitors[monitor];
-  return isValidManualLipoConfig(config) &&
+  return isValidManualBatteryConfig(config) &&
          s_flightBatteryPublishedPromptMask[monitor].load(std::memory_order_acquire) == 0;
 }
 
@@ -1368,13 +1369,14 @@ bool confirmFlightBatteryPack(uint8_t monitor, uint8_t selectedPackSlot)
 
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
     if (!pack.active ||
-        !flightBatteryPackMatchesLipo(packVoltageCv, pack.cellCount,
-                                      (BatteryType)pack.batteryType)) {
+        !flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
+                                           (BatteryType)pack.batteryType)) {
       return false;
     }
-  } else if (!isValidManualLipoConfig(config) ||
-             !flightBatteryPackMatchesLipo(packVoltageCv, config.cellCount,
-                                           (BatteryType)config.batteryType)) {
+  } else if (!isValidManualBatteryConfig(config) ||
+             !flightBatteryPackMatchesChemistry(
+                 packVoltageCv, config.cellCount,
+                 (BatteryType)config.batteryType)) {
     return false;
   }
 

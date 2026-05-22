@@ -28,6 +28,7 @@
 #include <imgui_impl_sdlrenderer2.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -251,6 +252,105 @@ static bool write_ppm_screenshot(const std::string& path)
   return true;
 }
 
+static const char* automation_battery_state_name(FlightBatterySessionState state)
+{
+  switch (state) {
+    case FlightBatterySessionState::Unknown:
+      return "Unknown";
+    case FlightBatterySessionState::WaitingForVoltage:
+      return "WaitingForVoltage";
+    case FlightBatterySessionState::NoBatteryObserved:
+      return "NoBatteryObserved";
+    case FlightBatterySessionState::NeedsConfirmation:
+      return "NeedsConfirmation";
+    case FlightBatterySessionState::Confirmed:
+      return "Confirmed";
+    case FlightBatterySessionState::ConfirmedWaitingForVoltage:
+      return "ConfirmedWaitingForVoltage";
+    case FlightBatterySessionState::VoltageMismatch:
+      return "VoltageMismatch";
+    case FlightBatterySessionState::NeedsConfiguration:
+      return "NeedsConfiguration";
+  }
+  return "?";
+}
+
+static bool automation_parse_battery_type(const std::string& value,
+                                          uint8_t& type)
+{
+  std::string lower = value;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) {
+    return char(std::tolower(ch));
+  });
+
+  if (lower == "lipo" || lower == "0") {
+    type = BATTERY_TYPE_LIPO;
+  } else if (lower == "liion" || lower == "li-ion" || lower == "1") {
+    type = BATTERY_TYPE_LIION;
+  } else if (lower == "life" || lower == "2") {
+    type = BATTERY_TYPE_LIFE;
+  } else if (lower == "nimh" || lower == "3") {
+    type = BATTERY_TYPE_NIMH;
+  } else if (lower == "pb" || lower == "4") {
+    type = BATTERY_TYPE_PB;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+static std::string automation_battery_state_json(uint8_t monitor)
+{
+  std::ostringstream extra;
+  extra << "\"monitor\":" << int(monitor);
+  if (monitor >= MAX_BATTERY_MONITORS) return extra.str();
+
+  const BatteryMonitorData& config = g_model.batteryMonitors[monitor];
+  const FlightBatteryRuntimeState& runtime = flightBatteryRuntimeState[monitor];
+  const FlightBatterySessionState state = flightBatterySessionState(monitor);
+  extra << ",\"state\":" << int(state)
+        << ",\"state_name\":\"" << automation_battery_state_name(state) << "\""
+        << ",\"enabled\":" << int(config.enabled)
+        << ",\"battery_type\":" << int(config.batteryType)
+        << ",\"cell_count\":" << int(config.cellCount)
+        << ",\"capacity\":" << int(config.capacity)
+        << ",\"compatible_pack_mask\":" << int(config.compatiblePackMask)
+        << ",\"selected_pack_slot\":" << int(config.selectedPackSlot)
+        << ",\"confirmed_pack_slot\":" << int(runtime.confirmedPackSlot)
+        << ",\"prompt_pack_mask\":" << int(flightBatteryPromptPackMask(monitor))
+        << ",\"consumed_baseline_mah\":" << runtime.consumedBaselineMah
+        << ",\"consumed_last_mah\":" << runtime.consumedLastMah
+        << ",\"consumed_session_mah\":" << runtime.consumedSessionMah
+        << ",\"capacity_mask\":" << int(runtime.capacityMask)
+        << ",\"voltage_low_seconds\":" << int(runtime.voltageLowSeconds)
+        << ",\"telemetry_lost_seconds\":" << int(runtime.telemetryLostSeconds)
+        << ",\"voltage_alerted\":" << (runtime.voltageAlerted ? "true" : "false")
+        << ",\"prompt_shown\":" << (runtime.promptShown ? "true" : "false");
+  return extra.str();
+}
+
+static bool automation_set_battery_telemetry(const std::string& sensor_name,
+                                             int value, int& sensor_index)
+{
+  sensor_index = -1;
+  for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
+    if (strcmp(g_model.telemetrySensors[i].label, sensor_name.c_str()) == 0) {
+      sensor_index = i;
+      break;
+    }
+  }
+
+  if (sensor_index < 0) return false;
+
+  telemetryItems[sensor_index].value = value;
+  telemetryItems[sensor_index].valueMin = value;
+  telemetryItems[sensor_index].valueMax = value;
+  telemetryItems[sensor_index].setFresh();
+  automation_telemetry_streaming = true;
+  simuSetTelemetryStreaming(100);
+  return true;
+}
+
 static void automation_handle_command(const std::string& line)
 {
   TRACE("automation_handle_command: '%s'", line.c_str());
@@ -260,7 +360,164 @@ static void automation_handle_command(const std::string& line)
 
   if (command.empty()) return;
 
-  if (command == "status") {
+  if (command == "battery_reset") {
+    for (auto& pack : g_eeGeneral.batteryPacks) {
+      pack = BatteryPackData();
+    }
+    for (auto& monitor : g_model.batteryMonitors) {
+      monitor = BatteryMonitorData();
+    }
+    for (auto& item : telemetryItems) {
+      if (item.isAvailable()) item.setOld();
+    }
+    automation_telemetry_streaming = false;
+    simuSetTelemetryStreaming(0);
+    resetFlightBatteryRuntimeState();
+    automation_reply_ok(automation_battery_state_json(0));
+  } else if (command == "battery_pack") {
+    int slot = 0;
+    int active = 0;
+    std::string type_token;
+    int cells = 0;
+    int capacity = 0;
+    in >> slot >> active >> type_token >> cells >> capacity;
+    if (!in || slot < 1 || slot > MAX_BATTERY_PACKS || cells < 0 || cells > 15) {
+      automation_reply_error("usage: battery_pack <slot 1-16> <active 0|1> <type> <cells> <capacity_mah>");
+      return;
+    }
+    uint8_t type = BATTERY_TYPE_LIPO;
+    if (!automation_parse_battery_type(type_token, type)) {
+      automation_reply_error("unknown battery type: " + type_token);
+      return;
+    }
+    BatteryPackData& pack = g_eeGeneral.batteryPacks[slot - 1];
+    pack.active = active ? 1 : 0;
+    pack.batteryType = type;
+    pack.cellCount = cells;
+    pack.capacity = capacity;
+    invalidateFlightBatteryPackSlot(slot - 1);
+    std::ostringstream extra;
+    extra << "\"slot\":" << slot
+          << ",\"active\":" << int(pack.active)
+          << ",\"battery_type\":" << int(pack.batteryType)
+          << ",\"cell_count\":" << int(pack.cellCount)
+          << ",\"capacity\":" << int(pack.capacity);
+    automation_reply_ok(extra.str());
+  } else if (command == "battery_monitor") {
+    int monitor = 0;
+    std::string type_token;
+    int cells = 0;
+    int capacity = 0;
+    int compatible_mask = 0;
+    int cap_alert = 0;
+    int volt_alert = 0;
+    in >> monitor >> type_token >> cells >> capacity >> compatible_mask
+       >> cap_alert >> volt_alert;
+    if (!in || monitor < 0 || monitor >= MAX_BATTERY_MONITORS || cells < 0 ||
+        cells > 15) {
+      automation_reply_error("usage: battery_monitor <monitor 0-3> <type> <cells> <capacity_mah> <compatible_mask> <cap_alert 0|1> <volt_alert 0|1>");
+      return;
+    }
+    uint8_t type = BATTERY_TYPE_LIPO;
+    if (!automation_parse_battery_type(type_token, type)) {
+      automation_reply_error("unknown battery type: " + type_token);
+      return;
+    }
+    BatteryMonitorData& config = g_model.batteryMonitors[monitor];
+    config.enabled = 1;
+    config.batteryType = type;
+    config.cellCount = cells;
+    config.capacity = capacity;
+    config.compatiblePackMask = uint16_t(compatible_mask);
+    config.capAlertEnabled = cap_alert ? 1 : 0;
+    config.voltAlertEnabled = volt_alert ? 1 : 0;
+    config.sourceIndex = 1;
+    config.currentIndex = 2;
+    config.selectedPackSlot = 0;
+
+    g_model.telemetrySensors[0].init("VFAS", UNIT_VOLTS, 2);
+    g_model.telemetrySensors[1].init("Capa", UNIT_MAH, 0);
+    telemetryItems[0].setOld();
+    telemetryItems[1].setOld();
+    resetFlightBatteryRuntimeState();
+    automation_reply_ok(automation_battery_state_json(uint8_t(monitor)));
+  } else if (command == "battery_set_telemetry") {
+    std::string sensor_name;
+    int value = 0;
+    int update_seconds = FLIGHT_BATTERY_PRESENT_DEBOUNCE_SECONDS;
+    in >> sensor_name >> value;
+    if (!sensor_name.empty()) in >> update_seconds;
+    if (sensor_name.empty()) {
+      automation_reply_error("usage: battery_set_telemetry <VFAS|Capa> <value> [update_seconds]");
+      return;
+    }
+    int sensor_index = -1;
+    if (!automation_set_battery_telemetry(sensor_name, value, sensor_index)) {
+      automation_reply_error("sensor not found: " + sensor_name);
+      return;
+    }
+    for (int i = 0; i < std::max(0, update_seconds); i++) {
+      updateFlightBatterySessions();
+    }
+    std::ostringstream extra;
+    extra << automation_battery_state_json(0)
+          << ",\"index\":" << sensor_index
+          << ",\"value\":" << telemetryItems[sensor_index].value;
+    automation_reply_ok(extra.str());
+  } else if (command == "battery_telemetry_lost") {
+    int seconds = FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS;
+    in >> seconds;
+    automation_telemetry_streaming = false;
+    simuSetTelemetryStreaming(0);
+    for (auto& item : telemetryItems) {
+      if (item.isAvailable()) item.setOld();
+    }
+    for (int i = 0; i < std::max(0, seconds); i++) {
+      updateFlightBatterySessions();
+    }
+    automation_reply_ok(automation_battery_state_json(0));
+  } else if (command == "battery_tick") {
+    int seconds = 1;
+    in >> seconds;
+    for (int i = 0; i < std::max(0, seconds); i++) {
+      updateFlightBatterySessions();
+    }
+    automation_reply_ok(automation_battery_state_json(0));
+  } else if (command == "battery_check_alerts") {
+    int count = 1;
+    in >> count;
+    int fired = 0;
+    for (int i = 0; i < std::max(0, count); i++) {
+      if (checkFlightBatteryAlerts()) fired++;
+    }
+    std::ostringstream extra;
+    extra << automation_battery_state_json(0)
+          << ",\"alerts_fired\":" << fired;
+    automation_reply_ok(extra.str());
+  } else if (command == "battery_confirm") {
+    int monitor = 0;
+    int selected_pack_slot = 0;
+    in >> monitor >> selected_pack_slot;
+    if (!in || monitor < 0 || monitor >= MAX_BATTERY_MONITORS ||
+        selected_pack_slot < 0 || selected_pack_slot > MAX_BATTERY_PACKS) {
+      automation_reply_error("usage: battery_confirm <monitor 0-3> <selected_pack_slot 0-16>");
+      return;
+    }
+    bool confirmed = confirmFlightBatteryPack(uint8_t(monitor),
+                                              uint8_t(selected_pack_slot));
+    std::ostringstream extra;
+    extra << automation_battery_state_json(uint8_t(monitor))
+          << ",\"confirmed\":" << (confirmed ? "true" : "false");
+    automation_reply_ok(extra.str());
+  } else if (command == "battery_state") {
+    int monitor = 0;
+    in >> monitor;
+    if (monitor < 0 || monitor >= MAX_BATTERY_MONITORS) {
+      automation_reply_error("usage: battery_state <monitor 0-3>");
+      return;
+    }
+    automation_reply_ok(automation_battery_state_json(uint8_t(monitor)));
+  } else if (command == "status") {
     std::ostringstream extra;
     extra << "\"running\":" << (simuIsRunning() ? "true" : "false")
           << ",\"startup_completed\":" << (simuStartupCompleted() ? "true" : "false")
