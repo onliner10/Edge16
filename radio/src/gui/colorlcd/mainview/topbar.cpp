@@ -108,7 +108,7 @@ SetupTopBarWidgetsPage::SetupTopBarWidgetsPage() :
 
   auto topbar = viewMain->getTopbar();
   topbar->setSetupMode(true);
-  refreshSlots();
+  refreshSlots(0);
 
 #if defined(HARDWARE_TOUCH)
   addBackButton();
@@ -141,14 +141,26 @@ void SetupTopBarWidgetsPage::refreshSlots()
   }
 }
 
-void SetupTopBarWidgetsPage::refreshSlots(const WidgetMoveResult& moveResult)
+void SetupTopBarWidgetsPage::refreshSlots(unsigned int preferredFocusIndex)
 {
   refreshSlots();
 
-  const unsigned int index = moveResult.to.asUnsigned();
-  if (index < MAX_TOPBAR_ZONES && slots[index]) {
-    slots[index]->focus();
+  SetupWidgetsPageSlot* fallback = nullptr;
+  for (unsigned int i = 0; i < MAX_TOPBAR_ZONES; i += 1) {
+    if (!slots[i]) continue;
+    if (i == preferredFocusIndex) {
+      slots[i]->focus();
+      return;
+    }
+    fallback = slots[i];
   }
+
+  if (fallback) fallback->focus();
+}
+
+void SetupTopBarWidgetsPage::refreshSlots(const WidgetMoveResult& moveResult)
+{
+  refreshSlots(moveResult.to.asUnsigned());
 }
 
 void SetupTopBarWidgetsPage::onLiveClicked(Window::LiveWindow&)
@@ -441,6 +453,8 @@ Widget* TopBar::createWidget(unsigned int index,
         WidgetLocation(TopBarWidgetLocation{static_cast<uint8_t>(index)}));
   }
   widgets[index] = widget;
+  updateZones();
+  storageDirty(EE_GENERAL);
 
   return widget;
 }

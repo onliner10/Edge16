@@ -41,6 +41,7 @@ class SetupTopBarWidgetsPage : public NavWindow
   void onCancel() override;
   void onDeleted() override;
   void refreshSlots();
+  void refreshSlots(unsigned int preferredFocusIndex);
   void refreshSlots(const WidgetMoveResult& moveResult);
 
 #if defined(HARDWARE_KEYS)
