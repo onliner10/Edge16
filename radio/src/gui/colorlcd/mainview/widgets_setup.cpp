@@ -75,7 +75,13 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
                        [this]() { moveWidget(WidgetMoveDirection::Right); });
         menu.addLine(STR_REMOVE_WIDGET, [this]() {
           auto container = currentContainer();
-          if (container) container->removeWidget(this->slot.asUnsigned());
+          if (!container) return;
+
+          container->removeWidget(this->slot.asUnsigned());
+          if (this->topBarSetupPage) {
+            static_cast<TopBar*>(container)->load();
+            this->topBarSetupPage->refreshSlots(this->slot.asUnsigned());
+          }
         });
       });
     } else {
@@ -166,6 +172,9 @@ void SetupWidgetsPageSlot::addNewWidget()
         if (!selectedContainer) return;
 
         selectedContainer->createWidget(selectedSlot.asUnsigned(), factory);
+        if (topBarSetupPage)
+          topBarSetupPage->refreshSlots(selectedSlot.asUnsigned() + 1);
+
         auto widget = selectedContainer->getWidget(selectedSlot.asUnsigned());
         if (widget && widget->hasOptions())
           new (std::nothrow) WidgetSettings(widget);
