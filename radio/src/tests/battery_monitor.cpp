@@ -519,6 +519,48 @@ TEST_F(BatteryRuntimeTest, DisarmedTelemetryLossWaitsForHighVoltageReplug)
   EXPECT_TRUE(flightBatteryRuntimeState[0].voltageAlerted);
 }
 
+TEST_F(BatteryRuntimeTest, TelemetryReturnBeforeVoltagePreservesReplugEvidence)
+{
+  resetFlightBatteryRuntimeState();
+  g_eeGeneral.batteryPacks[0].active = true;
+  g_eeGeneral.batteryPacks[0].batteryType = BATTERY_TYPE_LIPO;
+  g_eeGeneral.batteryPacks[0].cellCount = 3;
+  g_eeGeneral.batteryPacks[0].capacity = 2200;
+  g_model.batteryMonitors[0].enabled = true;
+  g_model.batteryMonitors[0].compatiblePackMask = 0x01;
+  setFlightBatteryVoltageSensor(0, 1000);
+  setFlightBatteryCapacitySensor(1, 500);
+
+  updateFlightBatterySessionsForSeconds(FLIGHT_BATTERY_PRESENT_DEBOUNCE_SECONDS);
+  EXPECT_EQ(FlightBatterySessionState::Confirmed, flightBatterySessionState(0));
+  EXPECT_EQ(500, flightBatteryRuntimeState[0].consumedBaselineMah);
+
+  setFlightBatteryTelemetryLost();
+  updateFlightBatterySessionsForSeconds(
+      FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS);
+  EXPECT_EQ(FlightBatterySessionState::ConfirmedWaitingForVoltage,
+            flightBatterySessionState(0));
+  EXPECT_EQ(FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS,
+            flightBatteryRuntimeState[0].telemetryLostSeconds);
+
+  telemetryStreaming = TELEMETRY_TIMEOUT10ms;
+  updateFlightBatterySessions();
+  EXPECT_EQ(FlightBatterySessionState::ConfirmedWaitingForVoltage,
+            flightBatterySessionState(0));
+  EXPECT_EQ(FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS,
+            flightBatteryRuntimeState[0].telemetryLostSeconds);
+
+  setFlightBatteryVoltageSensor(0, 1260);
+  setFlightBatteryCapacitySensor(1, 20);
+  updateFlightBatterySessions();
+
+  EXPECT_EQ(FlightBatterySessionState::Confirmed, flightBatterySessionState(0));
+  EXPECT_EQ(1, g_model.batteryMonitors[0].selectedPackSlot);
+  EXPECT_EQ(20, flightBatteryRuntimeState[0].consumedBaselineMah);
+  EXPECT_EQ(0, flightBatteryRuntimeState[0].consumedSessionMah);
+  EXPECT_EQ(20, flightBatteryRuntimeState[0].consumedLastMah);
+}
+
 TEST_F(BatteryRuntimeTest, TemporarySensorLossWhileTelemetryStreamsDoesNotResetSession)
 {
   resetFlightBatteryRuntimeState();

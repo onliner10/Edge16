@@ -1162,13 +1162,12 @@ void updateFlightBatterySessions()
       if (!voltageFresh) {
         if (!isArmed) {
           runtime.state = FlightBatterySessionState::ConfirmedWaitingForVoltage;
-          if (telemetryLost) {
-            if (runtime.telemetryLostSeconds <
-                FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS) {
-              runtime.telemetryLostSeconds++;
-            }
-          } else {
-            runtime.telemetryLostSeconds = 0;
+          // Spektrum can bring link telemetry back before ESC voltage (EVIN).
+          // Keep prior swap evidence until the selected voltage source returns.
+          if (telemetryLost &&
+              runtime.telemetryLostSeconds <
+                  FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS) {
+            runtime.telemetryLostSeconds++;
           }
         } else {
           runtime.telemetryLostSeconds = 0;
@@ -1270,6 +1269,7 @@ static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSl
   runtime.state = FlightBatterySessionState::Confirmed;
   runtime.capacityMask = 0;
   runtime.voltageLowSeconds = 0;
+  runtime.telemetryLostSeconds = 0;
   runtime.voltageAlerted = false;
   runtime.promptShown = true;
   runtime.promptPackMask = 0;
