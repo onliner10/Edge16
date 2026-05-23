@@ -249,6 +249,22 @@ class BatteryMonitorWidget : public NativeWidget
     snprintf(buf, len, "%d.%02u%s", cv / 100, (unsigned)(cv % 100), suffix);
   }
 
+  static lv_color_t fillColorForRemaining(uint8_t pct)
+  {
+    if (pct > 100) pct = 100;
+
+    const lv_color_t red = lv_color_make(220, 45, 45);
+    const lv_color_t orange = lv_color_make(255, 160, 0);
+    const lv_color_t green = lv_color_make(40, 190, 70);
+
+    if (pct < 50) {
+      return lv_color_mix(orange, red, uint8_t(uint16_t(pct) * 255 / 50));
+    }
+
+    return lv_color_mix(green, orange,
+                        uint8_t(uint16_t(pct - 50) * 255 / 50));
+  }
+
   void setVis(lv_obj_t* obj, bool vis) { setObjVisible(obj, vis); }
 
   void setObjRect(lv_obj_t* obj, coord_t x, coord_t y, coord_t w, coord_t h)
@@ -572,8 +588,12 @@ class BatteryMonitorWidget : public NativeWidget
     const coord_t cy = oy;
     const coord_t cw = w;
     const coord_t ch = h;
+    constexpr coord_t regularMetricsMinH = 76;
 
-    if (usesCardChrome() && h < 58) {
+    // Use the dense card layout until the regular layout has enough height for
+    // its larger header/bar/metrics stack. Otherwise 1x2 cards can fall into a
+    // 58..75px dead band where metrics are hidden.
+    if (usesCardChrome() && h < regularMetricsMinH) {
       headerPill.with([&](lv_obj_t* obj) { setVis(obj, false); });
       statusPill.with([&](lv_obj_t* obj) { setVis(obj, false); });
       statusLabel.with([&](lv_obj_t* obj) { setVis(obj, false); });
@@ -674,8 +694,8 @@ class BatteryMonitorWidget : public NativeWidget
     // Determine what to show. The fuel gauge is the primary object; labels
     // only stay if they help the pilot make a quick pack decision.
     bool showPack = (h >= 38);
-    bool showVoltage = (h >= 76);
-    bool showMetrics = (h >= 76);
+    bool showVoltage = (h >= regularMetricsMinH);
+    bool showMetrics = (h >= regularMetricsMinH);
     bool showThreeMetrics = showMetrics && showVoltage && (cw >= 150);
     bool showSecondaryVoltage =
         showVoltage && !showThreeMetrics && !showMetrics;
@@ -897,17 +917,11 @@ class BatteryMonitorWidget : public NativeWidget
                           ? (coord_t)((int)tw * d.remainingPct / 100)
                           : 0;
 
-      LcdColorIndex fc;
-      if (d.warningLevel == 2)
-        fc = COLOR_RED_INDEX;
-      else if (d.warningLevel == 1)
-        fc = COLOR_THEME_WARNING_INDEX;
-      else
-        fc = COLOR_GREEN_INDEX;
-
       fill.with([&](lv_obj_t* obj) {
         lv_obj_set_size(obj, fillW, barH);
-        etx_solid_bg(obj, fc);
+        lv_obj_set_style_bg_color(obj, fillColorForRemaining(d.remainingPct),
+                                  LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
       });
     }
   }
