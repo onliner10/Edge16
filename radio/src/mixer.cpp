@@ -542,6 +542,10 @@ getvalue_t _getValue(mixsrc_t i, bool* valid)
     return getTimerStateValue(i - MIXSRC_FIRST_TIMER);
   }
 
+  else if (i == MIXSRC_MODEL_ARMED) {
+    return isModelArmedState() ? RESX : -RESX;
+  }
+
   else if (i <= MIXSRC_LAST_TELEM) {
     if (IS_FAI_FORBIDDEN(i)) {
       if (valid != nullptr) *valid = false;

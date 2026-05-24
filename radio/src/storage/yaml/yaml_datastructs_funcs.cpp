@@ -455,15 +455,29 @@ static uint32_t r_mixSrcRawEx(const YamlNode* node, const char* val, uint8_t val
   return (uint32_t)rv;
 }
 
-static bool w_mixSrcRawExNoQuote(const YamlNode* node, uint32_t val, yaml_writer_func wf, void* opaque)
+static bool w_mixSrcRawExNoQuoteBits(const YamlNode* node, uint32_t bits,
+                                      uint32_t val, yaml_writer_func wf,
+                                      void* opaque)
 {
-  // Check for negative 10 bit value. TODO: handle this better!
-  val &= 0x3FF;
-  if (val >= 512) {
+  if (bits == 0 || bits > 31) return false;
+
+  const uint32_t sign = 1u << (bits - 1);
+  const uint32_t range = 1u << bits;
+  const uint32_t mask = range - 1;
+
+  val &= mask;
+  if (val & sign) {
     if (!wf(opaque, "!", 1)) return false;
-    val = 1024 - val;
+    val = range - val;
   }
   return w_mixSrcRaw(node, val, wf, opaque);
+}
+
+static bool w_mixSrcRawExNoQuote(const YamlNode* node, uint32_t val,
+                                 yaml_writer_func wf, void* opaque)
+{
+  if (node == nullptr) return false;
+  return w_mixSrcRawExNoQuoteBits(node, node->size, val, wf, opaque);
 }
 
 static bool w_mixSrcRawEx(const YamlNode* node, uint32_t val, yaml_writer_func wf, void* opaque)
@@ -2163,7 +2177,7 @@ static bool w_customFn(void* user, uint8_t* data, uint32_t bitoffs,
   case FUNC_VOLUME:
   case FUNC_BACKLIGHT:
   case FUNC_PLAY_VALUE:
-    if (!w_mixSrcRawExNoQuote(nullptr, CFN_PARAM(cfn), wf, opaque)) return false;
+    if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, CFN_PARAM(cfn), wf, opaque)) return false;
     break;
 
   case FUNC_PLAY_SOUND:
@@ -2231,10 +2245,10 @@ static bool w_customFn(void* user, uint8_t* data, uint32_t bitoffs,
       break;
     case FUNC_ADJUST_GVAR_SOURCE:
     case FUNC_ADJUST_GVAR_SOURCERAW:
-      if (!w_mixSrcRawExNoQuote(nullptr, CFN_PARAM(cfn), wf, opaque)) return false;
+      if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, CFN_PARAM(cfn), wf, opaque)) return false;
       break;
     case FUNC_ADJUST_GVAR_GVAR:
-      if (!w_mixSrcRawExNoQuote(nullptr, CFN_PARAM(cfn) + MIXSRC_FIRST_GVAR, wf, opaque)) return false;
+      if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, CFN_PARAM(cfn) + MIXSRC_FIRST_GVAR, wf, opaque)) return false;
       break;
     }
     break;
@@ -2394,9 +2408,9 @@ static bool w_logicSw(void* user, uint8_t* data, uint32_t bitoffs,
     break;
     
   case LS_FAMILY_COMP:
-    if (!w_mixSrcRawExNoQuote(nullptr, ls->v1, wf, opaque)) return false;
+    if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, ls->v1, wf, opaque)) return false;
     if (!wf(opaque,",",1)) return false;
-    if (!w_mixSrcRawExNoQuote(nullptr, ls->v2, wf, opaque)) return false;
+    if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, ls->v2, wf, opaque)) return false;
     break;
     
   case LS_FAMILY_TIMER:
@@ -2408,7 +2422,7 @@ static bool w_logicSw(void* user, uint8_t* data, uint32_t bitoffs,
     break;
     
   default:
-    if (!w_mixSrcRawExNoQuote(nullptr, ls->v1, wf, opaque)) return false;
+    if (!w_mixSrcRawExNoQuoteBits(nullptr, 10, ls->v1, wf, opaque)) return false;
     if (!wf(opaque,",",1)) return false;
     // TODO?: ls->v1 <= MIXSRC_LAST_CH ? calc100toRESX(ls->v2) : ls->v2
     str = yaml_signed2str(ls->v2);

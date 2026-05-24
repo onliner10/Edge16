@@ -1772,6 +1772,107 @@ TEST_F(ArmingTest, BatteryVoltageMismatch_BlocksArming)
   EXPECT_EQ(consumeArmingBlockReason(), ArmingBlockReason::BatteryVoltageMismatch);
 }
 
+TEST_F(ArmingTest, ArmedSource_DisarmedOrSfOnly_IsLow)
+{
+  g_model.armingEnabled = true;
+  s_mixer_first_run_done = true;
+
+  EXPECT_EQ(getValue(MIXSRC_MODEL_ARMED), -RESX);
+
+  int sf_idx = switchLookupIdx("SF", 2);
+  if (sf_idx < 0) return;
+  simuSetSwitch(sf_idx, 1);
+  testUpdateArmingState();
+
+  EXPECT_FALSE(isModelArmedState());
+  EXPECT_EQ(getValue(MIXSRC_MODEL_ARMED), -RESX);
+}
+
+TEST_F(ArmingTest, ArmedSource_ActualArmedState_IsHigh)
+{
+  g_model.armingEnabled = true;
+  g_model.armingThrottleChannel = 0;
+  s_mixer_first_run_done = true;
+
+  int sf_idx = switchLookupIdx("SF", 2);
+  if (sf_idx < 0) return;
+  int sh_idx = switchLookupIdx("SH", 2);
+  if (sh_idx < 0) return;
+
+  simuSetSwitch(sf_idx, 1);
+  testUpdateArmingState();
+  simuSetSwitch(sh_idx, 1);
+  testUpdateArmingState();
+  EXPECT_EQ(getValue(MIXSRC_MODEL_ARMED), -RESX);
+
+  simuSetSwitch(sh_idx, -1);
+  testUpdateArmingState();
+
+  EXPECT_TRUE(isModelArmedState());
+  EXPECT_EQ(getValue(MIXSRC_MODEL_ARMED), RESX);
+}
+
+TEST_F(ArmingTest, ArmedSource_BatteryBlockedArming_StaysLow)
+{
+  g_model.armingEnabled = true;
+  setupValidManualBatteryMonitor();
+  g_model.telemetrySensors[0].init("VFAS", UNIT_VOLTS, 2);
+  telemetryItems[0].value = 1600;
+  telemetryItems[0].setFresh();
+  g_model.batteryMonitors[0].sourceIndex = 1;
+  updateFlightBatterySessions();
+  updateFlightBatterySessions();
+  s_mixer_first_run_done = true;
+
+  int sf_idx = switchLookupIdx("SF", 2);
+  if (sf_idx < 0) return;
+  int sh_idx = switchLookupIdx("SH", 2);
+  if (sh_idx < 0) return;
+
+  simuSetSwitch(sf_idx, 1);
+  testUpdateArmingState();
+  simuSetSwitch(sh_idx, 1);
+  testUpdateArmingState();
+  simuSetSwitch(sh_idx, -1);
+  testUpdateArmingState();
+
+  EXPECT_FALSE(isModelArmedState());
+  EXPECT_EQ(getValue(MIXSRC_MODEL_ARMED), -RESX);
+  EXPECT_EQ(consumeArmingBlockReason(), ArmingBlockReason::BatteryVoltageMismatch);
+}
+
+TEST_F(ArmingTest, ArmedSource_MixerOutputTracksActualArmedState)
+{
+  g_model.armingEnabled = true;
+  g_model.armingThrottleChannel = 0;
+  s_mixer_first_run_done = true;
+
+  int sf_idx = switchLookupIdx("SF", 2);
+  if (sf_idx < 0) return;
+  int sh_idx = switchLookupIdx("SH", 2);
+  if (sh_idx < 0) return;
+
+  memclear(g_model.mixData, sizeof(g_model.mixData));
+  g_model.mixData[0].destCh = 4;
+  g_model.mixData[0].mltpx = MLTPX_REPL;
+  g_model.mixData[0].srcRaw = MIXSRC_MODEL_ARMED;
+  g_model.mixData[0].weight = makeSourceNumVal(100);
+
+  evalMixes(1);
+  EXPECT_EQ(channelOutputs[4], -RESX);
+
+  simuSetSwitch(sf_idx, 1);
+  evalMixes(1);
+  simuSetSwitch(sh_idx, 1);
+  evalMixes(1);
+  EXPECT_EQ(channelOutputs[4], -RESX);
+
+  simuSetSwitch(sh_idx, -1);
+  evalMixes(1);
+  EXPECT_TRUE(isModelArmedState());
+  EXPECT_EQ(channelOutputs[4], RESX);
+}
+
 TEST_F(ArmingTest, InvalidThrottleChannel_FailsClosedOnDefaultThrottleOutput)
 {
   g_model.armingEnabled = true;

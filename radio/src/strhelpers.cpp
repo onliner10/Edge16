@@ -818,6 +818,8 @@ char *getSourceString(char (&destRef)[L], mixsrc_t idx, bool defaultOnly)
     } else {
       strAppendStringWithIndex(dest, STR_SRC_TIMER, idx + 1);
     }
+  } else if (idx == MIXSRC_MODEL_ARMED) {
+    strncpy(dest, "Armed", dest_len - 1);
   } else {
     idx -= MIXSRC_FIRST_TELEM;
     div_t qr = div((uint16_t)idx, 3);

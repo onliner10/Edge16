@@ -439,7 +439,7 @@ void drawSourceCustomValue(coord_t x, coord_t y, mixsrc_t source, int32_t value,
 {
   source = abs(source);
 
-  if (source >= MIXSRC_FIRST_TELEM) {
+  if (source >= MIXSRC_FIRST_TELEM && source <= MIXSRC_LAST_TELEM) {
     source = (source-MIXSRC_FIRST_TELEM) / 3;
     drawSensorCustomValue(x, y, source, value, flags);
   }
