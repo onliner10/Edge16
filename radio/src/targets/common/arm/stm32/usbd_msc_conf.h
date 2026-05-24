@@ -22,7 +22,9 @@
 #if defined(BOOT)
   #define MASS_STORAGE_BUFFER_SIZE 4096U
 #else
-  #define MASS_STORAGE_BUFFER_SIZE 512U
+  // Keep firmware MSC transfers large enough to avoid per-sector USB/SCSI
+  // overhead, while staying modest in static RAM use on supported radios.
+  #define MASS_STORAGE_BUFFER_SIZE 4096U
 #endif
 
 #define USBD_CLASS_BOS_ENABLED 0
