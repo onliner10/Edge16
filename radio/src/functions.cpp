@@ -63,8 +63,12 @@ PLAY_FUNCTION(playValue, mixsrc_t idx)
   if (idx == MIXSRC_NONE)
     return;
 
+  mixsrc_t source = abs(idx);
+  if (source > MIXSRC_LAST_TELEM)
+    return;
+
   getvalue_t val = getValue(idx);
-  idx = abs(idx); // Don't need negative form any longer
+  idx = source; // Don't need negative form any longer
 
   if (idx >= MIXSRC_FIRST_TELEM) {
     TelemetrySensor & telemetrySensor = g_model.telemetrySensors[(idx-MIXSRC_FIRST_TELEM) / 3];

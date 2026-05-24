@@ -52,13 +52,14 @@ class SourceChoiceMenuToolbar : public MenuToolbar
     addButton(CHAR_POT, MIXSRC_FIRST_POT, MIXSRC_LAST_POT, nullptr,
               STR_MENU_POTS);
     addButton(
-        CHAR_FUNCTION, MIXSRC_MIN, MIXSRC_LAST_TIMER,
+        CHAR_FUNCTION, MIXSRC_MIN, MIXSRC_MODEL_ARMED,
         [=](int16_t index) {
 #if defined(LUMINOSITY_SENSOR)
           if (index == MIXSRC_LIGHT) return true;
 #endif
           return (index >= MIXSRC_MIN && index <= MIXSRC_MAX) ||
-                 (index >= MIXSRC_TX_VOLTAGE && index <= MIXSRC_LAST_TIMER);
+                 (index >= MIXSRC_TX_VOLTAGE && index <= MIXSRC_LAST_TIMER) ||
+                 index == MIXSRC_MODEL_ARMED;
         },
         STR_MENU_OTHER);
 #if defined(HELI)

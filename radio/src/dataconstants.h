@@ -566,6 +566,7 @@ enum MixSources {
 
   MIXSRC_INVERT SKIP,
   MIXSRC_VALUE SKIP,  // Special case to trigger source as value conversion
+  MIXSRC_MODEL_ARMED,
 };
 
 #define MIXSRC_LAST                 MIXSRC_LAST_GVAR
@@ -576,6 +577,9 @@ enum MixSources {
 #define MIXSRC_LAST_REGULAR_SWITCH  (MIXSRC_FIRST_SWITCH + switchGetMaxAllSwitches() - 1)
 #define MIXSRC_FIRST_FS_SWITCH      (MIXSRC_LAST_REGULAR_SWITCH + 1)
 #endif
+
+static_assert(MIXSRC_MODEL_ARMED <= 1023,
+              "MixData::srcRaw is a signed 11-bit field");
 
 constexpr int16_t MIXSRC_MAX_VALUE = 30000;
 

@@ -174,6 +174,7 @@ const struct YamlIdStr enum_MixSources[] = {
   {  MIXSRC_TX_VOLTAGE, "TX_VOLTAGE"  },
   {  MIXSRC_TX_TIME, "TX_TIME"  },
   {  MIXSRC_TX_GPS, "TX_GPS"  },
+  {  MIXSRC_MODEL_ARMED, "MODEL_ARMED"  },
   {  0, NULL  }
 };
 const struct YamlIdStr enum_LogicalSwitchesFunctions[] = {
@@ -546,14 +547,13 @@ static const struct YamlNode struct_CurveRef[] = {
 };
 static const struct YamlNode struct_MixData[] = {
   YAML_UNSIGNED( "destCh", 5 ),
-  YAML_SIGNED_CUST( "srcRaw", 10, r_mixSrcRawEx, w_mixSrcRawEx ),
+  YAML_SIGNED_CUST( "srcRaw", 11, r_mixSrcRawEx, w_mixSrcRawEx ),
   YAML_UNSIGNED( "carryTrim", 1 ),
   YAML_UNSIGNED( "mixWarn", 2 ),
   YAML_ENUM("mltpx", 2, enum_MixerMultiplex, NULL),
   YAML_UNSIGNED( "delayPrec", 1 ),
   YAML_UNSIGNED( "speedPrec", 1 ),
   YAML_UNSIGNED_CUST( "flightModes", 9, r_flightModes, w_flightModes ),
-  YAML_PADDING( 1 ),
   YAML_UNSIGNED_CUST( "weight", 11, r_sourceNumVal, w_sourceNumVal ),
   YAML_UNSIGNED_CUST( "offset", 11, r_sourceNumVal, w_sourceNumVal ),
   YAML_SIGNED_CUST( "swtch", 10, r_swtchSrc, w_swtchSrc ),

@@ -112,9 +112,14 @@ void MixEditWindow::buildBody(Window *form)
   // Source
   line = form->newLine(grid);
   new StaticText(line, rect_t{}, STR_SOURCE);
-  new SourceChoice(line, rect_t{}, 0, MIXSRC_LAST,
+  auto sourceChoice = new SourceChoice(line, rect_t{}, 0, MIXSRC_MODEL_ARMED,
 	                   GET_DEFAULT(mix->srcRaw),
 	                   SET_MIXER_DEFAULT(mix->srcRaw), true);
+  sourceChoice->setAvailableHandler([](int source) {
+    source = abs(source);
+    return source == MIXSRC_MODEL_ARMED ||
+           (source <= MIXSRC_LAST && isSourceAvailable(source));
+  });
 
   // Weight
   line = form->newLine(grid);
