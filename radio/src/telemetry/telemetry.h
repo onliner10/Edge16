@@ -45,6 +45,40 @@ enum TelemetryStates {
 };
 extern std::atomic<uint8_t> telemetryState;
 
+enum class TelemetryAlert : uint8_t {
+  SensorLost,
+  TelemetryConnected,
+  TelemetryBack,
+  TelemetryLost,
+  ProtocolRfWarning,
+  ProtocolRfCritical,
+  GenericRssiWarning,
+  GenericRssiCritical,
+  Count,
+};
+
+using TelemetryAlertMask = uint16_t;
+
+constexpr TelemetryAlertMask telemetryAlertMask(TelemetryAlert alert)
+{
+  return TelemetryAlertMask(1u << static_cast<uint8_t>(alert));
+}
+
+constexpr TelemetryAlertMask TELEMETRY_ALERTS_ALL =
+    TelemetryAlertMask((1u << static_cast<uint8_t>(TelemetryAlert::Count)) -
+                       1u);
+constexpr TelemetryAlertMask TELEMETRY_ALERTS_GENERIC_RSSI =
+    telemetryAlertMask(TelemetryAlert::GenericRssiWarning) |
+    telemetryAlertMask(TelemetryAlert::GenericRssiCritical);
+constexpr TelemetryAlertMask TELEMETRY_ALERTS_STATUS_AUDIO =
+    telemetryAlertMask(TelemetryAlert::SensorLost) |
+    telemetryAlertMask(TelemetryAlert::TelemetryConnected) |
+    telemetryAlertMask(TelemetryAlert::TelemetryBack) |
+    telemetryAlertMask(TelemetryAlert::TelemetryLost);
+
+bool telemetryAlertSupported(TelemetryAlert alert);
+void telemetrySetSupportedAlerts(TelemetryAlertMask alerts);
+
 void telemetryInit();
 void telemetryDataLock();
 bool telemetryDataTryLock();

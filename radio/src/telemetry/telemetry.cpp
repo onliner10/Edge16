@@ -82,6 +82,12 @@ static bool isValidManualBatteryConfig(const BatteryMonitorData& config);
 std::atomic<uint8_t> telemetryStreaming{0};
 std::atomic<uint8_t> telemetryState{TELEMETRY_INIT};
 
+// Current protocol-declared audio alert capabilities. This is not telemetry
+// state: battery monitor, logging, UI, and other readers must continue using
+// factual state such as telemetryStreaming and sensor freshness.
+static std::atomic<TelemetryAlertMask> telemetrySupportedAlerts{
+    TELEMETRY_ALERTS_ALL};
+
 TelemetryData telemetryData;
 static rxStatStruct rxStat;
 
@@ -89,6 +95,55 @@ telemetry_buffer _telemetry_rx_buffer[NUM_MODULES];
 
 static recursive_mutex_handle_t telemetryDataMutex;
 static std::atomic<uint8_t> telemetryDataMutexState{0};
+
+bool telemetryAlertSupported(TelemetryAlert alert)
+{
+  return (telemetrySupportedAlerts.load(std::memory_order_acquire) &
+          telemetryAlertMask(alert)) != 0;
+}
+
+void telemetrySetSupportedAlerts(TelemetryAlertMask alerts)
+{
+  telemetrySupportedAlerts.store(alerts, std::memory_order_release);
+}
+
+static bool telemetryPlayAlert(TelemetryAlert alert)
+{
+  if (!telemetryAlertSupported(alert)) {
+    return false;
+  }
+
+  switch (alert) {
+    case TelemetryAlert::SensorLost:
+      audioEvent(AU_SENSOR_LOST);
+      return true;
+
+    case TelemetryAlert::TelemetryConnected:
+      AUDIO_TELEMETRY_CONNECTED();
+      return true;
+
+    case TelemetryAlert::TelemetryBack:
+      AUDIO_TELEMETRY_BACK();
+      return true;
+
+    case TelemetryAlert::TelemetryLost:
+      AUDIO_TELEMETRY_LOST();
+      return true;
+
+    case TelemetryAlert::ProtocolRfWarning:
+    case TelemetryAlert::GenericRssiWarning:
+      AUDIO_RSSI_ORANGE();
+      return true;
+
+    case TelemetryAlert::ProtocolRfCritical:
+    case TelemetryAlert::GenericRssiCritical:
+      AUDIO_RSSI_RED();
+      return true;
+
+    default:
+      return false;
+  }
+}
 
 namespace {
 
@@ -564,7 +619,7 @@ void telemetryWakeup()
 
     if (sensorLost && TELEMETRY_STREAMING() &&
         !g_model.disableTelemetryWarning) {
-      audioEvent(AU_SENSOR_LOST);
+      telemetryPlayAlert(TelemetryAlert::SensorLost);
     }
 
 #if defined(PXX1) || defined(PXX2)
@@ -582,29 +637,37 @@ void telemetryWakeup()
 
     if (!g_model.disableTelemetryWarning) {
       if (TELEMETRY_STREAMING()) {
+        bool rfAlertPlayed = false;
+        bool genericRssiCritical = false;
+        bool genericRssiWarning = false;
         if (TELEMETRY_RSSI_AVAILABLE()) {
-          if (TELEMETRY_RSSI() < g_model.rfAlarms.critical) {
-            rfAlarmLevel = TELEMETRY_RF_ALARM_CRITICAL;
-          } else if (TELEMETRY_RSSI() < g_model.rfAlarms.warning &&
-                     rfAlarmLevel < TELEMETRY_RF_ALARM_WARNING) {
-            rfAlarmLevel = TELEMETRY_RF_ALARM_WARNING;
-          }
+          genericRssiCritical = TELEMETRY_RSSI() < g_model.rfAlarms.critical;
+          genericRssiWarning = TELEMETRY_RSSI() < g_model.rfAlarms.warning;
         }
 
         if (rfAlarmLevel >= TELEMETRY_RF_ALARM_CRITICAL) {
-          AUDIO_RSSI_RED();
-          SCHEDULE_NEXT_ALARMS_CHECK(10 /*seconds*/);
-        } else if (rfAlarmLevel >= TELEMETRY_RF_ALARM_WARNING) {
-          AUDIO_RSSI_ORANGE();
+          rfAlertPlayed = telemetryPlayAlert(TelemetryAlert::ProtocolRfCritical);
+        }
+        if (!rfAlertPlayed && genericRssiCritical) {
+          rfAlertPlayed = telemetryPlayAlert(TelemetryAlert::GenericRssiCritical);
+        }
+        if (!rfAlertPlayed && rfAlarmLevel >= TELEMETRY_RF_ALARM_WARNING) {
+          rfAlertPlayed = telemetryPlayAlert(TelemetryAlert::ProtocolRfWarning);
+        }
+        if (!rfAlertPlayed && genericRssiWarning) {
+          rfAlertPlayed = telemetryPlayAlert(TelemetryAlert::GenericRssiWarning);
+        }
+
+        if (rfAlertPlayed) {
           SCHEDULE_NEXT_ALARMS_CHECK(10 /*seconds*/);
         }
       }
 
       if (TELEMETRY_STREAMING()) {
         if (telemetryState == TELEMETRY_INIT) {
-          AUDIO_TELEMETRY_CONNECTED();
+          telemetryPlayAlert(TelemetryAlert::TelemetryConnected);
         } else if (telemetryState == TELEMETRY_KO) {
-          AUDIO_TELEMETRY_BACK();
+          telemetryPlayAlert(TelemetryAlert::TelemetryBack);
 
 #if defined(CROSSFIRE)
           // TODO: move to crossfire code
@@ -625,7 +688,7 @@ void telemetryWakeup()
       } else if (telemetryState == TELEMETRY_OK) {
         telemetryState = TELEMETRY_KO;
         if (!isModuleInBeepMode()) {
-          AUDIO_TELEMETRY_LOST();
+          telemetryPlayAlert(TelemetryAlert::TelemetryLost);
         }
       }
     }
@@ -680,6 +743,7 @@ void telemetryReset()
 
   telemetryStreaming = 0; // reset counter only if valid telemetry packets are being detected
   telemetryState = TELEMETRY_INIT;
+  telemetrySetSupportedAlerts(TELEMETRY_ALERTS_ALL);
 
   resetFlightBatteryRuntimeState();
 }

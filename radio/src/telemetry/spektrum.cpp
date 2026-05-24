@@ -391,6 +391,14 @@ constexpr uint8_t SPEKTRUM_FLIGHT_LOG_H_VALID = 0x02;
 // generic low-RF warning before a hold occurs.
 constexpr uint16_t SPEKTRUM_FRAME_LOSS_WARNING_DELTA = 45;
 
+constexpr TelemetryAlertMask SPEKTRUM_ALERTS =
+    TELEMETRY_ALERTS_ALL & ~TELEMETRY_ALERTS_GENERIC_RSSI;
+
+constexpr TelemetryAlertMask SPEKTRUM_FLYBY_ALERTS =
+    SPEKTRUM_ALERTS & ~TELEMETRY_ALERTS_STATUS_AUDIO;
+
+static bool spektrumFlyByTelemetry = false;
+
 // Helper function declared later
 static void processAS3XPacket(const uint8_t *packet);
 static void processAlpha6Packet(const uint8_t *packet);
@@ -403,6 +411,8 @@ static void resetSpektrumFlightLogAlarmState()
   spektrumHolds = 0;
   spektrumFrameLossesSinceWarning = 0;
   spektrumFlightLogValid = 0;
+  spektrumFlyByTelemetry = false;
+  telemetrySetSupportedAlerts(SPEKTRUM_ALERTS);
 }
 
 static bool isSpektrumFlightLogNoData(int32_t value)
@@ -620,6 +630,11 @@ void processSpektrumPacket(const uint8_t *packet)
     resetSpektrumFlightLogAlarmState();
   }
 
+  if (shortRangeTelemetry && !spektrumFlyByTelemetry) {
+    spektrumFlyByTelemetry = true;
+    telemetrySetSupportedAlerts(SPEKTRUM_FLYBY_ALERTS);
+  }
+
   if (i2cAddress == I2C_NODATA) {
     // Not a Sensor.. Telemetry is alive, but no data  (avoid creation of fake 0000,0002.. sensors)
     return; 
@@ -809,7 +824,7 @@ void processSpektrumPacket(const uint8_t *packet)
         }
         // Standard Spektrum packets do not expose control-link RSSI here;
         // packet[1] is only the received strength of the telemetry return link.
-        telemetryStreaming = TELEMETRY_TIMEOUT10ms; // Telemery Alive
+        telemetryStreaming = TELEMETRY_TIMEOUT10ms; // Telemetry Alive
       } // FdeA
       else if (sensor->startByte == 8 || sensor->startByte == 10) { // Flss and Hold
         // In Spektrum QoS layout, byte offset 8 is F (frame losses) and offset
@@ -821,20 +836,21 @@ void processSpektrumPacket(const uint8_t *packet)
         if (sensor->startByte == 8) {
           delta = spektrumFlightLogCounterDelta(
               SPEKTRUM_FLIGHT_LOG_F_VALID, spektrumFrameLosses, value);
-          if (delta >= SPEKTRUM_FRAME_LOSS_WARNING_DELTA ||
-              spektrumFrameLossesSinceWarning >=
-                  SPEKTRUM_FRAME_LOSS_WARNING_DELTA - delta) {
+          if (!shortRangeTelemetry &&
+              (delta >= SPEKTRUM_FRAME_LOSS_WARNING_DELTA ||
+               spektrumFrameLossesSinceWarning >=
+                   SPEKTRUM_FRAME_LOSS_WARNING_DELTA - delta)) {
             spektrumFrameLossesSinceWarning = 0;
             telemetryRaiseRfAlarm(TELEMETRY_RF_ALARM_WARNING);
           }
-          else {
+          else if (!shortRangeTelemetry) {
             spektrumFrameLossesSinceWarning += delta;
           }
         }
         else {
           delta = spektrumFlightLogCounterDelta(
               SPEKTRUM_FLIGHT_LOG_H_VALID, spektrumHolds, value);
-          if (delta > 0) {
+          if (!shortRangeTelemetry && delta > 0) {
             telemetryRaiseRfAlarm(TELEMETRY_RF_ALARM_CRITICAL);
           }
         }
