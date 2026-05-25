@@ -76,7 +76,7 @@ function privacyText(origin: string): string {
 }
 
 function openApiYaml(origin: string): string {
-  return `openapi: 3.0.3
+  return `openapi: 3.1.0
 info:
   title: Edge16 YAML Assistant Action
   version: 1.0.0
