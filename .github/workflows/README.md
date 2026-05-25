@@ -20,4 +20,5 @@ module workflows unless Edge16 product support has explicitly changed.
 | `companion.yml` | Companion builds using TX16S MK2/MK3 WASM modules. |
 | `release-drafter.yml` | Drafts Edge16 releases and attaches only Edge16 release artifacts. |
 | `validate_fw_json.yml` | Enforces that `fw.json` lists exactly TX16S MK2 and TX16S MK3. |
+| `yaml_schemas.yml` | Publishes generated YAML JSON Schemas to the `yaml-schemas` branch for AI/editor lookup. |
 | `sync_repos.yml` | Manual-only destructive upstream sync; not part of release CI. |

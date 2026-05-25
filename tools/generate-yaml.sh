@@ -35,8 +35,8 @@ do
     fi
 
     cmake ${BUILD_OPTIONS} "${SRCDIR}"
-    make native-configure
-    make -C native yaml_data
+    cmake --build . --target native-configure
+    cmake --build native --target yaml_data
 
     rm -f CMakeCache.txt arm-none-eabi/CMakeCache.txt
 done

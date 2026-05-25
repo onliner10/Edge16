@@ -1,0 +1,109 @@
+name: Publish Edge16 YAML Schemas
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RAW_SCHEMA_BASE_URL: https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas
+
+jobs:
+  generate:
+    name: Generate YAML schemas
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/edgetx/edgetx-dev:latest
+      volumes:
+        - ${{ github.workspace }}:/src
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Generate schema publication tree
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          RAW_BASE_URL: ${{ env.RAW_SCHEMA_BASE_URL }}
+          EDGE16_UV_ACTIVE: 1
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: uv run --with-requirements requirements.txt bash ./tools/generate-yaml-schema-publish.sh
+
+      - name: Fetch previous published schemas
+        run: |
+          set -euo pipefail
+          mkdir -p build/previous-yaml-schema
+          if git fetch --depth=1 origin yaml-schemas:refs/remotes/origin/yaml-schemas && \
+             git cat-file -e origin/yaml-schemas:v1/latest/manifest.json; then
+            git archive --format=tar origin/yaml-schemas v1/latest | tar -x -C build/previous-yaml-schema
+          else
+            echo "No previous published latest schema found"
+          fi
+
+      - name: Check schema release version
+        run: |
+          set -euo pipefail
+          version="$(python3 tools/check-yaml-schema-version.py \
+            --release-notes docs/development/yaml-schema-releases.md \
+            --print-latest-release-version)"
+          python3 tools/check-yaml-schema-version.py \
+            --release-notes docs/development/yaml-schema-releases.md \
+            --new-root "build/yaml-schema-publish/v1/schema-versions/${version}" \
+            --previous-root build/previous-yaml-schema/v1/latest
+
+      - name: Upload generated schemas
+        uses: actions/upload-artifact@v7
+        with:
+          name: edge16-yaml-schemas-${{ github.sha }}
+          path: build/yaml-schema-publish
+          if-no-files-found: error
+
+  publish:
+    name: Publish schemas branch
+    runs-on: ubuntu-latest
+    needs: generate
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download generated schemas
+        uses: actions/download-artifact@v8
+        with:
+          name: edge16-yaml-schemas-${{ github.sha }}
+          path: schema-publish
+
+      - name: Publish to yaml-schemas branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          publish_dir="$(mktemp -d)"
+          git init "$publish_dir"
+          git -C "$publish_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git -C "$publish_dir" fetch --depth=1 origin yaml-schemas; then
+            git -C "$publish_dir" checkout -B yaml-schemas FETCH_HEAD
+          else
+            git -C "$publish_dir" checkout --orphan yaml-schemas
+            git -C "$publish_dir" rm -rf . || true
+          fi
+
+          rsync -a --delete --exclude .git schema-publish/ "$publish_dir/"
+          touch "$publish_dir/.nojekyll"
+
+          git -C "$publish_dir" add .
+          if git -C "$publish_dir" diff --cached --quiet; then
+            echo "No schema changes to publish"
+          else
+            git -C "$publish_dir" commit -m "Publish YAML schemas for ${GITHUB_SHA} [skip ci]"
+            git -C "$publish_dir" push origin HEAD:yaml-schemas
+          fi

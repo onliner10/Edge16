@@ -6,7 +6,10 @@ import find_clang
 from clang.cindex import *
 
 # debug
-import asciitree # must be version 0.2
+try:
+    import asciitree # must be version 0.2
+except ImportError:
+    asciitree = None
 
 # output
 import jinja2

@@ -24,6 +24,7 @@
 #include "edgetx.h"
 #include "edgetx_helpers.h"
 #include "storage.h"
+#include "stamp.h"
 #include "sdcard_common.h"
 #include "sdcard_yaml.h"
 #include "modelslist.h"
@@ -224,6 +225,53 @@ static bool yaml_checksummer(void* opaque, const char* str, size_t len)
     return true;
 }
 
+static const char* getYamlSchemaRootName(const YamlNode* root_node)
+{
+    if (root_node == get_modeldata_nodes()) {
+        return "model";
+    }
+    if (root_node == get_radiodata_nodes()) {
+        return "radio";
+    }
+    return nullptr;
+}
+
+static bool yamlSchemaPreambleWrite(bool (*wf)(void*, const char*, size_t), void* opaque,
+                                   const char* str)
+{
+    return wf(opaque, str, strlen(str));
+}
+
+static bool writeYamlSchemaPreamble(const YamlNode* root_node,
+                                    bool (*wf)(void*, const char*, size_t),
+                                    void* opaque)
+{
+    constexpr const char* schemaFormatVersion = "1";
+    const char* rootName = getYamlSchemaRootName(root_node);
+    if (rootName == nullptr) {
+        return true;
+    }
+
+    return yamlSchemaPreambleWrite(wf, opaque,
+                                   "# yaml-language-server: $schema=https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/") &&
+           yamlSchemaPreambleWrite(wf, opaque, EDGE16_YAML_SCHEMA_VERSION) &&
+           yamlSchemaPreambleWrite(wf, opaque, "/") &&
+           yamlSchemaPreambleWrite(wf, opaque, FLAVOUR) &&
+           yamlSchemaPreambleWrite(wf, opaque, "/") &&
+           yamlSchemaPreambleWrite(wf, opaque, rootName) &&
+           yamlSchemaPreambleWrite(wf, opaque, ".schema.json\r\n# edge16-schema-format: ") &&
+           yamlSchemaPreambleWrite(wf, opaque, schemaFormatVersion) &&
+           yamlSchemaPreambleWrite(wf, opaque, "\r\n# edge16-schema-version: ") &&
+           yamlSchemaPreambleWrite(wf, opaque, EDGE16_YAML_SCHEMA_VERSION) &&
+           yamlSchemaPreambleWrite(wf, opaque, "\r\n# edge16-firmware-commit: ") &&
+           yamlSchemaPreambleWrite(wf, opaque, GIT_STR) &&
+           yamlSchemaPreambleWrite(wf, opaque, "\r\n# edge16-target: ") &&
+           yamlSchemaPreambleWrite(wf, opaque, FLAVOUR) &&
+           yamlSchemaPreambleWrite(wf, opaque, "\r\n# edge16-yaml-root: ") &&
+           yamlSchemaPreambleWrite(wf, opaque, rootName) &&
+           yamlSchemaPreambleWrite(wf, opaque, "\r\n");
+}
+
 bool YamlFileChecksum(const YamlNode* root_node, uint8_t* data, uint16_t* checksum)
 {
     YamlTreeWalker tree;
@@ -234,7 +282,8 @@ bool YamlFileChecksum(const YamlNode* root_node, uint8_t* data, uint16_t* checks
     ctx.checksum = 0xFFFF;
     ctx.checksum_invalid = false;
 
-    if (!tree.generate(yaml_checksummer, &ctx)) {
+    if (!writeYamlSchemaPreamble(root_node, yaml_checksummer, &ctx) ||
+        !tree.generate(yaml_checksummer, &ctx)) {
         if (ctx.result != FR_OK) {
           ctx.checksum_invalid = true;
           return false;
@@ -292,6 +341,10 @@ const char* writeFileYaml(const char* path, const YamlNode* root_node, uint8_t* 
       yaml_writer(&ctx, "\r\n", 2);
     }
 
+    if (!writeYamlSchemaPreamble(root_node, yaml_writer, &ctx)) {
+        f_close(&file);
+        return ctx.result != FR_OK ? SDCARD_ERROR(ctx.result) : SDCARD_ERROR(FR_INVALID_PARAMETER);
+    }
 
     if (!tree.generate(yaml_writer, &ctx)) {
         if (ctx.result != FR_OK) {

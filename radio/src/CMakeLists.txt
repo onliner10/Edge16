@@ -190,6 +190,16 @@ set(SRC ${SRC} debug.cpp)
 
 add_definitions(-DFLAVOUR="${FLAVOUR}")
 
+set(EDGE16_YAML_SCHEMA_RELEASES "${PROJECT_SOURCE_DIR}/docs/development/yaml-schema-releases.md")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${EDGE16_YAML_SCHEMA_RELEASES}")
+file(READ "${EDGE16_YAML_SCHEMA_RELEASES}" EDGE16_YAML_SCHEMA_RELEASES_TEXT)
+string(REGEX MATCH "(^|\n)##[ \t]+([0-9]+\\.[0-9]+(\\.[0-9]+)?)" _EDGE16_YAML_SCHEMA_VERSION_MATCH "${EDGE16_YAML_SCHEMA_RELEASES_TEXT}")
+if(NOT CMAKE_MATCH_2)
+  message(FATAL_ERROR "Could not find YAML schema release heading in ${EDGE16_YAML_SCHEMA_RELEASES}")
+endif()
+set(EDGE16_YAML_SCHEMA_VERSION "${CMAKE_MATCH_2}")
+add_definitions(-DEDGE16_YAML_SCHEMA_VERSION="${EDGE16_YAML_SCHEMA_VERSION}")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/bitmaps/${BITMAPS_DIR})
