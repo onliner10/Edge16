@@ -23,6 +23,14 @@
           "minimum": -32768,
           "type": "integer"
         },
+        "capacityEstimateCurve": {
+          "enum": [
+            "BATTERY_CAPACITY_CURVE_CONSERVATIVE",
+            "BATTERY_CAPACITY_CURVE_BALANCED",
+            "BATTERY_CAPACITY_CURVE_OPTIMISTIC"
+          ],
+          "type": "string"
+        },
         "cellCount": {
           "maximum": 15,
           "minimum": 0,
@@ -5290,8 +5298,8 @@
   },
   "title": "Edge16 tx16smk3 model YAML schema",
   "type": "object",
-  "x-edge16-generated-at": "2026-05-25T09:29:10.312541Z",
-  "x-edge16-generated-from-commit": "644d2ea101d31100e3ac7b4aa1463328c364d1ea",
+  "x-edge16-generated-at": "2026-05-25T10:23:34.561657Z",
+  "x-edge16-generated-from-commit": "8d499cd521cb0d91d2811dad0788fdc49210dd02",
   "x-edge16-root": "model",
   "x-edge16-schema-format-version": 1,
   "x-edge16-schema-release-version": "1.0",
