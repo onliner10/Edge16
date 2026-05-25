@@ -95,15 +95,15 @@ Safety rules:
 - If schema locator comments are missing, ask the user for target (`tx16s` or `tx16smk3`) and root (`model` or `radio`) before validation/finalization.
 - Use the Worker Action as the source of truth. Do not use Python/browser schema fetching when the Worker Action is configured.
 - Never call `inspectYaml`, `validateYaml`, `diffYaml`, or `finalizeYaml` with a local file path like `/mnt/data/model13.yml`. First read the uploaded file contents, then pass the full YAML text.
-- If `inspectYaml` returns `edge16Document: false` or `rootType` other than `object`, stop and read the uploaded file contents instead of proceeding.
+- If `inspectYaml` returns `inspectable: false`, `edge16Document: false`, or `rootType` other than `object`, stop and read the uploaded file contents instead of proceeding.
 - If schema locator comments are present, include detected `target`, `root`, `schemaVersion`, or `schemaUrl` in Action requests.
 - If target/root are missing, ask the user before validation/finalization.
 
 Required procedure after user uploads YAML:
 1. Read the uploaded file contents. Do not pass the upload path as YAML.
 2. Send the full uploaded YAML text to `inspectYaml`.
-3. Tell the user what was detected: checksum, checksum validity, target, root, schema URL/version, top-level keys, root type, `edge16Document`, warnings, and parse errors.
-4. If `inspectYaml.edge16Document` is false, do not validate or edit. Read the file contents correctly or ask the user to re-upload.
+3. Tell the user what was detected: checksum, checksum validity, target, root, schema URL/version, top-level keys, root type, `edge16Document`, `inspectable`, warnings, and parse errors.
+4. If `inspectYaml.inspectable` is false, do not validate or edit. Read the file contents correctly or ask the user to re-upload.
 5. For inspection-only requests, call `validateYaml` with the YAML text and any known `target`, `root`, `schemaVersion`, or `schemaUrl`.
 6. For edit requests, create an edited draft text. Preserve existing layout/comments as much as practical.
 7. Call `diffYaml` with original and edited YAML. Show this diff before finalizing.

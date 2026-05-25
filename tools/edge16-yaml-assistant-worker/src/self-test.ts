@@ -32,12 +32,14 @@ assert.equal(inspect.hasChecksum, true);
 assert.equal(inspect.parseOk, true);
 assert.equal(inspect.rootType, "object");
 assert.equal(inspect.edge16Document, true);
+assert.equal(inspect.inspectable, true);
 assert.deepEqual(inspect.topLevelKeys, ["name"]);
 
 const pathLike = inspectYamlText("/mnt/data/model13.yml");
 assert.equal(pathLike.parseOk, true);
 assert.equal(pathLike.rootType, "string");
 assert.equal(pathLike.edge16Document, false);
+assert.equal(pathLike.inspectable, false);
 assert.equal(pathLike.looksLikePath, true);
 assert.match(pathLike.warnings.join("\n"), /file path/);
 

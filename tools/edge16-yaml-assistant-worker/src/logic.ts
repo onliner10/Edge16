@@ -36,6 +36,7 @@ export interface DetectedYaml {
   parseOk: boolean;
   rootType: string | null;
   edge16Document: boolean;
+  inspectable: boolean;
   looksLikePath: boolean;
   warnings: string[];
   parseError: string | null;
@@ -78,6 +79,7 @@ export function inspectYamlText(text: string): DetectedYaml {
     parseOk: parsed.ok,
     rootType: parsedRootType,
     edge16Document,
+    inspectable: parsed.ok && edge16Document,
     looksLikePath: inputLooksLikePath,
     warnings,
     parseError: parsed.ok ? null : parsed.error,
