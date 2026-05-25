@@ -343,6 +343,13 @@ enum BatteryType {
   BATTERY_TYPE_LAST SKIP = BATTERY_TYPE_PB
 };
 
+enum FlightBatteryCapacityEstimateCurve {
+  FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE = 0,
+  FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED = 1,
+  FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC = 2,
+  FLIGHT_BATTERY_CAPACITY_CURVE_LAST SKIP = FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC
+};
+
 PACK(struct BatteryPackData {
   int16_t capacity;
   uint8_t batteryType:3 ENUM(BatteryType);
@@ -356,7 +363,7 @@ PACK(struct BatteryMonitorData {
   uint8_t batteryType:3 ENUM(BatteryType);
   uint8_t capAlertEnabled:1;
   uint8_t voltAlertEnabled:1;
-  uint8_t spare1:2 SKIP;
+  uint8_t capacityEstimateCurve:2 ENUM(FlightBatteryCapacityEstimateCurve);
   uint8_t cellCount:4;
   int16_t capacity;
   int8_t sourceIndex;

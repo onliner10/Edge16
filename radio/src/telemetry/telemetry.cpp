@@ -77,7 +77,6 @@ struct telemetry_buffer {
 };
 
 static void checkFlightBatteryMissingTelemetryAfterArming();
-static bool isValidManualBatteryConfig(const BatteryMonitorData& config);
 
 std::atomic<uint8_t> telemetryStreaming{0};
 std::atomic<uint8_t> telemetryState{TELEMETRY_INIT};
@@ -177,13 +176,26 @@ static std::atomic<uint8_t> s_flightBatteryPublishedBlockReason{
     uint8_t(ArmingBlockReason::None)};
 static std::atomic<uint8_t> s_armingBlockReason{uint8_t(ArmingBlockReason::None)};
 
+static bool isUsableFlightBatteryPack(const BatteryPackData& pack)
+{
+  return pack.active && pack.batteryType <= BATTERY_TYPE_PB &&
+         pack.cellCount > 0 && pack.capacity > 0;
+}
+
+static bool flightBatteryHasActiveCompatiblePack(const BatteryMonitorData& config)
+{
+  for (uint8_t slot = 0; slot < MAX_BATTERY_PACKS; slot++) {
+    if ((config.compatiblePackMask & uint16_t(1u << slot)) == 0) continue;
+    if (isUsableFlightBatteryPack(g_eeGeneral.batteryPacks[slot])) return true;
+  }
+  return false;
+}
+
 static bool flightBatteryMonitorArmingAllowed(const BatteryMonitorData& config,
                                               FlightBatterySessionState state)
 {
   if (!config.enabled) return true;
-  if (config.compatiblePackMask == 0 && !isValidManualBatteryConfig(config)) {
-    return false;
-  }
+  if (!flightBatteryHasActiveCompatiblePack(config)) return false;
   return state != FlightBatterySessionState::NeedsConfirmation &&
          state != FlightBatterySessionState::VoltageMismatch &&
          state != FlightBatterySessionState::NeedsConfiguration;
@@ -192,7 +204,7 @@ static bool flightBatteryMonitorArmingAllowed(const BatteryMonitorData& config,
 static ArmingBlockReason flightBatteryMonitorBlockReason(
     const BatteryMonitorData& config, FlightBatterySessionState state)
 {
-  if (config.compatiblePackMask == 0 && !isValidManualBatteryConfig(config)) {
+  if (!flightBatteryHasActiveCompatiblePack(config)) {
     return ArmingBlockReason::BatteryNeedsConfiguration;
   }
 
@@ -903,12 +915,6 @@ static bool isFlightBatteryVoltageUnit(uint8_t unit)
   return unit == UNIT_VOLTS || unit == UNIT_CELLS;
 }
 
-static bool isValidManualBatteryConfig(const BatteryMonitorData& config)
-{
-  return config.batteryType <= BATTERY_TYPE_PB && config.cellCount > 0 &&
-         config.capacity > 0;
-}
-
 static int sourceToTelemetryIndex(int8_t source)
 {
   if (source <= 0) return -1;
@@ -999,7 +1005,7 @@ static uint8_t buildVoltageCompatiblePackMask(const BatteryMonitorData& config,
     if ((config.compatiblePackMask & slotBit) == 0) continue;
 
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
-    if (!pack.active) continue;
+    if (!isUsableFlightBatteryPack(pack)) continue;
 
     if (!flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
                                            (BatteryType)pack.batteryType))
@@ -1037,14 +1043,12 @@ static bool confirmedPackMatchesVoltage(const BatteryMonitorData& config,
     const uint8_t slot = runtime.confirmedPackSlot - 1;
     if (slot >= MAX_BATTERY_PACKS) return false;
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
-    return pack.active &&
+    return isUsableFlightBatteryPack(pack) &&
            flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
                                              (BatteryType)pack.batteryType);
   }
 
-  return isValidManualBatteryConfig(config) &&
-         flightBatteryPackMatchesChemistry(packVoltageCv, config.cellCount,
-                                           (BatteryType)config.batteryType);
+  return false;
 }
 
 static bool packVoltageLooksLikeNewFlightBattery(uint16_t packVoltageCv,
@@ -1070,7 +1074,7 @@ static bool replugVoltageLooksLikeNewFlightBattery(
       if ((config.compatiblePackMask & slotBit) == 0) continue;
 
       const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
-      if (!pack.active) continue;
+      if (!isUsableFlightBatteryPack(pack)) continue;
 
       if (packVoltageLooksLikeNewFlightBattery(
               packVoltageCv, pack.cellCount, (BatteryType)pack.batteryType)) {
@@ -1080,9 +1084,7 @@ static bool replugVoltageLooksLikeNewFlightBattery(
     return false;
   }
 
-  return isValidManualBatteryConfig(config) &&
-         packVoltageLooksLikeNewFlightBattery(
-             packVoltageCv, config.cellCount, (BatteryType)config.batteryType);
+  return false;
 }
 
 void resetFlightBatteryRuntimeState()
@@ -1161,21 +1163,7 @@ static void classifyPresentFlightBattery(uint8_t monitorIndex,
     }
     runtime.state = FlightBatterySessionState::NeedsConfirmation;
     runtime.promptPackMask = matchingMask;
-  } else if (config.compatiblePackMask == 0 &&
-             isValidManualBatteryConfig(config)) {
-    if (flightBatteryPackMatchesChemistry(packVoltageCv, config.cellCount,
-                                          (BatteryType)config.batteryType)) {
-      if (runtime.state != FlightBatterySessionState::NeedsConfirmation ||
-          runtime.promptPackMask != 0) {
-        runtime.promptShown = false;
-      }
-      runtime.state = FlightBatterySessionState::NeedsConfirmation;
-      runtime.promptPackMask = 0;
-    } else {
-      runtime.promptPackMask = 0;
-      runtime.state = FlightBatterySessionState::VoltageMismatch;
-    }
-  } else if (config.compatiblePackMask == 0) {
+  } else if (!flightBatteryHasActiveCompatiblePack(config)) {
     runtime.promptPackMask = 0;
     runtime.state = FlightBatterySessionState::NeedsConfiguration;
   } else {
@@ -1298,6 +1286,21 @@ void updateFlightBatterySessions()
   }
 }
 
+static uint8_t estimateFlightBatteryStartCapacityPercent(
+    const BatteryMonitorData& config)
+{
+  if (config.cellCount == 0) return 100;
+
+  uint16_t packVoltageCv = 0;
+  if (!readFlightBatteryVoltage(config, packVoltageCv)) return 100;
+
+  const uint16_t perCellCv =
+      uint16_t(divRoundClosest(packVoltageCv, config.cellCount));
+  return flightBatteryEstimateStartCapacityPercent(
+      (BatteryType)config.batteryType, perCellCv,
+      flightBatteryCapacityEstimateCurveFromConfig(config.capacityEstimateCurve));
+}
+
 static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSlot)
 {
   BatteryMonitorData& config = g_model.batteryMonitors[monitor];
@@ -1305,7 +1308,8 @@ static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSl
 
   if (selectedPackSlot > 0) {
     uint8_t slot = selectedPackSlot - 1;
-    if (slot >= MAX_BATTERY_PACKS || !g_eeGeneral.batteryPacks[slot].active)
+    if (slot >= MAX_BATTERY_PACKS ||
+        !isUsableFlightBatteryPack(g_eeGeneral.batteryPacks[slot]))
       return;
 
     auto& pack = g_eeGeneral.batteryPacks[slot];
@@ -1316,9 +1320,7 @@ static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSl
     runtime.confirmedPackSlot = selectedPackSlot;
     storageDirty(EE_MODEL);
   } else {
-    if (!isValidManualBatteryConfig(config)) return;
-    config.selectedPackSlot = 0;
-    runtime.confirmedPackSlot = 0;
+    return;
   }
 
   int8_t capSensorIdx = findFlightBatteryCapacitySensor(config);
@@ -1329,6 +1331,7 @@ static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSl
   runtime.consumedBaselineMah = baseline;
   runtime.consumedLastMah = baseline;
   runtime.consumedSessionMah = 0;
+  runtime.startCapacityPercent = estimateFlightBatteryStartCapacityPercent(config);
 
   runtime.state = FlightBatterySessionState::Confirmed;
   runtime.capacityMask = 0;
@@ -1366,14 +1369,6 @@ uint16_t flightBatteryPromptPackMask(uint8_t monitor)
 {
   if (monitor >= MAX_BATTERY_MONITORS) return 0;
   return s_flightBatteryPublishedPromptMask[monitor].load(std::memory_order_acquire);
-}
-
-bool flightBatteryPromptAllowsManual(uint8_t monitor)
-{
-  if (monitor >= MAX_BATTERY_MONITORS) return false;
-  BatteryMonitorData& config = g_model.batteryMonitors[monitor];
-  return isValidManualBatteryConfig(config) &&
-         s_flightBatteryPublishedPromptMask[monitor].load(std::memory_order_acquire) == 0;
 }
 
 void requestFlightBatteryPrompt(uint8_t monitor)
@@ -1432,15 +1427,12 @@ bool confirmFlightBatteryPack(uint8_t monitor, uint8_t selectedPackSlot)
     }
 
     const BatteryPackData& pack = g_eeGeneral.batteryPacks[slot];
-    if (!pack.active ||
+    if (!isUsableFlightBatteryPack(pack) ||
         !flightBatteryPackMatchesChemistry(packVoltageCv, pack.cellCount,
                                            (BatteryType)pack.batteryType)) {
       return false;
     }
-  } else if (!isValidManualBatteryConfig(config) ||
-             !flightBatteryPackMatchesChemistry(
-                 packVoltageCv, config.cellCount,
-                 (BatteryType)config.batteryType)) {
+  } else {
     return false;
   }
 
@@ -1469,8 +1461,9 @@ bool checkFlightBatteryCapacityAlert(uint8_t monitorIndex,
   for (size_t i = 0; i < FLIGHT_BATTERY_CAPACITY_THRESHOLDS_SIZE; i++) {
     const uint8_t threshold = FLIGHT_BATTERY_CAPACITY_THRESHOLDS[i];
     if (!(runtime.capacityMask & (1 << i)) &&
-        flightBatteryCapacityThresholdReached(sessionConsumed, config.capacity,
-                                              threshold)) {
+        flightBatteryCapacityThresholdReached(
+            sessionConsumed, config.capacity, threshold,
+            runtime.startCapacityPercent)) {
       runtime.capacityMask |= (1 << i);
       playNumber(100 - threshold, UNIT_PERCENT, 0, 0);
       return true;
@@ -1512,7 +1505,8 @@ static bool checkFlightBatteryVoltageAlert(uint8_t monitorIndex,
   uint8_t cellCount = config.cellCount;
   if (runtime.confirmedPackSlot > 0) {
     const uint8_t slot = runtime.confirmedPackSlot - 1;
-    if (slot >= MAX_BATTERY_PACKS || !g_eeGeneral.batteryPacks[slot].active)
+    if (slot >= MAX_BATTERY_PACKS ||
+        !isUsableFlightBatteryPack(g_eeGeneral.batteryPacks[slot]))
       return false;
     cellCount = g_eeGeneral.batteryPacks[slot].cellCount;
   }

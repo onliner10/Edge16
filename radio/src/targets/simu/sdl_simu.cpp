@@ -321,6 +321,7 @@ static std::string automation_battery_state_json(uint8_t monitor)
         << ",\"consumed_baseline_mah\":" << runtime.consumedBaselineMah
         << ",\"consumed_last_mah\":" << runtime.consumedLastMah
         << ",\"consumed_session_mah\":" << runtime.consumedSessionMah
+        << ",\"start_capacity_percent\":" << int(runtime.startCapacityPercent)
         << ",\"capacity_mask\":" << int(runtime.capacityMask)
         << ",\"voltage_low_seconds\":" << int(runtime.voltageLowSeconds)
         << ",\"telemetry_lost_seconds\":" << int(runtime.telemetryLostSeconds)
