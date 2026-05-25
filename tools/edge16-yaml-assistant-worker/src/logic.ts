@@ -197,7 +197,7 @@ function parseMetadata(text: string): Record<string, string> {
 function parseYamlData(text: string): { ok: true; value: unknown } | { ok: false; error: string } {
   try {
     const { body } = stripChecksumLine(text);
-    return { ok: true, value: parseYaml(body) ?? {} };
+    return { ok: true, value: normalizeYamlForJsonSchema(parseYaml(body) ?? {}) };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -223,6 +223,16 @@ async function resolveSchema(text: string, request: AssistantRequest, detected: 
     : `${SCHEMA_BASE_URL}/v1/latest/${target}/${root}.schema.json`;
   assertAllowedSchemaUrl(url);
   return { schema: await fetchJson(url), source: url };
+}
+
+function normalizeYamlForJsonSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => normalizeYamlForJsonSchema(item));
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [String(key), normalizeYamlForJsonSchema(val)]),
+    );
+  }
+  return value;
 }
 
 function validateData(schema: unknown, data: unknown): string[] {

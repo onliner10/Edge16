@@ -39,7 +39,20 @@ jobs:
           RAW_BASE_URL: ${{ env.RAW_SCHEMA_BASE_URL }}
           EDGE16_UV_ACTIVE: 1
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          # Schemas describe the YamlNode tables committed with firmware sources.
+          # Regenerating here can diverge when generator dependencies/macros differ.
+          SKIP_YAML_DATA: 1
         run: uv run --with-requirements requirements.txt bash ./tools/generate-yaml-schema-publish.sh
+
+      - name: Print schema summary
+        run: |
+          python3 - <<'PY'
+          import json
+          m = json.load(open('build/yaml-schema-publish/v1/latest/manifest.json'))
+          s = json.load(open('build/yaml-schema-publish/v1/latest/tx16s/model.schema.json'))
+          print('schema commit', m['generatedFromCommit'])
+          print('capacityEstimateCurve', s['$defs']['struct_BatteryMonitorData']['properties']['capacityEstimateCurve'])
+          PY
 
       - name: Fetch previous published schemas
         run: |

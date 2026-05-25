@@ -274,6 +274,49 @@ def struct_schema(name: str, structs: dict[str, list[Node]], enums: dict[str, li
     return {"type": "object", "properties": properties, "additionalProperties": False}
 
 
+def compatibility_scalar_schema() -> dict[str, Any]:
+    return {
+        "anyOf": [
+            {"type": "string"},
+            {"type": "integer"},
+            {"type": "boolean"},
+            {"type": "null"},
+        ]
+    }
+
+
+def apply_compatibility_overrides(schema: dict[str, Any], root_name: str) -> None:
+    defs = schema.get("$defs", {})
+    custom_fn = defs.get("struct_CustomFunctionData")
+    if isinstance(custom_fn, dict):
+        props = custom_fn.setdefault("properties", {})
+        if isinstance(props, dict):
+            props["enabled"] = compatibility_scalar_schema()
+
+    zone = defs.get("struct_ZonePersistentData")
+    if isinstance(zone, dict):
+        props = zone.get("properties")
+        if isinstance(props, dict) and "widgetData" in props:
+            props["widgetData"] = {"anyOf": [props["widgetData"], {"type": "null"}]}
+
+    if root_name == "model":
+        props = schema.get("properties")
+        if isinstance(props, dict) and "switchWarning" in props:
+            props["switchWarning"] = {
+                "anyOf": [
+                    props["switchWarning"],
+                    {
+                        "type": "object",
+                        "description": "Legacy switch warning map accepted by Edge16 YAML reader.",
+                        "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": True,
+                        },
+                    },
+                ]
+            }
+
+
 def make_root_schema(
     target: str,
     root_name: str,
@@ -287,6 +330,8 @@ def make_root_schema(
 ) -> dict[str, Any]:
     defs = {name: struct_schema(name, structs, enums) for name in sorted(structs)}
     schema = struct_schema(root_struct, structs, enums)
+    schema["$defs"] = defs
+    apply_compatibility_overrides(schema, root_name)
     schema.update({
         "$schema": DRAFT,
         "title": f"Edge16 {target} {root_name} YAML schema",
@@ -297,7 +342,6 @@ def make_root_schema(
         "x-edge16-root": root_name,
         "x-edge16-generated-from-commit": commit,
         "x-edge16-generated-at": generated_at,
-        "$defs": defs,
     })
     if schema_id:
         schema["$id"] = schema_id

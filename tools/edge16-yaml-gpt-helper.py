@@ -166,11 +166,19 @@ def resolve_schema(args: argparse.Namespace, metadata: dict[str, str]) -> tuple[
     return fetch_json(schema_url), schema_url
 
 
+def normalize_yaml_for_json_schema(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): normalize_yaml_for_json_schema(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [normalize_yaml_for_json_schema(item) for item in value]
+    return value
+
+
 def parse_yaml_for_schema(text: str) -> Any:
     yaml = require_yaml_module()
     without_checksum, _ = strip_checksum_line(text)
     data = yaml.safe_load(without_checksum)
-    return {} if data is None else data
+    return normalize_yaml_for_json_schema({} if data is None else data)
 
 
 def validation_errors(schema: Any, data: Any) -> list[str]:
@@ -316,7 +324,8 @@ def command_self_test() -> int:
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "type": "object",
             "additionalProperties": False,
-            "properties": {"name": {"type": "string"}},
+            "propertyNames": {"type": "string"},
+            "properties": {"name": {"type": "string"}, "0": {"type": "object"}},
             "required": ["name"],
         }
         schema_path = tmp / "schema.json"
@@ -325,7 +334,7 @@ def command_self_test() -> int:
         edited = tmp / "edited.yml"
         final = tmp / "final.yml"
         original.write_text("checksum: 0\r\nname: Old\r\n", encoding="utf-8")
-        edited.write_text("checksum: 0\nname: New\n", encoding="utf-8")
+        edited.write_text("checksum: 0\nname: New\n0:\n  val: 1\n", encoding="utf-8")
         args = argparse.Namespace(
             schema_file=str(schema_path), schema_root=None, schema_url=None,
             target=None, root=None, schema_version=None, radio=False,
@@ -333,7 +342,7 @@ def command_self_test() -> int:
         final_text, report = finalize_text(original.read_text(encoding="utf-8"), edited.read_text(encoding="utf-8"), args)
         final.write_text(final_text, encoding="utf-8", newline="")
         assert report["valid"] is True
-        assert report["checksum"]["new"] == compute_radio_checksum("name: New\r\n")
+        assert report["checksum"]["new"] == compute_radio_checksum("name: New\r\n0:\r\n  val: 1\r\n")
         assert final.read_bytes().startswith(f"checksum: {report['checksum']['new']}\r\n".encode("utf-8"))
     print("self-test ok")
     return 0
