@@ -15,6 +15,7 @@
 
 #include "battery_monitor_setup.h"
 
+#include "choice.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "sourcechoice.h"
@@ -23,6 +24,10 @@
 #include "telemetry/battery_monitor.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
+
+static const char* capacityEstimateCurveLabels[] = {
+  "Conservative", "Balanced", "Optimistic"
+};
 
 static bool isBatteryMonitorVoltageSensor(uint8_t index)
 {
@@ -231,6 +236,10 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor)
   body->setFlexLayout();
 
   BatteryMonitorData* config = &g_model.batteryMonitors[monitor];
+  if (!flightBatteryCapacityEstimateCurveIsValid(config->capacityEstimateCurve)) {
+    config->capacityEstimateCurve = FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE;
+    SET_DIRTY();
+  }
 
   setupLine("Enabled", [=](Window* parent, coord_t x, coord_t y) {
     new ToggleSwitch(parent, {x, y, 0, 0}, GET_DEFAULT(config->enabled),
@@ -259,6 +268,19 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor)
                         invalidateFlightBatteryMonitor(monitor);
                         SET_DIRTY();
                       });
+  });
+
+  setupLine("Capacity Estimate", [=](Window* parent, coord_t x, coord_t y) {
+    new Choice(parent, {x, y, 0, 0}, capacityEstimateCurveLabels,
+               FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE,
+               FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC,
+               GET_DEFAULT(flightBatteryCapacityEstimateCurveFromConfig(
+                   config->capacityEstimateCurve)),
+               [=](int32_t newValue) {
+                 config->capacityEstimateCurve = newValue;
+                 invalidateFlightBatteryMonitor(monitor);
+                 SET_DIRTY();
+               });
   });
 
   setupLine("Flight Pack Status", [=](Window* parent, coord_t x, coord_t y) {

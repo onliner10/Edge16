@@ -62,6 +62,7 @@ void BatteryConfirmDialog::buildBody()
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_ELASTIC);
   });
 
+  bool hasChoices = false;
   bool specSeen[MAX_BATTERY_PACKS] = {};
   for (uint8_t slot = 0; slot < MAX_BATTERY_PACKS; slot++) {
     if (specSeen[slot] || !(packMask & (1 << slot))) continue;
@@ -80,6 +81,7 @@ void BatteryConfirmDialog::buildBody()
              batteryTypeToString((BatteryType)pack->batteryType),
              pack->cellCount, pack->capacity);
 
+    hasChoices = true;
     auto btn = Window::makeLive<TextButton>(
         body, rect_t{0, 0, LV_PCT(100), rowHeight},
         label, [=]() -> uint8_t {
@@ -92,17 +94,10 @@ void BatteryConfirmDialog::buildBody()
     }
   }
 
-  if (flightBatteryPromptAllowsManual(monitor)) {
-    auto btn = Window::makeLive<TextButton>(
-        body, rect_t{0, 0, LV_PCT(100), rowHeight},
-        "Use model setting", [=]() -> uint8_t {
-          onConfirmPack(0);
-          return 0;
-        });
-    if (btn) {
-      btn->setFont(FONT_BOLD_INDEX);
-      btn->setWrap();
-    }
+  if (!hasChoices) {
+    Window::makeLive<StaticText>(body, rect_t{0, 0, LV_PCT(100), rowHeight},
+                                 "No compatible pack", COLOR_THEME_WARNING_INDEX,
+                                 FONT(STD) | CENTERED);
   }
 }
 

@@ -1639,12 +1639,17 @@ TEST_F(ArmingTest, LongRejectedShPressRequiresFreshMomentaryPress)
   EXPECT_TRUE(isModelArmedState());
 }
 
-static void setupValidManualBatteryMonitor()
+static void setupCompatibleBatteryMonitor()
 {
+  g_eeGeneral.batteryPacks[0].active = 1;
+  g_eeGeneral.batteryPacks[0].batteryType = BATTERY_TYPE_LIPO;
+  g_eeGeneral.batteryPacks[0].cellCount = 3;
+  g_eeGeneral.batteryPacks[0].capacity = 2200;
   g_model.batteryMonitors[0].enabled = 1;
   g_model.batteryMonitors[0].batteryType = BATTERY_TYPE_LIPO;
   g_model.batteryMonitors[0].cellCount = 3;
   g_model.batteryMonitors[0].capacity = 2200;
+  g_model.batteryMonitors[0].compatiblePackMask = 0x01;
   invalidateFlightBatteryMonitor(0);
 }
 
@@ -1672,10 +1677,10 @@ TEST_F(ArmingTest, BatteryNeedsConfiguration_DoesNotArm)
   EXPECT_EQ(consumeArmingBlockReason(), ArmingBlockReason::BatteryNeedsConfiguration);
 }
 
-TEST_F(ArmingTest, BatteryMissingVoltage_ArmsWithValidManualConfig)
+TEST_F(ArmingTest, BatteryMissingVoltage_ArmsWithCompatiblePack)
 {
   g_model.armingEnabled = true;
-  setupValidManualBatteryMonitor();
+  setupCompatibleBatteryMonitor();
   s_mixer_first_run_done = true;
 
   int sf_idx = switchLookupIdx("SF", 2);
@@ -1697,7 +1702,7 @@ TEST_F(ArmingTest, BatteryMissingVoltage_ArmsWithValidManualConfig)
 TEST_F(ArmingTest, BatteryTelemetryLossWhileArmed_DoesNotDisarm)
 {
   g_model.armingEnabled = true;
-  setupValidManualBatteryMonitor();
+  setupCompatibleBatteryMonitor();
   s_mixer_first_run_done = true;
 
   int sf_idx = switchLookupIdx("SF", 2);
@@ -1746,7 +1751,7 @@ TEST_F(ArmingTest, NoEnabledMonitor_ArmsWithoutBatteryGate)
 TEST_F(ArmingTest, BatteryVoltageMismatch_BlocksArming)
 {
   g_model.armingEnabled = true;
-  setupValidManualBatteryMonitor();
+  setupCompatibleBatteryMonitor();
   g_model.telemetrySensors[0].init("VFAS", UNIT_VOLTS, 2);
   telemetryItems[0].value = 1600;
   telemetryItems[0].setFresh();
@@ -1815,7 +1820,7 @@ TEST_F(ArmingTest, ArmedSource_ActualArmedState_IsHigh)
 TEST_F(ArmingTest, ArmedSource_BatteryBlockedArming_StaysLow)
 {
   g_model.armingEnabled = true;
-  setupValidManualBatteryMonitor();
+  setupCompatibleBatteryMonitor();
   g_model.telemetrySensors[0].init("VFAS", UNIT_VOLTS, 2);
   telemetryItems[0].value = 1600;
   telemetryItems[0].setFresh();
