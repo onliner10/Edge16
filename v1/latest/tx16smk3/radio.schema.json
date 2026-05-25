@@ -25,9 +25,9 @@
         },
         "capacityEstimateCurve": {
           "enum": [
-            "BATTERY_CAPACITY_CURVE_CONSERVATIVE",
-            "BATTERY_CAPACITY_CURVE_BALANCED",
-            "BATTERY_CAPACITY_CURVE_OPTIMISTIC"
+            "CONSERVATIVE",
+            "BALANCED",
+            "OPTIMISTIC"
           ],
           "type": "string"
         },
@@ -197,6 +197,22 @@
           "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
           "x-edge16-custom-read": "r_customFn",
           "x-edge16-custom-write": "w_customFn"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "func": {
           "enum": [
@@ -3649,7 +3665,14 @@
       "additionalProperties": false,
       "properties": {
         "widgetData": {
-          "$ref": "#/$defs/struct_WidgetPersistentData"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/struct_WidgetPersistentData"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "widgetName": {
           "anyOf": [
@@ -5598,8 +5621,8 @@
   },
   "title": "Edge16 tx16smk3 radio YAML schema",
   "type": "object",
-  "x-edge16-generated-at": "2026-05-25T19:37:39.465296Z",
-  "x-edge16-generated-from-commit": "8e168584db7046105eac0f893896f0525ee81243",
+  "x-edge16-generated-at": "2026-05-25T19:59:08.568614Z",
+  "x-edge16-generated-from-commit": "4f937298be7c5005f140783b1ca0b5746e0ba465",
   "x-edge16-root": "radio",
   "x-edge16-schema-format-version": 1,
   "x-edge16-schema-release-version": "1.0",
