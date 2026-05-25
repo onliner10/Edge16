@@ -33,6 +33,11 @@ export interface DetectedYaml {
   schemaVersion: string | null;
   schemaUrl: string | null;
   topLevelKeys: string[];
+  parseOk: boolean;
+  rootType: string | null;
+  edge16Document: boolean;
+  looksLikePath: boolean;
+  warnings: string[];
   parseError: string | null;
 }
 
@@ -47,6 +52,18 @@ export function inspectYamlText(text: string): DetectedYaml {
   const metadata = parseMetadata(text);
   const computedChecksum = checksum === null ? null : computeRadioChecksum(body);
   const parsed = parseYamlData(text);
+  const parsedRootType = parsed.ok ? yamlRootType(parsed.value) : null;
+  const edge16Document = parsed.ok && isRecord(parsed.value);
+  const inputLooksLikePath = looksLikePath(text);
+  const warnings: string[] = [];
+  if (inputLooksLikePath) {
+    warnings.push("Input looks like a local file path. Pass full YAML file contents, not a path.");
+  }
+  if (parsed.ok && !edge16Document) {
+    warnings.push(
+      `Input parsed as YAML ${parsedRootType}, not an Edge16 YAML mapping/object. Did you pass a file path instead of file contents?`,
+    );
+  }
   return {
     hasChecksum: checksum !== null,
     checksum,
@@ -58,6 +75,11 @@ export function inspectYamlText(text: string): DetectedYaml {
     schemaVersion: metadata["edge16-schema-version"] ?? null,
     schemaUrl: metadata.schema_url ?? null,
     topLevelKeys: parsed.ok && isRecord(parsed.value) ? Object.keys(parsed.value) : [],
+    parseOk: parsed.ok,
+    rootType: parsedRootType,
+    edge16Document,
+    looksLikePath: inputLooksLikePath,
+    warnings,
     parseError: parsed.ok ? null : parsed.error,
   };
 }
@@ -71,6 +93,18 @@ export async function validateYamlText(text: string, request: AssistantRequest =
       ok: true,
       valid: false,
       errors: [`YAML parse error: ${parsed.error}`],
+      detected,
+      schemaSource: null,
+    };
+  }
+
+  if (!isRecord(parsed.value)) {
+    return {
+      ok: true,
+      valid: false,
+      errors: [
+        `YAML root must be an object/mapping; got ${yamlRootType(parsed.value)}. Pass file contents, not a file path.`,
+      ],
       detected,
       schemaSource: null,
     };
@@ -223,6 +257,16 @@ async function resolveSchema(text: string, request: AssistantRequest, detected: 
     : `${SCHEMA_BASE_URL}/v1/latest/${target}/${root}.schema.json`;
   assertAllowedSchemaUrl(url);
   return { schema: await fetchJson(url), source: url };
+}
+
+function yamlRootType(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+function looksLikePath(text: string): boolean {
+  return /^\s*(\/mnt\/data\/|[A-Za-z]:[\\/]|\/|\.\/|\.\.\/).+\.ya?ml\s*$/i.test(text);
 }
 
 function normalizeYamlForJsonSchema(value: unknown): unknown {

@@ -150,12 +150,14 @@ components:
       properties:
         yaml:
           type: string
+          description: Full YAML document contents. Do not pass a local file path such as /mnt/data/model.yml.
       required: [yaml]
     ValidateRequest:
       type: object
       properties:
         yaml:
           type: string
+          description: Full YAML document contents. Do not pass a local file path such as /mnt/data/model.yml.
         target:
           type: string
           enum: [tx16s, tx16smk3]
@@ -172,16 +174,20 @@ components:
       properties:
         originalYaml:
           type: string
+          description: Original full YAML document contents, not a local file path.
         editedYaml:
           type: string
+          description: Edited full YAML document contents, not a local file path.
       required: [originalYaml, editedYaml]
     FinalizeRequest:
       type: object
       properties:
         originalYaml:
           type: string
+          description: Original full YAML document contents, not a local file path.
         editedYaml:
           type: string
+          description: Edited full YAML document contents, not a local file path.
         target:
           type: string
           enum: [tx16s, tx16smk3]

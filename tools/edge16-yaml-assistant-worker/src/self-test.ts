@@ -29,7 +29,21 @@ const edited = "checksum: 0\nname: New\n";
 
 const inspect = inspectYamlText(original);
 assert.equal(inspect.hasChecksum, true);
+assert.equal(inspect.parseOk, true);
+assert.equal(inspect.rootType, "object");
+assert.equal(inspect.edge16Document, true);
 assert.deepEqual(inspect.topLevelKeys, ["name"]);
+
+const pathLike = inspectYamlText("/mnt/data/model13.yml");
+assert.equal(pathLike.parseOk, true);
+assert.equal(pathLike.rootType, "string");
+assert.equal(pathLike.edge16Document, false);
+assert.equal(pathLike.looksLikePath, true);
+assert.match(pathLike.warnings.join("\n"), /file path/);
+
+const pathValidation = await validateYamlText("/mnt/data/model13.yml", { target: "tx16s", root: "model" });
+assert.equal(pathValidation.valid, false);
+assert.match((pathValidation.errors as string[]).join("\n"), /Pass file contents, not a file path/);
 
 const validation = await validateYamlText(edited, { target: "tx16s", root: "radio" });
 assert.equal(validation.valid, true);
