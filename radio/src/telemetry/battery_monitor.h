@@ -47,6 +47,7 @@ struct FlightBatteryRuntimeState {
   int32_t consumedBaselineMah = 0;
   int32_t consumedLastMah = -1;
   int32_t consumedSessionMah = 0;
+  uint8_t startCapacityPercent = 100;
   uint8_t capacityMask = 0;
   uint8_t voltageLowSeconds = 0;
   uint8_t telemetryLostSeconds = 0;
@@ -74,7 +75,6 @@ void setArmingBlockReason(ArmingBlockReason reason);
 FlightBatterySessionState flightBatterySessionState(uint8_t monitor);
 bool flightBatteryNeedsPrompt(uint8_t* monitor);
 uint16_t flightBatteryPromptPackMask(uint8_t monitor);
-bool flightBatteryPromptAllowsManual(uint8_t monitor);
 void requestFlightBatteryPrompt(uint8_t monitor);
 void requestFlightBatteryBlockedPrompt();
 void markFlightBatteryPromptShown(uint8_t monitor);
@@ -201,13 +201,143 @@ inline bool batterySpecEquals(const BatteryPackData& a, const BatteryPackData& b
          a.cellCount == b.cellCount;
 }
 
+struct FlightBatteryCapacityEstimatePoint {
+  uint16_t centivolts;
+  uint8_t percent;
+};
+
+inline bool flightBatteryCapacityEstimateCurveIsValid(uint8_t curve)
+{
+  return curve <= FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC;
+}
+
+inline FlightBatteryCapacityEstimateCurve
+flightBatteryCapacityEstimateCurveFromConfig(uint8_t curve)
+{
+  switch (curve) {
+    case FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED:
+      return FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED;
+    case FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC:
+      return FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC;
+    case FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE:
+    default:
+      return FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE;
+  }
+}
+
+inline const FlightBatteryCapacityEstimatePoint* flightBatteryCapacityCurvePoints(
+    BatteryType type, FlightBatteryCapacityEstimateCurve curve, uint8_t& count)
+{
+  static constexpr FlightBatteryCapacityEstimatePoint lipoConservative[] = {
+      {420, 100}, {415, 90}, {410, 85}, {405, 75}, {400, 70},
+      {395, 65},  {390, 60}, {385, 50}, {380, 40}, {375, 30},
+      {370, 20},  {360, 5},  {330, 0}};
+  static constexpr FlightBatteryCapacityEstimatePoint lipoBalanced[] = {
+      {420, 100}, {415, 95}, {410, 90}, {405, 82}, {400, 75},
+      {395, 68},  {390, 62}, {385, 55}, {380, 45}, {375, 35},
+      {370, 25},  {360, 10}, {330, 0}};
+  static constexpr FlightBatteryCapacityEstimatePoint lipoOptimistic[] = {
+      {420, 100}, {415, 96}, {410, 93}, {405, 87}, {400, 80},
+      {395, 72},  {390, 65}, {385, 58}, {380, 50}, {375, 40},
+      {370, 30},  {360, 15}, {330, 0}};
+  static constexpr FlightBatteryCapacityEstimatePoint liionConservative[] = {
+      {420, 100}, {415, 90}, {410, 85}, {405, 78}, {400, 70},
+      {395, 62},  {390, 55}, {385, 48}, {380, 40}, {375, 32},
+      {370, 25},  {360, 12}, {330, 0}};
+  static constexpr FlightBatteryCapacityEstimatePoint liionBalanced[] = {
+      {420, 100}, {415, 95}, {410, 90}, {405, 84}, {400, 78},
+      {395, 70},  {390, 62}, {385, 55}, {380, 48}, {375, 40},
+      {370, 32},  {360, 18}, {330, 0}};
+  static constexpr FlightBatteryCapacityEstimatePoint liionOptimistic[] = {
+      {420, 100}, {415, 97}, {410, 93}, {405, 88}, {400, 82},
+      {395, 75},  {390, 68}, {385, 60}, {380, 52}, {375, 45},
+      {370, 38},  {360, 25}, {330, 0}};
+
+  switch (type) {
+    case BATTERY_TYPE_LIPO:
+      switch (curve) {
+        case FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED:
+          count = sizeof(lipoBalanced) / sizeof(lipoBalanced[0]);
+          return lipoBalanced;
+        case FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC:
+          count = sizeof(lipoOptimistic) / sizeof(lipoOptimistic[0]);
+          return lipoOptimistic;
+        case FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE:
+        default:
+          count = sizeof(lipoConservative) / sizeof(lipoConservative[0]);
+          return lipoConservative;
+      }
+    case BATTERY_TYPE_LIION:
+      switch (curve) {
+        case FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED:
+          count = sizeof(liionBalanced) / sizeof(liionBalanced[0]);
+          return liionBalanced;
+        case FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC:
+          count = sizeof(liionOptimistic) / sizeof(liionOptimistic[0]);
+          return liionOptimistic;
+        case FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE:
+        default:
+          count = sizeof(liionConservative) / sizeof(liionConservative[0]);
+          return liionConservative;
+      }
+    default:
+      count = 0;
+      return nullptr;
+  }
+}
+
+inline uint8_t flightBatteryEstimateStartCapacityPercent(
+    BatteryType type, uint16_t perCellCv,
+    FlightBatteryCapacityEstimateCurve curve)
+{
+  uint8_t count = 0;
+  const FlightBatteryCapacityEstimatePoint* points =
+      flightBatteryCapacityCurvePoints(type, curve, count);
+  if (!points || count == 0) return 100;
+
+  if (perCellCv >= points[0].centivolts) return points[0].percent;
+
+  for (uint8_t i = 1; i < count; i++) {
+    const auto& high = points[i - 1];
+    const auto& low = points[i];
+    if (perCellCv >= low.centivolts) {
+      const uint16_t voltageRange = high.centivolts - low.centivolts;
+      if (voltageRange == 0) return low.percent;
+      const uint16_t voltageOffset = perCellCv - low.centivolts;
+      const uint8_t percentRange = high.percent - low.percent;
+      return low.percent +
+             uint8_t((uint16_t(percentRange) * voltageOffset) / voltageRange);
+    }
+  }
+
+  return points[count - 1].percent;
+}
+
+inline int32_t flightBatteryCapacityThresholdMah(int16_t capacity,
+                                                 uint8_t startPercent,
+                                                 uint8_t thresholdPercent)
+{
+  if (capacity <= 0) return INT32_MAX;
+
+  const uint8_t remainingPercent = thresholdPercent >= 100
+                                       ? 0
+                                       : uint8_t(100 - thresholdPercent);
+  if (startPercent > 100) startPercent = 100;
+  if (startPercent <= remainingPercent) return 0;
+
+  const uint8_t consumedPercent = startPercent - remainingPercent;
+  return int32_t((int64_t(capacity) * consumedPercent + 99) / 100);
+}
+
 inline bool flightBatteryCapacityThresholdReached(int32_t consumed,
                                                   int16_t capacity,
-                                                  uint8_t thresholdPercent)
+                                                  uint8_t thresholdPercent,
+                                                  uint8_t startPercent = 100)
 {
   if (capacity <= 0 || consumed <= 0) return false;
 
-  return int64_t(consumed) * 100 >= int64_t(capacity) * thresholdPercent;
+  return consumed >= flightBatteryCapacityThresholdMah(
+                         capacity, startPercent, thresholdPercent);
 }
 
 inline int32_t flightBatterySessionConsumedFromRaw(

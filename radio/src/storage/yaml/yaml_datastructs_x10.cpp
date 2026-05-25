@@ -225,6 +225,12 @@ const struct YamlIdStr enum_BatteryType[] = {
   {  BATTERY_TYPE_PB, "TYPE_PB"  },
   {  0, NULL  }
 };
+const struct YamlIdStr enum_FlightBatteryCapacityEstimateCurve[] = {
+  {  FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE, "CONSERVATIVE"  },
+  {  FLIGHT_BATTERY_CAPACITY_CURVE_BALANCED, "BALANCED"  },
+  {  FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC, "OPTIMISTIC"  },
+  {  0, NULL  }
+};
 const struct YamlIdStr enum_PotsWarnMode[] = {
   {  POTS_WARN_OFF, "WARN_OFF"  },
   {  POTS_WARN_MANUAL, "WARN_MANUAL"  },
@@ -686,7 +692,7 @@ static const struct YamlNode struct_BatteryMonitorData[] = {
   YAML_ENUM("batteryType", 3, enum_BatteryType, NULL),
   YAML_UNSIGNED( "capAlertEnabled", 1 ),
   YAML_UNSIGNED( "voltAlertEnabled", 1 ),
-  YAML_PADDING( 2 ),
+  YAML_ENUM("capacityEstimateCurve", 2, enum_FlightBatteryCapacityEstimateCurve, NULL),
   YAML_UNSIGNED( "cellCount", 4 ),
   YAML_PADDING( 4 ),
   YAML_SIGNED( "capacity", 16 ),
