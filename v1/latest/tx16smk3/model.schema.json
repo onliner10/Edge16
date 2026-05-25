@@ -1,0 +1,5299 @@
+{
+  "$defs": {
+    "struct_BatteryMonitorData": {
+      "additionalProperties": false,
+      "properties": {
+        "batteryType": {
+          "enum": [
+            "TYPE_LIPO",
+            "TYPE_LIION",
+            "TYPE_LIFE",
+            "TYPE_NIMH",
+            "TYPE_PB"
+          ],
+          "type": "string"
+        },
+        "capAlertEnabled": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "capacity": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "cellCount": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "compatiblePackMask": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currentIndex": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "enabled": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "selectedPackSlot": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceIndex": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "voltAlertEnabled": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_BatteryPackData": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "batteryType": {
+          "enum": [
+            "TYPE_LIPO",
+            "TYPE_LIION",
+            "TYPE_LIFE",
+            "TYPE_NIMH",
+            "TYPE_PB"
+          ],
+          "type": "string"
+        },
+        "capacity": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "cellCount": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_CalibData": {
+      "additionalProperties": false,
+      "properties": {
+        "mid": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "spanNeg": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "spanPos": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_CurveHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "points": {
+          "maximum": 31,
+          "minimum": -32,
+          "type": "integer"
+        },
+        "smooth": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_CurveRef": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_sourceNumVal",
+          "x-edge16-custom-write": "w_sourceNumVal"
+        }
+      },
+      "type": "object"
+    },
+    "struct_CustomFunctionData": {
+      "additionalProperties": false,
+      "properties": {
+        "def": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_customFn",
+          "x-edge16-custom-write": "w_customFn"
+        },
+        "func": {
+          "enum": [
+            "OVERRIDE_CHANNEL",
+            "TRAINER",
+            "INSTANT_TRIM",
+            "RESET",
+            "SET_TIMER",
+            "ADJUST_GVAR",
+            "VOLUME",
+            "SET_FAILSAFE",
+            "RANGECHECK",
+            "BIND",
+            "PLAY_SOUND",
+            "PLAY_TRACK",
+            "PLAY_VALUE",
+            "PLAY_SCRIPT",
+            "BACKGND_MUSIC",
+            "BACKGND_MUSIC_PAUSE",
+            "VARIO",
+            "HAPTIC",
+            "LOGS",
+            "BACKLIGHT",
+            "SCREENSHOT",
+            "RACING_MODE",
+            "DISABLE_TOUCH",
+            "SET_SCREEN",
+            "DISABLE_AUDIO_AMP",
+            "RGB_LED",
+            "PUSH_CUST_SWITCH",
+            "TEST"
+          ],
+          "type": "string"
+        },
+        "swtch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        }
+      },
+      "type": "object"
+    },
+    "struct_CustomScreenData": {
+      "additionalProperties": false,
+      "properties": {
+        "LayoutId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_screen_id",
+          "x-edge16-custom-write": "w_screen_id"
+        },
+        "layoutData": {
+          "$ref": "#/$defs/struct_LayoutPersistentData"
+        }
+      },
+      "type": "object"
+    },
+    "struct_ExpoData": {
+      "additionalProperties": false,
+      "properties": {
+        "carryTrim": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_carryTrim",
+          "x-edge16-custom-write": null
+        },
+        "chn": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "curve": {
+          "$ref": "#/$defs/struct_CurveRef"
+        },
+        "flightModes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_flightModes",
+          "x-edge16-custom-write": "w_flightModes"
+        },
+        "mode": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 6,
+          "type": "string"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_sourceNumVal",
+          "x-edge16-custom-write": "w_sourceNumVal"
+        },
+        "scale": {
+          "maximum": 16383,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "srcRaw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRawEx",
+          "x-edge16-custom-write": "w_mixSrcRawEx"
+        },
+        "swtch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "trimSource": {
+          "maximum": 31,
+          "minimum": -32,
+          "type": "integer"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_sourceNumVal",
+          "x-edge16-custom-write": "w_sourceNumVal"
+        }
+      },
+      "type": "object"
+    },
+    "struct_FlightModeData": {
+      "additionalProperties": false,
+      "properties": {
+        "fadeIn": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fadeOut": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gvars": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_16"
+          },
+          "maxProperties": 15,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "name": {
+          "maxLength": 10,
+          "type": "string"
+        },
+        "swtch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "trim": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_trim_t"
+          },
+          "maxProperties": 8,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_GVarData": {
+      "additionalProperties": false,
+      "properties": {
+        "max": {
+          "maximum": 4095,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "min": {
+          "maximum": 4095,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "popup": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "prec": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unit": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_KeyShortcut": {
+      "additionalProperties": false,
+      "properties": {
+        "shortcut": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_keyShortcut",
+          "x-edge16-custom-write": "w_keyShortcut"
+        }
+      },
+      "type": "object"
+    },
+    "struct_LayoutOptionValueTyped": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_lov_type",
+          "x-edge16-custom-write": "w_lov_type"
+        },
+        "value": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "boolValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_lov_unsigned",
+              "x-edge16-custom-write": "w_lov_unsigned"
+            },
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_lov_color",
+              "x-edge16-custom-write": "w_lov_color"
+            },
+            "unsignedValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_lov_unsigned",
+              "x-edge16-custom-write": "w_lov_unsigned"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_lov"
+        }
+      },
+      "type": "object"
+    },
+    "struct_LayoutPersistentData": {
+      "additionalProperties": false,
+      "properties": {
+        "options": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_LayoutOptionValueTyped"
+          },
+          "maxProperties": 10,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "zones": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_ZonePersistentData"
+          },
+          "maxProperties": 10,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_LimitData": {
+      "additionalProperties": false,
+      "properties": {
+        "curve": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "in_read_weight",
+          "x-edge16-custom-write": "in_write_weight"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "in_read_weight",
+          "x-edge16-custom-write": "in_write_weight"
+        },
+        "name": {
+          "maxLength": 6,
+          "type": "string"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "in_read_weight",
+          "x-edge16-custom-write": "in_write_weight"
+        },
+        "ppmCenter": {
+          "maximum": 511,
+          "minimum": -512,
+          "type": "integer"
+        },
+        "revert": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "symetrical": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_LogicalSwitchData": {
+      "additionalProperties": false,
+      "properties": {
+        "andsw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "def": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_logicSw",
+          "x-edge16-custom-write": "w_logicSw"
+        },
+        "delay": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duration": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "func": {
+          "enum": [
+            "FUNC_NONE",
+            "FUNC_VEQUAL",
+            "FUNC_VALMOSTEQUAL",
+            "FUNC_VPOS",
+            "FUNC_VNEG",
+            "FUNC_APOS",
+            "FUNC_ANEG",
+            "FUNC_AND",
+            "FUNC_OR",
+            "FUNC_XOR",
+            "FUNC_EDGE",
+            "FUNC_EQUAL",
+            "FUNC_GREATER",
+            "FUNC_LESS",
+            "FUNC_DIFFEGREATER",
+            "FUNC_ADIFFEGREATER",
+            "FUNC_TIMER",
+            "FUNC_STICKY"
+          ],
+          "type": "string"
+        },
+        "lsPersist": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lsState": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_MixData": {
+      "additionalProperties": false,
+      "properties": {
+        "carryTrim": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "curve": {
+          "$ref": "#/$defs/struct_CurveRef"
+        },
+        "delayDown": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "delayPrec": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "delayUp": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "destCh": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flightModes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_flightModes",
+          "x-edge16-custom-write": "w_flightModes"
+        },
+        "mixWarn": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mltpx": {
+          "enum": [
+            "ADD",
+            "MUL",
+            "REPL"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 6,
+          "type": "string"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_sourceNumVal",
+          "x-edge16-custom-write": "w_sourceNumVal"
+        },
+        "speedDown": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "speedPrec": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "speedUp": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "srcRaw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRawEx",
+          "x-edge16-custom-write": "w_mixSrcRawEx"
+        },
+        "swtch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_sourceNumVal",
+          "x-edge16-custom-write": "w_sourceNumVal"
+        }
+      },
+      "type": "object"
+    },
+    "struct_ModelData": {
+      "additionalProperties": false,
+      "properties": {
+        "armingEnabled": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "armingThrottleChannel": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "batteryMonitors": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_BatteryMonitorData"
+          },
+          "maxProperties": 4,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "beepANACenter": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cfsGroupOn": {
+          "items": {
+            "$ref": "#/$defs/struct_cfsGroupOn"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "checklistInteractive": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "curves": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_CurveHeader"
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "customFn": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_CustomFunctionData"
+          },
+          "maxProperties": 64,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "customSwitches": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_customSwitch"
+          },
+          "maxProperties": 6,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "customThrottleWarningPosition": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "disableTelemetryWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableThrottleWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "displayChecklist": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "displayTrims": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "enableCustomThrottleWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expoData": {
+          "items": {
+            "$ref": "#/$defs/struct_ExpoData"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "extendedLimits": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "extendedTrims": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failsafeChannels": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_16"
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "flightModeData": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_FlightModeData"
+          },
+          "maxProperties": 9,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "functionSwitchConfig": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_functionSwitchConfig",
+          "x-edge16-custom-write": null
+        },
+        "functionSwitchGroup": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_functionSwitchGroup",
+          "x-edge16-custom-write": null
+        },
+        "functionSwitchLedOFFColor": {
+          "items": {
+            "$ref": "#/$defs/struct_cfsOffColorConfig"
+          },
+          "type": "array"
+        },
+        "functionSwitchLedONColor": {
+          "items": {
+            "$ref": "#/$defs/struct_cfsOnColorConfig"
+          },
+          "type": "array"
+        },
+        "functionSwitchLogicalState": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_functionSwitchLogicalState",
+          "x-edge16-custom-write": null
+        },
+        "functionSwitchStartConfig": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_functionSwitchStartConfig",
+          "x-edge16-custom-write": null
+        },
+        "gvars": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_GVarData"
+          },
+          "maxProperties": 15,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "header": {
+          "$ref": "#/$defs/struct_ModelHeader"
+        },
+        "ignoreSensorIds": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "inputNames": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_string_32"
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "jitterFilter": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "limitData": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_LimitData"
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "logicalSw": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_LogicalSwitchData"
+          },
+          "maxProperties": 64,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "mixData": {
+          "items": {
+            "$ref": "#/$defs/struct_MixData"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "modelCurvesDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelCustomScriptsDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelFMDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelGVDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelHeliDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelLSDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelRegistrationID": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "modelSFDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "modelTelemetryDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "moduleData": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_ModuleData"
+          },
+          "maxProperties": 2,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "noGlobalFunctions": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "points": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_8"
+          },
+          "maxProperties": 512,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "potsWarnEnabled": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "potsWarnMode": {
+          "enum": [
+            "WARN_OFF",
+            "WARN_MANUAL",
+            "WARN_AUTO"
+          ],
+          "type": "string"
+        },
+        "potsWarnPosition": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_8"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "radioGFDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "radioThemesDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "radioTrainerDisabled": {
+          "enum": [
+            "GLOBAL",
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "rfAlarms": {
+          "$ref": "#/$defs/struct_RFAlarmData"
+        },
+        "rssiAlarms": {
+          "$ref": "#/$defs/struct_RssiAlarmData"
+        },
+        "rssiSource": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_tele_sensor",
+          "x-edge16-custom-write": "w_tele_sensor"
+        },
+        "screenData": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_CustomScreenData"
+          },
+          "maxProperties": 10,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "scriptsData": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_ScriptData"
+          },
+          "maxProperties": 9,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "semver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": null,
+          "x-edge16-custom-write": "w_semver"
+        },
+        "showInstanceIds": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swashR": {
+          "$ref": "#/$defs/struct_SwashRingData"
+        },
+        "switchNames": {
+          "items": {
+            "$ref": "#/$defs/struct_cfsNameConfig"
+          },
+          "type": "array"
+        },
+        "switchWarning": {
+          "items": {
+            "$ref": "#/$defs/struct_swtchWarn"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "switchWarningState": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchWarn",
+          "x-edge16-custom-write": null
+        },
+        "telemetryProtocol": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "telemetrySensors": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_TelemetrySensor"
+          },
+          "maxProperties": 99,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "thrTraceSrc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_thrSrc",
+          "x-edge16-custom-write": "w_thrSrc"
+        },
+        "thrTrim": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "thrTrimSw": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "throttleReversed": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_TimerData"
+          },
+          "maxProperties": 3,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "trainerData": {
+          "$ref": "#/$defs/struct_TrainerModuleData"
+        },
+        "trimInc": {
+          "maximum": 3,
+          "minimum": -4,
+          "type": "integer"
+        },
+        "usbJoystickCh": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_USBJoystickChData"
+          },
+          "maxProperties": 26,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "usbJoystickCircularCut": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "usbJoystickExtMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "usbJoystickIfMode": {
+          "enum": [
+            "JOYSTICK",
+            "GAMEPAD",
+            "MULTIAXIS"
+          ],
+          "type": "string"
+        },
+        "varioData": {
+          "$ref": "#/$defs/struct_VarioData"
+        },
+        "view": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_ModelHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "bitmap": {
+          "maxLength": 14,
+          "type": "string"
+        },
+        "labels": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "modelId": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_unsigned_8"
+          },
+          "maxProperties": 2,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "name": {
+          "maxLength": 15,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_ModuleData": {
+      "additionalProperties": false,
+      "properties": {
+        "channelsCount": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_channelsCount",
+          "x-edge16-custom-write": "w_channelsCount"
+        },
+        "channelsStart": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failsafeMode": {
+          "enum": [
+            "NOT_SET",
+            "HOLD",
+            "CUSTOM",
+            "NOPULSES",
+            "RECEIVER"
+          ],
+          "type": "string"
+        },
+        "mod": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "afhds3": {
+              "$ref": "#/$defs/struct_anonymous_10"
+            },
+            "crsf": {
+              "$ref": "#/$defs/struct_anonymous_12"
+            },
+            "dsmp": {
+              "$ref": "#/$defs/struct_anonymous_13"
+            },
+            "flysky": {
+              "$ref": "#/$defs/struct_anonymous_9"
+            },
+            "ghost": {
+              "$ref": "#/$defs/struct_anonymous_11"
+            },
+            "multi": {
+              "$ref": "#/$defs/struct_anonymous_5"
+            },
+            "ppm": {
+              "$ref": "#/$defs/struct_PpmModule"
+            },
+            "pxx": {
+              "$ref": "#/$defs/struct_anonymous_6"
+            },
+            "pxx2": {
+              "$ref": "#/$defs/struct_anonymous_8"
+            },
+            "raw": {
+              "additionalProperties": {
+                "$ref": "#/$defs/struct_unsigned_8"
+              },
+              "maxProperties": 25,
+              "propertyNames": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "sbus": {
+              "$ref": "#/$defs/struct_anonymous_7"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_mod_type"
+        },
+        "subType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_modSubtype",
+          "x-edge16-custom-write": "w_modSubtype"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_moduleType",
+          "x-edge16-custom-write": "w_moduleType"
+        }
+      },
+      "type": "object"
+    },
+    "struct_PartialModel": {
+      "additionalProperties": false,
+      "properties": {
+        "header": {
+          "$ref": "#/$defs/struct_ModelHeader"
+        },
+        "timers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_TimerData"
+          },
+          "maxProperties": 3,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_PpmModule": {
+      "additionalProperties": false,
+      "properties": {
+        "delay": {
+          "maximum": 31,
+          "minimum": -32,
+          "type": "integer"
+        },
+        "frameLength": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "outputType": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pulsePol": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_QMFavorite": {
+      "additionalProperties": false,
+      "properties": {
+        "shortcut": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_qmFavorite",
+          "x-edge16-custom-write": "w_qmFavorite"
+        }
+      },
+      "type": "object"
+    },
+    "struct_RFAlarmData": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "warning": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_RGBLedColor": {
+      "additionalProperties": false,
+      "properties": {
+        "b": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "g": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "r": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_RadioData": {
+      "additionalProperties": false,
+      "properties": {
+        "PPM_Multiplier": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "USBMode": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "adjustRTC": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "alarmsFlash": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "antennaMode": {
+          "enum": [
+            "MODE_INTERNAL",
+            "MODE_ASK",
+            "MODE_PER_MODEL",
+            "MODE_EXTERNAL"
+          ],
+          "type": "string"
+        },
+        "audioMuteEnable": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "aux2SerialMode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_serialMode",
+          "x-edge16-custom-write": null
+        },
+        "auxSerialMode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_serialMode",
+          "x-edge16-custom-write": null
+        },
+        "backgroundVolume": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "backlightBright": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "backlightMode": {
+          "enum": [
+            "backlight_mode_off",
+            "backlight_mode_keys",
+            "backlight_mode_sticks",
+            "backlight_mode_all",
+            "backlight_mode_on"
+          ],
+          "type": "string"
+        },
+        "backlightSrc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRawEx",
+          "x-edge16-custom-write": "w_mixSrcRawEx"
+        },
+        "batteryPacks": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_BatteryPackData"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "beepLength": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "beepMode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_beeperMode",
+          "x-edge16-custom-write": "w_beeperMode"
+        },
+        "beepVolume": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "blOffBright": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bluetoothBaudrate": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bluetoothMode": {
+          "enum": [
+            "OFF",
+            "TELEMETRY",
+            "TRAINER"
+          ],
+          "type": "string"
+        },
+        "bluetoothName": {
+          "maxLength": 10,
+          "type": "string"
+        },
+        "board": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": null,
+          "x-edge16-custom-write": "w_board"
+        },
+        "calib": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_CalibData"
+          },
+          "maxProperties": 20,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "countryCode": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "currModelFilename": {
+          "maxLength": 17,
+          "type": "string"
+        },
+        "customFn": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_CustomFunctionData"
+          },
+          "maxProperties": 64,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "disableAlarmWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableMemoryWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disablePwrOnOffHaptic": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "disableRssiPoweroffAlarm": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableRtcWarning": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableTrainerPoweroffAlarm": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "dontPlayHello": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fai": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "favMultiMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flexSwitches": {
+          "items": {
+            "$ref": "#/$defs/struct_flexSwitch"
+          },
+          "type": "array"
+        },
+        "globalTimer": {
+          "maximum": 4294967295,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gpsFormat": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hapticLength": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "hapticMode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_beeperMode",
+          "x-edge16-custom-write": "w_beeperMode"
+        },
+        "hapticStrength": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "imperial": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "imuMax": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "imuOffset": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "inactivityTimer": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "internalModule": {
+          "enum": [
+            "TYPE_NONE",
+            "TYPE_PPM",
+            "TYPE_XJT_PXX1",
+            "TYPE_ISRM_PXX2",
+            "TYPE_DSM2",
+            "TYPE_CROSSFIRE",
+            "TYPE_MULTIMODULE",
+            "TYPE_R9M_PXX1",
+            "TYPE_R9M_PXX2",
+            "TYPE_R9M_LITE_PXX1",
+            "TYPE_R9M_LITE_PXX2",
+            "TYPE_GHOST",
+            "TYPE_R9M_LITE_PRO_PXX2",
+            "TYPE_SBUS",
+            "TYPE_XJT_LITE_PXX2",
+            "TYPE_FLYSKY_AFHDS2A",
+            "TYPE_FLYSKY_AFHDS3",
+            "TYPE_LEMON_DSMP"
+          ],
+          "type": "string"
+        },
+        "internalModuleBaudrate": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "jackMode": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "jitterFilter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_jitterFilter",
+          "x-edge16-custom-write": null
+        },
+        "keyShortcuts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_KeyShortcut"
+          },
+          "maxProperties": 6,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "keysBacklight": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labelMultiMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labelSingleSelect": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lightAutoOff": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manuallyEdited": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "modelCurvesDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelCustomScriptsDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelFMDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelGVDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelHeliDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelLSDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelQuickSelect": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "modelSFDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "modelSelectLayout": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "modelTelemetryDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "noJitterFilter": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "oneLogPerDay": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ownerRegistrationID": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "potsConfig": {
+          "items": {
+            "$ref": "#/$defs/struct_potConfig"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "ppmunit": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pwrOffIfInactive": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pwrOffSpeed": {
+          "maximum": 3,
+          "minimum": -4,
+          "type": "integer"
+        },
+        "pwrOnSpeed": {
+          "maximum": 3,
+          "minimum": -4,
+          "type": "integer"
+        },
+        "qmFavorites": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_QMFavorite"
+          },
+          "maxProperties": 12,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "radioGFDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "radioThemesDisabled": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "radioTrainerDisabled": {
+          "maximum": 0,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "rotEncDirection": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_rotEncDirection",
+          "x-edge16-custom-write": null
+        },
+        "rotEncMode": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "selectedTheme": {
+          "maxLength": 26,
+          "type": "string"
+        },
+        "semver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": null,
+          "x-edge16-custom-write": "w_semver"
+        },
+        "serialPort": {
+          "items": {
+            "$ref": "#/$defs/struct_serialConfig"
+          },
+          "maxItems": 4,
+          "type": "array"
+        },
+        "slidersConfig": {
+          "items": {
+            "$ref": "#/$defs/struct_sliderConfig"
+          },
+          "type": "array"
+        },
+        "speakerPitch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_spPitch",
+          "x-edge16-custom-write": "w_spPitch"
+        },
+        "speakerVolume": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_vol",
+          "x-edge16-custom-write": "w_vol"
+        },
+        "splashMode": {
+          "maximum": 3,
+          "minimum": -4,
+          "type": "integer"
+        },
+        "stickMode": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sticksConfig": {
+          "items": {
+            "$ref": "#/$defs/struct_stickConfig"
+          },
+          "type": "array"
+        },
+        "switchConfig": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_switchDef"
+          },
+          "maxProperties": 20,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "switchesDelay": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "telemetryBaudrate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_telemetryBaudrate",
+          "x-edge16-custom-write": null
+        },
+        "templateSetup": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timezone": {
+          "maximum": 15,
+          "minimum": -16,
+          "type": "integer"
+        },
+        "timezoneMinutes": {
+          "maximum": 3,
+          "minimum": -4,
+          "type": "integer"
+        },
+        "topbarData": {
+          "$ref": "#/$defs/struct_TopBarPersistentData"
+        },
+        "topbarWidgetWidth": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_unsigned_8"
+          },
+          "maxProperties": 7,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "trainer": {
+          "$ref": "#/$defs/struct_TrainerData"
+        },
+        "ttsLanguage": {
+          "maxLength": 2,
+          "type": "string"
+        },
+        "txVoltageCalibration": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "uiLanguage": {
+          "maxLength": 2,
+          "type": "string"
+        },
+        "vBatMax": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_vbat_max",
+          "x-edge16-custom-write": "w_vbat_max"
+        },
+        "vBatMin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_vbat_min",
+          "x-edge16-custom-write": "w_vbat_min"
+        },
+        "vBatWarn": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "varioPitch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_vPitch",
+          "x-edge16-custom-write": "w_vPitch"
+        },
+        "varioRange": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_vPitch",
+          "x-edge16-custom-write": "w_vPitch"
+        },
+        "varioRepeat": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "varioVolume": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        },
+        "view": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "volumeSrc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRawEx",
+          "x-edge16-custom-write": "w_mixSrcRawEx"
+        },
+        "wavVolume": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_5pos",
+          "x-edge16-custom-write": "w_5pos"
+        }
+      },
+      "type": "object"
+    },
+    "struct_RssiAlarmData": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_rssiCritical",
+          "x-edge16-custom-write": null
+        },
+        "disabled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_rssiDisabled",
+          "x-edge16-custom-write": null
+        },
+        "warning": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_rssiWarning",
+          "x-edge16-custom-write": null
+        }
+      },
+      "type": "object"
+    },
+    "struct_ScriptData": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "maxLength": 6,
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/union_ScriptDataInput"
+          },
+          "maxProperties": 6,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "name": {
+          "maxLength": 6,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_SwashRingData": {
+      "additionalProperties": false,
+      "properties": {
+        "aileronSource": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRaw",
+          "x-edge16-custom-write": "w_mixSrcRaw"
+        },
+        "aileronWeight": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "collectiveSource": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRaw",
+          "x-edge16-custom-write": "w_mixSrcRaw"
+        },
+        "collectiveWeight": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "elevatorSource": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRaw",
+          "x-edge16-custom-write": "w_mixSrcRaw"
+        },
+        "elevatorWeight": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "TYPE_NONE",
+            "TYPE_120",
+            "TYPE_120X",
+            "TYPE_140",
+            "TYPE_90"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TelemetrySensor": {
+      "additionalProperties": false,
+      "properties": {
+        "autoOffset": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cfg": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "calc": {
+              "$ref": "#/$defs/struct_anonymous_20"
+            },
+            "cell": {
+              "$ref": "#/$defs/struct_anonymous_19"
+            },
+            "consumption": {
+              "$ref": "#/$defs/struct_anonymous_21"
+            },
+            "custom": {
+              "$ref": "#/$defs/struct_anonymous_18"
+            },
+            "dist": {
+              "$ref": "#/$defs/struct_anonymous_22"
+            },
+            "param": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_sensor_cfg"
+        },
+        "filter": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id1": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "id": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "persistentValue": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_id1"
+        },
+        "id2": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "formula": {
+              "enum": [
+                "FORMULA_ADD",
+                "FORMULA_AVERAGE",
+                "FORMULA_MIN",
+                "FORMULA_MAX",
+                "FORMULA_MULTIPLY",
+                "FORMULA_TOTALIZE",
+                "FORMULA_CELL",
+                "FORMULA_CONSUMPTION",
+                "FORMULA_DIST"
+              ],
+              "type": "string"
+            },
+            "frskyInstance": {
+              "$ref": "#/$defs/struct_anonymous_16"
+            },
+            "instance": {
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_id2"
+        },
+        "label": {
+          "maxLength": 4,
+          "type": "string"
+        },
+        "logs": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "onlyPositive": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "persistent": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "prec": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "subId": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "TYPE_CUSTOM",
+            "TYPE_CALCULATED"
+          ],
+          "type": "string"
+        },
+        "unit": {
+          "maximum": 63,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TimerData": {
+      "additionalProperties": false,
+      "properties": {
+        "countdownBeep": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "countdownStart": {
+          "maximum": 1,
+          "minimum": -2,
+          "type": "integer"
+        },
+        "extraHaptic": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minuteBeep": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minuteBeepStart": {
+          "maximum": 63,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "OFF",
+            "ON",
+            "START",
+            "THR",
+            "THR_REL",
+            "THR_START"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "persistent": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "showElapsed": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "maximum": 4194303,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swtch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "value": {
+          "maximum": 2097151,
+          "minimum": -2097152,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TopBarPersistentData": {
+      "additionalProperties": false,
+      "properties": {
+        "zones": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_ZonePersistentData"
+          },
+          "maxProperties": 7,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TrainerData": {
+      "additionalProperties": false,
+      "properties": {
+        "calib": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_16"
+          },
+          "maxProperties": 4,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "mix": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_TrainerMix"
+          },
+          "maxProperties": 4,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TrainerMix": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "OFF",
+            "ADD",
+            "REPL"
+          ],
+          "type": "string"
+        },
+        "srcChn": {
+          "maximum": 63,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "studWeight": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_TrainerModuleData": {
+      "additionalProperties": false,
+      "properties": {
+        "channelsCount": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "channelsStart": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "delay": {
+          "maximum": 31,
+          "minimum": -32,
+          "type": "integer"
+        },
+        "frameLength": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_trainerMode",
+          "x-edge16-custom-write": "w_trainerMode"
+        },
+        "pulsePol": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_USBJoystickChData": {
+      "additionalProperties": false,
+      "properties": {
+        "btn_num": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "inversion": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "CH_NONE",
+            "CH_BUTTON",
+            "CH_AXIS",
+            "CH_SIM"
+          ],
+          "type": "string"
+        },
+        "param": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "switch_npos": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_VarioData": {
+      "additionalProperties": false,
+      "properties": {
+        "centerMax": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "centerMin": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "centerSilent": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "min": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_tele_sensor",
+          "x-edge16-custom-write": "w_tele_sensor"
+        }
+      },
+      "type": "object"
+    },
+    "struct_WidgetOptionValueTyped": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_type",
+          "x-edge16-custom-write": "w_wov_type"
+        },
+        "value": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "boolValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_unsigned",
+              "x-edge16-custom-write": "w_wov_unsigned"
+            },
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_color",
+              "x-edge16-custom-write": "w_wov_color"
+            },
+            "signedValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_signed",
+              "x-edge16-custom-write": "w_wov_signed"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_source",
+              "x-edge16-custom-write": "w_wov_source"
+            },
+            "stringValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_string",
+              "x-edge16-custom-write": "w_wov_string"
+            },
+            "unsignedValue": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_wov_unsigned",
+              "x-edge16-custom-write": "w_wov_unsigned"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_wov"
+        }
+      },
+      "type": "object"
+    },
+    "struct_WidgetPersistentData": {
+      "additionalProperties": false,
+      "properties": {
+        "options": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_WidgetOptionValueTyped"
+          },
+          "maxProperties": 50,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_ZonePersistentData": {
+      "additionalProperties": false,
+      "properties": {
+        "widgetData": {
+          "$ref": "#/$defs/struct_WidgetPersistentData"
+        },
+        "widgetName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_widget_name",
+          "x-edge16-custom-write": "w_widget_name"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_1": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 8,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_10": {
+      "additionalProperties": false,
+      "properties": {
+        "emi": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "phyMode": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reserved": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rfPower": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "telemetry": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_11": {
+      "additionalProperties": false,
+      "properties": {
+        "raw12bits": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "telemetryBaudrate": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_12": {
+      "additionalProperties": false,
+      "properties": {
+        "crsfArmingMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "crsfArmingTrigger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_swtchSrc",
+          "x-edge16-custom-write": "w_swtchSrc"
+        },
+        "spare3": {
+          "maximum": 31,
+          "minimum": -32,
+          "type": "integer"
+        },
+        "telemetryBaudrate": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_13": {
+      "additionalProperties": false,
+      "properties": {
+        "enableAETR": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flags": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_16": {
+      "additionalProperties": false,
+      "properties": {
+        "physID": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rxIndex": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_18": {
+      "additionalProperties": false,
+      "properties": {
+        "offset": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "ratio": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_19": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_2": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "param": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "val": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        },
+        "val2": {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_20": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_signed_8"
+          },
+          "maxProperties": 4,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_21": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_22": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gps": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_3": {
+      "additionalProperties": false,
+      "properties": {
+        "val1": {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        },
+        "val2": {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_5": {
+      "additionalProperties": false,
+      "properties": {
+        "autoBindMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableMapping": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "disableTelemetry": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lowPowerMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "optionValue": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        },
+        "receiverHigherChannels": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "receiverTelemetryOff": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_6": {
+      "additionalProperties": false,
+      "properties": {
+        "antennaMode": {
+          "maximum": 1,
+          "minimum": -2,
+          "type": "integer"
+        },
+        "power": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "receiverHigherChannels": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "receiverTelemetryOff": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_7": {
+      "additionalProperties": false,
+      "properties": {
+        "noninverted": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refreshRate": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_8": {
+      "additionalProperties": false,
+      "properties": {
+        "racingMode": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "receiverName": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_string_64"
+          },
+          "maxProperties": 3,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "receivers": {
+          "maximum": 127,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_anonymous_9": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reserved": {
+          "maximum": 15,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rfPower": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rx_freq": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_unsigned_8"
+          },
+          "maxProperties": 2,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "rx_id": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_unsigned_8"
+          },
+          "maxProperties": 4,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "struct_customSwitch": {
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "offColor": {
+          "$ref": "#/$defs/struct_RGBLedColor"
+        },
+        "offColorLuaOverride": {
+          "enum": [
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "onColor": {
+          "$ref": "#/$defs/struct_RGBLedColor"
+        },
+        "onColorLuaOverride": {
+          "enum": [
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "start": {
+          "enum": [
+            "START_OFF",
+            "START_ON",
+            "START_PREVIOUS"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "NONE",
+            "TOGGLE",
+            "2POS",
+            "3POS",
+            "GLOBAL",
+            "none",
+            "toggle",
+            "2pos",
+            "3pos"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_signed_16": {
+      "additionalProperties": false,
+      "properties": {
+        "val": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_signed_8": {
+      "additionalProperties": false,
+      "properties": {
+        "val": {
+          "maximum": 127,
+          "minimum": -128,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_string_32": {
+      "additionalProperties": false,
+      "properties": {
+        "val": {
+          "maxLength": 4,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_string_64": {
+      "additionalProperties": false,
+      "properties": {
+        "val": {
+          "maxLength": 8,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_switchDef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "offColor": {
+          "$ref": "#/$defs/struct_RGBLedColor"
+        },
+        "offColorLuaOverride": {
+          "enum": [
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "onColor": {
+          "$ref": "#/$defs/struct_RGBLedColor"
+        },
+        "onColorLuaOverride": {
+          "enum": [
+            "OFF",
+            "ON"
+          ],
+          "type": "string"
+        },
+        "start": {
+          "enum": [
+            "START_OFF",
+            "START_ON",
+            "START_PREVIOUS"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "NONE",
+            "TOGGLE",
+            "2POS",
+            "3POS",
+            "GLOBAL",
+            "none",
+            "toggle",
+            "2pos",
+            "3pos"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "struct_trim_t": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "maximum": 31,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "value": {
+          "maximum": 1023,
+          "minimum": -1024,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "struct_unsigned_8": {
+      "additionalProperties": false,
+      "properties": {
+        "val": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "union_LayoutOptionValue_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "boolValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_lov_unsigned",
+          "x-edge16-custom-write": "w_lov_unsigned"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_lov_color",
+          "x-edge16-custom-write": "w_lov_color"
+        },
+        "unsignedValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_lov_unsigned",
+          "x-edge16-custom-write": "w_lov_unsigned"
+        }
+      },
+      "type": "object"
+    },
+    "union_ScriptDataInput": {
+      "additionalProperties": false,
+      "properties": {
+        "u": {
+          "additionalProperties": false,
+          "description": "Tagged union selected by Edge16 firmware state.",
+          "properties": {
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+              "x-edge16-custom-read": "r_mixSrcRaw",
+              "x-edge16-custom-write": "w_mixSrcRaw"
+            },
+            "value": {
+              "maximum": 32767,
+              "minimum": -32768,
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "x-edge16-selector": "select_script_input"
+        }
+      },
+      "type": "object"
+    },
+    "union_ScriptDataInput_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_mixSrcRaw",
+          "x-edge16-custom-write": "w_mixSrcRaw"
+        },
+        "value": {
+          "maximum": 32767,
+          "minimum": -32768,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "union_WidgetOptionValue_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "boolValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_unsigned",
+          "x-edge16-custom-write": "w_wov_unsigned"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_color",
+          "x-edge16-custom-write": "w_wov_color"
+        },
+        "signedValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_signed",
+          "x-edge16-custom-write": "w_wov_signed"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_source",
+          "x-edge16-custom-write": "w_wov_source"
+        },
+        "stringValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_string",
+          "x-edge16-custom-write": "w_wov_string"
+        },
+        "unsignedValue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+          "x-edge16-custom-read": "r_wov_unsigned",
+          "x-edge16-custom-write": "w_wov_unsigned"
+        }
+      },
+      "type": "object"
+    },
+    "union_anonymous_0_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "$ref": "#/$defs/struct_anonymous_2"
+        },
+        "clear": {
+          "$ref": "#/$defs/struct_anonymous_3"
+        },
+        "play": {
+          "$ref": "#/$defs/struct_anonymous_1"
+        }
+      },
+      "type": "object"
+    },
+    "union_anonymous_14_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "persistentValue": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "union_anonymous_15_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "formula": {
+          "enum": [
+            "FORMULA_ADD",
+            "FORMULA_AVERAGE",
+            "FORMULA_MIN",
+            "FORMULA_MAX",
+            "FORMULA_MULTIPLY",
+            "FORMULA_TOTALIZE",
+            "FORMULA_CELL",
+            "FORMULA_CONSUMPTION",
+            "FORMULA_DIST"
+          ],
+          "type": "string"
+        },
+        "frskyInstance": {
+          "$ref": "#/$defs/struct_anonymous_16"
+        },
+        "instance": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "union_anonymous_17_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "calc": {
+          "$ref": "#/$defs/struct_anonymous_20"
+        },
+        "cell": {
+          "$ref": "#/$defs/struct_anonymous_19"
+        },
+        "consumption": {
+          "$ref": "#/$defs/struct_anonymous_21"
+        },
+        "custom": {
+          "$ref": "#/$defs/struct_anonymous_18"
+        },
+        "dist": {
+          "$ref": "#/$defs/struct_anonymous_22"
+        },
+        "param": {
+          "maximum": 4294967295,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "union_anonymous_4_elmts": {
+      "additionalProperties": false,
+      "properties": {
+        "afhds3": {
+          "$ref": "#/$defs/struct_anonymous_10"
+        },
+        "crsf": {
+          "$ref": "#/$defs/struct_anonymous_12"
+        },
+        "dsmp": {
+          "$ref": "#/$defs/struct_anonymous_13"
+        },
+        "flysky": {
+          "$ref": "#/$defs/struct_anonymous_9"
+        },
+        "ghost": {
+          "$ref": "#/$defs/struct_anonymous_11"
+        },
+        "multi": {
+          "$ref": "#/$defs/struct_anonymous_5"
+        },
+        "ppm": {
+          "$ref": "#/$defs/struct_PpmModule"
+        },
+        "pxx": {
+          "$ref": "#/$defs/struct_anonymous_6"
+        },
+        "pxx2": {
+          "$ref": "#/$defs/struct_anonymous_8"
+        },
+        "raw": {
+          "additionalProperties": {
+            "$ref": "#/$defs/struct_unsigned_8"
+          },
+          "maxProperties": 25,
+          "propertyNames": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "sbus": {
+          "$ref": "#/$defs/struct_anonymous_7"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$id": "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/1.0/tx16smk3/model.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated from Edge16 firmware YAML storage node tables.",
+  "properties": {
+    "armingEnabled": {
+      "maximum": 255,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "armingThrottleChannel": {
+      "maximum": 255,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "batteryMonitors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_BatteryMonitorData"
+      },
+      "maxProperties": 4,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "beepANACenter": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "cfsGroupOn": {
+      "items": {
+        "$ref": "#/$defs/struct_cfsGroupOn"
+      },
+      "maxItems": 8,
+      "type": "array"
+    },
+    "checklistInteractive": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "curves": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_CurveHeader"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "customFn": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_CustomFunctionData"
+      },
+      "maxProperties": 64,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "customSwitches": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_customSwitch"
+      },
+      "maxProperties": 6,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "customThrottleWarningPosition": {
+      "maximum": 127,
+      "minimum": -128,
+      "type": "integer"
+    },
+    "disableTelemetryWarning": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "disableThrottleWarning": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "displayChecklist": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "displayTrims": {
+      "maximum": 3,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "enableCustomThrottleWarning": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "expoData": {
+      "items": {
+        "$ref": "#/$defs/struct_ExpoData"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "extendedLimits": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "extendedTrims": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "failsafeChannels": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_signed_16"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "flightModeData": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_FlightModeData"
+      },
+      "maxProperties": 9,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "functionSwitchConfig": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_functionSwitchConfig",
+      "x-edge16-custom-write": null
+    },
+    "functionSwitchGroup": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_functionSwitchGroup",
+      "x-edge16-custom-write": null
+    },
+    "functionSwitchLedOFFColor": {
+      "items": {
+        "$ref": "#/$defs/struct_cfsOffColorConfig"
+      },
+      "type": "array"
+    },
+    "functionSwitchLedONColor": {
+      "items": {
+        "$ref": "#/$defs/struct_cfsOnColorConfig"
+      },
+      "type": "array"
+    },
+    "functionSwitchLogicalState": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_functionSwitchLogicalState",
+      "x-edge16-custom-write": null
+    },
+    "functionSwitchStartConfig": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_functionSwitchStartConfig",
+      "x-edge16-custom-write": null
+    },
+    "gvars": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_GVarData"
+      },
+      "maxProperties": 15,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "header": {
+      "$ref": "#/$defs/struct_ModelHeader"
+    },
+    "ignoreSensorIds": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "inputNames": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_string_32"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "jitterFilter": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "limitData": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_LimitData"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "logicalSw": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_LogicalSwitchData"
+      },
+      "maxProperties": 64,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "mixData": {
+      "items": {
+        "$ref": "#/$defs/struct_MixData"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "modelCurvesDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelCustomScriptsDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelFMDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelGVDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelHeliDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelLSDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelRegistrationID": {
+      "maxLength": 8,
+      "type": "string"
+    },
+    "modelSFDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "modelTelemetryDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "moduleData": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_ModuleData"
+      },
+      "maxProperties": 2,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "noGlobalFunctions": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "points": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_signed_8"
+      },
+      "maxProperties": 512,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "potsWarnEnabled": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "potsWarnMode": {
+      "enum": [
+        "WARN_OFF",
+        "WARN_MANUAL",
+        "WARN_AUTO"
+      ],
+      "type": "string"
+    },
+    "potsWarnPosition": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_signed_8"
+      },
+      "maxProperties": 16,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "radioGFDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "radioThemesDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "radioTrainerDisabled": {
+      "enum": [
+        "GLOBAL",
+        "OFF",
+        "ON"
+      ],
+      "type": "string"
+    },
+    "rfAlarms": {
+      "$ref": "#/$defs/struct_RFAlarmData"
+    },
+    "rssiAlarms": {
+      "$ref": "#/$defs/struct_RssiAlarmData"
+    },
+    "rssiSource": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_tele_sensor",
+      "x-edge16-custom-write": "w_tele_sensor"
+    },
+    "screenData": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_CustomScreenData"
+      },
+      "maxProperties": 10,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "scriptsData": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_ScriptData"
+      },
+      "maxProperties": 9,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "semver": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": null,
+      "x-edge16-custom-write": "w_semver"
+    },
+    "showInstanceIds": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "swashR": {
+      "$ref": "#/$defs/struct_SwashRingData"
+    },
+    "switchNames": {
+      "items": {
+        "$ref": "#/$defs/struct_cfsNameConfig"
+      },
+      "type": "array"
+    },
+    "switchWarning": {
+      "items": {
+        "$ref": "#/$defs/struct_swtchWarn"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "switchWarningState": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_swtchWarn",
+      "x-edge16-custom-write": null
+    },
+    "telemetryProtocol": {
+      "maximum": 7,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "telemetrySensors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_TelemetrySensor"
+      },
+      "maxProperties": 99,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "thrTraceSrc": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Custom Edge16 YAML field; exact surface syntax is implemented by firmware read/write hooks.",
+      "x-edge16-custom-read": "r_thrSrc",
+      "x-edge16-custom-write": "w_thrSrc"
+    },
+    "thrTrim": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "thrTrimSw": {
+      "maximum": 7,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "throttleReversed": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "timers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_TimerData"
+      },
+      "maxProperties": 3,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "trainerData": {
+      "$ref": "#/$defs/struct_TrainerModuleData"
+    },
+    "trimInc": {
+      "maximum": 3,
+      "minimum": -4,
+      "type": "integer"
+    },
+    "usbJoystickCh": {
+      "additionalProperties": {
+        "$ref": "#/$defs/struct_USBJoystickChData"
+      },
+      "maxProperties": 26,
+      "propertyNames": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "usbJoystickCircularCut": {
+      "maximum": 15,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "usbJoystickExtMode": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "usbJoystickIfMode": {
+      "enum": [
+        "JOYSTICK",
+        "GAMEPAD",
+        "MULTIAXIS"
+      ],
+      "type": "string"
+    },
+    "varioData": {
+      "$ref": "#/$defs/struct_VarioData"
+    },
+    "view": {
+      "maximum": 255,
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "Edge16 tx16smk3 model YAML schema",
+  "type": "object",
+  "x-edge16-generated-at": "2026-05-25T09:29:10.312541Z",
+  "x-edge16-generated-from-commit": "644d2ea101d31100e3ac7b4aa1463328c364d1ea",
+  "x-edge16-root": "model",
+  "x-edge16-schema-format-version": 1,
+  "x-edge16-schema-release-version": "1.0",
+  "x-edge16-target": "tx16smk3"
+}

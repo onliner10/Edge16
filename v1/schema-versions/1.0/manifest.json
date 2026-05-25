@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-05-25T09:29:10.312541Z",
+  "generatedFromCommit": "644d2ea101d31100e3ac7b4aa1463328c364d1ea",
+  "manifestVersion": 1,
+  "schemaFormatVersion": 1,
+  "schemaReleaseVersion": "1.0",
+  "targets": {
+    "tx16s": {
+      "model": {
+        "path": "tx16s/model.schema.json",
+        "url": "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/1.0/tx16s/model.schema.json"
+      },
+      "radio": {
+        "path": "tx16s/radio.schema.json",
+        "url": "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/1.0/tx16s/radio.schema.json"
+      }
+    },
+    "tx16smk3": {
+      "model": {
+        "path": "tx16smk3/model.schema.json",
+        "url": "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/1.0/tx16smk3/model.schema.json"
+      },
+      "radio": {
+        "path": "tx16smk3/radio.schema.json",
+        "url": "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas/v1/schema-versions/1.0/tx16smk3/radio.schema.json"
+      }
+    }
+  }
+}
