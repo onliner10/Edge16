@@ -52,8 +52,9 @@ The workflow `.github/workflows/deploy_yaml_assistant_worker.yml` is manual-only
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
+- Optional first-run workflow input: `workers_dev_subdomain`
 
-Then run the workflow from GitHub Actions.
+Then run the workflow from GitHub Actions. If the Cloudflare account does not yet have a workers.dev subdomain, provide the `workers_dev_subdomain` workflow input, for example `onliner10-edge16`. The deployed Worker URL will then be similar to `https://edge16-yaml-assistant.<subdomain>.workers.dev/`.
 
 ## Privacy
 

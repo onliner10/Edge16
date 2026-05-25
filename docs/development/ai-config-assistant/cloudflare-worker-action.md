@@ -35,6 +35,7 @@ GitHub Actions deploy:
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
 2. Run `.github/workflows/deploy_yaml_assistant_worker.yml` manually.
+3. If the Cloudflare account has no workers.dev subdomain yet, set the workflow input `workers_dev_subdomain`, for example `onliner10-edge16`.
 
 ## Custom GPT Action setup
 
