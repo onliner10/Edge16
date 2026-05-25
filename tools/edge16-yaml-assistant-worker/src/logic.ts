@@ -1,5 +1,4 @@
-import type { AnySchema } from "ajv";
-import Ajv2020 from "ajv/dist/2020";
+import { Validator, type Schema } from "@cfworker/json-schema";
 import { parse as parseYaml } from "yaml";
 
 const SCHEMA_BASE_URL = "https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas";
@@ -227,12 +226,12 @@ async function resolveSchema(text: string, request: AssistantRequest, detected: 
 }
 
 function validateData(schema: unknown, data: unknown): string[] {
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const validate = ajv.compile(schema as AnySchema);
-  if (validate(data)) return [];
-  return (validate.errors ?? []).map((error) => {
-    const path = error.instancePath || "<root>";
-    return `${path}: ${error.message ?? "schema validation failed"}`;
+  const validator = new Validator(schema as Schema, "2020-12", false);
+  const result = validator.validate(data);
+  if (result.valid) return [];
+  return result.errors.map((error) => {
+    const path = error.instanceLocation || "#";
+    return `${path}: ${error.error}`;
   });
 }
 
