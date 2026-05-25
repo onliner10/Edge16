@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Edge16 YAML Schemas
+  version: 1.0.0
+  description: Fetch published Edge16 YAML JSON Schemas from GitHub raw content.
+servers:
+  - url: https://raw.githubusercontent.com/onliner10/Edge16/yaml-schemas
+paths:
+  /v1/latest/manifest.json:
+    get:
+      operationId: getLatestManifest
+      summary: Get latest Edge16 YAML schema manifest
+      description: Returns the latest published Edge16 YAML schema manifest.
+      responses:
+        "200":
+          description: Latest schema manifest JSON.
+  /v1/latest/{target}/{root}.schema.json:
+    get:
+      operationId: getLatestSchema
+      summary: Get latest Edge16 YAML schema
+      description: Returns the latest schema JSON for a target and YAML root.
+      parameters:
+        - name: target
+          in: path
+          required: true
+          description: Edge16 radio target.
+          schema:
+            type: string
+            enum:
+              - tx16s
+              - tx16smk3
+        - name: root
+          in: path
+          required: true
+          description: YAML root kind.
+          schema:
+            type: string
+            enum:
+              - model
+              - radio
+      responses:
+        "200":
+          description: Edge16 JSON Schema document.
+  /v1/schema-versions/{schemaVersion}/{target}/{root}.schema.json:
+    get:
+      operationId: getVersionedSchema
+      summary: Get versioned Edge16 YAML schema
+      description: Returns a versioned schema JSON for a target and YAML root.
+      parameters:
+        - name: schemaVersion
+          in: path
+          required: true
+          description: Edge16 YAML schema release version, for example 1.0.
+          schema:
+            type: string
+            pattern: "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        - name: target
+          in: path
+          required: true
+          description: Edge16 radio target.
+          schema:
+            type: string
+            enum:
+              - tx16s
+              - tx16smk3
+        - name: root
+          in: path
+          required: true
+          description: YAML root kind.
+          schema:
+            type: string
+            enum:
+              - model
+              - radio
+      responses:
+        "200":
+          description: Edge16 JSON Schema document.

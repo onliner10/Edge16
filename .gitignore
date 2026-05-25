@@ -37,6 +37,7 @@ CMakeUserPresets.json
 _deps
 _wasi_sdk_fetch
 *.pyc
+node_modules/
 
 # MkDocs
 /site/

@@ -21,4 +21,5 @@ module workflows unless Edge16 product support has explicitly changed.
 | `release-drafter.yml` | Drafts Edge16 releases and attaches only Edge16 release artifacts. |
 | `validate_fw_json.yml` | Enforces that `fw.json` lists exactly TX16S MK2 and TX16S MK3. |
 | `yaml_schemas.yml` | Publishes generated YAML JSON Schemas to the `yaml-schemas` branch for AI/editor lookup. |
+| `deploy_yaml_assistant_worker.yml` | Manual-only Cloudflare Worker deploy for the Custom GPT YAML assistant Action. |
 | `sync_repos.yml` | Manual-only destructive upstream sync; not part of release CI. |
