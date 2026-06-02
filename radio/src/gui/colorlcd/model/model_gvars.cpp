@@ -63,7 +63,7 @@ class GVarButton : public ListLineButton
 {
  public:
   GVarButton(Window* parent, uint8_t gvar) :
-      ListLineButton(parent, gvar)
+      ListLineButton(parent, gvar, LineDependencies::LiveValues)
   {
     padAll(PAD_ZERO);
     setHeight(BTN_H);
@@ -94,9 +94,9 @@ class GVarButton : public ListLineButton
   char valueTexts[MAX_FLIGHT_MODES][16] = {};
   bool smallValueText[MAX_FLIGHT_MODES] = {};
 
-  int numFlightModes() { return modelFMEnabled() ? MAX_FLIGHT_MODES : 1; }
+  int numFlightModes() const { return modelFMEnabled() ? MAX_FLIGHT_MODES : 1; }
 
-  void onLoadedCheckEvents(LiveWindow& live) override
+  void onLinePresentationSync(LiveWindow& live) override
   {
     bool changed = false;
     if (modelFMEnabled()) {
@@ -162,62 +162,24 @@ class GVarButton : public ListLineButton
     }
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-      return false;
-    }
-
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return false;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const lv_font_t* xsFont = getFont(FONT(XS));
-    label.font = stdFont;
-    drawText(layer, objCoords, label, PAD_TINY, GVAR_NM_Y, GVAR_NAME_SIZE,
-             EdgeTxStyles::STD_FONT_HEIGHT, nameText, LV_TEXT_ALIGN_LEFT);
+    view.text(PAD_TINY, GVAR_NM_Y, GVAR_NAME_SIZE,
+              EdgeTxStyles::STD_FONT_HEIGHT, nameText);
 
     for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
       coord_t x = (flightMode % GVAR_COLS) * GVAR_VAL_W +
                   GVAR_NAME_SIZE + PAD_TINY * 2;
       coord_t y = (flightMode / GVAR_COLS) * GVAR_VAL_H + GVAR_YO;
       if (modelFMEnabled() && flightMode == currentFlightMode) {
-        lv_draw_rect_dsc_t rect;
-        lv_draw_rect_dsc_init(&rect);
-        rect.bg_color = makeLvColor(COLOR_THEME_ACTIVE);
-        rect.bg_opa = LV_OPA_COVER;
-        lv_area_t rectArea = {objCoords.x1 + x, objCoords.y1 + y,
-                              objCoords.x1 + x + GVAR_VAL_W - 1,
-                              objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
-        lv_draw_rect(layer, &rect, &rectArea);
+        view.fill(x, y, GVAR_VAL_W, EdgeTxStyles::STD_FONT_HEIGHT,
+                  LineView::Color::Active);
       }
-      label.font = smallValueText[flightMode] ? xsFont : stdFont;
-      drawText(layer, objCoords, label, x, y, GVAR_VAL_W,
-               EdgeTxStyles::STD_FONT_HEIGHT, valueTexts[flightMode],
-               LV_TEXT_ALIGN_CENTER);
+      view.text(x, y, GVAR_VAL_W, EdgeTxStyles::STD_FONT_HEIGHT,
+                valueTexts[flightMode],
+                smallValueText[flightMode] ? FONT(XS) : 0,
+                LV_TEXT_ALIGN_CENTER);
     }
-    return false;
-  }
-
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                coord_t h, const char* text, lv_text_align_t align)
-  {
-    if (!text || text[0] == '\0') return;
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + h - 1};
-    label.align = align;
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
   }
 
   void updateAutomationText()

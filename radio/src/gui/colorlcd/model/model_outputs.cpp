@@ -53,12 +53,12 @@ class OutputLineButton : public ListLineButton
 {
  public:
   OutputLineButton(Window* parent, uint8_t channel) :
-      ListLineButton(parent, channel)
+      ListLineButton(parent, channel, LineDependencies::LiveValues)
   {
     setHeight(CH_LINE_H);
     padAll(PAD_ZERO);
 
-    refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { refresh(); });
+    refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { requestLineUpdate(); });
   }
 
   void onLineLoaded() override
@@ -73,13 +73,29 @@ class OutputLineButton : public ListLineButton
     withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) == LV_EVENT_DRAW_MAIN_END && isLineReady()) {
-      drawRow(live, event);
+    view.text(SRC_X, SRC_Y, SRC_W, SRC_H, sourceText.data(),
+#if !NARROW_LAYOUT
+              sourceSmall ? FONT(XS) : 0, LV_TEXT_ALIGN_LEFT,
+              LineView::Color::Default, sourceSmall ? -PAD_THREE : 0);
+#else
+              sourceSmall ? FONT(XS) : 0);
+#endif
+    view.text(MIN_X, MIN_Y, MIN_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              minText.data(), minBold ? FONT(BOLD) : 0,
+              LV_TEXT_ALIGN_RIGHT);
+    view.text(MAX_X, MAX_Y, MAX_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              maxText.data(), maxBold ? FONT(BOLD) : 0,
+              LV_TEXT_ALIGN_RIGHT);
+    view.text(OFF_X, OFF_Y, OFF_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              offsetText.data(), 0, LV_TEXT_ALIGN_RIGHT);
+    view.text(CTR_X, CTR_Y, CTR_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              centerText.data(), 0, LV_TEXT_ALIGN_RIGHT);
+    if (revertVisible) {
+      view.text(REV_X, REV_Y, REV_W, EdgeTxStyles::STD_FONT_HEIGHT,
+                LV_SYMBOL_SHUFFLE, 0, LV_TEXT_ALIGN_CENTER);
     }
-    return false;
   }
 
   void onRefresh() override
@@ -126,7 +142,7 @@ class OutputLineButton : public ListLineButton
 
   bool isActive() const override { return false; }
 
-  void onLoadedCheckEvents(LiveWindow& live) override
+  void onLinePresentationSync(LiveWindow& live) override
   {
     int newValue = getChannelOutput(index);
     if (value != newValue) {
@@ -190,70 +206,6 @@ class OutputLineButton : public ListLineButton
 #endif
   }
 
-  void drawLabel(lv_layer_t* layer, const lv_area_t& objCoords,
-                 lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                 coord_t h, const char* text,
-                 lv_text_align_t align = LV_TEXT_ALIGN_LEFT)
-  {
-    if (!text || text[0] == '\0') return;
-
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + h - 1};
-    label.align = align;
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
-  }
-
-  void drawRow(LiveWindow& live, lv_event_t* event)
-  {
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const lv_font_t* xsFont = getFont(FONT(XS));
-    const lv_font_t* boldFont = getFont(FONT(BOLD));
-
-    label.font = sourceSmall ? xsFont : stdFont;
-#if !NARROW_LAYOUT
-    label.line_space = sourceSmall ? -PAD_THREE : 0;
-#endif
-    drawLabel(layer, objCoords, label, SRC_X, SRC_Y, SRC_W, SRC_H,
-              sourceText.data());
-#if !NARROW_LAYOUT
-    label.line_space = 0;
-#endif
-
-    label.font = minBold ? boldFont : stdFont;
-    drawLabel(layer, objCoords, label, MIN_X, MIN_Y, MIN_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, minText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-    label.font = maxBold ? boldFont : stdFont;
-    drawLabel(layer, objCoords, label, MAX_X, MAX_Y, MAX_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, maxText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-
-    label.font = stdFont;
-    drawLabel(layer, objCoords, label, OFF_X, OFF_Y, OFF_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, offsetText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-    drawLabel(layer, objCoords, label, CTR_X, CTR_Y, CTR_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, centerText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-    if (revertVisible) {
-      drawLabel(layer, objCoords, label, REV_X, REV_Y, REV_W,
-                EdgeTxStyles::STD_FONT_HEIGHT, LV_SYMBOL_SHUFFLE,
-                LV_TEXT_ALIGN_CENTER);
-    }
-  }
-
   StaticIcon* curve = nullptr;
   int value = -10000;
   bool minBold = false;
@@ -313,25 +265,25 @@ void ModelOutputsPage::build(Window* window)
         output->curve = 0;
         output->symetrical = 0;
         storageDirty(EE_MODEL);
-        btn->refresh();
+        btn->requestLineUpdate();
         publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_STICKS_TO_OFS, [=]() {
         copySticksToOffset(ch);
         storageDirty(EE_MODEL);
-        btn->refresh();
+        btn->requestLineUpdate();
         publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_TRIMS_TO_OFS, [=]() {
         copyTrimsToOffset(ch);
         storageDirty(EE_MODEL);
-        btn->refresh();
+        btn->requestLineUpdate();
         publishModelOutputsChanged();
       });
       menu->addLine(STR_COPY_MIN_MAX_TO_OUTPUTS, [=]() {
         copyMinMaxToOutputs(ch);
         storageDirty(EE_MODEL);
-        btn->refresh();
+        btn->requestLineUpdate();
         publishModelOutputsChanged();
       });
       return 0;
@@ -342,7 +294,7 @@ void ModelOutputsPage::build(Window* window)
 void ModelOutputsPage::editOutput(uint8_t channel, OutputLineButton* btn)
 {
   (new OutputEditWindow(channel))->setCloseHandler([=]() {
-    btn->refresh();
+    btn->requestLineUpdate();
     publishModelOutputsChanged();
   });
 }

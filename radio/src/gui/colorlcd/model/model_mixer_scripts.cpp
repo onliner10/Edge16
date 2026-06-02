@@ -173,7 +173,7 @@ class ScriptLineButton : public ListLineButton
   ScriptLineButton(Window* parent,
                    const ScriptData& scriptData,
                    const ScriptInternalData* runtimeData, uint8_t index) :
-      ListLineButton(parent, index),
+      ListLineButton(parent, index, LineDependencies::LiveValues),
       scriptData(scriptData),
       runtimeData(runtimeData)
   {
@@ -212,36 +212,18 @@ class ScriptLineButton : public ListLineButton
     withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-      return false;
-    }
-
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return false;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-
     constexpr coord_t col0 = PAD_TINY;
     constexpr coord_t col1 = col0 + 40 + PAD_SMALL;
     constexpr coord_t col2 = col1 + 84 + PAD_SMALL;
     constexpr coord_t col3 = col2 + 84 + PAD_SMALL;
     constexpr coord_t y = PAD_SMALL;
-    drawText(layer, objCoords, label, col0, y, 40, luaText);
-    drawText(layer, objCoords, label, col1, y, 84, nameText);
-    drawText(layer, objCoords, label, col2, y, 84, fileText);
-    drawText(layer, objCoords, label, col3, y, ListLineButton::GRP_W - col3,
-             stateText);
-    return false;
+    view.text(col0, y, 40, EdgeTxStyles::STD_FONT_HEIGHT, luaText);
+    view.text(col1, y, 84, EdgeTxStyles::STD_FONT_HEIGHT, nameText);
+    view.text(col2, y, 84, EdgeTxStyles::STD_FONT_HEIGHT, fileText);
+    view.text(col3, y, ListLineButton::GRP_W - col3,
+              EdgeTxStyles::STD_FONT_HEIGHT, stateText);
   }
 
   bool isActive() const override { return false; }
@@ -253,19 +235,6 @@ class ScriptLineButton : public ListLineButton
   {
     dest[0] = '\0';
     strAppend(dest, text ? text : "", N - 1);
-  }
-
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                const char* text)
-  {
-    if (!text || text[0] == '\0') return;
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
-    label.align = LV_TEXT_ALIGN_LEFT;
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
   }
 
   void updateAutomationText()

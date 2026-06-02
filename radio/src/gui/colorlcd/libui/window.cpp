@@ -142,6 +142,8 @@ std::list<Window::DeferredMutation> Window::deferredMutationsReady;
 std::list<Window::DeferredMutation> Window::deferredMutationsPending;
 
 static constexpr coord_t UI_SCROLL_PRELOAD_MARGIN = LCD_H / 2;
+static bool visibleContentRealizationPending = true;
+static bool scrollActivityPending = false;
 
 Window* Window::topWindow() { return Layer::back(); }
 
@@ -234,6 +236,7 @@ void Window::eventHandler(lv_event_t* e)
             lv_coord_t scroll_x = lv_obj_get_scroll_x(target);
             lv_coord_t scroll_y = lv_obj_get_scroll_y(target);
             if (scrollHandler) scrollHandler(scroll_x, scroll_y);
+            recordScrollActivity();
 
           } break;
           case LV_EVENT_CLICKED:
@@ -306,6 +309,8 @@ Window::Window(Window* parent, const rect_t& rect, LvglCreate objConstruct) :
   if (parent) {
     parent->addChild(this);
   }
+
+  requestVisibleContentRealization();
 }
 
 Window::~Window()
@@ -1155,6 +1160,7 @@ void Window::moveBackground()
 void Window::scrollToY(coord_t y, lv_anim_enable_t anim)
 {
   withLive([&](LiveWindow& live) { lv_obj_scroll_to_y(live.lvobj(), y, anim); });
+  recordScrollActivity();
 }
 
 void Window::scrollbar()
@@ -1209,6 +1215,31 @@ bool Window::deferUiSideWorkIfNeeded()
   return lvglShouldDeferUiSideWork();
 }
 
+void Window::requestVisibleContentRealization()
+{
+  visibleContentRealizationPending = true;
+}
+
+void Window::recordScrollActivity()
+{
+  visibleContentRealizationPending = true;
+  scrollActivityPending = true;
+}
+
+bool Window::consumeVisibleContentRealizationRequest()
+{
+  const bool pending = visibleContentRealizationPending;
+  visibleContentRealizationPending = false;
+  return pending;
+}
+
+bool Window::consumeScrollActivityRequest()
+{
+  const bool pending = scrollActivityPending;
+  scrollActivityPending = false;
+  return pending;
+}
+
 void Window::realizeVisibleContent()
 {
   withLive([&](LiveWindow& live) {
@@ -1222,7 +1253,7 @@ void Window::realizeVisibleContent()
 
     if (!loadVisibleIfNeeded(live, displayCandidate)) return;
 
-    forEachChildSnapshot([](Window* child) { child->realizeVisibleContent(); });
+    onLiveRealizeVisibleContent(live);
   });
 }
 
@@ -1243,6 +1274,11 @@ void Window::onLiveVisibilityChanged(Window::LiveWindow&, bool)
 void Window::onLiveCheckEvents(Window::LiveWindow&)
 {
   forEachChildSnapshot([](Window* child) { child->checkEvents(); });
+}
+
+void Window::onLiveRealizeVisibleContent(Window::LiveWindow&)
+{
+  forEachChildSnapshot([](Window* child) { child->realizeVisibleContent(); });
 }
 
 void Window::onEvent(event_t event)

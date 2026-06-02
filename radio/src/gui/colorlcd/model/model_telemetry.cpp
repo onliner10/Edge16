@@ -232,7 +232,7 @@ class SensorButton : public ListLineButton
 {
  public:
   SensorButton(Window* parent, const rect_t& rect, uint8_t index) :
-      ListLineButton(parent, index)
+      ListLineButton(parent, index, LineDependencies::LiveValues)
   {
     padAll(PAD_ZERO);
     setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL);
@@ -308,7 +308,7 @@ class SensorButton : public ListLineButton
     }
   }
 
-  void onLineLiveUpdate(LiveWindow& live) override
+  void onLinePresentationSync(LiveWindow&) override
   {
     updateSensorLiveState();
   }
@@ -346,47 +346,22 @@ class SensorButton : public ListLineButton
     updateSensorLiveState();
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-      return false;
-    }
-
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return false;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    label.font = showId ? getFont(FONT(XS)) : stdFont;
-    label.align = LV_TEXT_ALIGN_CENTER;
-    drawText(layer, objCoords, label, PAD_TINY, PAD_TINY, TSStyle::NUM_W,
-             EdgeTxStyles::STD_FONT_HEIGHT, numText);
+    view.text(PAD_TINY, PAD_TINY, TSStyle::NUM_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, numText,
+              showId ? FONT(XS) : 0, LV_TEXT_ALIGN_CENTER);
     if (showId) {
-      label.font = getFont(FONT(XXS));
-      drawText(layer, objCoords, label, PAD_TINY, TSStyle::ID_Y,
-               TSStyle::NUM_W, TSStyle::ID_H, idText);
+      view.text(PAD_TINY, TSStyle::ID_Y, TSStyle::NUM_W, TSStyle::ID_H,
+                idText, FONT(XXS), LV_TEXT_ALIGN_CENTER);
     }
 
-    label.font = stdFont;
-    label.align = LV_TEXT_ALIGN_LEFT;
-    drawText(layer, objCoords, label, TSStyle::NUM_W + PAD_SMALL,
-             PAD_MEDIUM / 2, TSStyle::NAME_W, EdgeTxStyles::STD_FONT_HEIGHT,
-             nameText);
-
-    label.color = valueOld ? makeLvColor(COLOR_THEME_WARNING)
-                           : lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    drawText(layer, objCoords, label,
-             TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
-             PAD_MEDIUM / 2, LCD_W, EdgeTxStyles::STD_FONT_HEIGHT,
-             valString.c_str());
-    return false;
+    view.text(TSStyle::NUM_W + PAD_SMALL, PAD_MEDIUM / 2, TSStyle::NAME_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, nameText);
+    view.text(TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
+              PAD_MEDIUM / 2, LCD_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              valString.c_str(), 0, LV_TEXT_ALIGN_LEFT,
+              valueOld ? LineView::Color::Warning : LineView::Color::Default);
   }
 
   void updateAutomationText()
@@ -399,18 +374,6 @@ class SensorButton : public ListLineButton
              unsigned(freshVisible), unsigned(valueOld), unsigned(lastActive));
     setAutomationText(text);
 #endif
-  }
-
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                coord_t h, const char* text)
-  {
-    if (!text || text[0] == '\0') return;
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + h - 1};
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
   }
 
   void onRefresh() override
@@ -458,7 +421,10 @@ bool modelTelemetrySensorLiveUpdateDoesNotRefreshForTest()
     }
 
     void initForTest() { delayedInit(); }
-    void liveUpdateForTest() { runLiveValueUpdate(); }
+    void publishLiveValuesForTest()
+    {
+      UiEventHub::emitNow(UiTopic::LiveChannelValues);
+    }
   };
 
   auto mainWindow = MainWindow::instance();
@@ -477,8 +443,8 @@ bool modelTelemetrySensorLiveUpdateDoesNotRefreshForTest()
   }
 
   button->initForTest();
-  button->liveUpdateForTest();
-  button->liveUpdateForTest();
+  button->publishLiveValuesForTest();
+  button->publishLiveValuesForTest();
 
   button->deleteLater();
   mainWindow->runMainLoopTick();

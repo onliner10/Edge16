@@ -39,6 +39,8 @@
 
 MainWindow* MainWindow::_instance = nullptr;
 
+static constexpr uint8_t UI_SCROLL_LIVE_VALUE_DEFER_TICKS = 3;
+
 #if defined(SIMU)
 static bool forceBackgroundCanvasCreateFailure = false;
 void etxCreateForceObjectAllocationFailureForTest(bool force);
@@ -179,13 +181,24 @@ uint32_t MainWindow::runUiTick(TickMode mode)
   UiEventHub::tickLiveValues();
   UiEventHub::flush();
 
+  const bool scrollActivity = Window::consumeScrollActivityRequest();
+  if (scrollActivity) {
+    UiEventHub::deferLiveValuesForUiTicks(
+        UI_SCROLL_LIVE_VALUE_DEFER_TICKS);
+  }
+
+  const bool realizeVisibleContent =
+      Window::consumeVisibleContentRealizationRequest();
+
   auto opaque = Window::firstOpaque();
   if (opaque) {
+    if (realizeVisibleContent) opaque->realizeVisibleContent();
     opaque->checkEvents();
   }
 
-  forEachChildSnapshot([](Window* child) {
+  forEachChildSnapshot([&](Window* child) {
     if (child->isBubblePopup()) {
+      if (realizeVisibleContent) child->realizeVisibleContent();
       child->checkEvents();
     }
   });

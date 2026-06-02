@@ -58,6 +58,7 @@ class UiEventHub
   static void emitNow(UiTopic topic, uint32_t data = 0);
   static void flush();
   static void tickLiveValues();
+  static void deferLiveValuesForUiTicks(uint8_t ticks);
   static UiLiveSubscription registerLiveValueConsumer();
 
 #if defined(UNIT_TEST) || defined(SIMU)

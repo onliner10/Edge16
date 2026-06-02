@@ -27,10 +27,13 @@
 
 bool listLineButtonMissingFmBufferLeavesNoCanvasForTest();
 bool listLineButtonDirectTextSettersDoNotRequireLabelsForTest();
+bool listLineInputMixRowsDoNotSubscribeLiveValuesForTest();
 bool listLineGroupLabelAllocationFailureFailsClosedForTest();
 bool listLinePageLookupRequiresGroupAndLineForTest();
 bool listLineButtonRefreshBeforeVisibleLoadRunsOnFirstLoadForTest();
+bool listLineButtonRealizeVisibleContentLoadsLineForTest();
 bool listLineButtonRefreshFromLiveUpdateDefersForTest();
+bool listLineButtonOffscreenCheckEventsUnsubscribesForTest();
 
 TEST(ColorListLineButton, FlightModeCanvasAllocationFailureLeavesNoCanvas)
 {
@@ -56,6 +59,22 @@ TEST(ColorListLineButton, DirectTextSettersDoNotRequireLabels)
   if (pid == 0) {
     alarm(2);
     _exit(listLineButtonDirectTextSettersDoNotRequireLabelsForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorListLineButton, InputMixRowsDoNotSubscribeLiveValues)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(listLineInputMixRowsDoNotSubscribeLiveValuesForTest() ? 0 : 1);
   }
 
   int status = 0;
@@ -113,6 +132,22 @@ TEST(ColorListLineButton, RefreshBeforeVisibleLoadRunsOnFirstLoad)
   EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
+TEST(ColorListLineButton, RealizeVisibleContentLoadsLine)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(listLineButtonRealizeVisibleContentLoadsLineForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
 TEST(ColorListLineButton, RefreshFromLiveUpdateDefers)
 {
   const pid_t pid = fork();
@@ -121,6 +156,22 @@ TEST(ColorListLineButton, RefreshFromLiveUpdateDefers)
   if (pid == 0) {
     alarm(2);
     _exit(listLineButtonRefreshFromLiveUpdateDefersForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorListLineButton, OffscreenCheckEventsUnsubscribes)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(listLineButtonOffscreenCheckEventsUnsubscribesForTest() ? 0 : 1);
   }
 
   int status = 0;

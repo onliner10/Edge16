@@ -45,7 +45,7 @@ class FunctionLineButton : public ListLineButton
 #endif
 
   void onLineLoaded() override;
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
+  void describeLine(LineView& view) const override;
 
   void onRefresh() override;
   bool functionEnabled() const;
@@ -72,9 +72,6 @@ class FunctionLineButton : public ListLineButton
   CustomFunctionData *cfn;
   const char *prefix;
 
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                const char* text);
   void updateAutomationText();
 
   char sfNameText[16] = {};

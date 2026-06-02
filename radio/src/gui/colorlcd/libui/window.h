@@ -571,6 +571,7 @@ class Window
   virtual bool onLiveLongPress(LiveWindow& live);
   virtual void onLiveVisibilityChanged(LiveWindow& live, bool visible);
   virtual void onLiveCheckEvents(LiveWindow& live);
+  virtual void onLiveRealizeVisibleContent(LiveWindow& live);
   bool isLiveOnScreen(const LiveWindow& live) const;
   bool isLiveNearScreen(const LiveWindow& live, coord_t margin) const;
   void updateLiveVisibility(LiveWindow& live, bool visible);
@@ -756,6 +757,10 @@ class Window
   static void asyncDelayLoader(void* userData);
   bool loadVisibleIfNeeded(const LiveWindow& live, bool displayCandidate);
   bool deferUiSideWorkIfNeeded();
+  static void requestVisibleContentRealization();
+  static void recordScrollActivity();
+  static bool consumeVisibleContentRealizationRequest();
+  static bool consumeScrollActivityRequest();
   void delayLoad();
   void delayLoadWhenVisible();
   virtual void delayedInit() {}

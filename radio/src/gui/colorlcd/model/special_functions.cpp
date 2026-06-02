@@ -50,7 +50,7 @@ static const char* _failsafe_module[] = {
 FunctionLineButton::FunctionLineButton(Window* parent, const rect_t& rect,
                                        CustomFunctionData* cfn,
                                        uint8_t index, const char* prefix) :
-    ListLineButton(parent, index), cfn(cfn), prefix(prefix)
+    ListLineButton(parent, index, LineDependencies::LiveValues), cfn(cfn), prefix(prefix)
 {
   setHeight(FunctionsPage::SF_BUTTON_H);
   padAll(PAD_ZERO);
@@ -73,44 +73,13 @@ void FunctionLineButton::onLineLoaded()
 
 }
 
-bool FunctionLineButton::onLiveCustomEvent(LiveWindow& live, lv_event_t* event)
+void FunctionLineButton::describeLine(LineView& view) const
 {
-  if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-  if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-    return false;
-  }
-
-  lv_layer_t* layer = lv_event_get_layer(event);
-  if (!layer) return false;
-
-  lv_obj_t* obj = live.lvobj();
-  lv_area_t objCoords;
-  lv_obj_get_coords(obj, &objCoords);
-
-  lv_draw_label_dsc_t label;
-  lv_draw_label_dsc_init(&label);
-  label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-  label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-
-  drawText(layer, objCoords, label, NM_X, NM_Y, NM_W, sfNameText);
-  drawText(layer, objCoords, label, SW_X, SW_Y, SW_W, sfSwitchText);
-  drawText(layer, objCoords, label, FN_X, FN_Y, FN_W, sfFuncText);
-  label.align = LV_TEXT_ALIGN_RIGHT;
-  drawText(layer, objCoords, label, RP_X, RP_Y, RP_W, sfRepeatText);
-  return false;
-}
-
-void FunctionLineButton::drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                                  lv_draw_label_dsc_t& label, coord_t x,
-                                  coord_t y, coord_t w, const char* text)
-{
-  if (!text || text[0] == '\0') return;
-  lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                      objCoords.x1 + x + w - 1,
-                      objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
-  label.text = text;
-  lv_draw_label(layer, &label, &coords);
-  label.align = LV_TEXT_ALIGN_LEFT;
+  view.text(NM_X, NM_Y, NM_W, EdgeTxStyles::STD_FONT_HEIGHT, sfNameText);
+  view.text(SW_X, SW_Y, SW_W, EdgeTxStyles::STD_FONT_HEIGHT, sfSwitchText);
+  view.text(FN_X, FN_Y, FN_W, EdgeTxStyles::STD_FONT_HEIGHT, sfFuncText);
+  view.text(RP_X, RP_Y, RP_W, EdgeTxStyles::STD_FONT_HEIGHT, sfRepeatText, 0,
+            LV_TEXT_ALIGN_RIGHT);
 }
 
 void FunctionLineButton::updateAutomationText()
@@ -137,7 +106,7 @@ void FunctionLineButton::setFunctionEnabled(bool enabled)
   setDirty();
   if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT || CFN_FUNC(cfn) == FUNC_RGB_LED)
     LUA_LOAD_MODEL_SCRIPTS();
-  refresh();
+  requestLineUpdate();
 }
 
 void FunctionLineButton::onRefresh()
@@ -800,7 +769,7 @@ void FunctionsPage::editSpecialFunction(Window* window, uint8_t index,
     CustomFunctionData* cfn = customFunctionData(index);
     if (cfn->swtch != 0) {
       focusIndex = index;
-      buttonPtr->refresh();
+      buttonPtr->requestLineUpdate();
       if (functions == g_model.customFn) publishSpecialFunctionsChanged();
       return;  // Skip full rebuild
     }

@@ -218,7 +218,8 @@ class FlightModeEdit : public Page
 class FlightModeBtn : public ListLineButton
 {
  public:
-  FlightModeBtn(Window* parent, int index) : ListLineButton(parent, index)
+  FlightModeBtn(Window* parent, int index) :
+      ListLineButton(parent, index, LineDependencies::LiveValues)
   {
     padAll(PAD_ZERO);
     setHeight(BTN_H);
@@ -237,29 +238,30 @@ class FlightModeBtn : public ListLineButton
 
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) == LV_EVENT_DRAW_MAIN_END && isLineReady()) {
-      drawRow(live, event);
+    view.text(FMID_X, FMID_Y, FMID_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              fmIDText.data());
+    view.text(NAME_X, NAME_Y, NAME_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              fmNameText.data(), FONT(XS));
+    view.text(SWTCH_X, SWTCH_Y, SWTCH_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              fmSwitchText.data());
+
+    for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
+      view.text(TRIM_X + i * TRIM_W, TRIM_Y, TRIM_W, TRIM_H,
+                fmTrimModeText[i].data(), 0, LV_TEXT_ALIGN_CENTER);
+      view.text(TRIM_X + i * TRIM_W, TRIM_Y + TRIM_H, TRIM_W, TRIM_H,
+                fmTrimValueText[i].data(), FONT(XS), LV_TEXT_ALIGN_CENTER);
     }
-    return false;
+
+    view.text(FADE_X, FADE_Y, FADE_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              fmFadeInText.data(), 0, LV_TEXT_ALIGN_RIGHT);
+    view.text(FADE_X + FADE_W + PAD_TINY, FADE_Y, FADE_W,
+              EdgeTxStyles::STD_FONT_HEIGHT, fmFadeOutText.data(), 0,
+              LV_TEXT_ALIGN_RIGHT);
   }
 
   bool isActive() const override { return (getFlightMode() == index); }
-
-  uint16_t liveValueUpdatePeriodMs() const override { return 200; }
-
-  bool needsLiveValueUpdate() const override
-  {
-    if (isActive() != lastActive) return true;
-    for (int t = 0; t < keysGetMaxTrims() && t < MAX_FMTRIMS; t += 1) {
-      const auto& trim = g_model.flightModeData[index].trim[t];
-      if (lastTrim[t] != trim.value || lastTrimMode[t] != trim.mode)
-        return true;
-    }
-    return false;
-  }
 
   void setTrimValue(uint8_t t)
   {
@@ -276,7 +278,7 @@ class FlightModeBtn : public ListLineButton
       fmTrimValueText[t][0] = '\0';
   }
 
-  void onLoadedCheckEvents(LiveWindow& live) override
+  void onLinePresentationSync(LiveWindow& live) override
   {
     if (!refreshing) {
       refreshing = true;
@@ -364,65 +366,6 @@ class FlightModeBtn : public ListLineButton
                          fm.fadeOut, PREC1, 0, nullptr, "s");
   }
 
-  void drawLabel(lv_layer_t* layer, const lv_area_t& objCoords,
-                 lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                 coord_t h, const char* text,
-                 lv_text_align_t align = LV_TEXT_ALIGN_LEFT)
-  {
-    if (!text || text[0] == '\0') return;
-
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + h - 1};
-
-    label.align = align;
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
-  }
-
-  void drawRow(LiveWindow& live, lv_event_t* event)
-  {
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const lv_font_t* xsFont = getFont(FONT(XS));
-    label.font = stdFont;
-
-    drawLabel(layer, objCoords, label, FMID_X, FMID_Y, FMID_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, fmIDText.data());
-    label.font = xsFont;
-    drawLabel(layer, objCoords, label, NAME_X, NAME_Y, NAME_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, fmNameText.data());
-    label.font = stdFont;
-    drawLabel(layer, objCoords, label, SWTCH_X, SWTCH_Y, SWTCH_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, fmSwitchText.data());
-
-    for (int i = 0; i < keysGetMaxTrims() && i < MAX_FMTRIMS; i += 1) {
-      drawLabel(layer, objCoords, label, TRIM_X + i * TRIM_W, TRIM_Y, TRIM_W,
-                TRIM_H, fmTrimModeText[i].data(), LV_TEXT_ALIGN_CENTER);
-      label.font = xsFont;
-      drawLabel(layer, objCoords, label, TRIM_X + i * TRIM_W, TRIM_Y + TRIM_H,
-                TRIM_W, TRIM_H, fmTrimValueText[i].data(),
-                LV_TEXT_ALIGN_CENTER);
-      label.font = stdFont;
-    }
-
-    drawLabel(layer, objCoords, label, FADE_X, FADE_Y, FADE_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, fmFadeInText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-    drawLabel(layer, objCoords, label, FADE_X + FADE_W + PAD_TINY, FADE_Y,
-              FADE_W, EdgeTxStyles::STD_FONT_HEIGHT, fmFadeOutText.data(),
-              LV_TEXT_ALIGN_RIGHT);
-  }
-
   bool refreshing = false;
   bool lastActive = false;
   int lastTrim[MAX_FMTRIMS] = {0};
@@ -458,7 +401,7 @@ void ModelFlightModesPage::build(Window* form)
 
     btn->setPressHandler([=]() {
       (new FlightModeEdit(i))->setCloseHandler([=]() {
-        btn->refresh();
+        btn->requestLineUpdate();
         publishModelFlightModesChanged();
       });
       return 0;

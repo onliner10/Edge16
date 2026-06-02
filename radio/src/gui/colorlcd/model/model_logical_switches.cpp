@@ -299,7 +299,7 @@ class LogicalSwitchButton : public ListLineButton
 {
  public:
   LogicalSwitchButton(Window* parent, int lsIndex) :
-      ListLineButton(parent, lsIndex)
+      ListLineButton(parent, lsIndex, LineDependencies::LiveValues)
   {
     setHeight(LS_BUTTON_H);
     padAll(PAD_ZERO);
@@ -313,42 +313,22 @@ class LogicalSwitchButton : public ListLineButton
     withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-      return false;
-    }
-
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return false;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_font_t* stdFont = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const lv_font_t* xsFont = getFont(FONT(XS));
-    const lv_font_t* boldFont = getFont(FONT(BOLD));
-
-    label.font = stdFont;
-    drawText(layer, objCoords, label, NM_X, NM_Y, NM_W, lsNameText);
-    label.font = funcBold ? boldFont : stdFont;
-    drawText(layer, objCoords, label, FN_X, FN_Y, FN_W, lsFuncText);
-    label.align = LV_TEXT_ALIGN_CENTER;
-    label.font = v1Bold ? boldFont : (v1Small ? xsFont : stdFont);
-    drawText(layer, objCoords, label, V1_X, V1_Y, V1_W, lsV1Text);
-    label.font = v2Bold ? boldFont : stdFont;
-    drawText(layer, objCoords, label, V2_X, V2_Y, V2_W, lsV2Text);
-    label.font = andBold ? boldFont : stdFont;
-    drawText(layer, objCoords, label, AND_X, AND_Y, AND_W, lsAndText);
-    label.font = stdFont;
-    drawText(layer, objCoords, label, DUR_X, DUR_Y, DUR_W, lsDurationText);
-    drawText(layer, objCoords, label, DEL_X, DEL_Y, DEL_W, lsDelayText);
-    return false;
+    view.text(NM_X, NM_Y, NM_W, EdgeTxStyles::STD_FONT_HEIGHT, lsNameText);
+    view.text(FN_X, FN_Y, FN_W, EdgeTxStyles::STD_FONT_HEIGHT, lsFuncText,
+              funcBold ? FONT(BOLD) : 0);
+    view.text(V1_X, V1_Y, V1_W, EdgeTxStyles::STD_FONT_HEIGHT, lsV1Text,
+              v1Bold ? FONT(BOLD) : (v1Small ? FONT(XS) : 0),
+              LV_TEXT_ALIGN_CENTER);
+    view.text(V2_X, V2_Y, V2_W, EdgeTxStyles::STD_FONT_HEIGHT, lsV2Text,
+              v2Bold ? FONT(BOLD) : 0, LV_TEXT_ALIGN_CENTER);
+    view.text(AND_X, AND_Y, AND_W, EdgeTxStyles::STD_FONT_HEIGHT, lsAndText,
+              andBold ? FONT(BOLD) : 0, LV_TEXT_ALIGN_CENTER);
+    view.text(DUR_X, DUR_Y, DUR_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              lsDurationText, 0, LV_TEXT_ALIGN_CENTER);
+    view.text(DEL_X, DEL_Y, DEL_W, EdgeTxStyles::STD_FONT_HEIGHT,
+              lsDelayText, 0, LV_TEXT_ALIGN_CENTER);
   }
 
   bool isActive() const override
@@ -356,7 +336,7 @@ class LogicalSwitchButton : public ListLineButton
     return getSwitch(SWSRC_FIRST_LOGICAL_SWITCH + index);
   }
 
-  void onLoadedCheckEvents(LiveWindow& live) override
+  void onLinePresentationSync(LiveWindow& live) override
   {
     LogicalSwitchData* ls = lswAddress(index);
     uint8_t lsFamily = lswFamily(ls->func);
@@ -490,18 +470,6 @@ class LogicalSwitchButton : public ListLineButton
     strAppend(dest, text ? text : "", N - 1);
   }
 
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                const char* text)
-  {
-    if (!text || text[0] == '\0') return;
-    lv_area_t coords = {objCoords.x1 + x, objCoords.y1 + y,
-                        objCoords.x1 + x + w - 1,
-                        objCoords.y1 + y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
-    label.text = text;
-    lv_draw_label(layer, &label, &coords);
-  }
-
   void updateAutomationText()
   {
 #if defined(SIMU)
@@ -613,7 +581,7 @@ void ModelLogicalSwitchesPage::build(Window* window)
             if (ls->func == LS_FUNC_NONE)
               rebuild(window);
             else
-              button->refresh();
+              button->requestLineUpdate();
           });
         });
         menu->addLine(STR_COPY, [=]() {

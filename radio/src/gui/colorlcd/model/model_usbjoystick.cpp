@@ -346,7 +346,7 @@ class USBChannelLineButton : public ListLineButton
 {
  public:
   USBChannelLineButton(Window* parent, uint8_t index) :
-      ListLineButton(parent, index)
+      ListLineButton(parent, index, LineDependencies::LiveValues)
   {
     setHeight(USBCH_LINE_HEIGHT);
 #if !NARROW_LAYOUT
@@ -571,5 +571,5 @@ void ModelUSBJoystickPage::editChannel(uint8_t channel,
                                        USBChannelLineButton* btn)
 {
   auto chedit = new USBChannelEditWindow(channel);
-  chedit->setCloseHandler([=]() { this->update(); btn->refresh(); });
+  chedit->setCloseHandler([=]() { this->update(); btn->requestLineUpdate(); });
 }

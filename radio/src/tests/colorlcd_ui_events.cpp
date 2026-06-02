@@ -111,6 +111,23 @@ TEST(ColorUiEvents, EventHubDefersPublishDuringFlushUntilNextFlush)
   EXPECT_EQ(lastData, 20u);
 }
 
+TEST(ColorUiEvents, DeferredLiveValuesSkipPublish)
+{
+  drainUiEventHub();
+
+  uint32_t calls = 0;
+  auto connection = UiEventHub::subscribe(
+      UiTopic::LiveChannelValues, [&](uint32_t) { calls++; });
+  ASSERT_TRUE(connection.connected());
+
+  auto subscription = UiEventHub::registerLiveValueConsumer();
+  UiEventHub::deferLiveValuesForUiTicks(1);
+  UiEventHub::tickLiveValues();
+  UiEventHub::flush();
+
+  EXPECT_EQ(calls, 0u);
+}
+
 TEST(ColorUiEvents, LiveSubscriptionUpdatesLiveConsumerCount)
 {
   const uint8_t initialCount = UiEventHub::liveValueConsumerCountForTest();

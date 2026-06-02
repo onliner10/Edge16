@@ -26,17 +26,78 @@
 #include "pagegroup.h"
 #include "ui_events.h"
 
+#include <array>
+
 class ListLineButton : public ButtonBase
 {
  public:
-  ListLineButton(Window* parent, uint8_t index);
+  enum class LineDependencies : uint8_t
+  {
+    None,
+    LiveValues,
+  };
+
+  class LineView
+  {
+   public:
+    enum class Color : uint8_t
+    {
+      Default,
+      Warning,
+      Active,
+    };
+
+    void fill(coord_t x, coord_t y, coord_t w, coord_t h,
+              Color color = Color::Active, lv_opa_t opacity = LV_OPA_COVER);
+    void text(coord_t x, coord_t y, coord_t w, coord_t h,
+              const char* value, LcdFlags font = 0,
+              lv_text_align_t align = LV_TEXT_ALIGN_LEFT,
+              Color color = Color::Default,
+              lv_coord_t lineSpace = 0);
+
+   private:
+    friend class ListLineButton;
+
+    struct TextItem
+    {
+      coord_t x = 0;
+      coord_t y = 0;
+      coord_t w = 0;
+      coord_t h = 0;
+      const char* value = nullptr;
+      LcdFlags font = 0;
+      lv_text_align_t align = LV_TEXT_ALIGN_LEFT;
+      Color color = Color::Default;
+      lv_coord_t lineSpace = 0;
+    };
+
+    struct FillItem
+    {
+      coord_t x = 0;
+      coord_t y = 0;
+      coord_t w = 0;
+      coord_t h = 0;
+      Color color = Color::Active;
+      lv_opa_t opacity = LV_OPA_COVER;
+    };
+
+    static constexpr uint8_t MAX_TEXT_ITEMS = 24;
+    static constexpr uint8_t MAX_FILL_ITEMS = 4;
+    std::array<TextItem, MAX_TEXT_ITEMS> textItems = {};
+    std::array<FillItem, MAX_FILL_ITEMS> fillItems = {};
+    uint8_t textCount = 0;
+    uint8_t fillCount = 0;
+  };
+
+  ListLineButton(Window* parent, uint8_t index,
+                 LineDependencies dependencies = LineDependencies::None);
 
   uint8_t getIndex() const { return index; }
   virtual void setIndex(uint8_t i) { index = i; }
 
-  void onLiveCheckEvents(LiveWindow& live) final;
-
-  void refresh();
+  /// Request a line update — the base will call onRefresh() when appropriate.
+  /// Subclasses should call this when their model data changes.
+  void requestLineUpdate();
 
   static constexpr coord_t BTN_H = EdgeTxStyles::STD_FONT_HEIGHT + PAD_BORDER * 2 + PAD_OUTLINE * 2;
   static constexpr coord_t GRP_W = LCD_W - PAD_SMALL * 2;
@@ -44,38 +105,48 @@ class ListLineButton : public ButtonBase
  protected:
   uint8_t index;
 
-  virtual bool isActive() const = 0;
   void delayedInit() final;
-  virtual void onLineLoaded() {}
-  virtual void onLineAfterRefresh() {}
-  virtual void onLineLiveUpdate(LiveWindow& live);
-  virtual void onLoadedCheckEvents(LiveWindow& live) {}
-  virtual void onRefresh() = 0;
-  virtual uint16_t liveValueUpdatePeriodMs() const { return 0; }
-  virtual bool needsLiveValueUpdate() const { return true; }
   void onDelete() override;
-  void onFailClosed() override;
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
-  void onLiveClicked(LiveWindow& live) override;
-  void onLiveVisibilityChanged(LiveWindow& live, bool visible) override;
-  void runLiveValueUpdate();
-  void setLiveValueUpdatesEnabled(bool enabled);
-  bool isLineReady() const;
 
  private:
+  friend class InputMixButtonBase;
+
+  virtual bool isActive() const = 0;
+  virtual void onLineLoaded() {}
+  virtual void onLineReady(LiveWindow& live) {}
+  virtual void onLineAfterRefresh() {}
+  virtual void onLinePresentationSync(LiveWindow& live) {}
+  virtual void describeLine(LineView& view) const {}
+  virtual void onRefresh() = 0;
+
+  void onLiveCheckEvents(LiveWindow& live) final;
+  void onFailClosed() override;
+  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) final;
+  void onLiveClicked(LiveWindow& live) override;
+  void onLiveVisibilityChanged(LiveWindow& live, bool visible) final;
+  void onLiveRealizeVisibleContent(LiveWindow& live) final;
+  friend class InputMixGroupBase;
+
+  bool isLineReady() const;
+  void refresh();
+  void maintainVisibleLine(LiveWindow& live);
+  void syncLinePresentation(LiveWindow& live);
+  void drawLineView(LiveWindow& live, lv_layer_t* layer,
+                    const lv_area_t& objCoords);
+  void applyLiveValueDependency();
+  void setLiveValueUpdatesEnabled(bool enabled);
+  void flushPendingLiveValueCleanup();
+  bool dependsOnLiveValues() const
+  {
+    return dependencies == LineDependencies::LiveValues;
+  }
+
   enum class LineState : uint8_t
   {
     Placeholder,
     Loading,
     Ready,
     FailedClosed,
-  };
-
-  enum class UpdatePhase : uint8_t
-  {
-    Idle,
-    Refreshing,
-    LiveUpdating,
   };
 
   class LineRealizationToken final
@@ -91,10 +162,11 @@ class ListLineButton : public ButtonBase
   void transitionToFailedClosed();
   bool transitionToFailedClosedIfUnavailable();
 
+  LineDependencies dependencies = LineDependencies::None;
   LineState lineState = LineState::Placeholder;
-  UpdatePhase updatePhase = UpdatePhase::Idle;
+  bool lineEffectsActive = false;
   bool refreshPending = true;
-  uint32_t lastLiveValueUpdate = 0;
+  bool liveValueCleanupPending = false;
   UiScopedConnection liveConnection;
   UiLiveSubscription liveSubscription;
 };
@@ -112,9 +184,6 @@ class InputMixButtonBase : public ListLineButton
 
   void updateHeight();
   virtual void updatePos(coord_t x, coord_t y) = 0;
-
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override;
-  void onLoadedCheckEvents(LiveWindow& live) override;
 
   // total: 90 x 17
   static LAYOUT_VAL_SCALED(FM_CANVAS_HEIGHT, 17)
@@ -147,10 +216,9 @@ class InputMixButtonBase : public ListLineButton
   static LAYOUT_VAL_SCALED(FM_W, 8)
 
  protected:
+  void describeLine(LineView& view) const override;
+  void onLinePresentationSync(LiveWindow& live) override;
 
-  void drawText(lv_layer_t* layer, const lv_area_t& objCoords,
-                lv_draw_label_dsc_t& label, coord_t x, coord_t y, coord_t w,
-                coord_t h, const char* text);
   void invalidateLine();
   void updateAutomationText();
 

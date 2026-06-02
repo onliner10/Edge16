@@ -108,7 +108,7 @@ class InputLineButton : public InputMixButtonBase
   {
     check(isActive());
 
-    refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { refresh(); });
+    refreshMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) { requestLineUpdate(); });
   }
 
   void onRefresh() override
@@ -217,7 +217,7 @@ InputMixButtonBase* ModelInputsPage::createLineButton(InputMixGroupBase* group,
                                                   uint8_t index)
 {
   auto button = new InputLineButton(group, index);
-  button->refresh();
+  button->requestLineUpdate();
 
   lines.emplace_back(button);
   group->addLine(button);

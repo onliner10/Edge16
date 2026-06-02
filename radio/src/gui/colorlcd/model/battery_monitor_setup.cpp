@@ -122,7 +122,7 @@ class CompatiblePackLine : public ListLineButton
 {
  public:
   CompatiblePackLine(Window* parent, uint8_t monitor, uint8_t slot)
-      : ListLineButton(parent, slot), monitor(monitor), slot(slot)
+      : ListLineButton(parent, slot, LineDependencies::LiveValues), monitor(monitor), slot(slot)
   {
     setHeight(PACK_LINE_H);
     padAll(PAD_ZERO);
@@ -143,30 +143,11 @@ class CompatiblePackLine : public ListLineButton
 
   void onLineLoaded() override { onRefresh(); }
 
-  bool onLiveCustomEvent(LiveWindow& live, lv_event_t* event) override
+  void describeLine(LineView& view) const override
   {
-    if (ListLineButton::onLiveCustomEvent(live, event)) return true;
-    if (lv_event_get_code(event) != LV_EVENT_DRAW_MAIN_END || !isLineReady()) {
-      return false;
-    }
-
-    lv_layer_t* layer = lv_event_get_layer(event);
-    if (!layer) return false;
-
-    lv_obj_t* obj = live.lvobj();
-    lv_area_t objCoords;
-    lv_obj_get_coords(obj, &objCoords);
-
-    lv_draw_label_dsc_t label;
-    lv_draw_label_dsc_init(&label);
-    label.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    label.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    label.text = lineText;
-    lv_area_t coords = {objCoords.x1 + PAD_MEDIUM, objCoords.y1 + PACK_TEXT_Y,
-                        objCoords.x2 - PAD_MEDIUM,
-                        objCoords.y1 + PACK_TEXT_Y + EdgeTxStyles::STD_FONT_HEIGHT - 1};
-    lv_draw_label(layer, &label, &coords);
-    return false;
+    view.text(PAD_MEDIUM, PACK_TEXT_Y,
+              ListLineButton::GRP_W - PAD_MEDIUM * 2,
+              EdgeTxStyles::STD_FONT_HEIGHT, lineText);
   }
 
   void onRefresh() override

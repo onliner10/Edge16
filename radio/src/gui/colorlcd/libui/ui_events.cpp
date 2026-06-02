@@ -28,6 +28,7 @@ std::array<uint32_t, TOPIC_COUNT> deferredPayloads = {};
 
 bool flushing = false;
 uint8_t liveValueConsumers = 0;
+uint8_t liveValueDeferTicks = 0;
 uint32_t nextLiveValueTick = 0;
 
 size_t topicIndex(UiTopic topic)
@@ -64,7 +65,10 @@ void UiLiveSubscription::reset()
   if (!active) return;
   active = false;
   if (liveValueConsumers > 0) liveValueConsumers--;
-  if (liveValueConsumers == 0) nextLiveValueTick = 0;
+  if (liveValueConsumers == 0) {
+    liveValueDeferTicks = 0;
+    nextLiveValueTick = 0;
+  }
 }
 
 UiScopedConnection UiEventHub::subscribe(UiTopic topic, Callback callback)
@@ -111,7 +115,15 @@ void UiEventHub::flush()
 
 void UiEventHub::tickLiveValues()
 {
-  if (liveValueConsumers == 0) return;
+  if (liveValueConsumers == 0) {
+    liveValueDeferTicks = 0;
+    return;
+  }
+
+  if (liveValueDeferTicks > 0) {
+    liveValueDeferTicks--;
+    return;
+  }
 
   const uint32_t now = time_get_ms();
   if (nextLiveValueTick == 0 ||
@@ -119,6 +131,11 @@ void UiEventHub::tickLiveValues()
     publish(UiTopic::LiveChannelValues);
     nextLiveValueTick = now + lvglLiveValueRefreshPeriod();
   }
+}
+
+void UiEventHub::deferLiveValuesForUiTicks(uint8_t ticks)
+{
+  if (ticks > liveValueDeferTicks) liveValueDeferTicks = ticks;
 }
 
 UiLiveSubscription UiEventHub::registerLiveValueConsumer()
