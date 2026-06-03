@@ -30,6 +30,8 @@ class ModelInputsPage : public InputMixPageBase
   ModelInputsPage(const PageDef& pageDef);
 
   void build(Window *window) override;
+  void checkEvents() override;
+  void buildClassic(Window *window);
 
  protected:
   InputMixGroupBase* getGroupByIndex(uint8_t index) override;
@@ -45,6 +47,11 @@ class ModelInputsPage : public InputMixPageBase
   void pasteInput(uint8_t dst_idx, uint8_t input);
   void pasteInputBefore(uint8_t dst_idx);
   void pasteInputAfter(uint8_t dst_idx);
+
+  void buildQuickTuneTabs(Window* window);
+  void buildQuickTuneRows(Window* window);
+  void openInputQuickMenu(uint8_t input, uint8_t index);
+  void openOutputQuickMenu(uint8_t channel);
 
   bool reachExposLimit();
 };

@@ -25,6 +25,7 @@
 
 #include "dialog.h"
 #include "edgetx.h"
+#include "button.h"
 #include "hal/adc_driver.h"
 #include "input_edit.h"
 #include "menu.h"
@@ -399,7 +400,7 @@ void ModelInputsPage::pasteInputAfter(uint8_t dst_idx)
   pasteInput(dst_idx + 1, input);
 }
 
-void ModelInputsPage::build(Window* window)
+void ModelInputsPage::buildClassic(Window* window)
 {
   bindPageWindow(window);
 

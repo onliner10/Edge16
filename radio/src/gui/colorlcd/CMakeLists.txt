@@ -70,6 +70,7 @@ set(GUI_SRC
   model/model_flightmodes.cpp
   model/model_gvars.cpp
   model/model_inputs.cpp
+  model/model_inputs_quicktune.cpp
   model/model_logical_switches.cpp
   model/model_mixes.cpp
   model/model_outputs.cpp
