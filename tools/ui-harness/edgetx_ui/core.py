@@ -628,6 +628,9 @@ class SdlAutomationSession:
     def set_batt_voltage(self, dv: int) -> dict[str, Any]:
         return self.command(f"set_batt_voltage {int(dv)}")
 
+    def set_usb(self, plugged: bool, mode: int = 1) -> dict[str, Any]:
+        return self.command(f"set_usb {1 if plugged else 0} {int(mode)}")
+
     def set_switch(self, index: int, position: int) -> dict[str, Any]:
         return self.command(f"set_switch {int(index)} {int(position)}")
 
@@ -2021,6 +2024,9 @@ class HarnessService:
 
     def set_batt_voltage(self, dv: int) -> dict[str, Any]:
         return self.require_session().set_batt_voltage(dv)
+
+    def set_usb(self, plugged: bool, mode: int = 1) -> dict[str, Any]:
+        return self.require_session().set_usb(plugged, mode)
 
     def set_switch(self, index: int, position: int) -> dict[str, Any]:
         return self.require_session().set_switch(index, position)

@@ -517,6 +517,8 @@ char *getSwitchPositionName(char *dest, swsrc_t idx, bool defaultOnly)
     strcpy(s, "Act");
   } else if (idx == SWSRC_TRAINER_CONNECTED) {
     strcpy(s, "Trn");
+  } else if (idx == SWSRC_USB_JOYSTICK_ACTIVE) {
+    strcpy(s, "USBJoy");
   } else if (idx == SWSRC_MODEL_ARMED) {
     strcpy(s, "Arm");
   }

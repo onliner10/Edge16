@@ -465,7 +465,7 @@ static bool isSwitchOtherAvailable(int swtch, bool invert) {
     return false;
   if (swtch == SWSRC_ON || swtch == SWSRC_ONE || swtch == SWSRC_TELEMETRY_STREAMING ||
       swtch == SWSRC_RADIO_ACTIVITY || swtch == SWSRC_TRAINER_CONNECTED ||
-      swtch == SWSRC_MODEL_ARMED)
+      swtch == SWSRC_USB_JOYSTICK_ACTIVE || swtch == SWSRC_MODEL_ARMED)
     return true;
 #if defined(DEBUG_LATENCY)
   if (swtch == SWSRC_LATENCY_TOGGLE)

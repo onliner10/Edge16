@@ -25,6 +25,9 @@
 
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
+#include "hal/usb_driver.h"
+
+extern void simuSetUsbState(bool plugged, int mode);
 
 void setLogicalSwitch(int index, uint16_t _func, int16_t _v1, int16_t _v2, int16_t _v3 = 0, uint8_t _delay = 0, uint8_t _duration = 0, int8_t _andsw = 0)
 {
@@ -91,6 +94,23 @@ TEST(getSwitch, OutOfRangeSwitchSourceIsFalse)
 {
   MODEL_RESET();
   EXPECT_FALSE(getSwitch(SWSRC_LAST + 1));
+}
+
+TEST(getSwitch, UsbJoystickActiveSwitchSource)
+{
+  MODEL_RESET();
+
+  simuSetUsbState(false, USB_JOYSTICK_MODE);
+  EXPECT_FALSE(getSwitch(SWSRC_USB_JOYSTICK_ACTIVE));
+
+  simuSetUsbState(true, USB_MASS_STORAGE_MODE);
+  EXPECT_FALSE(getSwitch(SWSRC_USB_JOYSTICK_ACTIVE));
+
+  simuSetUsbState(true, USB_JOYSTICK_MODE);
+  EXPECT_TRUE(getSwitch(SWSRC_USB_JOYSTICK_ACTIVE));
+  EXPECT_FALSE(getSwitch(-SWSRC_USB_JOYSTICK_ACTIVE));
+
+  simuSetUsbState(false, USB_JOYSTICK_MODE);
 }
 
 

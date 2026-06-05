@@ -456,6 +456,8 @@ enum SwitchSources {
 
   SWSRC_TRAINER_CONNECTED,
 
+  SWSRC_USB_JOYSTICK_ACTIVE,
+
 #if defined(DEBUG_LATENCY)
   SWSRC_LATENCY_TOGGLE,
 #endif

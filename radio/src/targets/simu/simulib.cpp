@@ -57,6 +57,8 @@ char * main_thread_error = nullptr;
 static std::atomic_bool simu_shutdown{false};
 static std::atomic_bool simu_running{false};
 static std::atomic_bool simu_startup_complete{false};
+static std::atomic_bool simu_usb_plugged{false};
+static std::atomic<int> simu_usb_mode{USB_JOYSTICK_MODE};
 static std::condition_variable simuStartupCv;
 static std::mutex simuStartupMutex;
 
@@ -349,11 +351,16 @@ uint32_t readTrims()
   return trims;
 }
 
-int usbPlugged() { return false; }
-bool usbIsPlugged() { return false; }
-bool usbStarted() { return false; }
-int getSelectedUsbMode() { return USB_JOYSTICK_MODE; }
-void setSelectedUsbMode(int mode) {}
+int usbPlugged() { return simu_usb_plugged.load(std::memory_order_relaxed) ? 1 : 0; }
+bool usbIsPlugged() { return simu_usb_plugged.load(std::memory_order_relaxed); }
+bool usbStarted() { return simu_usb_plugged.load(std::memory_order_relaxed); }
+int getSelectedUsbMode() { return simu_usb_mode.load(std::memory_order_relaxed); }
+void setSelectedUsbMode(int mode) { simu_usb_mode.store(mode, std::memory_order_relaxed); }
+void simuSetUsbState(bool plugged, int mode)
+{
+  simu_usb_plugged.store(plugged, std::memory_order_relaxed);
+  simu_usb_mode.store(mode, std::memory_order_relaxed);
+}
 void delay_ms(uint32_t ms) { }
 void delay_us(uint16_t us) { }
 

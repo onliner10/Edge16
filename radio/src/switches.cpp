@@ -31,6 +31,7 @@
 #include "input_mapping.h"
 #include "inactivity_timer.h"
 #include "tasks/mixer_task.h"
+#include "usb_joystick.h"
 
 #include <atomic>
 
@@ -752,6 +753,9 @@ bool getSwitch(swsrc_t swtch, uint8_t flags)
   }
   else if (cs_idx == SWSRC_TRAINER_CONNECTED) {
     result = isTrainerConnected();
+  }
+  else if (cs_idx == SWSRC_USB_JOYSTICK_ACTIVE) {
+    result = usbJoystickActive();
   }
   else if (cs_idx == SWSRC_MODEL_ARMED) {
     result = isModelArmedState();

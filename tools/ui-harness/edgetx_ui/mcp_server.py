@@ -281,6 +281,17 @@ TOOLS: dict[str, dict[str, Any]] = {
             "required": ["dv"],
         },
     },
+    "edgetx_set_usb": {
+        "description": "Set simulator USB plugged state and selected USB mode. mode defaults to 1 (USB joystick mode).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plugged": {"type": "boolean", "description": "True to simulate USB plugged in, False to unplug"},
+                "mode": {"type": "integer", "description": "USB mode enum value; 1 is USB joystick mode", "default": 1},
+            },
+            "required": ["plugged"],
+        },
+    },
     "edgetx_set_switch": {
         "description": "Set a radio switch position by index. index is the 0-based switch index (SA=0, SB=1, ..., SF=5, SH=7). position is -1 (down), 0 (middle), or +1 (up).",
         "inputSchema": {
@@ -496,6 +507,8 @@ class McpServer:
             return self.service.set_telemetry_streaming(bool(args["enabled"]))
         if name == "edgetx_set_batt_voltage":
             return self.service.set_batt_voltage(int(args["dv"]))
+        if name == "edgetx_set_usb":
+            return self.service.set_usb(bool(args["plugged"]), int(args.get("mode", 1)))
         if name == "edgetx_set_switch":
             return self.service.set_switch(int(args["index"]), int(args["position"]))
         if name == "edgetx_switch_sequence":

@@ -40,6 +40,7 @@
 #include <vector>
 
 extern void simuSetBatteryVoltage(uint8_t decivolts);
+extern void simuSetUsbState(bool plugged, int mode);
 
 #if !defined(_WIN32)
 #include <sys/select.h>
@@ -48,6 +49,7 @@ extern void simuSetBatteryVoltage(uint8_t decivolts);
 
 #include "hal/adc_driver.h"
 #include "hal/rotary_encoder.h"
+#include "hal/usb_driver.h"
 #include "hal/switch_driver.h"
 
 #ifdef __EMSCRIPTEN__
@@ -696,6 +698,15 @@ static void automation_handle_command(const std::string& line)
             << int(flightBatterySessionState(0));
       automation_reply_ok(extra.str());
     }
+  } else if (command == "set_usb") {
+    int plugged = 0;
+    int mode = USB_JOYSTICK_MODE;
+    in >> plugged >> mode;
+    simuSetUsbState(plugged != 0, mode);
+    std::ostringstream extra;
+    extra << "\"plugged\":" << (plugged != 0 ? 1 : 0)
+          << ",\"mode\":" << mode;
+    automation_reply_ok(extra.str());
   } else if (command == "set_batt_voltage") {
     int dv = 0;
     in >> dv;

@@ -228,6 +228,7 @@ const struct YamlIdStr enum_SwitchSources[] = {
   {  SWSRC_RADIO_ACTIVITY, "RADIO_ACTIVITY"  },
   {  SWSRC_MODEL_ARMED, "MODEL_ARMED"  },
   {  SWSRC_TRAINER_CONNECTED, "TRAINER_CONNECTED"  },
+  {  SWSRC_USB_JOYSTICK_ACTIVE, "USB_JOYSTICK_ACTIVE"  },
   {  SWSRC_OFF, "OFF"  },
   {  0, NULL  }
 };
