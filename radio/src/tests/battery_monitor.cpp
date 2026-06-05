@@ -149,7 +149,7 @@ TEST_F(BatteryMonitorPolicyTest, CapacityThresholdHandlesLargeTelemetryValues)
 
 TEST_F(BatteryMonitorPolicyTest, VoltageThresholdsAreChemistrySpecific)
 {
-  EXPECT_EQ(350, flightBatteryVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIPO));
+  EXPECT_EQ(360, flightBatteryVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIPO));
   EXPECT_EQ(330, flightBatteryVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIION));
   EXPECT_EQ(280, flightBatteryVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIFE));
   EXPECT_EQ(105, flightBatteryVoltageThresholdPerCellCentivolts(BATTERY_TYPE_NIMH));
@@ -160,13 +160,15 @@ TEST_F(BatteryMonitorPolicyTest, LipoMatchConstants)
 {
   EXPECT_EQ(65, FLIGHT_BATTERY_CAPACITY_THRESHOLDS[0]);
   EXPECT_EQ(80, FLIGHT_BATTERY_CAPACITY_THRESHOLDS[3]);
-  EXPECT_EQ(330, FLIGHT_BATTERY_LIPO_BACKUP_MIN_PER_CELL_CV);
+  EXPECT_EQ(360, FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV);
+  EXPECT_EQ(356, FLIGHT_BATTERY_LIPO_CAPACITY_BACKUP_LOW_PER_CELL_CV);
   EXPECT_EQ(100, FLIGHT_BATTERY_NO_BATTERY_MAX_CV);
   EXPECT_EQ(300, FLIGHT_BATTERY_LIPO_MATCH_MIN_PER_CELL_CV);
   EXPECT_EQ(435, FLIGHT_BATTERY_LIPO_MATCH_MAX_PER_CELL_CV);
   EXPECT_EQ(250, FLIGHT_BATTERY_LIION_MATCH_MIN_PER_CELL_CV);
   EXPECT_EQ(420, FLIGHT_BATTERY_LIION_MATCH_MAX_PER_CELL_CV);
   EXPECT_EQ(330, FLIGHT_BATTERY_LIION_LOW_PER_CELL_CV);
+  EXPECT_EQ(5, FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS);
   EXPECT_EQ(2, FLIGHT_BATTERY_PRESENT_DEBOUNCE_SECONDS);
   EXPECT_EQ(3, FLIGHT_BATTERY_NO_BATTERY_DEBOUNCE_SECONDS);
   EXPECT_EQ(5, FLIGHT_BATTERY_TELEMETRY_LOSS_SWAP_SECONDS);
@@ -800,6 +802,85 @@ TEST_F(BatteryRuntimeTest, LiIonCompatiblePackAutoSelectsSingleVoltageMatch)
   EXPECT_EQ(3000, g_model.batteryMonitors[0].capacity);
   EXPECT_EQ(0, flightBatteryPromptPackMask(0));
   EXPECT_FALSE(flightBatteryNeedsPrompt(nullptr));
+}
+
+TEST_F(BatteryRuntimeTest, LipoVoltageOnlyAlertFiresAtHealthThreshold)
+{
+  resetFlightBatteryRuntimeState();
+  g_model.batteryMonitors[0].enabled = true;
+  g_model.batteryMonitors[0].batteryType = BATTERY_TYPE_LIPO;
+  g_model.batteryMonitors[0].cellCount = 3;
+  g_model.batteryMonitors[0].capacity = 2200;
+  g_model.batteryMonitors[0].voltAlertEnabled = 1;
+  flightBatteryRuntimeState[0].state = FlightBatterySessionState::Confirmed;
+  setFlightBatteryVoltageSensor(
+      0, uint16_t(FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV * 3));
+
+  for (uint8_t i = 0; i < FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS - 1; i++) {
+    EXPECT_FALSE(checkFlightBatteryAlerts());
+    EXPECT_FALSE(flightBatteryRuntimeState[0].voltageAlerted);
+  }
+
+  EXPECT_TRUE(checkFlightBatteryAlerts());
+  EXPECT_TRUE(flightBatteryRuntimeState[0].voltageAlerted);
+  EXPECT_FALSE(checkFlightBatteryAlerts());
+}
+
+TEST_F(BatteryRuntimeTest, LipoVoltageOnlyAlertDoesNotFireAboveHealthThreshold)
+{
+  resetFlightBatteryRuntimeState();
+  g_model.batteryMonitors[0].enabled = true;
+  g_model.batteryMonitors[0].batteryType = BATTERY_TYPE_LIPO;
+  g_model.batteryMonitors[0].cellCount = 3;
+  g_model.batteryMonitors[0].capacity = 2200;
+  g_model.batteryMonitors[0].voltAlertEnabled = 1;
+  flightBatteryRuntimeState[0].state = FlightBatterySessionState::Confirmed;
+  setFlightBatteryVoltageSensor(
+      0, uint16_t(FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV * 3 + 1));
+
+  for (uint8_t i = 0; i <= FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS; i++) {
+    EXPECT_FALSE(checkFlightBatteryAlerts());
+    EXPECT_FALSE(flightBatteryRuntimeState[0].voltageAlerted);
+  }
+}
+
+TEST_F(BatteryRuntimeTest, LipoCapacitySensorUsesVoltageAsLateFallbackOnly)
+{
+  resetFlightBatteryRuntimeState();
+  g_model.batteryMonitors[0].enabled = true;
+  g_model.batteryMonitors[0].batteryType = BATTERY_TYPE_LIPO;
+  g_model.batteryMonitors[0].cellCount = 3;
+  g_model.batteryMonitors[0].capacity = 2200;
+  g_model.batteryMonitors[0].voltAlertEnabled = 1;
+  flightBatteryRuntimeState[0].state = FlightBatterySessionState::Confirmed;
+  setFlightBatteryCapacitySensor(1, 100);
+  setFlightBatteryVoltageSensor(
+      0, uint16_t(FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV * 3));
+
+  for (uint8_t i = 0; i <= FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS; i++) {
+    EXPECT_FALSE(checkFlightBatteryAlerts());
+    EXPECT_FALSE(flightBatteryRuntimeState[0].voltageAlerted);
+  }
+
+  setFlightBatteryVoltageSensor(
+      0, uint16_t(FLIGHT_BATTERY_LIPO_CAPACITY_BACKUP_LOW_PER_CELL_CV * 3));
+
+  for (uint8_t i = 0; i < FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS - 1; i++) {
+    EXPECT_FALSE(checkFlightBatteryAlerts());
+    EXPECT_FALSE(flightBatteryRuntimeState[0].voltageAlerted);
+  }
+
+  EXPECT_TRUE(checkFlightBatteryAlerts());
+  EXPECT_TRUE(flightBatteryRuntimeState[0].voltageAlerted);
+}
+
+TEST_F(BatteryMonitorPolicyTest, BackupVoltageThresholdsAreChemistrySpecific)
+{
+  EXPECT_EQ(356, flightBatteryBackupVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIPO));
+  EXPECT_EQ(330, flightBatteryBackupVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIION));
+  EXPECT_EQ(280, flightBatteryBackupVoltageThresholdPerCellCentivolts(BATTERY_TYPE_LIFE));
+  EXPECT_EQ(105, flightBatteryBackupVoltageThresholdPerCellCentivolts(BATTERY_TYPE_NIMH));
+  EXPECT_EQ(180, flightBatteryBackupVoltageThresholdPerCellCentivolts(BATTERY_TYPE_PB));
 }
 
 TEST_F(BatteryRuntimeTest, LiIonVoltageAlertFiresAfterDebounce)

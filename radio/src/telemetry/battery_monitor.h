@@ -10,11 +10,18 @@
 
 #include "datastructs.h"
 
-constexpr uint8_t FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS = 10;
+// Voltage is checked once per second; 5 s filters transient sag while
+// warning promptly enough for the pilot to reduce throttle and head for landing.
+constexpr uint8_t FLIGHT_BATTERY_VOLTAGE_DEBOUNCE_SECONDS = 5;
 constexpr uint8_t FLIGHT_BATTERY_CAPACITY_THRESHOLDS[] = {65, 70, 75, 80};
 constexpr uint8_t FLIGHT_BATTERY_CAPACITY_THRESHOLDS_SIZE =
     sizeof(FLIGHT_BATTERY_CAPACITY_THRESHOLDS) / sizeof(FLIGHT_BATTERY_CAPACITY_THRESHOLDS[0]);
-constexpr uint16_t FLIGHT_BATTERY_LIPO_BACKUP_MIN_PER_CELL_CV = 330;
+// Voltage-only LiPo needs an early landing/pack-health callout (3.60 V/cell).
+constexpr uint16_t FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV = 360;
+// Capacity-present voltage backup: fires when capacity source likely misreports.
+// Set slightly below the voltage-only threshold to duplicate the
+// "maintain in-flight voltage above ~3.56 V/cell" guidance with debounce margin.
+constexpr uint16_t FLIGHT_BATTERY_LIPO_CAPACITY_BACKUP_LOW_PER_CELL_CV = 356;
 
 constexpr uint16_t FLIGHT_BATTERY_NO_BATTERY_MAX_CV = 100;
 constexpr uint16_t FLIGHT_BATTERY_LIPO_MATCH_MIN_PER_CELL_CV = 300;
@@ -177,7 +184,18 @@ inline uint16_t flightBatteryVoltageThresholdPerCellCentivolts(BatteryType type)
       return 180;
     case BATTERY_TYPE_LIPO:
     default:
-      return 350;
+      return FLIGHT_BATTERY_LIPO_VOLTAGE_ONLY_LOW_PER_CELL_CV;
+  }
+}
+
+inline uint16_t flightBatteryBackupVoltageThresholdPerCellCentivolts(
+    BatteryType type)
+{
+  switch (type) {
+    case BATTERY_TYPE_LIPO:
+      return FLIGHT_BATTERY_LIPO_CAPACITY_BACKUP_LOW_PER_CELL_CV;
+    default:
+      return flightBatteryVoltageThresholdPerCellCentivolts(type);
   }
 }
 
