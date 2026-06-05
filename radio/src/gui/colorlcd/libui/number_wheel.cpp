@@ -56,10 +56,11 @@ void NumberWheel::buildContent()
 
   // Bright card, centered
   lv_obj_t* cardObj = nullptr;
-  auto* card = new Window(this, rect_t{
+  auto* card = new (std::nothrow) Window(this, rect_t{
     (LV_HOR_RES - CARD_W) / 2, (LV_VER_RES - CARD_H) / 2,
     CARD_W, CARD_H
   });
+  if (!card) return;
   card->withLive([&](LiveWindow& l) {
     cardObj = l.lvobj();
     lv_obj_set_style_bg_color(cardObj, lv_color_white(), 0);
@@ -71,7 +72,7 @@ void NumberWheel::buildContent()
   // Title - show what's being edited
   std::string title = edit->getEditTitle();
   if (title.empty()) title = "Value";
-  titleLabel = new StaticText(card, rect_t{0, 6, CARD_W, TITLE_H},
+  titleLabel = new (std::nothrow) StaticText(card, rect_t{0, 6, CARD_W, TITLE_H},
       title, COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD));
   titleLabel->withLive([](LiveWindow& l) {
     lv_obj_set_style_text_align(l.lvobj(), LV_TEXT_ALIGN_CENTER, 0);
@@ -112,7 +113,7 @@ void NumberWheel::buildContent()
   if (wholeIdx >= 0 && wholeIdx < wCnt) lv_roller_set_selected(wholeRoller, wholeIdx, LV_ANIM_OFF);
 
   if (hasDecimal) {
-    auto* dot = new StaticText(card, rect_t{rollerX + rollerW + 4, 40, 16, ROLLER_H},
+    auto* dot = new (std::nothrow) StaticText(card, rect_t{rollerX + rollerW + 4, 40, 16, ROLLER_H},
                                 ".", COLOR_THEME_PRIMARY1_INDEX, CENTERED);
     dot->withLive([](LiveWindow& l) { lv_obj_set_style_text_color(l.lvobj(), lv_color_black(), 0); });
 
@@ -135,9 +136,9 @@ void NumberWheel::buildContent()
   }
 
   // Cancel / OK at bottom
-  cancelButton = new TextButton(card, rect_t{16, CARD_H - BTN_H - 6, 140, BTN_H},
+  cancelButton = new (std::nothrow) TextButton(card, rect_t{16, CARD_H - BTN_H - 6, 140, BTN_H},
                                  "Cancel", [this]() { onCancel(); return 0; });
-  okButton = new TextButton(card, rect_t{CARD_W - 156, CARD_H - BTN_H - 6, 140, BTN_H},
+  okButton = new (std::nothrow) TextButton(card, rect_t{CARD_W - 156, CARD_H - BTN_H - 6, 140, BTN_H},
                              "OK", [this]() { onConfirm(); return 0; });
 }
 
@@ -294,7 +295,7 @@ void NumberWheel::onRollerKey(lv_event_t* e)
 NumberWheel* NumberWheel::open(NumberEdit* edit)
 {
   if (!edit) return nullptr;
-  auto* wheel = new NumberWheel(edit);
+  auto* wheel = new (std::nothrow) NumberWheel(edit);
   if (!wheel) return nullptr;
 
   // Create a group so hardware rotary and keys work
