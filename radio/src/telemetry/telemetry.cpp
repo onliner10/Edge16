@@ -1516,7 +1516,7 @@ static bool checkFlightBatteryVoltageAlert(uint8_t monitorIndex,
   const int capSensorIdx = findFlightBatteryCapacitySensor(config);
   const bool capacityUsable = capSensorIdx >= 0 && isUsableTelemetrySensor(capSensorIdx);
   const uint16_t thresholdPerCell = capacityUsable
-                                        ? FLIGHT_BATTERY_LIPO_BACKUP_MIN_PER_CELL_CV
+                                        ? flightBatteryBackupVoltageThresholdPerCellCentivolts((BatteryType)config.batteryType)
                                         : flightBatteryVoltageThresholdPerCellCentivolts((BatteryType)config.batteryType);
 
   if (packVoltageCv <= uint16_t(thresholdPerCell * cellCount)) {
