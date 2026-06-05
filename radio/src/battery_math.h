@@ -9,25 +9,33 @@ struct OCVPoint {
   uint8_t pct;   // 0-100
 };
 
-// Conservative Li-Ion OCV curve (typical 18650).
-// Under-reports slightly in mid-range to avoid false high-charge indication.
+// Li-Ion voltage-vs-remaining-capacity curve derived from
+// Samsung INR18650-35E (NCA, 3.4Ah) qOCV 0.1C discharge at 25°C.
+// Source: RWTH Aachen ISEA, DOI 10.18154/RWTH-2021-02814.
+// The 0.1C rate (~340mA) approximates TX16S idle current, so this
+// maps loaded pack voltage to a practical capacity estimate.
 constexpr OCVPoint liionOcvTable[] = {
-  { 330, 0 },
-  { 350, 6 },
-  { 360, 12 },
-  { 370, 25 },
-  { 380, 45 },
-  { 390, 65 },
-  { 400, 80 },
-  { 410, 90 },
-  { 420, 100 },
+  { 300,  5 },   //  6.0 V pack
+  { 310,  8 },   //  6.2 V
+  { 320, 11 },   //  6.4 V
+  { 330, 14 },   //  6.6 V
+  { 340, 19 },   //  6.8 V — BATTERY_MIN default
+  { 350, 28 },   //  7.0 V
+  { 360, 39 },   //  7.2 V
+  { 370, 51 },   //  7.4 V — BATTERY_WARN default
+  { 380, 62 },   //  7.6 V
+  { 390, 74 },   //  7.8 V
+  { 400, 82 },   //  8.0 V
+  { 410, 96 },   //  8.2 V
+  { 420, 100 },  //  8.4 V — full charge
 };
 
-constexpr uint8_t liionOcvTableSize = 9;
+constexpr uint8_t liionOcvTableSize =
+    sizeof(liionOcvTable) / sizeof(liionOcvTable[0]);
 
 }  // namespace
 
-// Interpolate per-cell centivolts against the Li-Ion OCV table.
+// Interpolate per-cell centivolts against the Li-Ion capacity table.
 inline uint8_t batteryPctFromPerCellCv(uint16_t perCellCv)
 {
   if (perCellCv <= liionOcvTable[0].cv)
@@ -49,7 +57,8 @@ inline uint8_t batteryPctFromPerCellCv(uint16_t perCellCv)
 }
 
 // TX battery percentage from pack voltage in 100 mV units
-// (g_vbat100mV). Uses 2-cell Li-Ion OCV curve.
+// (g_vbat100mV). Uses a 2S Li-Ion curve derived from RWTH Aachen
+// Samsung INR18650-35E qOCV data (DOI 10.18154/RWTH-2021-02814).
 // Returns 0..100.
 inline uint8_t txBatteryPercent(uint8_t decivolts)
 {
