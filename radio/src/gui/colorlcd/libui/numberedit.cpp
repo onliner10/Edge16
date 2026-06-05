@@ -27,6 +27,7 @@
 #include "keyboard_number.h"
 #include "keys.h"
 #include "mainwindow.h"
+#include "number_wheel.h"
 #include "strhelpers.h"
 
 class NumberArea : public FormField
@@ -175,6 +176,20 @@ class NumberArea : public FormField
 
   void openKeyboard()
   {
+    // Default: open the iOS-style wheel picker
+    if (!numEdit->useDirectKeyboard()) {
+      setEditMode(false);
+      auto* wheel = NumberWheel::open(numEdit);
+      if (wheel) {
+        wheel->setCloseHandler([this]() {
+          numEdit->update();
+          changeEnd();
+        });
+        return;
+      }
+    }
+
+    // Fallback: old numeric keypad for direct-keyboard or large ranges
     editTextIsRaw = numEdit->useDirectKeyboard();
     if (!withLive([&](LiveWindow& live) {
           lv_textarea_set_text(
@@ -304,7 +319,7 @@ void NumberEdit::openEdit()
     });
   }
   lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_get_act());
-  if (indev_type == LV_INDEV_TYPE_POINTER) {
+  if (!useDirectKeyboard() || indev_type == LV_INDEV_TYPE_POINTER) {
     edit->openKeyboard();
   } else {
     edit->directEdit();
@@ -320,13 +335,26 @@ void NumberEdit::update()
 
 std::string NumberEdit::getDisplayVal() const
 {
+  return getDisplayValFor(currentValue);
+}
+
+std::string NumberEdit::getDisplayValFor(int value) const
+{
   std::string str;
   if (displayFunction != nullptr) {
-    str = displayFunction(currentValue);
-  } else if (!zeroText.empty() && currentValue == 0) {
+    str = displayFunction(value);
+  } else if (!zeroText.empty() && value == 0) {
     str = zeroText;
   } else {
-    str = formatNumberAsString(currentValue, textFlags, 0, prefix.c_str(),
+    LcdFlags displayFlags = textFlags;
+    int displayValue = value;
+    if ((displayFlags & PREC2) == PREC2) {
+      // Edge16 UI policy: display at most one decimal place while preserving
+      // the underlying PREC2 storage scale for existing fields.
+      displayValue = value >= 0 ? (value + 5) / 10 : (value - 5) / 10;
+      displayFlags = (displayFlags & ~PREC2) | PREC1;
+    }
+    str = formatNumberAsString(displayValue, displayFlags, 0, prefix.c_str(),
                                suffix.c_str());
   }
   return str;
@@ -345,6 +373,8 @@ static int getNumberEditPrecisionScale(LcdFlags flags)
   if (flags & PREC1) return 10;
   return 1;
 }
+
+int NumberEdit::getPrecisionScale() const { return getNumberEditPrecisionScale(textFlags); }
 
 std::string NumberEdit::getEditVal() const
 {

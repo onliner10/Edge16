@@ -43,6 +43,7 @@ class NumberEdit : public TextButton
   int32_t getMin() const { return vmin; }
   int32_t getMax() const { return vmax; }
   bool hasDecimalPrecision() const;
+  int getPrecisionScale() const;
   bool useDirectKeyboard() const;
   const std::string& getEditTitle() const { return editTitle; }
 
@@ -105,8 +106,11 @@ class NumberEdit : public TextButton
 
   int32_t getValue() const { return _getValue != nullptr ? _getValue() : 0; }
   std::string getDisplayVal() const;
+  std::string getDisplayValFor(int value) const;
   std::string getEditVal() const;
   void setValueFromEditVal(const char* text);
+  int getStep() const { return step; }
+  int getFastStep() const { return fastStep; }
 
  protected:
   friend class NumberArea;
