@@ -22,6 +22,8 @@
 #include "model_inputs.h"
 
 #include <algorithm>
+#include <functional>
+#include <memory>
 #include <vector>
 
 #include "button.h"
@@ -30,8 +32,8 @@
 #include "getset_helpers.h"
 #include "hal/rotary_encoder.h"
 #include "menu.h"
+#include "numberedit.h"
 #include "output_edit.h"
-#include "slider.h"
 #include "static.h"
 #include "switchchoice.h"
 #include "tasks/mixer_task.h"
@@ -67,24 +69,10 @@ static int16_t sourceNumValue(uint16_t rawValue)
   return v.value;
 }
 
-static std::string sourceNumString(uint16_t rawValue, const char* suffix)
-{
-  char text[32] = {};
-  getValueOrSrcVarString(text, sizeof(text), rawValue, 0, suffix);
-  return text;
-}
-
 static bool isQuickExpoEditable(const ExpoData* input)
 {
   return input->curve.type == CURVE_REF_EXPO &&
          !sourceNumIsSource(input->curve.value);
-}
-
-static std::string quickCurveString(const ExpoData* input)
-{
-  char text[32] = {};
-  getCurveRefString(text, sizeof(text), input->curve);
-  return text[0] ? std::string(text) : std::string("0%");
 }
 
 static bool outputChannelHasMix(uint8_t channel)
@@ -110,22 +98,46 @@ static bool outputChannelShouldShow(uint8_t channel)
   return outputChannelHasMix(channel) || outputChannelHasCustomLimits(channel);
 }
 
-static std::string outputLimitString(uint8_t channel, bool minimum)
+static const MixData* firstOutputMix(uint8_t channel)
 {
-  const LimitData* output = limitAddress(channel);
-  char text[32] = {};
-  getValueOrGVarString(text, sizeof(text), minimum ? output->min : output->max,
-                       PREC1, nullptr,
-                       minimum ? -LIMITS_MIN_MAX_OFFSET
-                               : +LIMITS_MIN_MAX_OFFSET,
-                       true);
-  return text;
+  for (uint8_t i = 0; i < MAX_MIXERS; i++) {
+    MixData* mix = &g_model.mixData[i];
+    if (is_memclear(mix, sizeof(MixData))) break;
+    if (mix->destCh == channel) return mix;
+  }
+  return nullptr;
 }
 
-static bool outputLimitIsQuickEditable(uint8_t channel, bool minimum)
+static std::string quickSourceName(mixsrc_t source)
 {
-  const LimitData* output = limitAddress(channel);
-  return !GV_IS_GV_VALUE(minimum ? output->min : output->max);
+  if (source >= MIXSRC_FIRST_INPUT && source <= MIXSRC_LAST_INPUT) {
+    uint8_t input = source - MIXSRC_FIRST_INPUT;
+    if (input < MAX_INPUTS && g_model.inputNames[input][0] != '\0') {
+      return std::string(g_model.inputNames[input],
+                         strnlen(g_model.inputNames[input], LEN_INPUT_NAME));
+    }
+
+    const char* label = getMainControlLabel(input);
+    if (label && label[0] != '\0') return label;
+
+    return "I" + std::to_string(input + 1);
+  }
+
+  return getSourceString(source);
+}
+
+static std::string quickOutputLabel(uint8_t channel)
+{
+  std::string label(quickSourceName(MIXSRC_FIRST_CH + channel));
+  const MixData* mix = firstOutputMix(channel);
+  if (mix) {
+    std::string source(quickSourceName(mix->srcRaw));
+    if (!source.empty() && source != label) {
+      label += " ";
+      label += source;
+    }
+  }
+  return label;
 }
 
 static void setOutputDirty()
@@ -303,7 +315,7 @@ static void resetOutputLimits(uint8_t channel)
   setOutputDirty();
 }
 
-enum class QuickTunePage : uint8_t { Expo, Rate, Min, Max };
+enum class QuickTunePage : uint8_t { Expo, Rate, Limits };
 
 static QuickTunePage s_quickTunePage = QuickTunePage::Expo;
 
@@ -314,10 +326,8 @@ static const char* quickTunePageLabel(QuickTunePage page)
       return "Expo";
     case QuickTunePage::Rate:
       return "Rate";
-    case QuickTunePage::Min:
-      return STR_MIN;
-    case QuickTunePage::Max:
-      return STR_MAX;
+    case QuickTunePage::Limits:
+      return "Limits";
   }
   return "Expo";
 }
@@ -393,19 +403,98 @@ struct QuickTuneValueConfig {
 };
 
 #if LANDSCAPE
-static const lv_coord_t quickTuneInputCols[] = {
-    LV_GRID_FR(4), LV_GRID_FR(4), 34, LV_GRID_FR(10), 34, 76,
-    LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t quickTuneOutputCols[] = {
-    LV_GRID_FR(5), 34, LV_GRID_FR(14), 34, 76, LV_GRID_TEMPLATE_LAST};
 #else
-static const lv_coord_t quickTuneInputCols[] = {LV_GRID_FR(4), 30,
-                                                LV_GRID_FR(8), 30, 68,
-                                                LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t* quickTuneOutputCols = quickTuneInputCols;
 #endif
-static const lv_coord_t quickTuneRows[] = {LV_GRID_CONTENT,
-                                           LV_GRID_TEMPLATE_LAST};
+class QuickTuneActivityDot : public Window
+{
+ public:
+  QuickTuneActivityDot(Window* parent, std::function<int()> getValue,
+                       int threshold = 5) :
+      Window(parent, rect_t{0, 0, 10, 10}),
+      getValue(std::move(getValue)), threshold(threshold)
+  {
+    setWindowFlag(NO_SCROLL);
+    withLive([&](LiveWindow& live) {
+      lv_obj_clear_flag(live.lvobj(), LV_OBJ_FLAG_CLICKABLE);
+      auto dot = lv_obj_create(live.lvobj());
+      lv_obj_remove_style_all(dot);
+      lv_obj_clear_flag(dot, static_cast<lv_obj_flag_t>(
+                                LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
+      lv_obj_set_size(dot, 8, 8);
+      lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(dot, LV_OPA_0, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(dot, lv_color_hex(0x58A6FF), LV_PART_MAIN);
+      dotObj = dot;
+    });
+  }
+
+ protected:
+  std::function<int()> getValue;
+  int threshold;
+  lv_obj_t* dotObj = nullptr;
+  int lastValue = 0;
+
+  void onLiveCheckEvents(LiveWindow& live) override
+  {
+    if (!getValue || !dotObj) return;
+    int v = getValue();
+    if (v == lastValue) return;
+    lastValue = v;
+    bool active = std::abs(v) > threshold;
+    if (active) {
+      lv_obj_set_style_bg_opa(dotObj, LV_OPA_COVER, LV_PART_MAIN);
+    } else {
+      lv_obj_set_style_bg_opa(dotObj, LV_OPA_0, LV_PART_MAIN);
+    }
+  }
+};
+
+// Fill bar: dark pill with live stick-position indicator
+class QuickTuneFillBar : public Window
+{
+ public:
+  QuickTuneFillBar(Window* parent, uint8_t channel)
+      : Window(parent, rect_t{}), channel(channel)
+  {
+    setWindowFlag(NO_SCROLL);
+    setFlexGrow(1);
+    withLive([this](LiveWindow& live) {
+      auto* o = live.lvobj();
+      etx_bg_color(o, COLOR_THEME_PRIMARY3_INDEX, LV_PART_MAIN);
+      lv_obj_set_style_radius(o, 4, 0);
+      lv_obj_set_style_pad_all(o, 0, 0);
+      lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+      lv_obj_set_style_border_width(o, 0, 0);
+
+      fillBar = lv_obj_create(o);
+      lv_obj_remove_style_all(fillBar);
+      lv_obj_set_size(fillBar, 1, lv_obj_get_height(o));
+      lv_obj_set_style_radius(fillBar, 3, 0);
+      etx_bg_color(fillBar, COLOR_THEME_ACTIVE_INDEX, LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(fillBar, LV_OPA_40, 0);
+      lv_obj_align(fillBar, LV_ALIGN_LEFT_MID, 0, 0);
+    });
+    setFlexLayout(LV_FLEX_FLOW_ROW, 0);
+  }
+
+  void onLiveCheckEvents(LiveWindow& live) override
+  {
+    if (!fillBar) return;
+    int stick = calcRESXto100(getRawChannelOutput(channel));
+    if (stick == lastFill) return;
+    lastFill = stick;
+    lv_coord_t cw = lv_obj_get_width(live.lvobj());
+    if (cw <= 0) return;
+    lv_coord_t fw = (stick + 100) * cw / 200;
+    fw = std::max<lv_coord_t>(1, std::min(fw, cw));
+    lv_obj_set_width(fillBar, fw);
+  }
+
+ private:
+  uint8_t channel;
+  lv_obj_t* fillBar = nullptr;
+  int lastFill = -999;
+};
 
 static std::string percentString(int value)
 {
@@ -520,67 +609,6 @@ static QuickTuneValueConfig outputLimitConfig(uint8_t channel, bool minimum)
           limitDisplayString};
 }
 
-static void applyQuickTuneDelta(const QuickTuneValueConfig& config, int delta)
-{
-  if (!config.getValue || !config.setValue) return;
-  config.setValue(limit(config.vmin, config.getValue() + delta, config.vmax));
-}
-
-static QuickAdjustCell* newQuickTuneValueControls(
-    Window* line, const QuickTuneValueConfig& config, bool focus = false)
-{
-  auto minus = new TextButton(line, rect_t{}, LV_SYMBOL_MINUS, [=]() {
-    applyQuickTuneDelta(config, -config.fineStep);
-    return 0;
-  });
-  minus->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  minus->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  minus->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-
-  auto slider = new Slider(line, 100, config.vmin, config.vmax,
-                           config.getValue, config.setValue);
-  slider->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  slider->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  slider->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-
-  auto plus = new TextButton(line, rect_t{}, LV_SYMBOL_PLUS, [=]() {
-    applyQuickTuneDelta(config, config.fineStep);
-    return 0;
-  });
-  plus->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  plus->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  plus->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-
-  auto value = new QuickAdjustCell(line, config.vmin, config.vmax,
-                                   config.getValue, config.setValue, "",
-                                   config.displayValue);
-  value->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  value->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  value->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-  value->setFastStep(config.fastStep);
-  value->setAccelFactor(config.accelFactor);
-  if (focus) value->focus();
-
-  return value;
-}
-
-static void newQuickTuneFallbackControls(
-    Window* line, const std::string& value,
-    std::function<uint8_t(void)> pressHandler)
-{
-  auto empty1 = new StaticText(line, rect_t{}, "");
-  empty1->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  auto button = new TextButton(line, rect_t{}, value, std::move(pressHandler));
-  button->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  button->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  button->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-  auto empty2 = new StaticText(line, rect_t{}, "");
-  empty2->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-  auto editHint = new StaticText(line, rect_t{}, STR_EDIT,
-                                 COLOR_THEME_SECONDARY1_INDEX);
-  editHint->setStyleGridCellYAlign(LV_GRID_ALIGN_CENTER, 0);
-}
-
 void ModelInputsPage::openInputQuickMenu(uint8_t input, uint8_t index)
 {
   Menu* menu = new Menu();
@@ -601,6 +629,249 @@ void ModelInputsPage::openOutputQuickMenu(uint8_t channel)
   menu->addLine(STR_RESET, [=]() {
     resetOutputLimits(channel);
     rebuildFromModel();
+  });
+}
+
+struct LimitsWheelLiveContext {
+  QuickTuneValueConfig minCfg;
+  QuickTuneValueConfig maxCfg;
+  int originalMin = 0;
+  int originalMax = 0;
+  lv_obj_t* minRoller = nullptr;
+  lv_obj_t* maxRoller = nullptr;
+  lv_obj_t* minLabel = nullptr;
+  lv_obj_t* maxLabel = nullptr;
+  bool suppressLiveApply = false;
+};
+
+static int limitsWheelValue(const QuickTuneValueConfig& cfg, lv_obj_t* roller)
+{
+  return cfg.vmin + lv_roller_get_selected(roller) * cfg.fineStep;
+}
+
+static void updateLimitsWheelLabels(LimitsWheelLiveContext* ctx)
+{
+  if (!ctx) return;
+  if (ctx->minLabel && ctx->minRoller) {
+    auto text = std::string("Min ") + ctx->minCfg.displayValue(limitsWheelValue(ctx->minCfg, ctx->minRoller));
+    lv_label_set_text(ctx->minLabel, text.c_str());
+  }
+  if (ctx->maxLabel && ctx->maxRoller) {
+    auto text = std::string("Max ") + ctx->maxCfg.displayValue(limitsWheelValue(ctx->maxCfg, ctx->maxRoller));
+    lv_label_set_text(ctx->maxLabel, text.c_str());
+  }
+}
+
+static void applyLimitsWheelLiveValue(LimitsWheelLiveContext* ctx)
+{
+  if (!ctx || ctx->suppressLiveApply || !ctx->minRoller || !ctx->maxRoller) return;
+  ctx->minCfg.setValue(limitsWheelValue(ctx->minCfg, ctx->minRoller));
+  ctx->maxCfg.setValue(limitsWheelValue(ctx->maxCfg, ctx->maxRoller));
+  updateLimitsWheelLabels(ctx);
+}
+
+static void onLimitsWheelRollerChanged(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+  applyLimitsWheelLiveValue(static_cast<LimitsWheelLiveContext*>(lv_event_get_user_data(e)));
+}
+
+static void onLimitsWheelDeleted(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_DELETE) return;
+  delete static_cast<LimitsWheelLiveContext*>(lv_event_get_user_data(e));
+}
+
+void ModelInputsPage::openLimitsWheel(uint8_t channel)
+{
+  auto cfg_min = outputLimitConfig(channel, true);
+  auto cfg_max = outputLimitConfig(channel, false);
+  auto* ctx = new LimitsWheelLiveContext{cfg_min, cfg_max,
+                                         cfg_min.getValue(), cfg_max.getValue()};
+
+  auto* wheel = new ModalWindow(true);
+  wheel->withLive([ctx](Window::LiveWindow& live) {
+    lv_obj_set_style_bg_color(live.lvobj(), lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(live.lvobj(), LV_OPA_80, 0);
+    lv_obj_add_event_cb(live.lvobj(), onLimitsWheelDeleted, LV_EVENT_DELETE, ctx);
+  });
+
+  // Card
+  lv_obj_t* cardObj = nullptr;
+  auto* card = new Window(wheel, rect_t{
+    (LV_HOR_RES - 340) / 2, (LV_VER_RES - 240) / 2, 340, 240
+  });
+  card->withLive([&](Window::LiveWindow& live) {
+    cardObj = live.lvobj();
+    etx_solid_bg(cardObj, COLOR_THEME_SECONDARY3_INDEX);
+    lv_obj_set_style_radius(cardObj, 14, 0);
+    etx_padding(cardObj, PAD_MEDIUM);
+    lv_obj_clear_flag(cardObj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(cardObj, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(cardObj, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(cardObj, LV_FLEX_ALIGN_START,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(cardObj, PAD_SMALL, 0);
+  });
+
+  // Title
+  new StaticText(card, rect_t{}, quickOutputLabel(channel),
+                 COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD) | CENTERED);
+
+  // Build roller options
+  std::string minOpts, maxOpts;
+  for (int i = cfg_min.vmin; i <= cfg_min.vmax; i += cfg_min.fineStep) {
+    if (i > cfg_min.vmin) minOpts += '\n';
+    minOpts += limitDisplayString(i);
+  }
+  for (int i = cfg_max.vmin; i <= cfg_max.vmax; i += cfg_max.fineStep) {
+    if (i > cfg_max.vmin) maxOpts += '\n';
+    maxOpts += limitDisplayString(i);
+  }
+  int minIdx = (cfg_min.getValue() - cfg_min.vmin) / cfg_min.fineStep;
+  int maxIdx = (cfg_max.getValue() - cfg_max.vmin) / cfg_max.fineStep;
+
+  // Roller container: two columns, label above each roller, rollers flex-grow
+  lv_obj_t* minRoller = nullptr;
+  lv_obj_t* maxRoller = nullptr;
+  auto* rollerContainer = new Window(card, rect_t{});
+  rollerContainer->withLive([&, minOpts, maxOpts, minIdx, maxIdx, ctx](Window::LiveWindow& live) {
+    auto* cont = live.lvobj();
+    lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(cont, PAD_LARGE, 0);
+    lv_obj_set_width(cont, lv_pct(100));
+    lv_obj_set_flex_grow(cont, 1);
+    lv_obj_set_style_min_height(cont, 112, 0);
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Left column: Min label + roller
+    auto* leftCol = lv_obj_create(cont);
+    lv_obj_set_layout(leftCol, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(leftCol, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(leftCol, LV_FLEX_ALIGN_START,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(leftCol, PAD_TINY, 0);
+    lv_obj_set_flex_grow(leftCol, 1);
+    lv_obj_set_width(leftCol, lv_pct(48));
+    lv_obj_set_height(leftCol, lv_pct(100));
+    lv_obj_clear_flag(leftCol, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(leftCol, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(leftCol, 0, 0);
+    lv_obj_set_style_pad_all(leftCol, 0, 0);
+
+    auto* minLabel = lv_label_create(leftCol);
+    ctx->minLabel = minLabel;
+    lv_label_set_text(minLabel, "Min");
+    etx_txt_color(minLabel, COLOR_THEME_SECONDARY1_INDEX, 0);
+    etx_font(minLabel, FONT_XS_INDEX, 0);
+    lv_obj_set_width(minLabel, lv_pct(100));
+    lv_obj_set_style_text_align(minLabel, LV_TEXT_ALIGN_CENTER, 0);
+
+    minRoller = lv_roller_create(leftCol);
+    etx_font(minRoller, FONT_STD_INDEX, 0);
+    lv_roller_set_options(minRoller, minOpts.c_str(), LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_visible_row_count(minRoller, 5);
+    lv_obj_set_style_text_align(minRoller, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(minRoller, lv_pct(100));
+    lv_obj_set_height(minRoller, lv_pct(100));
+    lv_obj_set_flex_grow(minRoller, 1);
+    lv_obj_set_style_text_color(minRoller, makeLvColor(COLOR_THEME_SECONDARY1), LV_PART_MAIN);
+    lv_obj_set_style_text_color(minRoller, makeLvColor(COLOR_THEME_PRIMARY1), LV_PART_SELECTED);
+    lv_obj_set_style_bg_color(minRoller, makeLvColor(COLOR_THEME_ACTIVE), LV_PART_SELECTED);
+    lv_obj_set_style_bg_opa(minRoller, LV_OPA_40, LV_PART_SELECTED);
+    lv_obj_set_style_radius(minRoller, 8, LV_PART_SELECTED);
+    if (minIdx >= 0) lv_roller_set_selected(minRoller, minIdx, LV_ANIM_OFF);
+    ctx->minRoller = minRoller;
+    lv_obj_add_event_cb(minRoller, onLimitsWheelRollerChanged,
+                        LV_EVENT_VALUE_CHANGED, ctx);
+
+    // Right column: Max label + roller
+    auto* rightCol = lv_obj_create(cont);
+    lv_obj_set_layout(rightCol, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(rightCol, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(rightCol, LV_FLEX_ALIGN_START,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(rightCol, PAD_TINY, 0);
+    lv_obj_set_flex_grow(rightCol, 1);
+    lv_obj_set_width(rightCol, lv_pct(48));
+    lv_obj_set_height(rightCol, lv_pct(100));
+    lv_obj_clear_flag(rightCol, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(rightCol, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(rightCol, 0, 0);
+    lv_obj_set_style_pad_all(rightCol, 0, 0);
+
+    auto* maxLabel = lv_label_create(rightCol);
+    ctx->maxLabel = maxLabel;
+    lv_label_set_text(maxLabel, "Max");
+    etx_txt_color(maxLabel, COLOR_THEME_SECONDARY1_INDEX, 0);
+    etx_font(maxLabel, FONT_XS_INDEX, 0);
+    lv_obj_set_width(maxLabel, lv_pct(100));
+    lv_obj_set_style_text_align(maxLabel, LV_TEXT_ALIGN_CENTER, 0);
+
+    maxRoller = lv_roller_create(rightCol);
+    etx_font(maxRoller, FONT_STD_INDEX, 0);
+    lv_roller_set_options(maxRoller, maxOpts.c_str(), LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_visible_row_count(maxRoller, 5);
+    lv_obj_set_style_text_align(maxRoller, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(maxRoller, lv_pct(100));
+    lv_obj_set_height(maxRoller, lv_pct(100));
+    lv_obj_set_flex_grow(maxRoller, 1);
+    lv_obj_set_style_text_color(maxRoller, makeLvColor(COLOR_THEME_SECONDARY1), LV_PART_MAIN);
+    lv_obj_set_style_text_color(maxRoller, makeLvColor(COLOR_THEME_PRIMARY1), LV_PART_SELECTED);
+    lv_obj_set_style_bg_color(maxRoller, makeLvColor(COLOR_THEME_ACTIVE), LV_PART_SELECTED);
+    lv_obj_set_style_bg_opa(maxRoller, LV_OPA_40, LV_PART_SELECTED);
+    lv_obj_set_style_radius(maxRoller, 8, LV_PART_SELECTED);
+    if (maxIdx >= 0) lv_roller_set_selected(maxRoller, maxIdx, LV_ANIM_OFF);
+    ctx->maxRoller = maxRoller;
+    lv_obj_add_event_cb(maxRoller, onLimitsWheelRollerChanged,
+                        LV_EVENT_VALUE_CHANGED, ctx);
+    updateLimitsWheelLabels(ctx);
+
+    // Group for rotary events
+    lv_group_t* g = lv_group_create();
+    lv_group_set_editing(g, true);
+    lv_group_add_obj(g, minRoller);
+    lv_group_add_obj(g, maxRoller);
+    lv_group_focus_obj(minRoller);
+    wheel->assignLvGroup(g, true);
+  });
+
+  // Button row
+  auto* btnRow = new Window(card, rect_t{});
+  btnRow->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
+  btnRow->withLive([](Window::LiveWindow& live) {
+    lv_obj_set_layout(live.lvobj(), LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(live.lvobj(), LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_SPACE_EVENLY,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_width(live.lvobj(), lv_pct(100));
+    lv_obj_clear_flag(live.lvobj(), LV_OBJ_FLAG_SCROLLABLE);
+  });
+  auto scheduleRebuild = [this]() {
+    auto* cb = new std::function<void()>([this]() { rebuildFromModel(); });
+    lv_async_call([](void* data) {
+      auto* fn = static_cast<std::function<void()>*>(data);
+      (*fn)();
+      delete fn;
+    }, cb);
+  };
+
+  new TextButton(btnRow, rect_t{}, "Cancel", [=]() {
+    ctx->suppressLiveApply = true;
+    ctx->minCfg.setValue(ctx->originalMin);
+    ctx->maxCfg.setValue(ctx->originalMax);
+    wheel->deleteLater();
+    scheduleRebuild();
+    return 0;
+  });
+  new TextButton(btnRow, rect_t{}, "OK", [=]() {
+    applyLimitsWheelLiveValue(ctx);
+    wheel->deleteLater();
+    scheduleRebuild();
+    return 0;
   });
 }
 
@@ -627,8 +898,7 @@ void ModelInputsPage::buildQuickTuneTabs(Window* window)
 
   addTab(QuickTunePage::Expo);
   addTab(QuickTunePage::Rate);
-  addTab(QuickTunePage::Min);
-  addTab(QuickTunePage::Max);
+  addTab(QuickTunePage::Limits);
 
   auto profiles = quickTuneSwitchProfiles();
   syncQuickTuneSelectedProfile(profiles);
@@ -663,146 +933,130 @@ void ModelInputsPage::buildQuickTuneTabs(Window* window)
 void ModelInputsPage::buildQuickTuneRows(Window* window)
 {
   const bool inputPage = quickTunePageIsInput(s_quickTunePage);
-  const bool minimum = s_quickTunePage == QuickTunePage::Min;
   auto profiles = quickTuneSwitchProfiles();
   syncQuickTuneSelectedProfile(profiles);
   const bool profileMode = inputPage && quickTuneHasSwitchProfiles(profiles);
-  FlexGridLayout grid(inputPage && !profileMode ? quickTuneInputCols
-                                                : quickTuneOutputCols,
-                      quickTuneRows, PAD_TINY);
 
-  auto header = window->newLine(grid);
-  new StaticText(header, rect_t{}, inputPage ? STR_MENUINPUTS : STR_MENULIMITS,
-                 COLOR_THEME_SECONDARY1_INDEX, FONT(BOLD));
-#if LANDSCAPE
-  if (inputPage && !profileMode) {
-    new StaticText(header, rect_t{}, STR_SWITCH, COLOR_THEME_SECONDARY1_INDEX,
-                   FONT(BOLD));
-  }
-#endif
-  new StaticText(header, rect_t{}, "", COLOR_THEME_SECONDARY1_INDEX,
-                 FONT(BOLD));
-  new StaticText(header, rect_t{}, "Slider", COLOR_THEME_SECONDARY1_INDEX,
-                 FONT(BOLD));
-  new StaticText(header, rect_t{}, "", COLOR_THEME_SECONDARY1_INDEX,
-                 FONT(BOLD));
-  new StaticText(header, rect_t{}, quickTunePageLabel(s_quickTunePage),
-                 COLOR_THEME_SECONDARY1_INDEX, FONT(BOLD));
+  // Responsive flex-wrap grid of tall cards
+  auto* grid = new Window(window, rect_t{});
+  grid->withLive([](Window::LiveWindow& live) {
+    auto* o = live.lvobj();
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_layout(o, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(o, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_SPACE_EVENLY,
+                          LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_row(o, PAD_SMALL, 0);
+    lv_obj_set_style_pad_column(o, PAD_SMALL, 0);
+    lv_obj_set_style_pad_all(o, PAD_SMALL, 0);
+    lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+  });
 
-  bool focusSet = false;
+  static const lv_coord_t cardH = EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_SMALL;
+
+  // Shared card styling lambda
+  auto styleCard = [](lv_obj_t* o) {
+    etx_solid_bg(o, COLOR_THEME_SECONDARY3_INDEX, LV_PART_MAIN);
+    lv_obj_set_style_radius(o, 8, 0);
+    etx_padding(o, PAD_SMALL, LV_PART_MAIN);
+    etx_border_color(o, COLOR_THEME_SECONDARY2_INDEX, LV_PART_MAIN);
+    lv_obj_set_style_border_width(o, 1, 0);
+    lv_obj_set_style_border_opa(o, LV_OPA_50, 0);
+    lv_obj_set_layout(o, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(o, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(o, PAD_TINY, 0);
+    lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+  };
+
+  // --- Expo / Rate cards ---
+  auto addInputCard = [&](const std::string& label,
+                         const QuickTuneValueConfig& cfg,
+                         bool editable = true) {
+    auto* card = new Window(grid, rect_t{});
+    card->setWindowFlag(NO_SCROLL);
+    card->withLive([styleCard](Window::LiveWindow& live) {
+      auto* o = live.lvobj();
+      lv_obj_set_size(o, lv_pct(23), cardH);
+      lv_obj_set_style_min_width(o, 90, 0);
+      styleCard(o);
+    });
+
+    // Bold title
+    new StaticText(card, rect_t{}, label,
+                   COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD) | CENTERED);
+
+    if (!editable) {
+      new StaticText(card, rect_t{},
+                     cfg.displayValue ? cfg.displayValue(cfg.getValue())
+                                      : std::to_string(cfg.getValue()),
+                     COLOR_THEME_SECONDARY1_INDEX, CENTERED);
+      return;
+    }
+
+    auto* val = new NumberEdit(card, rect_t{}, cfg.vmin, cfg.vmax,
+                               cfg.getValue, cfg.setValue, CENTERED);
+    val->setDisplayHandler(cfg.displayValue);
+    val->setStep(cfg.fineStep);
+    val->setFastStep(cfg.fastStep);
+    val->setDirectKeyboard(false);
+    val->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
+  };
+
+  // --- Limits card: the whole card opens the dual-roller ---
+  auto addLimitsCard = [&](uint8_t channel) {
+    auto cfg_min = outputLimitConfig(channel, true);
+    auto cfg_max = outputLimitConfig(channel, false);
+    auto* card = new TextButton(grid, rect_t{}, "", [=]() {
+      openLimitsWheel(channel);
+      return 0;
+    });
+    card->setWindowFlag(NO_SCROLL);
+    card->withLive([styleCard](Window::LiveWindow& live) {
+      auto* o = live.lvobj();
+      lv_obj_set_size(o, lv_pct(23), 86);
+      lv_obj_set_style_min_width(o, 90, 0);
+      styleCard(o);
+    });
+
+    new StaticText(card, rect_t{}, quickOutputLabel(channel),
+                   COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD) | CENTERED);
+
+    new StaticText(card, rect_t{},
+                   std::string("Min ") + limitDisplayString(cfg_min.getValue()),
+                   COLOR_THEME_SECONDARY1_INDEX, FONT(XS) | CENTERED);
+    new StaticText(card, rect_t{},
+                   std::string("Max ") + limitDisplayString(cfg_max.getValue()),
+                   COLOR_THEME_SECONDARY1_INDEX, FONT(XS) | CENTERED);
+  };
+
+  // --- Populate ---
   if (inputPage) {
-    bool anyInput = false;
     for (uint8_t input = 0; input < MAX_INPUTS; input++) {
       bool exactProfile = false;
       int index = quickInputLineForProfile(input, s_quickTuneSelectedSwitch,
                                            exactProfile);
       if (index < 0) continue;
-      anyInput = true;
       ExpoData* lineData = expoAddress(index);
 
-      auto line = window->newLine(grid);
-      new StaticText(line, rect_t{}, profileMode
-                                      ? quickInputProfileLabel(input)
-                                      : quickInputLabel(lineData, index));
-#if LANDSCAPE
-      if (!profileMode) {
-        if (modelFMEnabled() && lineData->flightModes && !lineData->swtch) {
-          new StaticText(line, rect_t{}, STR_FLMODE,
-                         COLOR_THEME_SECONDARY1_INDEX);
-        } else {
-          auto sw = new SwitchChoice(
-              line, rect_t{}, SWSRC_FIRST_IN_MIXES, SWSRC_LAST_IN_MIXES,
-              [=]() -> int16_t { return expoAddress(index)->swtch; },
-              [=](int16_t newValue) {
-                MixerTaskLockGuard lock;
-                expoAddress(index)->swtch = newValue;
-                SET_DIRTY();
-              });
-          sw->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-          sw->setTextHandler([=](int value) -> std::string {
-            return value ? std::string(getSwitchPositionName(value))
-                         : std::string("Always");
-          });
-        }
-      }
-#endif
+      std::string label = profileMode
+                              ? quickInputProfileLabel(input)
+                              : quickInputLabel(lineData, index);
 
-      bool focus = shouldFocusLine(index, focusSet);
-      if (profileMode && !exactProfile) {
-        std::string inherited = "Inherited ";
-        inherited += s_quickTunePage == QuickTunePage::Rate
-                         ? sourceNumString(lineData->weight, "%")
-                         : quickCurveString(lineData);
-        newQuickTuneFallbackControls(line, inherited, [=]() {
-          editInput(lineData->chn, index);
-          return 0;
-        });
-      } else if (s_quickTunePage == QuickTunePage::Rate) {
-        if (sourceNumIsSource(lineData->weight)) {
-          newQuickTuneFallbackControls(line,
-                                       sourceNumString(lineData->weight, "%"),
-                                       [=]() {
-                                         editInput(lineData->chn, index);
-                                         return 0;
-                                       });
-        } else {
-          newQuickTuneValueControls(line, inputRateConfig(index), focus);
-        }
+      if (s_quickTunePage == QuickTunePage::Rate) {
+        addInputCard(label, inputRateConfig(index),
+                     !sourceNumIsSource(lineData->weight));
       } else {
-        if (isQuickExpoEditable(lineData)) {
-          newQuickTuneValueControls(line, inputExpoConfig(index), focus);
-        } else {
-          newQuickTuneFallbackControls(line, quickCurveString(lineData), [=]() {
-            editInput(lineData->chn, index);
-            return 0;
-          });
-        }
+        addInputCard(label, inputExpoConfig(index),
+                     isQuickExpoEditable(lineData));
       }
-    }
-
-    if (!anyInput) {
-      auto empty = window->newLine(grid);
-      new StaticText(empty, rect_t{}, "No inputs configured",
-                     COLOR_THEME_SECONDARY1_INDEX);
-#if LANDSCAPE
-      if (!profileMode) new StaticText(empty, rect_t{}, "");
-#endif
-      new StaticText(empty, rect_t{}, "");
-      new StaticText(empty, rect_t{}, "");
-      new StaticText(empty, rect_t{}, "");
-      new StaticText(empty, rect_t{}, "");
     }
   } else {
-    uint8_t rows = 0;
+    // Limits: one card per channel
     for (uint8_t channel = 0; channel < MAX_OUTPUT_CHANNELS; channel++) {
       if (!outputChannelShouldShow(channel)) continue;
-      rows++;
-
-      auto line = window->newLine(grid);
-      new StaticText(line, rect_t{}, getSourceString(MIXSRC_FIRST_CH + channel));
-
-      if (outputLimitIsQuickEditable(channel, minimum)) {
-        newQuickTuneValueControls(line, outputLimitConfig(channel, minimum),
-                                  !focusSet);
-        focusSet = true;
-      } else {
-        newQuickTuneFallbackControls(line, outputLimitString(channel, minimum),
-                                     [=]() {
-                                       openOutputQuickMenu(channel);
-                                       return 0;
-                                     });
-      }
-    }
-
-    if (rows == 0) {
-      const uint8_t fallbackRows = std::min<uint8_t>(4, MAX_OUTPUT_CHANNELS);
-      for (uint8_t channel = 0; channel < fallbackRows; channel++) {
-        auto line = window->newLine(grid);
-        new StaticText(line, rect_t{},
-                       getSourceString(MIXSRC_FIRST_CH + channel));
-        newQuickTuneValueControls(line, outputLimitConfig(channel, minimum),
-                                  channel == 0);
-      }
+      addLimitsCard(channel);
     }
   }
 }

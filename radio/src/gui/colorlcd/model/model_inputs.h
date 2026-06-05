@@ -52,6 +52,7 @@ class ModelInputsPage : public InputMixPageBase
   void buildQuickTuneRows(Window* window);
   void openInputQuickMenu(uint8_t input, uint8_t index);
   void openOutputQuickMenu(uint8_t channel);
+  void openLimitsWheel(uint8_t channel);
 
   bool reachExposLimit();
 };
