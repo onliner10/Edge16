@@ -271,13 +271,14 @@ void Window::eventHandler(lv_event_t* e)
 
 // Constructor to allow lvobj to be created separately - used by NumberEdit and
 // TextEdit
-Window::Window(const rect_t& rect) : rect(rect), parent(nullptr)
+Window::Window(const rect_t& rect) :
+    rect(rect), parent(nullptr), availability(Availability::Available)
 {
   lvobj = nullptr;
 }
 
 Window::Window(Window* parent, const rect_t& rect, LvglCreate objConstruct) :
-    rect(rect), parent(parent)
+    rect(rect), parent(parent), availability(Availability::Available)
 {
   lv_obj_t* lv_parent = nullptr;
   if (parent) {
