@@ -703,6 +703,12 @@ if(EDGE16_GCC_ANALYZER)
       # construction/return paths; ListBox initializes the set before use.
       set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
         -Wno-analyzer-use-of-uninitialized-value)
+    elseif(src MATCHES "(^|/)gui/colorlcd/libui/button_matrix\\.cpp$")
+      # GCC 14 -fanalyzer does not model ButtonMatrix label ownership transfer
+      # into lv_btnm_map; setText frees replaced owned labels and deallocate()
+      # releases all retained duplicated labels.
+      set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
+        -Wno-analyzer-malloc-leak)
     elseif(src MATCHES "(^|/)gui/colorlcd/libui/mainwindow\\.cpp$")
       # GCC 14 -fanalyzer misclassifies mutation-safe child snapshots in
       # Window::forEachChildSnapshot: local std::list copies can look infinite,
@@ -756,6 +762,12 @@ if(EDGE16_GCC_ANALYZER)
       # quick-menu button/icon/text allocations are guarded before use.
       set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
         -Wno-analyzer-possible-null-dereference)
+    elseif(src MATCHES "(^|/)gui/colorlcd/controls/curve\\.cpp$")
+      # GCC 14 -fanalyzer does not model CurveRenderer destructor ownership of
+      # lnPoints after the buffer is retained for later redraws; init() frees
+      # the buffer on partial failure before ownership transfer.
+      set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
+        -Wno-analyzer-malloc-leak)
     elseif(src MATCHES "(^|/)gui/colorlcd/controls/(curve_param|gvar_numberedit|source_numberedit)\\.cpp$")
       # GCC 14 -fanalyzer reports std::function closure allocation internals as
       # nullable; control/widget object allocations are guarded before use.

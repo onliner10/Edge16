@@ -269,6 +269,28 @@ void Window::eventHandler(lv_event_t* e)
 
 //-----------------------------------------------------------------------------
 
+bool Window::isAvailable() const
+{
+  return availability == Availability::Available;
+}
+
+bool Window::hasLiveLvObj() const
+{
+  return !_deleted && lvobj;
+}
+
+bool Window::acceptsEvents() const
+{
+  return isAvailable() && hasLiveLvObj();
+}
+
+lv_obj_t* Window::liveLvObj() const
+{
+  return lvobj;
+}
+
+//-----------------------------------------------------------------------------
+
 // Constructor to allow lvobj to be created separately - used by NumberEdit and
 // TextEdit
 Window::Window(const rect_t& rect) :

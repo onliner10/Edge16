@@ -66,6 +66,17 @@ static const char _newline[] = "\n";
 static const char _map_end[] = "";
 static const char* _empty_map[] = {_map_end};
 
+static bool btn_matrix_owns_text(char* txt)
+{
+  return txt != nullptr && txt != _filler && txt != _newline &&
+         txt != _map_end;
+}
+
+static void btn_matrix_free_text(char* txt)
+{
+  if (btn_matrix_owns_text(txt)) free(txt);
+}
+
 static void btn_matrix_event(lv_event_t* e)
 {
   lv_event_code_t code = lv_event_get_code(e);
@@ -106,8 +117,7 @@ void ButtonMatrix::deallocate()
   if (txt_cnt == 0) return;
 
   for (uint8_t i = 0; i < txt_cnt; i++) {
-    char* txt = lv_btnm_map[i];
-    if (txt != _filler && txt != _newline && txt != _map_end) free(txt);
+    btn_matrix_free_text(lv_btnm_map[i]);
   }
 
   free(lv_btnm_map);
@@ -176,8 +186,12 @@ void ButtonMatrix::setText(uint8_t btn_id, const char* txt)
   withLive([&](LiveWindow&) {
     if (btn_id >= btn_cnt || !lv_btnm_map || !txt_index) return;
 
-    char* copy = strdup(txt);
-    if (copy) lv_btnm_map[txt_index[btn_id]] = copy;
+    char* copy = strdup(txt ? txt : "");
+    if (!copy) return;
+
+    char*& slot = lv_btnm_map[txt_index[btn_id]];
+    btn_matrix_free_text(slot);
+    slot = copy;
   });
 }
 

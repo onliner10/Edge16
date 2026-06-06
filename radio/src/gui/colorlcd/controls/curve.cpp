@@ -105,11 +105,17 @@ bool CurveRenderer::init(Window::LiveWindow& parent, const rect_t& rect,
   lv_line_set_points(extra4, &bgPoints[15], 2);
 
   // Curve points
-  lnPoints = new (std::nothrow) lv_point_precise_t[dw];
-  if (!lnPoints) return false;
+  auto* points = new (std::nothrow) lv_point_precise_t[dw];
+  if (!points) return false;
 
-  ptLine = lv_line_create(parentObj);
-  if (!ptLine) return false;
+  auto* line = lv_line_create(parentObj);
+  if (!line) {
+    delete[] points;
+    return false;
+  }
+
+  lnPoints = points;
+  ptLine = line;
   etx_obj_add_style(ptLine, styles->graph_line, LV_PART_MAIN);
 
   update();

@@ -421,9 +421,9 @@ class Window
 
   void detach();
 
-  bool isAvailable() const { return availability == Availability::Available; }
-  bool hasLiveLvObj() const { return !_deleted && lvobj; }
-  bool acceptsEvents() const { return isAvailable() && hasLiveLvObj(); }
+  bool isAvailable() const;
+  bool hasLiveLvObj() const;
+  bool acceptsEvents() const;
   bool loadLvglScreen();
 
   template <typename Fn>
@@ -489,6 +489,8 @@ class Window
   Window* parent = nullptr;
 
  private:
+  lv_obj_t* liveLvObj() const;
+
   lv_obj_t* lvobj = nullptr;
 
  protected:
@@ -711,7 +713,9 @@ class Window
   static bool withLiveImpl(Self& self, Fn&& handler)
   {
     if (!self.acceptsEvents()) return false;
-    LiveWindow live(const_cast<Window&>(self), self.lvobj);
+    auto* lvobj = self.liveLvObj();
+    if (!lvobj) return false;
+    LiveWindow live(const_cast<Window&>(self), lvobj);
     static_assert(LiveHandlerInvocable<Fn>,
                   "withLive handler must accept Window::LiveWindow&");
     return invokeLiveHandlerWith(live, std::forward<Fn>(handler));
