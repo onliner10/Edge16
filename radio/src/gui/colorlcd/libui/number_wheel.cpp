@@ -406,7 +406,10 @@ void NumberWheel::applyCurrentSelection(bool tick)
   edit->setValue(val);
   if (titleLabel && layout.split()) {
     // Refresh the title to show the composed value
-    std::string text = titleText + " \xe2\x80\x94 " + edit->getDisplayValFor(val);
+    // Use += to avoid operator+(string&&,string&&) chains that confuse GCC -fanalyzer.
+    std::string text = titleText;
+    text += " \xe2\x80\x94 ";
+    text += edit->getDisplayValFor(val);
     titleLabel->withLive([&](LiveWindow& l) {
       lv_label_set_text(l.lvobj(), text.c_str());
     });
