@@ -54,7 +54,7 @@ GVarNumberEdit::GVarNumberEdit(Window* parent, int32_t vmin,
   num_field = new (std::nothrow) NumberEdit(
       this, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, vmin, vmax, [=]() { return getValue() + voffset; },
       nullptr, textFlags);
-  if (num_field) num_field->setDefault(vdefault);
+  if (num_field && vdefault != NO_DEFAULT) num_field->setDefault(vdefault);
 
 #if defined(GVARS)
   // The GVAR button

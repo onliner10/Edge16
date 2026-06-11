@@ -196,6 +196,8 @@ BatteryPackEditBody::BatteryPackEditBody(BatteryPackEditWindow* page,
                                     SET_DIRTY();
                                   });
   cellsEdit->setAccelFactor(0);
+  cellsEdit->setDirectKeyboard(false);
+  cellsEdit->setEditTitle(STR_ROLLER_BATTERY_CELLS);
 
   auto capLine = newLine(grid);
   new StaticText(capLine, rect_t{}, "Capacity");

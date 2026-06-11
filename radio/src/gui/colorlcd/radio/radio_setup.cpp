@@ -67,7 +67,7 @@ class DateNumberEdit : public NumberEdit
     lastValue = this->getValue();
     if (leading0)
       setDisplayHandler([](int32_t value) { return formatNumberAsString(value, LEADING0, 2); });
-    setDirectKeyboard(true);
+    setDirectKeyboard(false);
     setEditTitle(editTitle);
   }
 
@@ -142,7 +142,7 @@ class DateTimeWindow : public Window
 
     // Date
     new StaticText(this, rect_t{PAD_TINY, PAD_TINY + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_DATE);
-    new DateNumberEdit(this, SubPage::EDT_X, PAD_TINY, 2023, 2037, false, STR_DATE,
+    new DateNumberEdit(this, SubPage::EDT_X, PAD_TINY, 2023, 2037, false, STR_ROLLER_YEAR,
         [=]() -> int32_t { return TM_YEAR_BASE + m_tm.tm_year; },
         [=](int32_t newValue) {
           m_tm.tm_year = newValue - TM_YEAR_BASE;
@@ -150,7 +150,7 @@ class DateTimeWindow : public Window
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, PAD_TINY, 1, 12, false, STR_DATE,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, PAD_TINY, 1, 12, false, STR_ROLLER_MONTH,
         [=]() -> int32_t { return 1 + m_tm.tm_mon; },
         [=](int32_t newValue) {
           m_tm.tm_mon = newValue - 1;
@@ -158,7 +158,7 @@ class DateTimeWindow : public Window
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    day = new DateNumberEdit(this, SubPage::EDT_X + 2 * DateNumberEdit::DT_EDT_W + PAD_SMALL, PAD_TINY, 1, daysInMonth(), true, STR_DATE,
+    day = new DateNumberEdit(this, SubPage::EDT_X + 2 * DateNumberEdit::DT_EDT_W + PAD_SMALL, PAD_TINY, 1, daysInMonth(), true, STR_ROLLER_DAY,
         [=]() -> int32_t { return m_tm.tm_mday; },
         [=](int32_t newValue) {
           m_tm.tm_mday = newValue;
@@ -167,21 +167,21 @@ class DateTimeWindow : public Window
 
     // Time
     new StaticText(this, rect_t{PAD_TINY, DT_Y2 + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_TIME);
-    new DateNumberEdit(this, SubPage::EDT_X, DT_Y2, 0, 23, true, STR_TIME,
+    new DateNumberEdit(this, SubPage::EDT_X, DT_Y2, 0, 23, true, STR_ROLLER_HOUR,
         [=]() -> int32_t { return m_tm.tm_hour; },
         [=](int32_t newValue) {
           m_tm.tm_hour = newValue;
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, DT_Y2, 0, 59, true, STR_TIME,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, DT_Y2, 0, 59, true, STR_ROLLER_MINUTE,
         [=]() -> int32_t { return m_tm.tm_min; },
         [=](int32_t newValue) {
           m_tm.tm_min = newValue;
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W * 2 + PAD_SMALL, DT_Y2, 0, 59, true, STR_TIME,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W * 2 + PAD_SMALL, DT_Y2, 0, 59, true, STR_ROLLER_SECOND,
         [=]() -> int32_t { return m_tm.tm_sec; },
         [=](int32_t newValue) {
           m_tm.tm_sec = newValue;
@@ -259,6 +259,8 @@ const static SetupLineDef soundPageSetupLines[] = {
       edit->setStep(15);
       edit->setPrefix("+");
       edit->setSuffix("Hz");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_BEEP_PITCH);
     }
   },
   {
@@ -322,6 +324,8 @@ const static SetupLineDef varioPageSetupLines[] = {
                     (newValue - VARIO_FREQUENCY_ZERO) / 10));
       edit->setStep(10);
       edit->setSuffix("Hz");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_VARIO_PITCH_ZERO);
     }
   },
   {
@@ -337,6 +341,8 @@ const static SetupLineDef varioPageSetupLines[] = {
                   g_eeGeneral.varioPitch));
       edit->setStep(10);
       edit->setSuffix("Hz");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_VARIO_PITCH_MAX);
     }
   },
   {
@@ -349,6 +355,8 @@ const static SetupLineDef varioPageSetupLines[] = {
                     (newValue - VARIO_REPEAT_ZERO) / 10));
       edit->setStep(10);
       edit->setSuffix("ms");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_VARIO_REPEAT);
     }
   },
   {nullptr, nullptr},
@@ -393,6 +401,8 @@ const static SetupLineDef alarmsPageSetupLines[] = {
       auto edit = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
                                 GET_SET_DEFAULT(g_eeGeneral.vBatWarn), PREC1);
       edit->setSuffix("V");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_BATTERY_WARNING);
     }
   },
   {
@@ -424,7 +434,7 @@ const static SetupLineDef alarmsPageSetupLines[] = {
         suffix = " " + suffix;
         return formatNumberAsString(value, 0, 0, nullptr, suffix.c_str());
       });
-      edit->setDirectKeyboard(true);
+      edit->setEditTitle(STR_ROLLER_INACTIVITY_TIMER);
     }
   },
   {
@@ -502,6 +512,8 @@ const static SetupLineDef backlightSetupLines[] = {
                         SET_VALUE(g_eeGeneral.lightAutoOff, newValue / 5));
       edit->setStep(5);
       edit->setSuffix("s");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_BACKLIGHT_DELAY);
       parent->show(g_eeGeneral.backlightMode != e_backlight_mode_on);
     }
   },
@@ -594,6 +606,7 @@ const static SetupLineDef gpsPageSetupLines[] = {
                               });
       tz->setDisplayHandler([](int32_t tz) { return timezoneDisplay(tz); });
       tz->setDirectKeyboard(false);
+      tz->setEditTitle(STR_ROLLER_TIMEZONE);
     }
   },
   {
@@ -838,6 +851,8 @@ const static SetupLineDef setupLines[] = {
        auto edit = new NumberEdit(parent,{x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, EdgeTxStyles::UI_ELEMENT_HEIGHT}, 0,
            255, GET_SET_DEFAULT(g_eeGeneral.pwrOffIfInactive));
        edit->setSuffix(" min");
+       edit->setDirectKeyboard(false);
+       edit->setEditTitle(STR_ROLLER_POWER_OFF_TIMER);
      }
   },
 #endif

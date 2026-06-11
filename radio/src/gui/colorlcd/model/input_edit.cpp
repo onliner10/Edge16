@@ -197,6 +197,8 @@ void InputEditWindow::buildBody(Window* form)
 	                             SET_DIRTY();
 	                           }, MIXSRC_FIRST);
   gvar->setSuffix("%");
+  gvar->setDefault(100);
+  gvar->setEditTitle(STR_ROLLER_INPUT_WEIGHT);
 
   // Offset
   line = form->newLine(grid);
@@ -211,6 +213,8 @@ void InputEditWindow::buildBody(Window* form)
 	                                SET_DIRTY();
 	                              }, MIXSRC_FIRST);
   gvar->setSuffix("%");
+  gvar->setDefault(0);
+  gvar->setEditTitle(STR_ROLLER_INPUT_OFFSET);
 
   // Switch
   line = form->newLine(grid);

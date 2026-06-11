@@ -132,9 +132,25 @@ def build_dir(target: str) -> Path:
 
 def simulator_environment() -> dict[str, str]:
     env = os.environ.copy()
-    has_display = env.get("DISPLAY") or env.get("WAYLAND_DISPLAY")
-    if sys.platform.startswith("linux") and not has_display:
-        env.setdefault("SDL_VIDEODRIVER", "dummy")
+    if sys.platform.startswith("linux") and "SDL_VIDEODRIVER" not in env:
+        show_window = env.get("EDGETX_UI_SHOW_WINDOW", "").lower() in ("1", "true", "yes")
+        if not show_window:
+            # The harness drives the simulator entirely over the automation
+            # protocol, so run headless by default.  Connecting to X11 is
+            # opt-in (EDGETX_UI_SHOW_WINDOW=1): under WSLg an unresponsive
+            # compositor leaves SDL blocked in XIfEvent during window mapping
+            # before the automation loop starts, which surfaces as "timed out
+            # waiting for simulator response to `status`" — especially when
+            # several agents run simulators concurrently.
+            env["SDL_VIDEODRIVER"] = "dummy"
+        elif not (env.get("DISPLAY") or env.get("WAYLAND_DISPLAY")):
+            # Window explicitly requested but no display in the environment:
+            # reattach to the WSLg X socket if it exists, else fall back to
+            # headless rather than failing SDL_Init.
+            if Path("/tmp/.X11-unix/X0").exists():
+                env["DISPLAY"] = ":0"
+            else:
+                env["SDL_VIDEODRIVER"] = "dummy"
     if env.get("TSAN_OPTIONS"):
         # Avoid libdbus lock-order reports from SDL desktop integration while
         # keeping TSan focused on simulator/firmware code.
@@ -308,7 +324,13 @@ class SdlAutomationSession:
         lockfile.write_text(str(self.process.pid))
         _ORPHANED_SIMU_LOCKFILES.append(lockfile)
 
-        deadline = time.monotonic() + 5.0
+        # Generous default: concurrent agent sessions on one machine slow the
+        # simulator's first frames enough to miss a tight deadline.
+        try:
+            startup_timeout = float(os.environ.get("EDGETX_UI_STARTUP_TIMEOUT", "15"))
+        except ValueError:
+            startup_timeout = 15.0
+        deadline = time.monotonic() + startup_timeout
         last_error: Exception | None = None
         last_status: dict[str, Any] | None = None
         poll_interval = 0.1

@@ -55,7 +55,9 @@ ModelHeliPage::ModelHeliPage():
   // Swash ring
   line = body->newLine(grid);
   new StaticText(line, rect_t{}, STR_SWASHRING);
-  new NumberEdit(line, rect_t{}, 0, 100, GET_SET_DEFAULT(g_model.swashR.value));
+  auto* swashRing = new NumberEdit(line, rect_t{}, 0, 100, GET_SET_DEFAULT(g_model.swashR.value));
+  swashRing->setDirectKeyboard(false);
+  swashRing->setEditTitle(STR_ROLLER_SWASH_RING);
 
   // Elevator source
   line = body->newLine(grid);
@@ -66,8 +68,10 @@ ModelHeliPage::ModelHeliPage():
   // Elevator weight
   auto w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
   w->padRight(PAD_LARGE);
-  new NumberEdit(line, rect_t{}, -100, 100,
+  auto* elevWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.elevatorWeight));
+  elevWeight->setDirectKeyboard(false);
+  elevWeight->setEditTitle(STR_ROLLER_ELEVATOR_WEIGHT);
 
   // Aileron source
   line = body->newLine(grid);
@@ -78,8 +82,10 @@ ModelHeliPage::ModelHeliPage():
   // Aileron weight
   w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
   w->padRight(PAD_LARGE);
-  new NumberEdit(line, rect_t{}, -100, 100,
+  auto* ailWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.aileronWeight));
+  ailWeight->setDirectKeyboard(false);
+  ailWeight->setEditTitle(STR_ROLLER_AILERON_WEIGHT);
 
   // Collective source
   line = body->newLine(grid);
@@ -90,8 +96,10 @@ ModelHeliPage::ModelHeliPage():
   // Collective weight
   w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
   w->padRight(PAD_LARGE);
-  new NumberEdit(line, rect_t{}, -100, 100,
+  auto* colWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.collectiveWeight));
+  colWeight->setDirectKeyboard(false);
+  colWeight->setEditTitle(STR_ROLLER_COLLECTIVE_WEIGHT);
 
 
 }

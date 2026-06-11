@@ -54,6 +54,8 @@ void ChannelRange::build()
   if (chStart) {
     chStart->setSetValueHandler([=](int newValue) { setStart(newValue); });
     chStart->setPrefix(STR_CH);
+    chStart->setDirectKeyboard(false);
+    chStart->setEditTitle(STR_ROLLER_CHANNEL_START);
   }
 
   chEnd =
@@ -62,6 +64,8 @@ void ChannelRange::build()
 
   if (chEnd) {
     chEnd->setPrefix(STR_CH);
+    chEnd->setDirectKeyboard(false);
+    chEnd->setEditTitle(STR_ROLLER_CHANNEL_END);
     chEnd->setSetValueHandler([=](int newValue) {
       setEnd(newValue);
 

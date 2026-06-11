@@ -356,6 +356,8 @@ RegisterDialog::RegisterDialog(uint8_t moduleIdx) :
 
     uid = new NumberEdit(line, rect_t{}, 0, 2,
                          GET_SET_DEFAULT(modSetup->registerLoopIndex));
+    uid->setDirectKeyboard(false);
+    uid->setEditTitle(STR_ROLLER_REGISTER_UID);
 
     // RX name
     line = formWindow.newLine(grid);

@@ -19,11 +19,13 @@
 #include "number_wheel.h"
 
 #include <algorithm>
-#include <cmath>
+#include <climits>
+#include <cstdio>
 #include <string>
 
 #include "edgetx.h"
 #include "etx_lv_theme.h"
+#include "hal/rotary_encoder.h"
 #include "keys.h"
 #include "mainwindow.h"
 #include "numberedit.h"
@@ -31,20 +33,242 @@
 // Padded card dimensions — fat-finger friendly
 constexpr lv_coord_t CARD_W = 340;
 constexpr lv_coord_t CARD_H = 200;
-constexpr lv_coord_t CARD_PAD = 12;
 constexpr lv_coord_t TITLE_H = 24;
-constexpr lv_coord_t DIV_H = 1;
 constexpr lv_coord_t ROLLER_H = 130;
-constexpr lv_coord_t ROLLER_VISIBLE = 5;
 constexpr lv_coord_t BTN_H = 32;
+
+// Split-wheel roller geometry (x, width of each column)
+constexpr lv_coord_t SPLIT_COARSE_X = 14;
+constexpr lv_coord_t SPLIT_FINE_X = 176;
+constexpr lv_coord_t SPLIT_ROLLER_W = 150;
+
+// ---- Static layout logic ------------------------------------------------
+
+std::vector<NumberWheel::Option> NumberWheel::buildOptionsFor(NumberEdit* edit)
+{
+  if (!edit) return {};
+
+  int min = edit->getMin();
+  int max = edit->getMax();
+  int step = edit->getStep();
+  if (step < 1) step = 1;
+
+  // First pass: every valid raw value with its display label.
+  std::vector<Option> all;
+  for (int raw = min; raw <= max; raw += step) {
+    if (!edit->isValueAvailableCheck(raw)) continue;
+    all.push_back({raw, edit->getDisplayValFor(raw)});
+  }
+
+  // Second pass: group consecutive entries with the same label and keep the
+  // ceiling-median of each group.  For PREC2 fields this ensures "0.1s" stores
+  // raw 10 (0.10 s) rather than raw 5 (0.05 s, the first value whose truncated
+  // display rounds to "0.1").
+  std::vector<Option> opts;
+  for (size_t i = 0; i < all.size(); ) {
+    size_t j = i + 1;
+    while (j < all.size() && all[j].label == all[i].label) j++;
+    opts.push_back(all[(i + j) / 2]);
+    i = j;
+  }
+  return opts;
+}
+
+NumberWheel::WheelLayout NumberWheel::buildLayoutFor(NumberEdit* edit)
+{
+  if (!edit) return {};
+
+  // Row 2: try single column first (cheap, existing path)
+  {
+    int step = edit->getStep();
+    if (step < 1) step = 1;
+    int count = 0;
+    bool feasible = true;
+    for (int raw = edit->getMin(); raw <= edit->getMax(); raw += step) {
+      if (!edit->isValueAvailableCheck(raw)) continue;
+      if (++count > MAX_WHEEL_OPTIONS) { feasible = false; break; }
+    }
+    if (feasible && count > 0) {
+      auto opts = buildOptionsFor(edit);
+      if (!opts.empty()) return WheelLayout{{opts}};
+    }
+  }
+
+  // Row 3/5: custom display or availability handler → no split
+  if (edit->hasDisplayFunction() || edit->hasAvailableHandler()) return {};
+
+  // Row 4: try additive split (K=10 first, then K=100)
+  int vmin = edit->getMin();
+  int vmax = edit->getMax();
+  int fineUnit;
+  if (edit->hasDecimalPrecision()) {
+    fineUnit = edit->getPrecisionScale() / 10;
+    if (fineUnit < 1) fineUnit = 1;
+  } else {
+    fineUnit = std::max(1, edit->getStep());
+  }
+
+  for (int K : {10, 100}) {
+    // Build coarse bases: b_j = vmin + j*K*fineUnit while b_j+(K-1)*fineUnit <= vmax
+    std::vector<Option> coarse;
+    for (int j = 0; ; j++) {
+      int base = vmin + j * K * fineUnit;
+      if (base + (K - 1) * fineUnit > vmax) break;
+      coarse.push_back({base, edit->getDisplayValFor(base)});
+    }
+    // Append overlapping last base so vmax is reachable
+    int lastCoveredMax =
+        coarse.empty() ? vmin - 1 : coarse.back().rawValue + (K - 1) * fineUnit;
+    if (lastCoveredMax < vmax) {
+      int lastBase = vmax - (K - 1) * fineUnit;
+      coarse.push_back({lastBase, edit->getDisplayValFor(lastBase)});
+    }
+
+    if (coarse.empty() || (int)coarse.size() > 350) continue;
+
+    // Build fine options: additive offsets 0 .. (K-1)*fineUnit
+    bool isDecimal = edit->hasDecimalPrecision();
+    std::vector<Option> fine;
+    for (int i = 0; i < K; i++) {
+      int offset = i * fineUnit;
+      std::string label;
+      if (isDecimal) {
+        // "+.0" .. "+.9"  (one decimal digit regardless of K; K≤10 for decimals)
+        label = "+." + std::to_string(i);
+      } else if (K == 100) {
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "+%02d", offset);
+        label = buf;
+      } else {
+        label = "+" + std::to_string(offset);
+      }
+      fine.push_back({offset, label});
+    }
+
+    return WheelLayout{{coarse, fine}};
+  }
+
+  return {};  // no split feasible
+}
+
+bool NumberWheel::canOpen(NumberEdit* edit)
+{
+  return buildLayoutFor(edit).valid();
+}
+
+int NumberWheel::composeValue(const WheelLayout& l, int coarseIdx, int fineIdx)
+{
+  return l.columns[0][coarseIdx].rawValue + l.columns[1][fineIdx].rawValue;
+}
+
+std::pair<int, int> NumberWheel::decomposeValue(const WheelLayout& l, int value)
+{
+  const auto& coarse = l.columns[0];
+  const auto& fine = l.columns[1];
+  int K = (int)fine.size();
+
+  // Largest coarse index whose base <= value
+  int ci = 0;
+  for (int j = 1; j < (int)coarse.size(); j++) {
+    if (coarse[j].rawValue <= value) ci = j;
+    else break;
+  }
+
+  int fineUnit = (K > 1) ? fine[1].rawValue : 1;
+  int offset = value - coarse[ci].rawValue;
+  int fi = (fineUnit > 0) ? LV_CLAMP(0, offset / fineUnit, K - 1) : 0;
+
+  return {ci, fi};
+}
+
+// ---- Construction -------------------------------------------------------
 
 NumberWheel::NumberWheel(NumberEdit* numEdit) :
     ModalWindow(true), edit(numEdit)
 {
-  hasDecimal = edit->hasDecimalPrecision();
-  precisionScale = edit->getPrecisionScale();
+  originalValue = edit ? edit->getValue() : 0;
+  layout = buildLayoutFor(edit);
+
+  if (layout.valid() && !layout.split()) {
+    options = layout.columns[0];
+  }
+
+  // Guard: should never be called if canOpen() returned false
+  if (!layout.valid()) {
+    int curVal = edit ? edit->getValue() : 0;
+    std::string lbl = edit ? edit->getDisplayValFor(curVal) : "0";
+    options.push_back({curVal, lbl});
+    layout = WheelLayout{{options}};
+  }
+
   buildContent();
 }
+
+// ---- Roller widget helper -----------------------------------------------
+
+lv_obj_t* NumberWheel::buildRollerWidget(lv_obj_t* parent, lv_coord_t x,
+                                          lv_coord_t w,
+                                          const std::string& optionsStr,
+                                          int selectedIdx, int visibleRows)
+{
+  lv_obj_t* obj = lv_roller_create(parent);
+  lv_obj_set_pos(obj, x, 40);
+  lv_obj_set_size(obj, w, ROLLER_H);
+  etx_font(obj, FONT_STD_INDEX, 0);
+  lv_roller_set_options(obj, optionsStr.c_str(), LV_ROLLER_MODE_NORMAL);
+  lv_roller_set_visible_row_count(obj, visibleRows);
+  lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_color(obj, lv_color_hex(0x999999), LV_PART_MAIN);
+  lv_obj_set_style_text_color(obj, lv_color_black(), LV_PART_SELECTED);
+  lv_obj_set_style_bg_color(obj, lv_palette_lighten(LV_PALETTE_BLUE, 3),
+                             LV_PART_SELECTED);
+  lv_obj_set_style_bg_opa(obj, LV_OPA_30, LV_PART_SELECTED);
+  lv_obj_set_style_radius(obj, 8, LV_PART_SELECTED);
+  lv_obj_add_event_cb(obj, &NumberWheel::onRollerKey, LV_EVENT_KEY, this);
+  // Set initial selection BEFORE registering VALUE_CHANGED to avoid a spurious
+  // live-preview beep on open.
+  int cnt = (int)lv_roller_get_option_count(obj);
+  if (selectedIdx >= 0 && selectedIdx < cnt)
+    lv_roller_set_selected(obj, selectedIdx, LV_ANIM_OFF);
+  lv_obj_add_event_cb(obj, &NumberWheel::onRollerChanged, LV_EVENT_VALUE_CHANGED,
+                      this);
+  return obj;
+}
+
+void NumberWheel::buildSingleRoller(lv_obj_t* parent, const std::string& optionsStr,
+                                    int selectedIdx, int visibleRows)
+{
+  int optionCount = static_cast<int>(options.size());
+  if (optionCount == 0) return;
+  rollerObj = buildRollerWidget(parent, (CARD_W - 260) / 2, 260, optionsStr,
+                                selectedIdx, visibleRows);
+}
+
+void NumberWheel::buildSplitRollers(lv_obj_t* parent)
+{
+  if (!layout.split()) return;
+  const auto& coarse = layout.columns[0];
+  const auto& fine = layout.columns[1];
+
+  auto [ci, fi] = decomposeValue(layout, originalValue);
+
+  auto makeOptsStr = [](const std::vector<Option>& col) {
+    std::string s;
+    for (size_t i = 0; i < col.size(); i++) {
+      if (i > 0) s += '\n';
+      s += col[i].label;
+    }
+    return s;
+  };
+
+  const int visibleRows = 5;
+  rollerObj = buildRollerWidget(parent, SPLIT_COARSE_X, SPLIT_ROLLER_W,
+                                makeOptsStr(coarse), ci, visibleRows);
+  fineRollerObj = buildRollerWidget(parent, SPLIT_FINE_X, SPLIT_ROLLER_W,
+                                    makeOptsStr(fine), fi, visibleRows);
+}
+
+// ---- UI construction ----------------------------------------------------
 
 void NumberWheel::buildContent()
 {
@@ -69,209 +293,173 @@ void NumberWheel::buildContent()
     lv_obj_clear_flag(cardObj, LV_OBJ_FLAG_SCROLLABLE);
   });
 
-  // Title - show what's being edited
-  std::string title = edit->getEditTitle();
-  if (title.empty()) title = "Value";
+  // Title — base text stored for live refresh
+  titleText = edit->getEditTitle();
+  if (titleText.empty()) titleText = STR_VALUE;
+
+  std::string titleStr = titleText;
+  if (layout.split()) {
+    // Show composed value immediately in title
+    titleStr += " \xe2\x80\x94 ";
+    titleStr += edit->getDisplayValFor(originalValue);
+  }
+
   titleLabel = new (std::nothrow) StaticText(card, rect_t{0, 6, CARD_W, TITLE_H},
-      title, COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD));
+      titleStr, COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD));
   titleLabel->withLive([](LiveWindow& l) {
     lv_obj_set_style_text_align(l.lvobj(), LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(l.lvobj(), lv_color_black(), 0);
   });
 
-  // --- Rollers area ---
-  const int rollerW = hasDecimal ? 120 : 260;
-  const int rollerX = hasDecimal ? 30 : (CARD_W - rollerW) / 2;
-  const int wMin = wholeMin();
-  const int wCnt = wholeCount();
+  if (!cardObj) return;
 
-  // Build whole roller options
-  std::string wholeOpts;
-  for (int i = 0; i < wCnt; i++) {
-    if (i > 0) wholeOpts += '\n';
-    wholeOpts += std::to_string(wMin + i);
-  }
+  // Build roller(s)
+  if (layout.split()) {
+    buildSplitRollers(cardObj);
+  } else {
+    std::string optsStr;
+    int curVal = edit->getValue();
+    int selectedIdx = 0;
+    int optionCount = static_cast<int>(options.size());
+    int nearestDist = INT_MAX;
 
-  wholeRoller = lv_roller_create(cardObj);
-  lv_obj_set_pos(wholeRoller, rollerX, 40);
-  lv_obj_set_size(wholeRoller, rollerW, ROLLER_H);
-  etx_font(wholeRoller, FONT_STD_INDEX, 0);
-  lv_roller_set_options(wholeRoller, wholeOpts.c_str(), LV_ROLLER_MODE_NORMAL);
-  lv_roller_set_visible_row_count(wholeRoller, 5);
-  lv_obj_set_style_text_align(wholeRoller, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_color(wholeRoller, lv_color_hex(0x999999), LV_PART_MAIN);
-  lv_obj_set_style_text_color(wholeRoller, lv_color_black(), LV_PART_SELECTED);
-  lv_obj_set_style_bg_color(wholeRoller, lv_palette_lighten(LV_PALETTE_BLUE, 3), LV_PART_SELECTED);
-  lv_obj_set_style_bg_opa(wholeRoller, LV_OPA_30, LV_PART_SELECTED);
-  lv_obj_set_style_radius(wholeRoller, 8, LV_PART_SELECTED);
-  // Catch ENTER key to confirm
-  lv_obj_add_event_cb(wholeRoller, &NumberWheel::onRollerKey, LV_EVENT_KEY, this);
-  // Set current value
-  int curVal = edit->getValue();
-  int wholePart = curVal / precisionScale;
-  int wholeIdx = wholePart - wMin;
-  if (wholeIdx >= 0 && wholeIdx < wCnt) lv_roller_set_selected(wholeRoller, wholeIdx, LV_ANIM_OFF);
-
-  if (hasDecimal) {
-    auto* dot = new (std::nothrow) StaticText(card, rect_t{rollerX + rollerW + 4, 40, 16, ROLLER_H},
-                                ".", COLOR_THEME_PRIMARY1_INDEX, CENTERED);
-    dot->withLive([](LiveWindow& l) { lv_obj_set_style_text_color(l.lvobj(), lv_color_black(), 0); });
-
-    decimalRoller = lv_roller_create(cardObj);
-    lv_obj_set_pos(decimalRoller, rollerX + rollerW + 22, 40);
-    lv_obj_set_size(decimalRoller, 120, ROLLER_H);
-    etx_font(decimalRoller, FONT_STD_INDEX, 0);
-    lv_roller_set_options(decimalRoller, ".0\n.1\n.2\n.3\n.4\n.5\n.6\n.7\n.8\n.9", LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_visible_row_count(decimalRoller, 5);
-    lv_obj_set_style_text_align(decimalRoller, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(decimalRoller, lv_color_hex(0x999999), LV_PART_MAIN);
-    lv_obj_set_style_text_color(decimalRoller, lv_color_black(), LV_PART_SELECTED);
-    lv_obj_set_style_bg_color(decimalRoller, lv_palette_lighten(LV_PALETTE_BLUE, 3), LV_PART_SELECTED);
-    lv_obj_set_style_bg_opa(decimalRoller, LV_OPA_30, LV_PART_SELECTED);
-    lv_obj_set_style_radius(decimalRoller, 8, LV_PART_SELECTED);
-    lv_obj_add_event_cb(decimalRoller, &NumberWheel::onRollerKey, LV_EVENT_KEY, this);
-    int decStep = precisionScale / 10;
-    int decPart = decStep > 0 ? (std::abs(curVal) % precisionScale) / decStep : 0;
-    lv_roller_set_selected(decimalRoller, decPart, LV_ANIM_OFF);
-  }
-
-  // Cancel / OK at bottom
-  cancelButton = new (std::nothrow) TextButton(card, rect_t{16, CARD_H - BTN_H - 6, 140, BTN_H},
-                                 "Cancel", [this]() { onCancel(); return 0; });
-  okButton = new (std::nothrow) TextButton(card, rect_t{CARD_W - 156, CARD_H - BTN_H - 6, 140, BTN_H},
-                             "OK", [this]() { onConfirm(); return 0; });
-}
-
-// --- Roller helpers ---
-
-void NumberWheel::buildRoller(lv_obj_t* roller, int count)
-{
-  lv_obj_set_width(roller, LV_PCT(100));
-  lv_obj_set_height(roller, LV_PCT(100));
-
-  // Unselected rows
-  lv_obj_set_style_text_color(roller, lv_color_hex(0x999999), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(roller, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(roller, 0, LV_PART_MAIN);
-
-  // Selected row — highlighted
-  lv_obj_set_style_text_color(roller, lv_color_black(), LV_PART_SELECTED);
-  lv_obj_set_style_bg_color(roller, lv_palette_lighten(LV_PALETTE_BLUE, 3), LV_PART_SELECTED);
-  lv_obj_set_style_bg_opa(roller, LV_OPA_30, LV_PART_SELECTED);
-  lv_obj_set_style_radius(roller, 8, LV_PART_SELECTED);
-
-  // Center-align options
-  lv_obj_set_style_text_align(roller, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  lv_obj_set_style_text_align(roller, LV_TEXT_ALIGN_CENTER, LV_PART_SELECTED);
-
-  lv_roller_set_visible_row_count(roller, ROLLER_VISIBLE);
-}
-
-void NumberWheel::buildRollerOptions(lv_obj_t* roller, int count,
-                                      std::function<std::string(int)> fmt)
-{
-  if (!roller || count <= 0) {
-    count = 5;  // Always show at least 5 options
-  }
-  
-  // Limit to reasonable size
-  if (count > 1000) {
-    count = 1000;
-  }
-  
-  std::string options;
-  options.reserve(count * 12);  // More space for formatting
-  
-  for (int i = 0; i < count; ++i) {
-    if (i > 0) options += '\n';
-    std::string val = fmt(i);
-    if (val.empty()) {
-      val = std::to_string(i);
+    for (int i = 0; i < optionCount; i++) {
+      if (i > 0) optsStr += '\n';
+      optsStr += options[i].label;
+      int dist = std::abs(options[i].rawValue - curVal);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        selectedIdx = i;
+      }
     }
-    options += val;
+
+    const int visibleRows = std::min(optionCount, 5);
+    buildSingleRoller(cardObj, optsStr, selectedIdx, visibleRows);
   }
-  
-  // Ensure we have at least some content
-  if (options.empty()) {
-    options = "0\n1\n2\n3\n4";
+
+  // Bottom button row
+  int defVal = edit->getDefault();
+  bool showDefault = (edit->hasDefaultValue()
+                      && defVal >= edit->getMin() && defVal <= edit->getMax()
+                      && edit->isValueAvailableCheck(defVal));
+  const lv_coord_t btnY = CARD_H - BTN_H - 6;
+  if (showDefault) {
+    constexpr lv_coord_t BW = 96, GAP = 16, MARGIN = 10;
+    cancelButton = new (std::nothrow) TextButton(card,
+        rect_t{MARGIN, btnY, BW, BTN_H},
+        STR_CANCEL, [this]() { onCancel(); return 0; });
+    defaultButton = new (std::nothrow) TextButton(card,
+        rect_t{MARGIN + BW + GAP, btnY, BW, BTN_H},
+        STR_RESET, [this]() {
+          if (!rollerObj) return 0;
+          int dv = edit->getDefault();
+          if (layout.split()) {
+            auto [ci, fi] = decomposeValue(layout, dv);
+            lv_roller_set_selected(rollerObj, ci, LV_ANIM_ON);
+            if (fineRollerObj)
+              lv_roller_set_selected(fineRollerObj, fi, LV_ANIM_ON);
+          } else {
+            int nearestIdx = 0, nearestDist = INT_MAX;
+            for (int i = 0; i < (int)options.size(); i++) {
+              int dist = std::abs(options[i].rawValue - dv);
+              if (dist < nearestDist) { nearestDist = dist; nearestIdx = i; }
+            }
+            // set_selected sends no VALUE_CHANGED — preview explicitly
+            lv_roller_set_selected(rollerObj, nearestIdx, LV_ANIM_ON);
+          }
+          applyCurrentSelection(true);
+          return 0;
+        });
+    okButton = new (std::nothrow) TextButton(card,
+        rect_t{MARGIN + 2 * (BW + GAP), btnY, BW, BTN_H},
+        STR_OK, [this]() { onConfirm(); return 0; });
+  } else {
+    cancelButton = new (std::nothrow) TextButton(card,
+        rect_t{16, btnY, 140, BTN_H},
+        STR_CANCEL, [this]() { onCancel(); return 0; });
+    okButton = new (std::nothrow) TextButton(card,
+        rect_t{CARD_W - 156, btnY, 140, BTN_H},
+        STR_OK, [this]() { onConfirm(); return 0; });
   }
-  
-  lv_roller_set_options(roller, options.c_str(), LV_ROLLER_MODE_NORMAL);
-  
-  // Force a refresh to ensure the roller displays the options
-  lv_obj_invalidate(roller);
 }
 
-void NumberWheel::selectValue(lv_obj_t* roller, int count, int cur)
-{
-  if (!roller || count <= 0) return;
-  int idx = std::clamp(cur, 0, count - 1);
-  lv_roller_set_selected(roller, idx, LV_ANIM_OFF);
-}
+// ---- Value helpers -------------------------------------------------------
 
-// --- Range helpers ---
-
-int NumberWheel::wholeMin() const
+int NumberWheel::currentComposedValue() const
 {
-  int min = edit->getMin();
-  return std::floor(static_cast<float>(min) / static_cast<float>(precisionScale));
-}
-
-int NumberWheel::wholeCount() const
-{
-  int max = edit->getMax();
-  int wmin = wholeMin();
-  int wmax = static_cast<int>(std::ceil(static_cast<float>(max) / static_cast<float>(precisionScale)));
-  int count = wmax - wmin + 1;
-  
-  // Ensure we always have at least a reasonable number of options
-  if (count < 5) {
-    count = 5;
+  if (!rollerObj) return originalValue;
+  if (layout.split()) {
+    if (!fineRollerObj) return originalValue;
+    return composeValue(layout,
+                        (int)lv_roller_get_selected(rollerObj),
+                        (int)lv_roller_get_selected(fineRollerObj));
   }
-  
-  return count;
+  int idx = (int)lv_roller_get_selected(rollerObj);
+  if (idx < 0 || idx >= (int)options.size()) return originalValue;
+  return options[idx].rawValue;
 }
 
-int NumberWheel::decimalMin() const { return 0; }
-
-int NumberWheel::decimalCount() const {
-  return 10; // 0..9 tenths
+void NumberWheel::applyCurrentSelection(bool tick)
+{
+  if (!edit) return;
+  int val = currentComposedValue();
+  edit->setValue(val);
+  if (titleLabel && layout.split()) {
+    // Refresh the title to show the composed value
+    std::string text = titleText + " \xe2\x80\x94 " + edit->getDisplayValFor(val);
+    titleLabel->withLive([&](LiveWindow& l) {
+      lv_label_set_text(l.lvobj(), text.c_str());
+    });
+  }
+  if (tick) audioKeyPress();
 }
 
-// --- Confirmation ---
+void NumberWheel::previewSelection(int idx)
+{
+  if (!edit) return;
+  if (idx < 0 || idx >= (int)options.size()) return;
+  edit->setValue(options[idx].rawValue);
+  audioKeyPress();
+}
+
+// ---- Confirm / cancel ---------------------------------------------------
 
 void NumberWheel::onConfirm()
 {
-  if (!edit || !wholeRoller) return;
-
-  int whole = lv_roller_get_selected(wholeRoller) + wholeMin();
-  int newVal = whole * precisionScale;
-
-  if (hasDecimal && decimalRoller) {
-    int dec = lv_roller_get_selected(decimalRoller) * (precisionScale / 10);
-    if (edit->getValue() < 0 && whole == 0) {
-      newVal = -dec;  // for values between -0.9 and 0
-    } else {
-      newVal += dec;
-    }
+  // If the roller never got built, close via cancel so the modal can't stick.
+  if (!edit || !rollerObj) {
+    onCancel();
+    return;
   }
 
-  newVal = limit<int>(newVal, edit->getMin(), edit->getMax());
-  edit->setValue(newVal);
+  edit->setValue(currentComposedValue());
 
-  if (closeHandler) closeHandler();
+  // Move the handler out before calling so deleteLater() does not call it again.
+  auto handler = std::move(closeHandler);
+  // Reset indev state so the ENTER key release that follows doesn't trigger
+  // a click on the re-focused parent button and re-open the wheel.
+  lv_indev_reset(nullptr, nullptr);
+  if (handler) handler();
   deleteLater();
 }
 
 void NumberWheel::onCancel()
 {
-  if (closeHandler) closeHandler();
+  // Restore the model value if live preview changed it while scrolling.
+  if (edit && edit->getValue() != originalValue) edit->setValue(originalValue);
+  auto handler = std::move(closeHandler);
+  lv_indev_reset(nullptr, nullptr);
+  if (handler) handler();
   deleteLater();
 }
 
-void NumberWheel::onLiveClicked(LiveWindow& live)
+void NumberWheel::onLiveClicked(LiveWindow&)
 {
-  ModalWindow::onLiveClicked(live);
+  // Tapping outside the card commits.  Live preview has already applied the
+  // scrolled value to the model, so silently reverting here would surprise a
+  // pilot who just watched the value take effect.  EXIT / Cancel remain the
+  // explicit revert paths.
+  onConfirm();
 }
 
 void NumberWheel::onLiveEvent(LiveWindow& live, event_t event)
@@ -283,18 +471,61 @@ void NumberWheel::onLiveEvent(LiveWindow& live, event_t event)
   Window::onLiveEvent(live, event);
 }
 
+// ---- LVGL event callbacks -----------------------------------------------
+
+void NumberWheel::onRollerChanged(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+  auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
+  if (!nw) return;
+  nw->applyCurrentSelection(true);
+}
+
 void NumberWheel::onRollerKey(lv_event_t* e)
 {
   if (lv_event_get_code(e) != LV_EVENT_KEY) return;
   uint32_t key = lv_event_get_key(e);
-  if (key != LV_KEY_ENTER) return;
   auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
-  if (nw) nw->onConfirm();
+  if (!nw) return;
+
+  if (key == LV_KEY_ENTER) {
+    // Split mode: ENTER on coarse advances focus to fine roller.
+    if (nw->layout.split() &&
+        lv_event_get_target(e) == nw->rollerObj &&
+        nw->fineRollerObj) {
+      lv_group_focus_obj(nw->fineRollerObj);
+      return;
+    }
+    nw->onConfirm();
+  } else if (key == LV_KEY_ESC) {
+    nw->onCancel();
+  } else if (key == LV_KEY_LEFT || key == LV_KEY_RIGHT ||
+             key == LV_KEY_UP || key == LV_KEY_DOWN) {
+    // The roller class handler already moved the selection by 1 (guardrail #3).
+    // Apply additional accelerated steps to match inline-edit feel.
+    int dir = (key == LV_KEY_RIGHT || key == LV_KEY_DOWN) ? 1 : -1;
+    lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (roller && nw->edit) {
+      int extra = (rotaryEncoderGetAccel() * nw->edit->getAccelFactor()) / 8;
+      if (extra > 0) {
+        int cur = (int)lv_roller_get_selected(roller);
+        int cnt = (int)lv_roller_get_option_count(roller);
+        int next = LV_CLAMP(0, cur + dir * extra, cnt - 1);
+        if (next != cur)
+          lv_roller_set_selected(roller, next, LV_ANIM_OFF);
+      }
+    }
+    nw->applyCurrentSelection(true);
+  }
 }
+
+// ---- open() -------------------------------------------------------------
 
 NumberWheel* NumberWheel::open(NumberEdit* edit)
 {
   if (!edit) return nullptr;
+  if (!canOpen(edit)) return nullptr;
+
   auto* wheel = new (std::nothrow) NumberWheel(edit);
   if (!wheel) return nullptr;
 
@@ -302,9 +533,8 @@ NumberWheel* NumberWheel::open(NumberEdit* edit)
   lv_group_t* g = lv_group_create();
   if (g) {
     lv_group_set_editing(g, true);
-    // Assign the whole roller to the group so rotary scrolls it
-    if (wheel->wholeRoller) lv_group_add_obj(g, wheel->wholeRoller);
-    if (wheel->decimalRoller) lv_group_add_obj(g, wheel->decimalRoller);
+    if (wheel->rollerObj) lv_group_add_obj(g, wheel->rollerObj);
+    if (wheel->fineRollerObj) lv_group_add_obj(g, wheel->fineRollerObj);
     wheel->assignLvGroup(g, true);
   }
   return wheel;
