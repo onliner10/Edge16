@@ -188,6 +188,8 @@ class PageGroupBase : public NavWindow
   void onDelete() override;
   void onLiveCheckEvents(LiveWindow& live) override;
 
+  void doBuild(Window& body, PageGroupItem* tab);
+
 #if defined(HARDWARE_KEYS)
   void doKeyShortcut(event_t event);
   void onPressSYS() override;

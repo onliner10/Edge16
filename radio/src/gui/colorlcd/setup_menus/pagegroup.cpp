@@ -37,9 +37,19 @@
 #include <limits>
 #include <new>
 
-#if defined(DEBUG)
+#if defined(DEBUG) || defined(SIMU)
 static uint32_t dsms, dems, end_ms, start_ms;
 static bool timepg = false;
+static uint32_t tab_obj_count = 0;
+
+static uint32_t count_lv_objects(lv_obj_t* obj)
+{
+  uint32_t n = lv_obj_get_child_count(obj);
+  uint32_t total = n;
+  for (uint32_t i = 0; i < n; i++)
+    total += count_lv_objects(lv_obj_get_child(obj, i));
+  return total;
+}
 
 static void on_draw_begin(lv_event_t* e)
 {
@@ -47,12 +57,16 @@ static void on_draw_begin(lv_event_t* e)
     dsms = time_get_ms();
   }
 }
+static std::string tab_title_str;
+
 static void on_draw_end(lv_event_t* e)
 {
   timepg = false;
   dems = time_get_ms();
-  TRACE("tab time: build %ld layout %ld draw %ld total %ld",
-        end_ms - start_ms, dsms - end_ms, dems - dsms, dems - start_ms);
+  TRACE("TAB_PERF page=%s build=%ld layout=%ld draw=%ld total=%ld objs=%lu",
+        tab_title_str.c_str(),
+        end_ms - start_ms, dsms - end_ms, dems - dsms, dems - start_ms,
+        (unsigned long)tab_obj_count);
 }
 #endif
 
@@ -460,7 +474,7 @@ PageGroupBase::PageGroupBase(coord_t bodyY, EdgeTxIcon icon) :
     });
   });
 
-#if defined(DEBUG)
+#if defined(DEBUG) || defined(SIMU)
   withLive([](LiveWindow& live) {
     lv_obj_add_event_cb(live.lvobj(), on_draw_begin, LV_EVENT_COVER_CHECK,
                         nullptr);
@@ -517,6 +531,41 @@ void PageGroupBase::addTab(PageGroupItem* page)
   }
 }
 
+void PageGroupBase::doBuild(Window& body, PageGroupItem* tab)
+{
+  static const lv_style_prop_t remStyles[] = {
+      LV_STYLE_FLEX_FLOW,  LV_STYLE_LAYOUT,    LV_STYLE_PAD_ROW,
+      LV_STYLE_PAD_COLUMN, LV_STYLE_PAD_LEFT,  LV_STYLE_PAD_RIGHT,
+      LV_STYLE_PAD_TOP,    LV_STYLE_PAD_BOTTOM};
+  body.withLive([&](Window::LiveWindow& liveBody) {
+    for (uint8_t i = 0; i < DIM(remStyles); i += 1)
+      lv_obj_remove_local_style_prop(liveBody.lvobj(), remStyles[i],
+                                     LV_PART_MAIN);
+  });
+
+  body.padAll(tab->getPadding());
+
+#if defined(DEBUG) || defined(SIMU)
+  start_ms = time_get_ms();
+  timepg = true;
+  tab_obj_count = 0;
+  tab_title_str = tab->getTitle();
+#endif
+
+  tab->build(&body);
+
+  // lv_obj_refresh_style(body, LV_PART_ANY, LV_STYLE_PROP_ANY) is intentionally
+  // omitted: lv_obj_class_init_obj already calls lv_obj_refresh_style on each
+  // object during construction, so the full-tree pass here is redundant.
+
+#if defined(DEBUG) || defined(SIMU)
+  body.withLive([](Window::LiveWindow& liveBody) {
+    tab_obj_count = count_lv_objects(liveBody.lvobj());
+  });
+  end_ms = time_get_ms();
+#endif
+}
+
 void PageGroupBase::setCurrentTab(unsigned index)
 {
   withLive([&](LiveWindow&) {
@@ -537,40 +586,13 @@ void PageGroupBase::setCurrentTab(unsigned index)
             QuickMenu::setCurrentPage(tab->pageId(), icon);
 
           lv_obj_enable_style_refresh(false);
-
           body.clear();
           if (currentTab)
             currentTab->cleanup();
           currentTab = tab;
-
-#if defined(DEBUG)
-          start_ms = time_get_ms();
-          timepg = true;
-#endif
-
-          static lv_style_prop_t remStyles[] = {
-              LV_STYLE_FLEX_FLOW,  LV_STYLE_LAYOUT,    LV_STYLE_PAD_ROW,
-              LV_STYLE_PAD_COLUMN, LV_STYLE_PAD_LEFT,  LV_STYLE_PAD_RIGHT,
-              LV_STYLE_PAD_TOP,    LV_STYLE_PAD_BOTTOM};
-          body.withLive([&](Window::LiveWindow& liveBody) {
-            for (uint8_t i = 0; i < DIM(remStyles); i += 1)
-              lv_obj_remove_local_style_prop(liveBody.lvobj(), remStyles[i],
-                                             LV_PART_MAIN);
-          });
-
-          body.padAll(tab->getPadding());
-
-          tab->build(&body);
-
           lv_obj_enable_style_refresh(true);
-          body.withLive([](Window::LiveWindow& liveBody) {
-            lv_obj_refresh_style(liveBody.lvobj(), LV_PART_ANY,
-                                 LV_STYLE_PROP_ANY);
-          });
 
-#if defined(DEBUG)
-          end_ms = time_get_ms();
-#endif
+          doBuild(body, tab);
         }
       });
     });
