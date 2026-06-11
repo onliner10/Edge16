@@ -180,8 +180,8 @@ class QuickSubMenu
         pageGroup->setCurrentTab(pgIdx);
       } else {
         quickMenu->onSelect(true);
-        auto pg = new PageGroup(mainDef->icon, STR_VAL(mainDef->title), mainDef->subMenuItems);
-        pg->setCurrentTab(pgIdx);
+        new PageGroup(mainDef->icon, STR_VAL(mainDef->title),
+                      mainDef->subMenuItems, pgIdx);
       }
     } else {
       quickMenu->getTopMenu()->setCurrent(menuButton);
@@ -401,8 +401,8 @@ void QuickMenu::openPage(QMPage page)
             sub[j].action();
           } else {
             QuickMenu::selected();
-            auto pg = new PageGroup(qmTopItems[i].icon, STR_VAL(qmTopItems[i].title), sub);
-            pg->setCurrentTab(k);
+            new PageGroup(qmTopItems[i].icon, STR_VAL(qmTopItems[i].title),
+                          sub, k);
             return;
           }
         } else if (sub[j].pageAction == PAGE_CREATE) {

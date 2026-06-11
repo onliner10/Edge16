@@ -184,6 +184,9 @@ class PageGroupBase : public NavWindow
   PageGroupItem* currentTab = nullptr;
   EdgeTxIcon icon;
   Messaging quickMenuMsg;
+  // When true, addTab() does not auto-build the first tab; the constructor
+  // is expected to call setCurrentTab() once after all tabs are added.
+  bool deferInitialBuild = false;
 
   void onDelete() override;
   void onLiveCheckEvents(LiveWindow& live) override;
@@ -211,7 +214,8 @@ class PageGroupBase : public NavWindow
 class PageGroup : public PageGroupBase
 {
  public:
-  explicit PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages);
+  explicit PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages,
+                     unsigned initialTab = 0);
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return "PageGroup"; }

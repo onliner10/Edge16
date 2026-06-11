@@ -51,6 +51,29 @@ static uint32_t count_lv_objects(lv_obj_t* obj)
   return total;
 }
 
+#if defined(SIMU)
+// Temporary Task #6 analysis aid: per-direct-child subtree sizes.
+static void dump_lv_breakdown(lv_obj_t* body)
+{
+  uint32_t n = lv_obj_get_child_count(body);
+  for (uint32_t i = 0; i < n; i++) {
+    lv_obj_t* child = lv_obj_get_child(body, i);
+    // First text found in the subtree, for identification
+    const char* txt = "";
+    lv_obj_t* probe = child;
+    for (int depth = 0; probe && depth < 4; depth++) {
+      if (lv_obj_check_type(probe, &lv_label_class)) {
+        txt = lv_label_get_text(probe);
+        break;
+      }
+      probe = lv_obj_get_child(probe, 0);
+    }
+    TRACE("TAB_OBJS [%lu] subtree=%lu txt=\"%s\"", (unsigned long)i,
+          (unsigned long)(1 + count_lv_objects(child)), txt);
+  }
+}
+#endif
+
 static void on_draw_begin(lv_event_t* e)
 {
   if (timepg) {
@@ -61,6 +84,7 @@ static std::string tab_title_str;
 
 static void on_draw_end(lv_event_t* e)
 {
+  if (!timepg) return;
   timepg = false;
   dems = time_get_ms();
   TRACE("TAB_PERF page=%s build=%ld layout=%ld draw=%ld total=%ld objs=%lu",
@@ -526,7 +550,7 @@ uint8_t PageGroupBase::tabCount() const
 void PageGroupBase::addTab(PageGroupItem* page)
 {
   header.with([&](PageGroupHeaderBase& header) { header.addTab(page); });
-  if (!currentTab) {
+  if (!currentTab && !deferInitialBuild) {
     setCurrentTab(0);
   }
 }
@@ -561,6 +585,9 @@ void PageGroupBase::doBuild(Window& body, PageGroupItem* tab)
 #if defined(DEBUG) || defined(SIMU)
   body.withLive([](Window::LiveWindow& liveBody) {
     tab_obj_count = count_lv_objects(liveBody.lvobj());
+#if defined(SIMU)
+    dump_lv_breakdown(liveBody.lvobj());
+#endif
   });
   end_ms = time_get_ms();
 #endif
@@ -672,16 +699,24 @@ void PageGroupBase::setScrollY(coord_t y)
 
 //-----------------------------------------------------------------------------
 
-PageGroup::PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages) :
+PageGroup::PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages,
+                     unsigned initialTab) :
     PageGroupBase(PAGE_GROUP_BODY_Y, icon)
 {
   initRequiredWindowAs<PageGroupHeaderBase, PageGroupHeader>(header, this, icon,
                                                             title);
 
+  // Defer the first tab build until all tabs are added, so opening the group
+  // directly at tab N does not first build (then immediately discard) tab 0.
+  deferInitialBuild = true;
   for (int i = 0; pages[i].icon < EDGETX_ICONS_COUNT; i += 1) {
     if (pages[i].create)
       addTab(pages[i].create(pages[i]));
   }
+  deferInitialBuild = false;
+
+  if (initialTab >= tabCount()) initialTab = 0;
+  setCurrentTab(initialTab);
 
 #if defined(HARDWARE_TOUCH)
 #if VERSION_MAJOR == 2
