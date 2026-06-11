@@ -55,11 +55,13 @@ namespace lvgl {
 // The adapter stores the created lv_display_t* internally so that
 // etx_lvgl_flush_ready() and etx_lvgl_flush_is_last() can be called
 // without passing a display handle.
+// buf_size is the per-buffer size in bytes; pass 0 to use full-frame
+// buffers (w * h * 2). Smaller sizes select strip/partial rendering.
 lv_disp_t* etx_lvgl_disp_create(lv_display_flush_cb_t flush_cb,
                                  lv_display_flush_wait_cb_t wait_cb,
                                  void* buf1, void* buf2, lv_coord_t w,
                                  lv_coord_t h, bool full_refresh,
-                                 bool direct_mode);
+                                 bool direct_mode, uint32_t buf_size = 0);
 
 // Signal that the current display flush chunk is complete.
 // Uses the display pointer stored during etx_lvgl_disp_create().

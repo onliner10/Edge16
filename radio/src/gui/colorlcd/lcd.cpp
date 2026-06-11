@@ -55,6 +55,22 @@ char* get_lvgl_mem(int nbytes)
 pixel_t LCD_FIRST_FRAME_BUFFER[DISPLAY_BUFFER_SIZE] __SDRAM;
 pixel_t LCD_SECOND_FRAME_BUFFER[DISPLAY_BUFFER_SIZE] __SDRAM;
 
+#if defined(LCD_VERTICAL_INVERT) && !defined(RADIO_F16) && !defined(BOOT) && \
+    !defined(SIMU)
+// On rotated-flush targets (TX16S/T16/X10) the LVGL draw buffers are never
+// scanned out by the LTDC: every flushed area is CPU-reversed and DMA-copied
+// into the rotated frame buffers owned by the LCD driver. The draw buffers
+// can therefore be strip buffers in internal SRAM, where the software
+// renderer's read-modify-write and the rotation's pixel reads are
+// zero-wait-state instead of hitting uncached SDRAM.
+#define LCD_USE_STRIP_BUFFERS 1
+#define LCD_STRIP_BUFFER_LINES 32
+static pixel_t LCD_STRIP_BUFFER_1[LCD_W * LCD_STRIP_BUFFER_LINES]
+    __ALIGNED(16);
+static pixel_t LCD_STRIP_BUFFER_2[LCD_W * LCD_STRIP_BUFFER_LINES]
+    __ALIGNED(16);
+#endif
+
 BitmapBuffer lcdBuffer1(BMP_RGB565, LCD_W, LCD_H,
                         (uint16_t*)LCD_FIRST_FRAME_BUFFER);
 BitmapBuffer lcdBuffer2(BMP_RGB565, LCD_W, LCD_H,
@@ -387,6 +403,17 @@ static void clear_frame_buffers()
 
 static bool init_lvgl_disp_drv()
 {
+#if defined(LCD_USE_STRIP_BUFFERS)
+  // Partial render mode with internal-SRAM strip buffers; the LCD driver
+  // rotate-copies each flushed strip into its SDRAM frame buffers.
+  return etx::lvgl::etx_lvgl_disp_create(
+    flushLcd, lcdFlushWaitCb,
+    LCD_STRIP_BUFFER_1, LCD_STRIP_BUFFER_2,
+    LCD_W, LCD_H,
+    false,  // full_refresh = 0
+    false,  // direct_mode = 0
+    sizeof(LCD_STRIP_BUFFER_1)) != nullptr;
+#else
   // Display buffer, driver init, and registration through the adapter
   return etx::lvgl::etx_lvgl_disp_create(
     flushLcd, lcdFlushWaitCb,
@@ -402,6 +429,7 @@ static bool init_lvgl_disp_drv()
     false
 #endif
   ) != nullptr;
+#endif
 }
 
 void lcdInitDisplayDriver()

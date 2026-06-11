@@ -52,7 +52,8 @@ lv_disp_t* etx_lvgl_disp_create(lv_display_flush_cb_t flush_cb,
                                  lv_display_flush_wait_cb_t wait_cb,
                                  void* buf1, void* buf2,
                                  lv_coord_t w, lv_coord_t h,
-                                 bool full_refresh, bool direct_mode)
+                                 bool full_refresh, bool direct_mode,
+                                 uint32_t buf_size)
 {
   // v9 device creation
   s_disp = lv_display_create(w, h);
@@ -76,7 +77,9 @@ lv_disp_t* etx_lvgl_disp_create(lv_display_flush_cb_t flush_cb,
   }
 
   // Set buffers (byte size — v9 API)
-  uint32_t buf_size = static_cast<uint32_t>(w * h * sizeof(uint16_t));
+  if (buf_size == 0) {
+    buf_size = static_cast<uint32_t>(w * h * sizeof(uint16_t));
+  }
   lv_display_set_buffers(s_disp, buf1, buf2, buf_size, render_mode);
 
   // Set flush callback
