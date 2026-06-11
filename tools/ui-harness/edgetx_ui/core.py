@@ -308,7 +308,7 @@ class SdlAutomationSession:
         lockfile.write_text(str(self.process.pid))
         _ORPHANED_SIMU_LOCKFILES.append(lockfile)
 
-        deadline = time.monotonic() + 5.0
+        deadline = time.monotonic() + 30.0
         last_error: Exception | None = None
         last_status: dict[str, Any] | None = None
         poll_interval = 0.1
@@ -414,7 +414,7 @@ class SdlAutomationSession:
         )
 
     def status(self) -> dict[str, Any]:
-        response = self.command("status")
+        response = self.command("status", timeout=10.0)
         result = {
             "target": self.target.name,
             "backend": "sdl-automation",
