@@ -241,9 +241,16 @@ class SdlAutomationSession:
         self.target = target_config(target)
         self.runtime_dir: tempfile.TemporaryDirectory[str] | None = None
         self._using_explicit_sdcard = bool(sdcard)
-        self.sdcard = Path(sdcard) if self._using_explicit_sdcard else self.runtime_fixture_path("sdcard")
+        if self._using_explicit_sdcard:
+            self.sdcard = self._named_fixture_path(sdcard) or Path(sdcard)
+        else:
+            self.sdcard = self.runtime_fixture_path("sdcard")
         if settings:
-            self.settings = Path(settings)
+            settings_fixture = self._named_fixture_path(settings)
+            if settings_fixture is not None:
+                self.settings = self._copy_fixture_to_runtime("settings", settings_fixture)
+            else:
+                self.settings = Path(settings)
         elif self._using_explicit_sdcard:
             self.settings = self.runtime_fixture_path("settings", use_fixture=False)
         else:
@@ -253,18 +260,36 @@ class SdlAutomationSession:
         self.process: subprocess.Popen[str] | None = None
         self._log_lines: deque[str] = deque(maxlen=2000)
 
-    def runtime_fixture_path(self, kind: str, use_fixture: bool = True) -> Path:
+    @staticmethod
+    def _named_fixture_path(value: str | Path) -> Path | None:
+        """Resolve a bare fixture name (e.g. "settings-tx16s") to its directory
+        under tools/ui-harness/fixtures/. Returns None for real paths, so the
+        simulator never reads from or writes back into the repo working tree
+        when a fixture name is given."""
+        value = Path(value)
+        if value.is_absolute() or len(value.parts) != 1:
+            return None
+        fixture = REPO_ROOT / "tools" / "ui-harness" / "fixtures" / value
+        return fixture if fixture.is_dir() else None
+
+    def _runtime_destination(self, kind: str) -> Path:
         if self.runtime_dir is None:
             self.runtime_dir = tempfile.TemporaryDirectory(prefix=f"edgetx-ui-{self.target.name}-")
+        return Path(self.runtime_dir.name) / f"{kind}-{self.target.name}"
 
+    def _copy_fixture_to_runtime(self, kind: str, source: Path) -> Path:
+        destination = self._runtime_destination(kind)
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+        if kind == "settings":
+            normalize_yaml_line_endings(destination)
+        return destination
+
+    def runtime_fixture_path(self, kind: str, use_fixture: bool = True) -> Path:
         source = default_fixture_path(kind, self.target.name)
-        destination = Path(self.runtime_dir.name) / f"{kind}-{self.target.name}"
         if use_fixture and source.exists():
-            shutil.copytree(source, destination, dirs_exist_ok=True)
-            if kind == "settings":
-                normalize_yaml_line_endings(destination)
-        else:
-            destination.mkdir(parents=True, exist_ok=True)
+            return self._copy_fixture_to_runtime(kind, source)
+        destination = self._runtime_destination(kind)
+        destination.mkdir(parents=True, exist_ok=True)
         return destination
 
     def start(self) -> dict[str, Any]:
