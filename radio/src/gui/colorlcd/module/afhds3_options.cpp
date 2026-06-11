@@ -86,6 +86,8 @@ PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx, uint8_
                     vCfg->PWMFrequenciesV1.PWMFrequencies[channelIdx] = newVal;
                     DIRTY_CMD(cfg, afhds3::DirtyConfig::DC_RX_CMD_FREQUENCY_V1);
                   });
+  num_edit->setDirectKeyboard(false);
+  num_edit->setEditTitle(STR_ROLLER_PWM_FREQUENCY);
   num_edit->show(pwmvalue_type == 4);
 }
 
@@ -120,6 +122,8 @@ PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx ) :
                       vCfg->PWMFrequency.Frequency = newVal;
                       DIRTY_CMD(cfg, afhds3::DirtyConfig::DC_RX_CMD_FREQUENCY_V0);
                   });
+  num_edit->setDirectKeyboard(false);
+  num_edit->setEditTitle(STR_ROLLER_PWM_FREQUENCY);
   num_edit->show(pwmvalue_type == 2);
 }
 

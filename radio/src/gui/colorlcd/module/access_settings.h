@@ -56,7 +56,7 @@ class RegisterDialog : public BaseDialog
   uint8_t moduleIdx;
   uint8_t old_registerStep = 0;
   Window* reg_id = nullptr;
-  Window* uid = nullptr;
+  NumberEdit* uid = nullptr;
   TextEdit* rx_name = nullptr;
   StaticText* status = nullptr;
   Window* btn_ok = nullptr;

@@ -32,7 +32,8 @@ SourceNumberEdit::SourceNumberEdit(Window* parent,
                                    std::function<void(int32_t)> setValue,
                                    int16_t sourceMin,
                                    LcdFlags textFlags, int32_t voffset,
-                                   int32_t vdefault) :
+                                   int32_t vdefault,
+                                   const char* editTitle) :
     Window(parent, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + SRC_BTN_W + PAD_TINY * 3, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY * 2}),
     vmin(vmin),
     vmax(vmax),
@@ -75,7 +76,11 @@ SourceNumberEdit::SourceNumberEdit(Window* parent,
         setValue(v.rawValue);
       },
       textFlags);
-  if (num_field) num_field->setDefault(vdefault);
+  if (num_field) {
+    if (vdefault != NO_DEFAULT) num_field->setDefault(vdefault);
+    num_field->setDirectKeyboard(false);
+    if (editTitle) num_field->setEditTitle(editTitle);
+  }
 
   // The Source button
   m_srcBtn = new (std::nothrow) TextButton(this, {EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_TINY, 0, SRC_BTN_W, 0}, "SRC", [=]() {

@@ -74,6 +74,7 @@ void RadioTrainerPage::build(Window* form)
                                    GET_SET_DEFAULT(td->studWeight));
       weight->setSuffix("%");
       weight->setEditTitle(std::string(getMainControlLabel(chan)) + " " + STR_WEIGHT);
+      weight->setDirectKeyboard(false);
 
 #if PORTRAIT
       line = form->newLine(grid);

@@ -236,6 +236,8 @@ class ModuleWindow : public Window
                                 SET_DIRTY();
                               }
                             });
+      rxID->setDirectKeyboard(false);
+      rxID->setEditTitle(STR_ROLLER_RECEIVER_ID);
 
       if (isModuleBindRangeAvailable(moduleIdx) || isModuleCrossfire(moduleIdx)) {
         bindButton = new TextButton(box, rect_t{}, STR_MODULE_BIND);
@@ -375,8 +377,10 @@ class ModuleWindow : public Window
       line = newLine(grid);
       new StaticText(line, rect_t{}, STR_RECEIVER_NUM);
       auto modelId = &g_model.header.modelId[moduleIdx];
-      new NumberEdit(line, rect_t{}, 0, getMaxRxNum(moduleIdx),
+      auto* rxNumEdit = new NumberEdit(line, rect_t{}, 0, getMaxRxNum(moduleIdx),
                     GET_SET_DEFAULT(*modelId));
+      rxNumEdit->setDirectKeyboard(false);
+      rxNumEdit->setEditTitle(STR_ROLLER_MODEL_ID);
     }
   #endif
 
@@ -429,6 +433,8 @@ class ModuleWindow : public Window
           PREC1);
       edit->setSuffix(STR_MS);
       edit->setStep(SBUS_STEPSIZE);
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_SBUS_REFRESH);
       new Choice(box, rect_t{}, STR_SBUS_INVERSION_VALUES, 0, 1,
                 GET_SET_DEFAULT(md->sbus.noninverted));
   #if defined(RADIO_TX16S)

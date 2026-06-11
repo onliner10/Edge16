@@ -118,6 +118,8 @@ class TrimEdit : public Window
     tr_value = new NumberEdit(
         this, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, g_model.extendedTrims ? -512 : -128,
         g_model.extendedTrims ? 512 : 128, GET_SET_DEFAULT(tr->value));
+    tr_value->setDirectKeyboard(false);
+    tr_value->setEditTitle(STR_ROLLER_TRIM_VALUE);
 
     showControls();
   }
@@ -183,14 +185,18 @@ class FlightModeEdit : public Page
     // Fade in
     line = body->newLine(grid);
     new StaticText(line, rect_t{}, STR_FADEIN);
-    new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeIn),
+    auto* fadeInEdit = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeIn),
                    SET_VALUE(p_fm->fadeIn, newValue), PREC1);
+    fadeInEdit->setDirectKeyboard(false);
+    fadeInEdit->setEditTitle(STR_ROLLER_FADE_IN);
 
     // Fade out
     line = body->newLine(grid);
     new StaticText(line, rect_t{}, STR_FADEOUT);
-    new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeOut),
+    auto* fadeOutEdit = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeOut),
                    SET_VALUE(p_fm->fadeOut, newValue), PREC1);
+    fadeOutEdit->setDirectKeyboard(false);
+    fadeOutEdit->setEditTitle(STR_ROLLER_FADE_OUT);
 
     // Trims
     line = body->newLine(grid);
