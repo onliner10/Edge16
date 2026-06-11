@@ -136,7 +136,7 @@ NumberWheel::WheelLayout NumberWheel::buildLayoutFor(NumberEdit* edit)
         // "+.0" .. "+.9"  (one decimal digit regardless of K; K≤10 for decimals)
         label = "+." + std::to_string(i);
       } else if (K == 100) {
-        char buf[8];
+        char buf[16];
         std::snprintf(buf, sizeof(buf), "+%02d", offset);
         label = buf;
       } else {
