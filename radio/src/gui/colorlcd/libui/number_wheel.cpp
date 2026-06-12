@@ -468,6 +468,9 @@ void NumberWheel::onLiveClicked(LiveWindow&)
 void NumberWheel::onLiveEvent(LiveWindow& live, event_t event)
 {
 #if defined(HARDWARE_KEYS)
+  // Reached only when the LVGL group has no focused object (keyboardDriverRead
+  // routes keys here only in that case).  Normal ENTER handling happens in
+  // onRollerKey / via the keypad indev clicking the focused button.
   if (event == EVT_KEY_BREAK(KEY_ENTER)) { onConfirm(); return; }
   if (event == EVT_KEY_BREAK(KEY_EXIT)) { onCancel(); return; }
 #endif
@@ -481,6 +484,15 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
   auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
   if (!nw) return;
+  // LVGL's roller widget calls lv_group_set_editing(g, false) in its own
+  // VALUE_CHANGED handler (runs before ours) whenever an encoder drives a
+  // value change.  Re-assert editing=true so the next encoder rotation batch
+  // still adjusts the roller instead of cycling group focus.  This is also
+  // harmless for touch-scroll VALUE_CHANGED (editing is already true, the
+  // lv_group_set_editing no-op check makes it free).
+  lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
+  lv_group_t* g = lv_obj_get_group(roller);
+  if (g) lv_group_set_editing(g, true);
   nw->applyCurrentSelection(true);
 }
 
@@ -491,17 +503,42 @@ void NumberWheel::onRollerKey(lv_event_t* e)
   auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
   if (!nw) return;
 
-  if (key == LV_KEY_ENTER) {
-    // Split mode: ENTER on coarse advances focus to fine roller.
-    if (nw->layout.split() &&
-        lv_event_get_target(e) == nw->rollerObj &&
-        nw->fineRollerObj) {
-      lv_group_focus_obj(nw->fineRollerObj);
+  if (key == LV_KEY_ESC) {
+    nw->onCancel();
+  } else if (key == LV_KEY_ENTER) {
+    // Encoder/keypad click while a roller is focused (the keypad indev sends
+    // LV_KEY_ENTER to the focused object on press).  Two-step confirm: move
+    // focus to the fine roller (split coarse) or to the OK button, so the
+    // next click activates a button instead of committing immediately.
+    lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    lv_group_t* g = roller ? lv_obj_get_group(roller) : nullptr;
+
+    lv_obj_t* next = nullptr;
+    if (g) {
+      if (nw->layout.split() && roller == nw->rollerObj && nw->fineRollerObj) {
+        next = nw->fineRollerObj;
+      } else if (nw->okButton) {
+        nw->okButton->withLive([&](LiveWindow& l) { next = l.lvobj(); });
+      }
+    }
+    if (!next) {
+      nw->onConfirm();  // no group/buttons — fall back to immediate commit
       return;
     }
-    nw->onConfirm();
-  } else if (key == LV_KEY_ESC) {
-    nw->onCancel();
+
+    lv_group_focus_obj(next);
+    // lv_group_focus_obj clears editing; restore it so encoder rotation keeps
+    // sending LEFT/RIGHT to the focused object instead of cycling group focus.
+    lv_group_set_editing(g, true);
+
+    // We are inside the keypad indev's ENTER *press* processing.  Without
+    // these, the press would leave the roller in pressed state and the
+    // release would CLICK the newly focused object.
+    lv_indev_t* indev = lv_indev_active();
+    if (indev) {
+      lv_indev_wait_release(indev);
+      lv_indev_reset(indev, nullptr);
+    }
   } else if (key == LV_KEY_LEFT || key == LV_KEY_RIGHT ||
              key == LV_KEY_UP || key == LV_KEY_DOWN) {
     // The roller class handler already moved the selection by 1 (guardrail #3).
@@ -522,6 +559,45 @@ void NumberWheel::onRollerKey(lv_event_t* e)
   }
 }
 
+// ---- Button key handler: encoder click activates, rotation cycles buttons --
+
+void NumberWheel::onButtonKey(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_KEY) return;
+  uint32_t key = lv_event_get_key(e);
+  auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
+  if (!nw) return;
+
+  lv_obj_t* cur = static_cast<lv_obj_t*>(lv_event_get_target(e));
+
+  if (key == LV_KEY_ESC) {
+    nw->onCancel();
+  } else if (key == LV_KEY_LEFT || key == LV_KEY_UP ||
+             key == LV_KEY_RIGHT || key == LV_KEY_DOWN) {
+    // Cycle focus among the three buttons (skip nullptr entries).
+    lv_obj_t* btns[3] = {};
+    int nbtns = 0;
+    auto collect = [&](TextButton* b) {
+      if (b) b->withLive([&](LiveWindow& l) { btns[nbtns++] = l.lvobj(); });
+    };
+    collect(nw->cancelButton);
+    collect(nw->defaultButton);
+    collect(nw->okButton);
+    int idx = -1;
+    for (int i = 0; i < nbtns; i++) {
+      if (btns[i] == cur) { idx = i; break; }
+    }
+    if (idx < 0 || nbtns < 2) return;
+    int dir = (key == LV_KEY_RIGHT || key == LV_KEY_DOWN) ? 1 : -1;
+    lv_obj_t* nextBtn = btns[(idx + dir + nbtns) % nbtns];
+    lv_group_focus_obj(nextBtn);
+    // lv_group_focus_obj clears editing; restore it so the next encoder detent
+    // keeps cycling buttons instead of moving group focus back to the roller.
+    lv_group_t* g = lv_obj_get_group(nextBtn);
+    if (g) lv_group_set_editing(g, true);
+  }
+}
+
 // ---- open() -------------------------------------------------------------
 
 NumberWheel* NumberWheel::open(NumberEdit* edit)
@@ -538,6 +614,18 @@ NumberWheel* NumberWheel::open(NumberEdit* edit)
     lv_group_set_editing(g, true);
     if (wheel->rollerObj) lv_group_add_obj(g, wheel->rollerObj);
     if (wheel->fineRollerObj) lv_group_add_obj(g, wheel->fineRollerObj);
+    // Add buttons so encoder click (from roller) can focus and activate them.
+    auto attachBtn = [g, wheel](TextButton* btn) {
+      if (!btn) return;
+      btn->withLive([g, wheel](LiveWindow& l) {
+        lv_group_add_obj(g, l.lvobj());
+        lv_obj_add_event_cb(l.lvobj(), &NumberWheel::onButtonKey,
+                            LV_EVENT_KEY, wheel);
+      });
+    };
+    attachBtn(wheel->cancelButton);
+    attachBtn(wheel->defaultButton);
+    attachBtn(wheel->okButton);
     wheel->assignLvGroup(g, true);
   }
   return wheel;
