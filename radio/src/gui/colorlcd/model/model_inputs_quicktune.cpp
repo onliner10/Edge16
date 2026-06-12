@@ -645,6 +645,8 @@ struct LimitsWheelLiveContext {
   lv_obj_t* maxRoller = nullptr;
   lv_obj_t* minLabel = nullptr;
   lv_obj_t* maxLabel = nullptr;
+  lv_obj_t* cancelBtn = nullptr;
+  lv_obj_t* okBtn = nullptr;
   bool suppressLiveApply = false;
 };
 
@@ -677,7 +679,85 @@ static void applyLimitsWheelLiveValue(LimitsWheelLiveContext* ctx)
 static void onLimitsWheelRollerChanged(lv_event_t* e)
 {
   if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+  // lv_roller's own VALUE_CHANGED handler clears the group's edit mode after
+  // every encoder-driven change; re-assert it so the next detent keeps
+  // adjusting the roller instead of cycling group focus (same fix as
+  // NumberWheel::onRollerChanged).
+  lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
+  lv_group_t* g = lv_obj_get_group(roller);
+  if (g) lv_group_set_editing(g, true);
   applyLimitsWheelLiveValue(static_cast<LimitsWheelLiveContext*>(lv_event_get_user_data(e)));
+}
+
+// Move group focus to `next` from inside a keypad ENTER-press handler.
+// wait_release stops the ENTER release from click-activating the newly
+// focused object; reset stops the in-flight press from leaving the current
+// object in pressed state.  Same mechanics as NumberWheel::onRollerKey.
+static void limitsWheelFocusObj(lv_obj_t* next)
+{
+  lv_group_t* g = next ? lv_obj_get_group(next) : nullptr;
+  if (!g) return;
+  lv_group_focus_obj(next);
+  lv_group_set_editing(g, true);
+  lv_indev_t* indev = lv_indev_active();
+  if (indev) {
+    lv_indev_wait_release(indev);
+    lv_indev_reset(indev, nullptr);
+  }
+}
+
+static void onLimitsWheelRollerKey(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_KEY) return;
+  auto* ctx = static_cast<LimitsWheelLiveContext*>(lv_event_get_user_data(e));
+  if (!ctx) return;
+  uint32_t key = lv_event_get_key(e);
+  lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
+
+  if (key == LV_KEY_ESC) {
+    if (ctx->cancelBtn) lv_obj_send_event(ctx->cancelBtn, LV_EVENT_CLICKED, nullptr);
+  } else if (key == LV_KEY_ENTER) {
+    // Tab order: min roller -> max roller -> OK button.
+    limitsWheelFocusObj(roller == ctx->minRoller ? ctx->maxRoller : ctx->okBtn);
+  } else if (key == LV_KEY_LEFT || key == LV_KEY_RIGHT ||
+             key == LV_KEY_UP || key == LV_KEY_DOWN) {
+    // The roller class handler already moved the selection by 1; add
+    // accelerated extra steps to match inline-edit feel.
+    int dir = (key == LV_KEY_RIGHT || key == LV_KEY_DOWN) ? 1 : -1;
+    const QuickTuneValueConfig& cfg =
+        (roller == ctx->minRoller) ? ctx->minCfg : ctx->maxCfg;
+    int extra = (rotaryEncoderGetAccel() * cfg.accelFactor) / 8;
+    if (extra > 0) {
+      int cur = (int)lv_roller_get_selected(roller);
+      int cnt = (int)lv_roller_get_option_count(roller);
+      int next = LV_CLAMP(0, cur + dir * extra, cnt - 1);
+      if (next != cur) lv_roller_set_selected(roller, next, LV_ANIM_OFF);
+    }
+    applyLimitsWheelLiveValue(ctx);
+  }
+}
+
+static void onLimitsWheelButtonKey(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_KEY) return;
+  auto* ctx = static_cast<LimitsWheelLiveContext*>(lv_event_get_user_data(e));
+  if (!ctx) return;
+  uint32_t key = lv_event_get_key(e);
+  lv_obj_t* cur = static_cast<lv_obj_t*>(lv_event_get_target(e));
+
+  if (key == LV_KEY_ESC) {
+    if (ctx->cancelBtn) lv_obj_send_event(ctx->cancelBtn, LV_EVENT_CLICKED, nullptr);
+  } else if (key == LV_KEY_LEFT || key == LV_KEY_RIGHT ||
+             key == LV_KEY_UP || key == LV_KEY_DOWN) {
+    // Toggle focus between Cancel and OK; re-assert editing so the next
+    // detent keeps cycling buttons instead of moving group focus.
+    lv_obj_t* other = (cur == ctx->okBtn) ? ctx->cancelBtn : ctx->okBtn;
+    lv_group_t* g = other ? lv_obj_get_group(other) : nullptr;
+    if (g) {
+      lv_group_focus_obj(other);
+      lv_group_set_editing(g, true);
+    }
+  }
 }
 
 static void onLimitsWheelDeleted(lv_event_t* e)
@@ -791,6 +871,7 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     ctx->minRoller = minRoller;
     lv_obj_add_event_cb(minRoller, onLimitsWheelRollerChanged,
                         LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(minRoller, onLimitsWheelRollerKey, LV_EVENT_KEY, ctx);
 
     // Right column: Max label + roller
     auto* rightCol = lv_obj_create(cont);
@@ -832,14 +913,17 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     ctx->maxRoller = maxRoller;
     lv_obj_add_event_cb(maxRoller, onLimitsWheelRollerChanged,
                         LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(maxRoller, onLimitsWheelRollerKey, LV_EVENT_KEY, ctx);
     updateLimitsWheelLabels(ctx);
 
-    // Group for rotary events
+    // Group for rotary events.  set_editing must come AFTER focus_obj:
+    // lv_group_focus_obj always clears edit mode, which would leave the
+    // encoder cycling focus instead of adjusting the focused roller.
     lv_group_t* g = lv_group_create();
-    lv_group_set_editing(g, true);
     lv_group_add_obj(g, minRoller);
     lv_group_add_obj(g, maxRoller);
     lv_group_focus_obj(minRoller);
+    lv_group_set_editing(g, true);
     wheel->assignLvGroup(g, true);
   });
 
@@ -863,20 +947,39 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     }, cb);
   };
 
-  new TextButton(btnRow, rect_t{}, "Cancel", [=]() {
+  auto* cancelBtn = new TextButton(btnRow, rect_t{}, "Cancel", [=]() {
     ctx->suppressLiveApply = true;
     ctx->minCfg.setValue(ctx->originalMin);
     ctx->maxCfg.setValue(ctx->originalMax);
+    lv_indev_reset(nullptr, nullptr);
     wheel->deleteLater();
     scheduleRebuild();
     return 0;
   });
-  new TextButton(btnRow, rect_t{}, "OK", [=]() {
+  auto* okBtn = new TextButton(btnRow, rect_t{}, "OK", [=]() {
     applyLimitsWheelLiveValue(ctx);
+    lv_indev_reset(nullptr, nullptr);
     wheel->deleteLater();
     scheduleRebuild();
     return 0;
   });
+
+  // Add buttons to the rotary group so the encoder click chain works:
+  // min roller -> max roller -> OK; rotation then toggles Cancel/OK and the
+  // next click activates the focused button (keypad indev clicks natively).
+  auto attachBtn = [ctx](TextButton* btn, lv_obj_t** slot) {
+    if (!btn) return;
+    btn->withLive([ctx, slot](Window::LiveWindow& live) {
+      *slot = live.lvobj();
+      lv_group_t* g =
+          ctx->minRoller ? lv_obj_get_group(ctx->minRoller) : nullptr;
+      if (g) lv_group_add_obj(g, live.lvobj());
+      lv_obj_add_event_cb(live.lvobj(), onLimitsWheelButtonKey, LV_EVENT_KEY,
+                          ctx);
+    });
+  };
+  attachBtn(cancelBtn, &ctx->cancelBtn);
+  attachBtn(okBtn, &ctx->okBtn);
 }
 
 void ModelInputsPage::buildQuickTuneTabs(Window* window)
