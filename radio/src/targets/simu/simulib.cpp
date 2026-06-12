@@ -583,6 +583,13 @@ void simuTouchUp()
 void simuRotaryEncoderEvent(int32_t steps)
 {
 #if defined(ROTARY_ENCODER_NAVIGATION)
+  // Mirror the STM32 driver: accumulate ms between encoder events into
+  // rotencDt so rotaryEncoderGetAccel() sees real timing.  Without this,
+  // dt is always 0 and every same-direction detent gets max acceleration.
+  static uint32_t lastTick = 0;
+  uint32_t now = get_tmr10ms() * 10;
+  rotencDt += (now - lastTick);
+  lastTick = now;
   rotencValue.fetch_add(steps * ROTARY_ENCODER_GRANULARITY,
                         std::memory_order_relaxed);
 #endif

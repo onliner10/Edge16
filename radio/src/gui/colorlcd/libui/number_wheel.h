@@ -99,5 +99,6 @@ class NumberWheel : public ModalWindow
   void onLiveEvent(LiveWindow& live, event_t event) override;
   static void onRollerKey(lv_event_t* e);
   static void onRollerChanged(lv_event_t* e);
+  static void onButtonKey(lv_event_t* e);
   void onLiveClicked(LiveWindow& live) override;
 };

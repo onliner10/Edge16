@@ -870,6 +870,17 @@ class SdlAutomationSession:
         near_miss_count: int = 5,
     ) -> dict[str, Any]:
         normalized = normalize_selector(selector)
+        criteria_keys = (
+            "id", "automation_id", "role", "text", "text_contains",
+            "enabled", "checked", "focused", "index",
+        )
+        if not any(key in normalized for key in criteria_keys):
+            raise HarnessError(
+                "selector has no matching criteria (an empty selector would match "
+                "every node); pass one of: id, automation_id, role, text, "
+                "text_contains, enabled, checked, focused, index. Unrecognized "
+                f"keys received: {sorted(normalized.keys())}"
+            )
         tree = self.ui_tree()
         nodes = [node for node in tree.get("nodes", []) if node_matches(node, normalized)]
         required_action = action or normalized.get("action")
