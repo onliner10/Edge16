@@ -71,8 +71,10 @@ ToggleSwitch::ToggleSwitch(Window* parent, const rect_t& rect,
     if (rect.w == 0) lv_obj_set_width(obj, TOGGLE_W);
     if (rect.h == 0) lv_obj_set_height(obj, EdgeTxStyles::UI_ELEMENT_HEIGHT);
     auto binding = lv_obj_bind_checked(obj, &checkedSubject);
+    suppressObserverNotify = true;
     auto observer = lv_subject_add_observer_obj(
         &checkedSubject, ToggleSwitch::checkedSubjectChanged, obj, this);
+    suppressObserverNotify = false;
     lv_obj_add_event_cb(obj, ToggleSwitch::checkedValueChanged,
                         LV_EVENT_VALUE_CHANGED, this);
     if (!binding || !observer) failClosed();
@@ -121,6 +123,7 @@ void ToggleSwitch::checkedSubjectChanged(lv_observer_t* observer,
                                          lv_subject_t* subject)
 {
   withAvailableObserver<ToggleSwitch>(observer, [&](ToggleSwitch& self) {
+    if (self.suppressObserverNotify) return;
     self.setValue(lv_subject_get_int(subject) != 0);
   });
 }
