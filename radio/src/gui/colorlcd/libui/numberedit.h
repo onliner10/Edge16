@@ -103,6 +103,11 @@ class NumberEdit : public TextButton
   void setDirectKeyboard(bool value) { directKeyboard = value; }
   void setEditTitle(std::string value) { editTitle = std::move(value); }
 
+  // Time-style fields (value in seconds) get the iOS-countdown-style wheel:
+  // independent hours / minutes / seconds rollers instead of coarse+fine.
+  void setWheelTimeStyle(bool value) { wheelTimeStyle = value; }
+  bool isWheelTimeStyle() const { return wheelTimeStyle; }
+
   void setSetValueHandler(std::function<void(int)> handler)
   {
     _setValue = std::move(handler);
@@ -147,6 +152,7 @@ class NumberEdit : public TextButton
   std::function<std::string(int)> displayFunction;
   std::function<bool(int)> isValueAvailable;
   bool directKeyboard = true;
+  bool wheelTimeStyle = false;
   std::string editTitle;
 
   void updateDisplay();

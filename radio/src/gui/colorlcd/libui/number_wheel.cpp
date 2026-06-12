@@ -37,10 +37,9 @@ constexpr lv_coord_t TITLE_H = 24;
 constexpr lv_coord_t ROLLER_H = 130;
 constexpr lv_coord_t BTN_H = 32;
 
-// Split-wheel roller geometry (x, width of each column)
-constexpr lv_coord_t SPLIT_COARSE_X = 14;
-constexpr lv_coord_t SPLIT_FINE_X = 176;
-constexpr lv_coord_t SPLIT_ROLLER_W = 150;
+// Multi-column roller geometry: side margin; columns share the remaining
+// width with a fixed gap (2 columns -> 150 px each, 3 -> 96 px each).
+constexpr lv_coord_t MULTI_MARGIN_X = 14;
 
 // ---- Static layout logic ------------------------------------------------
 
@@ -74,9 +73,59 @@ std::vector<NumberWheel::Option> NumberWheel::buildOptionsFor(NumberEdit* edit)
   return opts;
 }
 
+// iOS-countdown-style layout for time fields (raw value = seconds):
+// independent hours / minutes / seconds columns, composed additively.
+static NumberWheel::WheelLayout buildTimeLayout(NumberEdit* edit)
+{
+  int vmin = edit->getMin();
+  int vmax = edit->getMax();
+  // Only sensible for 0-based ranges of at least a minute; smaller ranges
+  // read better as a plain single-column wheel.
+  if (vmin != 0 || vmax < 60) return {};
+
+  NumberWheel::WheelLayout l;
+  char buf[8];
+
+  if (vmax >= 3600) {
+    // Hours roller capped at 99 ("99:59:59"); larger maxima (the timer field
+    // allows ~2330 h) stay reachable through the keypad only — nobody dials
+    // in a four-digit-hour timer on a wheel.
+    int maxH = std::min(vmax / 3600, 99);
+    std::vector<NumberWheel::Option> hours;
+    for (int h = 0; h <= maxH; h++) hours.push_back({h * 3600, std::to_string(h)});
+    l.columns.push_back(std::move(hours));
+    l.captions.push_back("h");
+  }
+
+  int maxM = (vmax >= 3600) ? 59 : std::min(vmax / 60, 59);
+  std::vector<NumberWheel::Option> minutes;
+  for (int m = 0; m <= maxM; m++) {
+    std::snprintf(buf, sizeof(buf), "%02d", m);
+    minutes.push_back({m * 60, buf});
+  }
+  l.columns.push_back(std::move(minutes));
+  l.captions.push_back("min");
+
+  std::vector<NumberWheel::Option> seconds;
+  for (int s = 0; s <= 59; s++) {
+    std::snprintf(buf, sizeof(buf), "%02d", s);
+    seconds.push_back({s, buf});
+  }
+  l.columns.push_back(std::move(seconds));
+  l.captions.push_back("s");
+
+  return l;
+}
+
 NumberWheel::WheelLayout NumberWheel::buildLayoutFor(NumberEdit* edit)
 {
   if (!edit) return {};
+
+  // Row 1: explicit time-style fields get the h/m/s picker
+  if (edit->isWheelTimeStyle()) {
+    auto l = buildTimeLayout(edit);
+    if (l.valid()) return l;
+  }
 
   // Row 2: try single column first (cheap, existing path)
   {
@@ -161,29 +210,33 @@ bool NumberWheel::canOpen(NumberEdit* edit)
   return buildLayoutFor(edit).valid();
 }
 
-int NumberWheel::composeValue(const WheelLayout& l, int coarseIdx, int fineIdx)
+int NumberWheel::composeValue(const WheelLayout& l, const std::vector<int>& idxs)
 {
-  return l.columns[0][coarseIdx].rawValue + l.columns[1][fineIdx].rawValue;
+  int v = 0;
+  for (size_t c = 0; c < l.columns.size() && c < idxs.size(); c++) {
+    int i = LV_CLAMP(0, idxs[c], (int)l.columns[c].size() - 1);
+    v += l.columns[c][i].rawValue;
+  }
+  return v;
 }
 
-std::pair<int, int> NumberWheel::decomposeValue(const WheelLayout& l, int value)
+std::vector<int> NumberWheel::decomposeValue(const WheelLayout& l, int value)
 {
-  const auto& coarse = l.columns[0];
-  const auto& fine = l.columns[1];
-  int K = (int)fine.size();
-
-  // Largest coarse index whose base <= value
-  int ci = 0;
-  for (int j = 1; j < (int)coarse.size(); j++) {
-    if (coarse[j].rawValue <= value) ci = j;
-    else break;
+  // Greedy: per column take the largest base <= remainder.  Columns hold
+  // ascending rawValues whose units divide evenly (coarse+fine, h/m/s), so
+  // the greedy pick is exact whenever the value is representable.
+  std::vector<int> idxs;
+  int rem = value;
+  for (const auto& col : l.columns) {
+    int pick = 0;
+    for (int j = 1; j < (int)col.size(); j++) {
+      if (col[j].rawValue <= rem) pick = j;
+      else break;
+    }
+    idxs.push_back(pick);
+    rem -= col[pick].rawValue;
   }
-
-  int fineUnit = (K > 1) ? fine[1].rawValue : 1;
-  int offset = value - coarse[ci].rawValue;
-  int fi = (fineUnit > 0) ? LV_CLAMP(0, offset / fineUnit, K - 1) : 0;
-
-  return {ci, fi};
+  return idxs;
 }
 
 // ---- Construction -------------------------------------------------------
@@ -247,15 +300,17 @@ void NumberWheel::buildSingleRoller(lv_obj_t* parent, const std::string& options
   if (optionCount == 0) return;
   rollerObj = buildRollerWidget(parent, (CARD_W - 260) / 2, 260, optionsStr,
                                 selectedIdx, visibleRows);
+  if (rollerObj) rollers.push_back(rollerObj);
 }
 
-void NumberWheel::buildSplitRollers(lv_obj_t* parent)
+void NumberWheel::buildMultiRollers(lv_obj_t* parent)
 {
   if (!layout.split()) return;
-  const auto& coarse = layout.columns[0];
-  const auto& fine = layout.columns[1];
+  int n = (int)layout.columns.size();
+  constexpr lv_coord_t MARGIN = MULTI_MARGIN_X, GAP = 12;
+  lv_coord_t w = (CARD_W - 2 * MARGIN - GAP * (n - 1)) / n;
 
-  auto [ci, fi] = decomposeValue(layout, originalValue);
+  auto idxs = decomposeValue(layout, originalValue);
 
   auto makeOptsStr = [](const std::vector<Option>& col) {
     std::string s;
@@ -267,10 +322,28 @@ void NumberWheel::buildSplitRollers(lv_obj_t* parent)
   };
 
   const int visibleRows = 5;
-  rollerObj = buildRollerWidget(parent, SPLIT_COARSE_X, SPLIT_ROLLER_W,
-                                makeOptsStr(coarse), ci, visibleRows);
-  fineRollerObj = buildRollerWidget(parent, SPLIT_FINE_X, SPLIT_ROLLER_W,
-                                    makeOptsStr(fine), fi, visibleRows);
+  for (int c = 0; c < n; c++) {
+    lv_coord_t x = MARGIN + c * (w + GAP);
+    lv_obj_t* r = buildRollerWidget(parent, x, w, makeOptsStr(layout.columns[c]),
+                                    c < (int)idxs.size() ? idxs[c] : 0,
+                                    visibleRows);
+    if (!r) continue;
+    rollers.push_back(r);
+
+    if (c < (int)layout.captions.size() && !layout.captions[c].empty()) {
+      // Small unit caption between title and roller, iOS-picker style.
+      lv_obj_t* cap = lv_label_create(parent);
+      if (cap) {
+        lv_label_set_text(cap, layout.captions[c].c_str());
+        lv_obj_set_pos(cap, x, TITLE_H + 2);
+        lv_obj_set_width(cap, w);
+        lv_obj_set_style_text_align(cap, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_color(cap, lv_color_hex(0x888888), 0);
+        etx_font(cap, FONT_XS_INDEX, 0);
+      }
+    }
+  }
+  rollerObj = rollers.empty() ? nullptr : rollers[0];
 }
 
 // ---- UI construction ----------------------------------------------------
@@ -320,7 +393,7 @@ void NumberWheel::buildContent()
 
   // Build roller(s)
   if (layout.split()) {
-    buildSplitRollers(cardObj);
+    buildMultiRollers(cardObj);
   } else {
     std::string optsStr;
     int curVal = edit->getValue();
@@ -359,10 +432,9 @@ void NumberWheel::buildContent()
           if (!rollerObj) return 0;
           int dv = edit->getDefault();
           if (layout.split()) {
-            auto [ci, fi] = decomposeValue(layout, dv);
-            lv_roller_set_selected(rollerObj, ci, LV_ANIM_ON);
-            if (fineRollerObj)
-              lv_roller_set_selected(fineRollerObj, fi, LV_ANIM_ON);
+            auto idxs = decomposeValue(layout, dv);
+            for (size_t c = 0; c < rollers.size() && c < idxs.size(); c++)
+              lv_roller_set_selected(rollers[c], idxs[c], LV_ANIM_ON);
           } else {
             int nearestIdx = 0, nearestDist = INT_MAX;
             for (int i = 0; i < (int)options.size(); i++) {
@@ -394,10 +466,11 @@ int NumberWheel::currentComposedValue() const
 {
   if (!rollerObj) return originalValue;
   if (layout.split()) {
-    if (!fineRollerObj) return originalValue;
-    return composeValue(layout,
-                        (int)lv_roller_get_selected(rollerObj),
-                        (int)lv_roller_get_selected(fineRollerObj));
+    if (rollers.size() != layout.columns.size()) return originalValue;
+    std::vector<int> idxs;
+    idxs.reserve(rollers.size());
+    for (auto* r : rollers) idxs.push_back((int)lv_roller_get_selected(r));
+    return composeValue(layout, idxs);
   }
   int idx = (int)lv_roller_get_selected(rollerObj);
   if (idx < 0 || idx >= (int)options.size()) return originalValue;
@@ -520,9 +593,15 @@ void NumberWheel::onRollerKey(lv_event_t* e)
 
     lv_obj_t* next = nullptr;
     if (g) {
-      if (nw->layout.split() && roller == nw->rollerObj && nw->fineRollerObj) {
-        next = nw->fineRollerObj;
-      } else if (nw->okButton) {
+      // Tab order: each roller hands focus to the next column, the last
+      // column hands it to the OK button.
+      for (size_t i = 0; i + 1 < nw->rollers.size(); i++) {
+        if (roller == nw->rollers[i]) {
+          next = nw->rollers[i + 1];
+          break;
+        }
+      }
+      if (!next && nw->okButton) {
         nw->okButton->withLive([&](LiveWindow& l) { next = l.lvobj(); });
       }
     }
@@ -617,8 +696,8 @@ NumberWheel* NumberWheel::open(NumberEdit* edit)
   lv_group_t* g = lv_group_create();
   if (g) {
     lv_group_set_editing(g, true);
-    if (wheel->rollerObj) lv_group_add_obj(g, wheel->rollerObj);
-    if (wheel->fineRollerObj) lv_group_add_obj(g, wheel->fineRollerObj);
+    for (auto* r : wheel->rollers)
+      if (r) lv_group_add_obj(g, r);
     // Add buttons so encoder click (from roller) can focus and activate them.
     auto attachBtn = [g, wheel](TextButton* btn) {
       if (!btn) return;

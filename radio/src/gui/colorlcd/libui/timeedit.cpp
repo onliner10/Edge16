@@ -31,4 +31,5 @@ TimeEdit::TimeEdit(Window * parent, const rect_t & rect, int32_t vmin, int32_t v
     timerOptions.options = (textFlags & TIMEHOUR) != 0 ? SHOW_TIME : SHOW_TIMER;
     return std::string(getTimerString(value, timerOptions));
   });
+  setWheelTimeStyle(true);
 }
