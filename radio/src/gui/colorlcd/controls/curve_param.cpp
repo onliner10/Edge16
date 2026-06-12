@@ -77,7 +77,11 @@ CurveParam::CurveParam(Window* parent, const rect_t& rect, CurveRef* ref,
   // CURVE_REF_DIFF
   // CURVE_REF_EXPO
   auto gv = new (std::nothrow) SourceNumberEdit(this, -100, 100, GET_DEFAULT(ref->value), setRefValue, sourceMin);
-  if (gv) gv->setSuffix("%");
+  if (gv) {
+    gv->setSuffix("%");
+    gv->setDefault(0);
+    gv->setEditTitle(STR_VALUE);
+  }
   value_edit = gv;
 
   // CURVE_REF_FUNC

@@ -343,8 +343,10 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
   switch (func) {
     case FUNC_OVERRIDE_CHANNEL: {
       new StaticText(line, rect_t{}, STR_CH);
-      new NumberEdit(line, rect_t{}, 1, MAX_OUTPUT_CHANNELS,
+      auto* chNum = new NumberEdit(line, rect_t{}, 1, MAX_OUTPUT_CHANNELS,
                      GET_SET_VALUE_WITH_OFFSET(CFN_CH_INDEX(cfn), 1));
+      chNum->setDirectKeyboard(false);
+      chNum->setEditTitle(STR_CHANNELRANGE);
       line = specialFunctionOneWindow->newLine(grid);
 
       int limit =

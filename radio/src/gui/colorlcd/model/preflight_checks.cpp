@@ -244,6 +244,8 @@ PreflightChecks::PreflightChecks() : SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MOD
       // Custom Throttle warning value
       customThrottleValue = new NumberEdit(parent, {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y, 0, 0}, -100, 100,
                                           GET_SET_DEFAULT(g_model.customThrottleWarningPosition));
+      customThrottleValue->setDirectKeyboard(false);
+      customThrottleValue->setEditTitle(STR_ROLLER_THROTTLE_VALUE);
       customThrottleValue->show(g_model.enableCustomThrottleWarning);
     });
 

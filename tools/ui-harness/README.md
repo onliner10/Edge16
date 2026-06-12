@@ -27,6 +27,18 @@ selector long-click, visibility assertion, wait-for, storage-warning skip,
 run-flow, and screenshot review-report tools. It uses the same Python core as
 the CLI.
 
+### Headless by default
+
+On Linux the harness launches the simulator with `SDL_VIDEODRIVER=dummy`: all
+interaction happens over the automation protocol and screenshots come from the
+simulator framebuffer, so no window is needed. This avoids a WSLg failure mode
+where an unresponsive compositor blocks SDL inside `XIfEvent` during window
+mapping (before the automation loop starts), which surfaces as
+`timed out waiting for simulator response to 'status'` — especially with
+several agents running simulators concurrently. To watch the simulator window
+while the harness drives it, set `EDGETX_UI_SHOW_WINDOW=1`; an explicitly set
+`SDL_VIDEODRIVER` is always respected.
+
 ### Agent-friendly patterns
 
 Prefer `edgetx_screen` (low-token accessibility-style summary) or

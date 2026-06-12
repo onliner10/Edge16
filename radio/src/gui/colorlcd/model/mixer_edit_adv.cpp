@@ -110,6 +110,8 @@ void MixEditAdvanced::buildBody(Window* form)
 	                             GET_DEFAULT(mix->mixWarn),
 	                             SET_MIXER_DEFAULT(mix->mixWarn));
   edit->setZeroText(STR_OFF);
+  edit->setDirectKeyboard(false);
+  edit->setEditTitle(STR_ROLLER_MIX_WARNING);
 
   // Delay up/down precision
 #if !NARROW_LAYOUT
@@ -144,6 +146,8 @@ void MixEditAdvanced::buildBody(Window* form)
 	                           SET_MIXER_VALUE(mix->delayUp, newValue),
 	                           mix->delayPrec ? PREC2 : PREC1);
   delayUp->setSuffix("s");
+  delayUp->setDirectKeyboard(false);
+  delayUp->setEditTitle(STR_ROLLER_DELAY_UP);
 
   // Delay down
   new StaticText(line, rect_t{}, STR_DELAYDOWN);
@@ -152,6 +156,8 @@ void MixEditAdvanced::buildBody(Window* form)
 	                           SET_MIXER_VALUE(mix->delayDown, newValue),
 	                           mix->delayPrec ? PREC2 : PREC1);
   delayDn->setSuffix("s");
+  delayDn->setDirectKeyboard(false);
+  delayDn->setEditTitle(STR_ROLLER_DELAY_DOWN);
 
   // Slow up/down precision
 #if !NARROW_LAYOUT
@@ -185,6 +191,8 @@ void MixEditAdvanced::buildBody(Window* form)
 	                          SET_MIXER_VALUE(mix->speedUp, newValue),
 	                          mix->speedPrec ? PREC2 : PREC1);
   slowUp->setSuffix("s");
+  slowUp->setDirectKeyboard(false);
+  slowUp->setEditTitle(STR_ROLLER_SLOW_UP);
 
   // Slow down
   new StaticText(line, rect_t{}, STR_SLOWDOWN);
@@ -192,4 +200,6 @@ void MixEditAdvanced::buildBody(Window* form)
 	                          SET_MIXER_VALUE(mix->speedDown, newValue),
 	                          mix->speedPrec ? PREC2 : PREC1);
   slowDn->setSuffix("s");
+  slowDn->setDirectKeyboard(false);
+  slowDn->setEditTitle(STR_ROLLER_SLOW_DOWN);
 }

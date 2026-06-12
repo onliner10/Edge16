@@ -174,30 +174,36 @@ class NumberArea : public FormField
     }
   }
 
-  void openKeyboard()
+  bool tryWheel()
   {
-    // Default: open the iOS-style wheel picker
-    if (!numEdit->useDirectKeyboard()) {
-      setEditMode(false);
-      auto* wheel = NumberWheel::open(numEdit);
-      if (wheel) {
-        wheel->setCloseHandler([this]() {
-          numEdit->update();
-          changeEnd();
-        });
-        return;
-      }
-    }
+    setEditMode(false);
+    auto* wheel = NumberWheel::open(numEdit);
+    if (!wheel) return false;
+    wheel->setCloseHandler([this]() {
+      numEdit->update();
+      changeEnd();
+    });
+    return true;
+  }
 
-    // Fallback: old numeric keypad for direct-keyboard or large ranges
-    editTextIsRaw = numEdit->useDirectKeyboard();
+  void openKeypad()
+  {
+    // Fall back to raw digit entry so the user can type any value; display-mode
+    // would silently discard input for fields with directKeyboard=false.
+    editTextIsRaw = true;
     if (!withLive([&](LiveWindow& live) {
-          lv_textarea_set_text(
-              live.lvobj(), editTextIsRaw ? numEdit->getEditVal().c_str()
-                                          : numEdit->getDisplayVal().c_str());
+          lv_textarea_set_text(live.lvobj(), numEdit->getEditVal().c_str());
         }))
       return;
     NumberKeyboard::open(this, numEdit);
+  }
+
+  void openKeyboard()
+  {
+    if (!numEdit->useDirectKeyboard()) {
+      if (tryWheel()) return;
+    }
+    openKeypad();
   }
 
   void directEdit()
@@ -319,10 +325,16 @@ void NumberEdit::openEdit()
     });
   }
   lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_get_act());
-  if (!useDirectKeyboard() || indev_type == LV_INDEV_TYPE_POINTER) {
-    edit->openKeyboard();
+  bool isPointer = (indev_type == LV_INDEV_TYPE_POINTER);
+  if (!useDirectKeyboard()) {
+    // Wheel for all input types (touch and rotary).  Unstructured huge ranges
+    // with a custom display/availability handler fall back to keypad/inline.
+    if (edit->tryWheel()) return;
+    if (isPointer) edit->openKeypad();
+    else edit->directEdit();
   } else {
-    edit->directEdit();
+    if (isPointer) edit->openKeypad();
+    else edit->directEdit();
   }
 }
 

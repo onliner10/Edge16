@@ -200,6 +200,8 @@ void OutputEditWindow::buildBody(Window *form)
   center->setFastStep(20);
   center->setAccelFactor(8);
   center->setDefault(PPM_CENTER);
+  center->setDirectKeyboard(false);
+  center->setEditTitle(STR_LIMITS_HEADERS_PPMCENTER);
 
   // Subtrims mode
   label = new StaticText(line, rect_t{}, STR_LIMITS_HEADERS_SUBTRIMMODE);

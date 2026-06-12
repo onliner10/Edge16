@@ -120,6 +120,8 @@ TimerWindow::TimerWindow(uint8_t timer) :
                                  SET_TIMER_DEFAULT(p_timer->minuteBeepStart));
       edit->setSuffix(" min");
       edit->setZeroText(STR_MINUTEBEEP_EVERY);
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_MINUTE_BEEP_START);
     });
   minuteBeepStartLine->show(p_timer->minuteBeep);
 

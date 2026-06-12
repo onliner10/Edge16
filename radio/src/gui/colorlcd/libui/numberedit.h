@@ -49,10 +49,19 @@ class NumberEdit : public TextButton
 
   void setMin(int value) { vmin = value; }
   void setMax(int value) { vmax = value; }
-  void setDefault(int value) { vdefault = value; }
+  void setDefault(int value)
+  {
+    vdefault = value;
+    defaultExplicit = true;
+  }
+  int getDefault() const { return vdefault; }
+  bool hasDefaultValue() const { return defaultExplicit; }
   void setStep(int value) { step = value; }
   void setFastStep(int value) { fastStep = value; }
   void setAccelFactor(int value) { accelFactor = value; }
+  int getAccelFactor() const { return accelFactor; }
+  bool hasAvailableHandler() const { return (bool)isValueAvailable; }
+  bool hasDisplayFunction() const { return (bool)displayFunction; }
   void setValue(int value);
 
   void setPrefix(const std::string& value)
@@ -76,6 +85,11 @@ class NumberEdit : public TextButton
   void setAvailableHandler(std::function<bool(int)> handler)
   {
     isValueAvailable = std::move(handler);
+  }
+
+  bool isValueAvailableCheck(int value) const
+  {
+    return !isValueAvailable || isValueAvailable(value);
   }
 
   void setDisplayHandler(std::function<std::string(int value)> function)
@@ -120,6 +134,7 @@ class NumberEdit : public TextButton
   std::function<void(int)> _setValue;
   std::function<void(int)> onEdited;
   int vdefault = 0;
+  bool defaultExplicit = false;
   int vmin;
   int vmax;
   int step = 1;

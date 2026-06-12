@@ -129,6 +129,8 @@ void MixEditWindow::buildBody(Window *form)
 	                                   SET_MIXER_DEFAULT(mix->weight),
 	                                   MIXSRC_FIRST);
   svar->setSuffix("%");
+  svar->setDefault(100);
+  svar->setEditTitle(STR_ROLLER_MIXER_WEIGHT);
 
   // Offset
   new StaticText(line, rect_t{}, STR_OFFSET);
@@ -137,6 +139,8 @@ void MixEditWindow::buildBody(Window *form)
 	                                   SET_MIXER_DEFAULT(mix->offset),
 	                                   MIXSRC_FIRST);
   gvar->setSuffix("%");
+  gvar->setDefault(0);
+  gvar->setEditTitle(STR_ROLLER_MIXER_OFFSET);
 
   // Switch
   line = form->newLine(grid);

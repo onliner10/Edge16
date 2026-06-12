@@ -1068,14 +1068,18 @@ void ModelTelemetryPage::build(Window* window)
   line = window->newLine(grid);
   line->padLeft(PAD_LARGE);
   new StaticText(line, rect_t{}, STR_LOWALARM);
-  new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
+  auto* lowAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
                  GET_SET_DEFAULT(g_model.rfAlarms.warning));
+  lowAlarm->setDirectKeyboard(false);
+  lowAlarm->setEditTitle(STR_ROLLER_RF_LOW_ALARM);
 
   line = window->newLine(grid);
   line->padLeft(PAD_LARGE);
   new StaticText(line, rect_t{}, STR_CRITICALALARM);
-  new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
+  auto* critAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
                  GET_SET_DEFAULT(g_model.rfAlarms.critical));
+  critAlarm->setDirectKeyboard(false);
+  critAlarm->setEditTitle(STR_ROLLER_RF_CRITICAL_ALARM);
 
   line = window->newLine(grid);
   line->padLeft(PAD_LARGE);
@@ -1115,11 +1119,15 @@ void ModelTelemetryPage::build(Window* window)
                              GET_SET_WITH_OFFSET(g_model.varioData.min, -10));
   vMin->setAvailableHandler(
       [](int val) { return val < g_model.varioData.max + 10; });
+  vMin->setDirectKeyboard(false);
+  vMin->setEditTitle(STR_ROLLER_VARIO_MIN);
 
   auto vMax = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, -17, 17,
                              GET_SET_WITH_OFFSET(g_model.varioData.max, 10));
   vMax->setAvailableHandler(
       [](int val) { return g_model.varioData.min - 10 < val; });
+  vMax->setDirectKeyboard(false);
+  vMax->setEditTitle(STR_ROLLER_VARIO_MAX);
 
   line = window->newLine(grid5);
   line->padLeft(PAD_LARGE);
@@ -1130,12 +1138,16 @@ void ModelTelemetryPage::build(Window* window)
       GET_SET_WITH_OFFSET(g_model.varioData.centerMin, -5), PREC1);
   cMin->setAvailableHandler(
       [](int val) { return val < g_model.varioData.centerMax + 5; });
+  cMin->setDirectKeyboard(false);
+  cMin->setEditTitle(STR_ROLLER_VARIO_CENTER_MIN);
 
   auto cMax = new NumberEdit(
       line, rect_t{0, 0, NUM_EDIT_W, 0}, -15, 15,
       GET_SET_WITH_OFFSET(g_model.varioData.centerMax, 5), PREC1);
   cMax->setAvailableHandler(
       [](int val) { return g_model.varioData.centerMin - 5 < val; });
+  cMax->setDirectKeyboard(false);
+  cMax->setEditTitle(STR_ROLLER_VARIO_CENTER_MAX);
 
   new Choice(line, rect_t{}, STR_VVARIOCENTER, 0, 1,
              GET_SET_DEFAULT(g_model.varioData.centerSilent));

@@ -400,6 +400,8 @@ struct QuickTuneValueConfig {
   std::function<int()> getValue;
   std::function<void(int)> setValue;
   std::function<std::string(int)> displayValue;
+  int vdefault = 0;
+  bool hasDefault = false;
 };
 
 #if LANDSCAPE
@@ -563,7 +565,8 @@ static QuickTuneValueConfig inputRateConfig(uint8_t index)
             expoAddress(index)->weight = makeSourceNumVal(newValue);
             SET_DIRTY();
           },
-          percentString};
+          percentString,
+          100, true};
 }
 
 static QuickTuneValueConfig inputExpoConfig(uint8_t index)
@@ -582,7 +585,8 @@ static QuickTuneValueConfig inputExpoConfig(uint8_t index)
             expoAddress(index)->curve.value = makeSourceNumVal(newValue);
             SET_DIRTY();
           },
-          percentString};
+          percentString,
+          0, true};
 }
 
 static QuickTuneValueConfig outputLimitConfig(uint8_t channel, bool minimum)
@@ -1001,6 +1005,8 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
     val->setStep(cfg.fineStep);
     val->setFastStep(cfg.fastStep);
     val->setDirectKeyboard(false);
+    if (cfg.hasDefault) val->setDefault(cfg.vdefault);
+    val->setEditTitle(label);
     val->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
   };
 

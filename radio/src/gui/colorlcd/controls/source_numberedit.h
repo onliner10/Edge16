@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "choice.h"
 #include "form.h"
 #include "numberedit.h"
@@ -35,13 +37,20 @@ class SourceNumberEdit : public Window
                    std::function<void(int32_t)> setValue,
                    int16_t sourceMin,
                    LcdFlags textFlags = 0, int32_t voffset = 0,
-                   int32_t vdefault = 0);
+                   int32_t vdefault = NO_DEFAULT,
+                   const char* editTitle = nullptr);
+
+  // Sentinel meaning "no explicit default" — keeps the wheel's Reset button
+  // hidden for fields that never declared a real default value.
+  static constexpr int32_t NO_DEFAULT = INT32_MIN;
 
   void switchSourceMode();
   void setSuffix(const std::string& value);
 
   void setFastStep(int value) { num_field->setFastStep(value); }
   void setAccelFactor(int value) { num_field->setAccelFactor(value); }
+  void setDefault(int value) { num_field->setDefault(value); }
+  void setEditTitle(std::string value) { num_field->setEditTitle(std::move(value)); }
 
   void update();
 
