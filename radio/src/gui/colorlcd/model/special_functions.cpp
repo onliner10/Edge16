@@ -484,8 +484,8 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
       auto edit = addNumberEdit(line, STR_INTERVAL, cfn, PUSH_CS_DURATION_MIN,
                                 PUSH_CS_DURATION_MAX);
 
-      edit->setDisplayHandler([=](int32_t value) {
-        return formatNumberAsString(CFN_PARAM(cfn), PREC1, 0, nullptr, "s");
+      edit->setDisplayHandler([](int32_t value) {
+        return formatNumberAsString(value, PREC1, 0, nullptr, "s");
       });
     } break;
 #endif
@@ -499,8 +499,8 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
                                 SD_LOGS_PERIOD_MAX);
       edit->setDefault(
           SD_LOGS_PERIOD_DEFAULT);  // set default period for DEF button
-      edit->setDisplayHandler([=](int32_t value) {
-        return formatNumberAsString(CFN_PARAM(cfn), PREC1, 0, nullptr, "s");
+      edit->setDisplayHandler([](int32_t value) {
+        return formatNumberAsString(value, PREC1, 0, nullptr, "s");
       });
       break;
     }

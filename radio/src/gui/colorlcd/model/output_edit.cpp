@@ -129,17 +129,25 @@ void OutputEditWindow::buildBody(Window *form)
   new StaticText(line, rect_t{}, STR_NAME);
   new ModelTextEdit(line, rect_t{}, output->name, sizeof(output->name));
 
+  // In percent mode the default PREC1 formatting is used so the rotary
+  // wheel's additive split layout stays available; the custom display
+  // handler is only installed for the µs unit, whose x128/25 scaling cannot
+  // be represented by additive fine offsets (those fields keep the keypad).
+  auto usDisplayHandler = [](GVarNumberEdit* fld) {
+    if (g_eeGeneral.ppmunit != PPM_US) return;
+    fld->setDisplayHandler([](int value) {
+      return formatNumberAsString(value * 128 / 25, PREC1);
+    });
+  };
+
   // Offset
   new StaticText(line, rect_t{}, STR_LIMITS_HEADERS_SUBTRIM);
   auto off = new GVarNumberEdit(line, -LIMIT_STD_MAX, +LIMIT_STD_MAX,
-                                GET_SET_DEFAULT(output->offset), PREC1);
+                                GET_SET_DEFAULT(output->offset), PREC1, 0, 0);
   off->setFastStep(20);
   off->setAccelFactor(16);
-  off->setDisplayHandler([=](int value) {
-    if (g_eeGeneral.ppmunit == PPM_US)
-      value = value * 128 / 25;
-    return formatNumberAsString(value, PREC1);
-  });
+  off->setEditTitle(STR_LIMITS_HEADERS_SUBTRIM);
+  usDisplayHandler(off);
 
   // Min
   line = form->newLine(grid);
@@ -152,11 +160,8 @@ void OutputEditWindow::buildBody(Window *form)
   minEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
   minEdit->setFastStep(20);
   minEdit->setAccelFactor(16);
-  minEdit->setDisplayHandler([=](int value) {
-    if (g_eeGeneral.ppmunit == PPM_US)
-      value = value * 128 / 25;
-    return formatNumberAsString(value, PREC1);
-  });
+  minEdit->setEditTitle(STR_MIN);
+  usDisplayHandler(minEdit);
 
   // Max
   maxText = new StaticText(line, rect_t{}, STR_MAX);
@@ -168,11 +173,8 @@ void OutputEditWindow::buildBody(Window *form)
   maxEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
   maxEdit->setFastStep(20);
   maxEdit->setAccelFactor(16);
-  maxEdit->setDisplayHandler([=](int value) {
-    if (g_eeGeneral.ppmunit == PPM_US)
-      value = value * 128 / 25;
-    return formatNumberAsString(value, PREC1);
-  });
+  maxEdit->setEditTitle(STR_MAX);
+  usDisplayHandler(maxEdit);
 
   // Direction
   line = form->newLine(grid);

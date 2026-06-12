@@ -47,6 +47,10 @@ class GVarNumberEdit : public Window
 
   void setFastStep(int value) { num_field->setFastStep(value); }
   void setAccelFactor(int value) { num_field->setAccelFactor(value); }
+  void setEditTitle(std::string value)
+  {
+    if (num_field) num_field->setEditTitle(std::move(value));
+  }
   void setDisplayHandler(std::function<std::string(int value)> function);
 
   static LAYOUT_VAL_SCALED(GV_BTN_W, 40)

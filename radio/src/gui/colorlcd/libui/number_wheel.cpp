@@ -90,7 +90,12 @@ NumberWheel::WheelLayout NumberWheel::buildLayoutFor(NumberEdit* edit)
     }
     if (feasible && count > 0) {
       auto opts = buildOptionsFor(edit);
-      if (!opts.empty()) return WheelLayout{{opts}};
+      // Display handlers that ignore their value argument (live readouts,
+      // "current param" formatters) collapse every option into one label;
+      // a one-option wheel for a multi-value range is useless, so treat the
+      // field as ineligible and let it keep its keypad/inline editor.
+      bool degenerate = (int)opts.size() <= 1 && count > 1;
+      if (!opts.empty() && !degenerate) return WheelLayout{{opts}};
     }
   }
 
