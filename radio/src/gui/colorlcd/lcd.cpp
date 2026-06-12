@@ -77,7 +77,10 @@ BitmapBuffer lcdBuffer2(BMP_RGB565, LCD_W, LCD_H,
                         (uint16_t*)LCD_SECOND_FRAME_BUFFER);
 
 static BitmapBuffer* lcdFront = &lcdBuffer1;
+#if !defined(LCD_USE_STRIP_BUFFERS)
+// Only the non-strip-buffer path hands the second buffer to LVGL.
 static BitmapBuffer* lcd = &lcdBuffer2;
+#endif
 
 volatile uint32_t LcdVBlankClock::counter = 0;
 
