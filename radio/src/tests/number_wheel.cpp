@@ -304,7 +304,7 @@ TEST(NumberWheel, SplitPpmCenterRange)
   EXPECT_EQ(fine.back().label, "+9");
 
   // compose(base 1991, fine +9) == 2000 == vmax
-  EXPECT_EQ(NumberWheel::composeValue(layout, 100, 9), 2000);
+  EXPECT_EQ(NumberWheel::composeValue(layout, {100, 9}), 2000);
 }
 
 TEST(NumberWheel, SplitNegativePrec1Limits)
@@ -330,7 +330,7 @@ TEST(NumberWheel, SplitNegativePrec1Limits)
   EXPECT_EQ(fine[7].label, "+.7");
 
   // THE negative test: no sign bug
-  int composed = NumberWheel::composeValue(layout, 0, 7);  // base=-1500, offset=+7
+  int composed = NumberWheel::composeValue(layout, {0, 7});  // base=-1500, offset=+7
   EXPECT_EQ(composed, -1493);
   EXPECT_NE(edit->getDisplayValFor(composed).find("-149.3"), std::string::npos);
 
@@ -348,8 +348,8 @@ TEST(NumberWheel, SplitRoundTrip)
   ASSERT_TRUE(layout.split());
 
   for (int v : {1000, 1001, 1009, 1010, 1500, 1999, 2000}) {
-    auto [ci, fi] = NumberWheel::decomposeValue(layout, v);
-    EXPECT_EQ(NumberWheel::composeValue(layout, ci, fi), v)
+    auto idxs = NumberWheel::decomposeValue(layout, v);
+    EXPECT_EQ(NumberWheel::composeValue(layout, idxs), v)
         << "round-trip failed for v=" << v;
   }
 
@@ -360,8 +360,8 @@ TEST(NumberWheel, SplitRoundTrip)
   ASSERT_TRUE(layout2.split());
 
   for (int v : {-1500, -1499, -1, 0, 1, 999, 1499, 1500}) {
-    auto [ci, fi] = NumberWheel::decomposeValue(layout2, v);
-    EXPECT_EQ(NumberWheel::composeValue(layout2, ci, fi), v)
+    auto idxs = NumberWheel::decomposeValue(layout2, v);
+    EXPECT_EQ(NumberWheel::composeValue(layout2, idxs), v)
         << "round-trip failed for v=" << v;
   }
 }
@@ -382,7 +382,7 @@ TEST(NumberWheel, SplitPrec2)
   ASSERT_GE(fine.size(), 4u);
   EXPECT_EQ(fine[3].label, "+.3");
 
-  int composed = NumberWheel::composeValue(layout, 0, 3);  // base=0, offset=30
+  int composed = NumberWheel::composeValue(layout, {0, 3});  // base=0, offset=30
   EXPECT_EQ(composed, 30);
   // getDisplayValFor(30) with PREC2: displayValue = (30+5)/10 = 3, PREC1 → "0.3"
   EXPECT_NE(edit->getDisplayValFor(composed).find("0.3"), std::string::npos);
