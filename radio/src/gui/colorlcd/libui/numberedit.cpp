@@ -526,7 +526,7 @@ bool numberEditCancelActiveEditorDoesNotCrashForTest()
    public:
     TestNumberEdit(Window* parent, std::function<int()> getValue,
                    std::function<void(int)> setValue) :
-        NumberEdit(parent, {0, 0, 120, EdgeTxStyles::UI_ELEMENT_HEIGHT}, 0, 100,
+        NumberEdit(parent, {0, 0, 120, EdgeTxStyles::UI_ELEMENT_HEIGHT}, 0, 1000,
                    std::move(getValue), std::move(setValue))
     {
     }
@@ -553,6 +553,10 @@ bool numberEditCancelActiveEditorDoesNotCrashForTest()
     return false;
   }
 
+  // Force the legacy inline editor path: the NumberWheel single-column path
+  // rejects ranges over MAX_WHEEL_OPTIONS (300), and the display handler
+  // also prevents an additive split layout.
+  numberEdit->setDisplayHandler([](int v) { return std::to_string(v); });
   numberEdit->setOnEditedHandler([&](int) { edited = true; });
   numberEdit->exerciseOpenEdit();
   if (!numberEdit->editorVisible()) {
