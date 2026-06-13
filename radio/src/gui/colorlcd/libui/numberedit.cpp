@@ -200,9 +200,7 @@ class NumberArea : public FormField
 
   void openKeyboard()
   {
-    if (!numEdit->useDirectKeyboard()) {
-      if (tryWheel()) return;
-    }
+    if (tryWheel()) return;
     openKeypad();
   }
 
@@ -326,16 +324,13 @@ void NumberEdit::openEdit()
   }
   lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_get_act());
   bool isPointer = (indev_type == LV_INDEV_TYPE_POINTER);
-  if (!useDirectKeyboard()) {
-    // Wheel for all input types (touch and rotary).  Unstructured huge ranges
-    // with a custom display/availability handler fall back to keypad/inline.
-    if (edit->tryWheel()) return;
-    if (isPointer) edit->openKeypad();
-    else edit->directEdit();
-  } else {
-    if (isPointer) edit->openKeypad();
-    else edit->directEdit();
-  }
+  // Wheel-first for every numeric field: the rotary wheel replaces the legacy
+  // numeric keypad wherever the range can be represented (single column or
+  // additive split).  Unstructured huge ranges with a custom display or
+  // availability handler still fall back to keypad (touch) / inline (rotary).
+  if (edit->tryWheel()) return;
+  if (isPointer) edit->openKeypad();
+  else edit->directEdit();
 }
 
 void NumberEdit::update()

@@ -37,11 +37,15 @@ class NumberWheel : public ModalWindow
   };
 
   // Layout description for a wheel.
-  // Single column: columns[0] holds absolute raw values (existing buildOptionsFor result).
-  // Two columns: columns[0] = coarse bases (absolute), columns[1] = fine offsets (additive).
+  // Single column: columns[0] holds absolute raw values (buildOptionsFor result).
+  // Multi column (additive): the committed value is the SUM of the selected
+  // rawValue in every column.  Covers both the coarse+fine split (bases +
+  // offsets) and iOS-countdown-style time pickers (h*3600 + m*60 + s).
+  // captions, when non-empty, holds one small header per column ("h", "min"...).
   struct WheelLayout {
     std::vector<std::vector<Option>> columns;
-    bool split() const { return columns.size() == 2; }
+    std::vector<std::string> captions;
+    bool split() const { return columns.size() >= 2; }
     bool valid() const { return !columns.empty(); }
   };
 
@@ -61,11 +65,13 @@ class NumberWheel : public ModalWindow
   /// Builds the full layout (single or split) for a NumberEdit.
   static WheelLayout buildLayoutFor(NumberEdit* edit);
 
-  /// Compose a raw value from coarse and fine roller indices (split layout only).
-  static int composeValue(const WheelLayout& l, int coarseIdx, int fineIdx);
+  /// Compose a raw value by summing the selected option of every column
+  /// (multi-column layouts only).
+  static int composeValue(const WheelLayout& l, const std::vector<int>& idxs);
 
-  /// Decompose a raw value into {coarseIdx, fineIdx} (split layout only).
-  static std::pair<int, int> decomposeValue(const WheelLayout& l, int value);
+  /// Decompose a raw value into one index per column (greedy largest-base,
+  /// columns must hold ascending rawValues; multi-column layouts only).
+  static std::vector<int> decomposeValue(const WheelLayout& l, int value);
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return "NumberWheel"; }
@@ -73,8 +79,8 @@ class NumberWheel : public ModalWindow
 
  protected:
   NumberEdit* edit = nullptr;
-  lv_obj_t* rollerObj = nullptr;      // single: the only roller; split: coarse roller
-  lv_obj_t* fineRollerObj = nullptr;  // split only: fine roller
+  std::vector<lv_obj_t*> rollers;  // all rollers, in column order
+  lv_obj_t* rollerObj = nullptr;   // alias of rollers[0]
   StaticText* titleLabel = nullptr;
   TextButton* cancelButton = nullptr;
   TextButton* defaultButton = nullptr;
@@ -85,12 +91,12 @@ class NumberWheel : public ModalWindow
   std::string titleText;  // base edit title, used in title refresh
 
   void buildContent();
-  lv_obj_t* buildRollerWidget(lv_obj_t* parent, lv_coord_t x, lv_coord_t w,
+  lv_obj_t* buildRollerWidget(lv_obj_t* parent, lv_coord_t w,
                                const std::string& optionsStr, int selectedIdx,
                                int visibleRows);
   void buildSingleRoller(lv_obj_t* parent, const std::string& optionsStr,
                          int selectedIdx, int visibleRows);
-  void buildSplitRollers(lv_obj_t* parent);
+  void buildMultiRollers(lv_obj_t* parent);
   void onConfirm();
   void onCancel() override;
   int currentComposedValue() const;

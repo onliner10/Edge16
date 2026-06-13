@@ -63,6 +63,10 @@ class ToggleSwitch : public FormField
   lv_subject_t checkedSubject = {};
   bool checkedSubjectInitialized = false;
   bool lvglValueChanged = false;
+  // lv_subject_add_observer_obj notifies once on subscribe; that initial
+  // sync must not reach the user's setValue handler (the value did not
+  // change, and at that point the owning page may still be mid-construction).
+  bool suppressObserverNotify = false;
 
   void onLiveCheckEvents(LiveWindow& live) override;
 
