@@ -91,7 +91,7 @@ class NumberWheel : public ModalWindow
   std::string titleText;  // base edit title, used in title refresh
 
   void buildContent();
-  lv_obj_t* buildRollerWidget(lv_obj_t* parent, lv_coord_t x, lv_coord_t w,
+  lv_obj_t* buildRollerWidget(lv_obj_t* parent, lv_coord_t w,
                                const std::string& optionsStr, int selectedIdx,
                                int visibleRows);
   void buildSingleRoller(lv_obj_t* parent, const std::string& optionsStr,

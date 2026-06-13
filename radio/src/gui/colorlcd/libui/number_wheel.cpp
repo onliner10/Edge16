@@ -30,16 +30,53 @@
 #include "mainwindow.h"
 #include "numberedit.h"
 
-// Padded card dimensions — fat-finger friendly
-constexpr lv_coord_t CARD_W = 340;
-constexpr lv_coord_t CARD_H = 200;
-constexpr lv_coord_t TITLE_H = 24;
-constexpr lv_coord_t ROLLER_H = 130;
-constexpr lv_coord_t BTN_H = 32;
+// Base card dimensions for the 480x272 TX16S MK2 display.  Larger screens use
+// the same proportions with larger touch targets, while MK2 keeps a compact fit.
+constexpr lv_coord_t BASE_CARD_W = 340;
+constexpr lv_coord_t BASE_CARD_H = 216;
+constexpr lv_coord_t BASE_TITLE_H = 24;
+constexpr lv_coord_t BASE_BTN_H = 32;
+constexpr lv_coord_t BASE_MULTI_MARGIN_X = 14;
 
-// Multi-column roller geometry: side margin; columns share the remaining
-// width with a fixed gap (2 columns -> 150 px each, 3 -> 96 px each).
-constexpr lv_coord_t MULTI_MARGIN_X = 14;
+struct WheelMetrics {
+  bool largeScreen = false;
+  lv_coord_t cardW = BASE_CARD_W;
+  lv_coord_t cardH = BASE_CARD_H;
+  lv_coord_t titleH = BASE_TITLE_H;
+  lv_coord_t btnH = BASE_BTN_H;
+  lv_coord_t contentPad = 10;
+  lv_coord_t rowGap = 8;
+  lv_coord_t columnGap = BASE_MULTI_MARGIN_X;
+  lv_coord_t singleRollerW = 260;
+  int visibleRows = 5;
+};
+
+static WheelMetrics wheelMetrics()
+{
+  WheelMetrics m;
+  m.largeScreen = LV_HOR_RES >= 640 || LV_VER_RES >= 400;
+  if (m.largeScreen) {
+    m.cardW = std::min<lv_coord_t>(560, LV_HOR_RES - 120);
+    m.cardW = std::max<lv_coord_t>(BASE_CARD_W, m.cardW);
+    m.cardH = std::min<lv_coord_t>(360, LV_VER_RES - 96);
+    m.cardH = std::max<lv_coord_t>(BASE_CARD_H, m.cardH);
+    m.titleH = 34;
+    m.btnH = 44;
+    m.contentPad = 24;
+    m.rowGap = 14;
+    m.columnGap = 18;
+    m.singleRollerW = std::min<lv_coord_t>(360, m.cardW - 2 * m.contentPad);
+    m.visibleRows = 7;
+  }
+  return m;
+}
+
+static void clearContainerStyle(lv_obj_t* obj)
+{
+  lv_obj_remove_style_all(obj);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_ELASTIC);
+}
 
 // ---- Static layout logic ------------------------------------------------
 
@@ -264,14 +301,14 @@ NumberWheel::NumberWheel(NumberEdit* numEdit) :
 
 // ---- Roller widget helper -----------------------------------------------
 
-lv_obj_t* NumberWheel::buildRollerWidget(lv_obj_t* parent, lv_coord_t x,
-                                          lv_coord_t w,
+lv_obj_t* NumberWheel::buildRollerWidget(lv_obj_t* parent, lv_coord_t w,
                                           const std::string& optionsStr,
                                           int selectedIdx, int visibleRows)
 {
   lv_obj_t* obj = lv_roller_create(parent);
-  lv_obj_set_pos(obj, x, 40);
-  lv_obj_set_size(obj, w, ROLLER_H);
+  lv_obj_set_width(obj, w);
+  lv_obj_set_height(obj, LV_PCT(100));
+  lv_obj_set_flex_grow(obj, 1);
   etx_font(obj, FONT_STD_INDEX, 0);
   lv_roller_set_options(obj, optionsStr.c_str(), LV_ROLLER_MODE_NORMAL);
   lv_roller_set_visible_row_count(obj, visibleRows);
@@ -298,7 +335,8 @@ void NumberWheel::buildSingleRoller(lv_obj_t* parent, const std::string& options
 {
   int optionCount = static_cast<int>(options.size());
   if (optionCount == 0) return;
-  rollerObj = buildRollerWidget(parent, (CARD_W - 260) / 2, 260, optionsStr,
+  const auto m = wheelMetrics();
+  rollerObj = buildRollerWidget(parent, m.singleRollerW, optionsStr,
                                 selectedIdx, visibleRows);
   if (rollerObj) rollers.push_back(rollerObj);
 }
@@ -307,8 +345,7 @@ void NumberWheel::buildMultiRollers(lv_obj_t* parent)
 {
   if (!layout.split()) return;
   int n = (int)layout.columns.size();
-  constexpr lv_coord_t MARGIN = MULTI_MARGIN_X, GAP = 12;
-  lv_coord_t w = (CARD_W - 2 * MARGIN - GAP * (n - 1)) / n;
+  const auto m = wheelMetrics();
 
   auto idxs = decomposeValue(layout, originalValue);
 
@@ -321,27 +358,37 @@ void NumberWheel::buildMultiRollers(lv_obj_t* parent)
     return s;
   };
 
-  const int visibleRows = 5;
+  const int visibleRows = m.visibleRows;
   for (int c = 0; c < n; c++) {
-    lv_coord_t x = MARGIN + c * (w + GAP);
-    lv_obj_t* r = buildRollerWidget(parent, x, w, makeOptsStr(layout.columns[c]),
-                                    c < (int)idxs.size() ? idxs[c] : 0,
-                                    visibleRows);
-    if (!r) continue;
-    rollers.push_back(r);
+    lv_obj_t* col = lv_obj_create(parent);
+    if (!col) continue;
+    clearContainerStyle(col);
+    lv_obj_set_width(col, 0);
+    lv_obj_set_height(col, LV_PCT(100));
+    lv_obj_set_flex_grow(col, 1);
+    lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(col, m.largeScreen ? 8 : 4, LV_PART_MAIN);
+    lv_obj_set_flex_align(col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
 
     if (c < (int)layout.captions.size() && !layout.captions[c].empty()) {
-      // Small unit caption between title and roller, iOS-picker style.
-      lv_obj_t* cap = lv_label_create(parent);
+      // Small unit caption above each roller, iOS-picker style.
+      lv_obj_t* cap = lv_label_create(col);
       if (cap) {
         lv_label_set_text(cap, layout.captions[c].c_str());
-        lv_obj_set_pos(cap, x, TITLE_H + 2);
-        lv_obj_set_width(cap, w);
+        lv_obj_set_width(cap, LV_PCT(100));
+        lv_obj_set_height(cap, LV_SIZE_CONTENT);
         lv_obj_set_style_text_align(cap, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_color(cap, lv_color_hex(0x888888), 0);
         etx_font(cap, FONT_XS_INDEX, 0);
       }
     }
+
+    lv_obj_t* r = buildRollerWidget(col, LV_PCT(100),
+                                    makeOptsStr(layout.columns[c]),
+                                    c < (int)idxs.size() ? idxs[c] : 0,
+                                    visibleRows);
+    if (r) rollers.push_back(r);
   }
   rollerObj = rollers.empty() ? nullptr : rollers[0];
 }
@@ -356,11 +403,13 @@ void NumberWheel::buildContent()
     lv_obj_set_style_bg_opa(l.lvobj(), LV_OPA_90, 0);
   });
 
+  const auto m = wheelMetrics();
+
   // Bright card, centered
   lv_obj_t* cardObj = nullptr;
   auto* card = new (std::nothrow) Window(this, rect_t{
-    (LV_HOR_RES - CARD_W) / 2, (LV_VER_RES - CARD_H) / 2,
-    CARD_W, CARD_H
+    (LV_HOR_RES - m.cardW) / 2, (LV_VER_RES - m.cardH) / 2,
+    m.cardW, m.cardH
   });
   if (!card) return;
   card->withLive([&](LiveWindow& l) {
@@ -369,6 +418,11 @@ void NumberWheel::buildContent()
     lv_obj_set_style_bg_opa(cardObj, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(cardObj, 14, 0);
     lv_obj_clear_flag(cardObj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(cardObj, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(cardObj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(cardObj, m.contentPad, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(cardObj, m.rowGap, LV_PART_MAIN);
   });
 
   // Title — base text stored for live refresh
@@ -382,8 +436,9 @@ void NumberWheel::buildContent()
     titleStr += edit->getDisplayValFor(originalValue);
   }
 
-  titleLabel = new (std::nothrow) StaticText(card, rect_t{0, 6, CARD_W, TITLE_H},
-      titleStr, COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD));
+  titleLabel = new (std::nothrow) StaticText(
+      card, rect_t{0, 0, LV_PCT(100), m.titleH}, titleStr,
+      COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD));
   titleLabel->withLive([](LiveWindow& l) {
     lv_obj_set_style_text_align(l.lvobj(), LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(l.lvobj(), lv_color_black(), 0);
@@ -391,9 +446,20 @@ void NumberWheel::buildContent()
 
   if (!cardObj) return;
 
+  lv_obj_t* rollerArea = lv_obj_create(cardObj);
+  if (!rollerArea) return;
+  clearContainerStyle(rollerArea);
+  lv_obj_set_width(rollerArea, LV_PCT(100));
+  lv_obj_set_height(rollerArea, 0);
+  lv_obj_set_flex_grow(rollerArea, 1);
+  lv_obj_set_flex_flow(rollerArea, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(rollerArea, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_column(rollerArea, m.columnGap, LV_PART_MAIN);
+
   // Build roller(s)
   if (layout.split()) {
-    buildMultiRollers(cardObj);
+    buildMultiRollers(rollerArea);
   } else {
     std::string optsStr;
     int curVal = edit->getValue();
@@ -411,24 +477,43 @@ void NumberWheel::buildContent()
       }
     }
 
-    const int visibleRows = std::min(optionCount, 5);
-    buildSingleRoller(cardObj, optsStr, selectedIdx, visibleRows);
+    const int visibleRows = std::min(optionCount, m.visibleRows);
+    buildSingleRoller(rollerArea, optsStr, selectedIdx, visibleRows);
   }
+
+  auto* buttonRow = new (std::nothrow) Window(card, rect_t{});
+  if (!buttonRow) return;
+  buttonRow->withLive([&](LiveWindow& l) {
+    lv_obj_t* row = l.lvobj();
+    clearContainerStyle(row);
+    lv_obj_set_width(row, LV_PCT(100));
+    lv_obj_set_height(row, m.btnH);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(row, m.columnGap, LV_PART_MAIN);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+  });
+
+  auto stretchButton = [](TextButton* btn) {
+    if (!btn) return;
+    btn->withLive([](LiveWindow& l) {
+      lv_obj_set_width(l.lvobj(), 0);
+      lv_obj_set_height(l.lvobj(), LV_PCT(100));
+      lv_obj_set_flex_grow(l.lvobj(), 1);
+    });
+  };
 
   // Bottom button row
   int defVal = edit->getDefault();
   bool showDefault = (edit->hasDefaultValue()
                       && defVal >= edit->getMin() && defVal <= edit->getMax()
                       && edit->isValueAvailableCheck(defVal));
-  const lv_coord_t btnY = CARD_H - BTN_H - 6;
   if (showDefault) {
-    constexpr lv_coord_t BW = 96, GAP = 16, MARGIN = 10;
-    cancelButton = new (std::nothrow) TextButton(card,
-        rect_t{MARGIN, btnY, BW, BTN_H},
-        STR_CANCEL, [this]() { onCancel(); return 0; });
-    defaultButton = new (std::nothrow) TextButton(card,
-        rect_t{MARGIN + BW + GAP, btnY, BW, BTN_H},
-        STR_RESET, [this]() {
+    cancelButton = new (std::nothrow) TextButton(
+        buttonRow, rect_t{}, STR_CANCEL, [this]() { onCancel(); return 0; });
+    stretchButton(cancelButton);
+    defaultButton = new (std::nothrow) TextButton(
+        buttonRow, rect_t{}, STR_RESET, [this]() {
           if (!rollerObj) return 0;
           int dv = edit->getDefault();
           if (layout.split()) {
@@ -447,16 +532,17 @@ void NumberWheel::buildContent()
           applyCurrentSelection(true);
           return 0;
         });
-    okButton = new (std::nothrow) TextButton(card,
-        rect_t{MARGIN + 2 * (BW + GAP), btnY, BW, BTN_H},
-        STR_OK, [this]() { onConfirm(); return 0; });
+    stretchButton(defaultButton);
+    okButton = new (std::nothrow) TextButton(
+        buttonRow, rect_t{}, STR_OK, [this]() { onConfirm(); return 0; });
+    stretchButton(okButton);
   } else {
-    cancelButton = new (std::nothrow) TextButton(card,
-        rect_t{16, btnY, 140, BTN_H},
-        STR_CANCEL, [this]() { onCancel(); return 0; });
-    okButton = new (std::nothrow) TextButton(card,
-        rect_t{CARD_W - 156, btnY, 140, BTN_H},
-        STR_OK, [this]() { onConfirm(); return 0; });
+    cancelButton = new (std::nothrow) TextButton(
+        buttonRow, rect_t{}, STR_CANCEL, [this]() { onCancel(); return 0; });
+    stretchButton(cancelButton);
+    okButton = new (std::nothrow) TextButton(
+        buttonRow, rect_t{}, STR_OK, [this]() { onConfirm(); return 0; });
+    stretchButton(okButton);
   }
 }
 
