@@ -235,6 +235,101 @@ class QuickSubMenu
 
 QuickMenu* QuickMenu::instance = nullptr;
 
+// Indexed by section entry QMPage; only pages in (QM_NONE, QM_APP) are stored.
+static QMPage lastVisitedByEntryPage[QM_APP] = {};
+
+static bool isEnabledPage(const PageDef& page)
+{
+  return page.pageAction == PAGE_CREATE && (!page.enabled || page.enabled());
+}
+
+static QMPage firstCreatePage(const QMMainDef& section)
+{
+  for (int i = 0; section.subMenuItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    if (section.subMenuItems[i].pageAction == PAGE_CREATE)
+      return section.subMenuItems[i].qmPage;
+  }
+
+  return QM_NONE;
+}
+
+static bool sectionContainsPage(const QMMainDef& section, QMPage page,
+                                bool requireEnabled = false)
+{
+  for (int i = 0; section.subMenuItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const PageDef& pageDef = section.subMenuItems[i];
+    if (pageDef.qmPage == page && (!requireEnabled || isEnabledPage(pageDef)))
+      return true;
+  }
+
+  return false;
+}
+
+static const QMMainDef* findSectionForPage(
+    QMPage page, EdgeTxIcon groupIcon = EDGETX_ICONS_COUNT)
+{
+  for (int i = QuickMenu::FIRST_SEARCH_IDX;
+       qmTopItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const QMMainDef& section = qmTopItems[i];
+    if (section.pageAction != QM_SUBMENU)
+      continue;
+
+    if (groupIcon != EDGETX_ICONS_COUNT && section.icon != groupIcon)
+      continue;
+
+    if (sectionContainsPage(section, page))
+      return &section;
+  }
+
+  return nullptr;
+}
+
+// Section entry reopens the last page actually visited in that section.
+// If that page is no longer available, use the first enabled page in the section.
+static QMPage resolveLastVisitedSectionPage(const QMMainDef& section,
+                                            QMPage lastVisitedPage)
+{
+  QMPage firstAvailablePage = QM_NONE;
+
+  for (int i = 0; section.subMenuItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const PageDef& page = section.subMenuItems[i];
+    if (!isEnabledPage(page))
+      continue;
+
+    if (firstAvailablePage == QM_NONE)
+      firstAvailablePage = page.qmPage;
+
+    if (page.qmPage == lastVisitedPage)
+      return lastVisitedPage;
+  }
+
+  return firstAvailablePage;
+}
+
+static QMPage restoreLastVisitedSectionPage(QMPage requestedPage)
+{
+  for (int i = QuickMenu::FIRST_SEARCH_IDX;
+       qmTopItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const QMMainDef& section = qmTopItems[i];
+    if (section.pageAction != QM_SUBMENU)
+      continue;
+
+    QMPage entryPage = firstCreatePage(section);
+    if (requestedPage != entryPage)
+      continue;
+
+    QMPage rememberedPage = entryPage;
+    if (entryPage > QM_NONE && entryPage < QM_APP &&
+        lastVisitedByEntryPage[entryPage] != QM_NONE)
+      rememberedPage = lastVisitedByEntryPage[entryPage];
+
+    QMPage page = resolveLastVisitedSectionPage(section, rememberedPage);
+    return page == QM_NONE ? requestedPage : page;
+  }
+
+  return requestedPage;
+}
+
 void QuickMenu::openQuickMenu()
 {
   if (instance && instance->isVisible())
@@ -383,6 +478,8 @@ void QuickMenu::selected()
 
 void QuickMenu::openPage(QMPage page)
 {
+  page = restoreLastVisitedSectionPage(page);
+
   for (int i = FIRST_SEARCH_IDX; qmTopItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
     if (qmTopItems[i].pageAction == QM_ACTION) {
       if (qmTopItems[i].qmPage == page) {
@@ -589,6 +686,17 @@ void QuickMenu::setCurrentPage(QMPage newPage, EdgeTxIcon newIcon)
     instance->curPage = newPage;
     instance->curIcon = newIcon;
   }
+}
+
+void QuickMenu::rememberVisitedPage(QMPage page, EdgeTxIcon groupIcon)
+{
+  const QMMainDef* section = findSectionForPage(page, groupIcon);
+  if (!section || !sectionContainsPage(*section, page, true))
+    return;
+
+  QMPage entryPage = firstCreatePage(*section);
+  if (entryPage > QM_NONE && entryPage < QM_APP)
+    lastVisitedByEntryPage[entryPage] = page;
 }
 
 void QuickMenu::focusMainMenu()

@@ -166,6 +166,7 @@ class PageGroupBase : public NavWindow
 
   void onLiveClicked(LiveWindow&) override;
   void onCancel() override;
+  void returnHomeFromLongPress();
 
   uint8_t tabCount() const;
 

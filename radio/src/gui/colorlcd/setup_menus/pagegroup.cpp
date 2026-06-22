@@ -540,6 +540,14 @@ void PageGroupBase::onCancel()
   deleteLater();
 }
 
+void PageGroupBase::returnHomeFromLongPress()
+{
+  if (isPageGroup() && currentTab)
+    QuickMenu::rememberVisitedPage(currentTab->pageId(), icon);
+
+  onCancel();
+}
+
 uint8_t PageGroupBase::tabCount() const
 {
   return header.valueOr<uint8_t>(0, [](PageGroupHeaderBase& header) {
@@ -609,8 +617,10 @@ void PageGroupBase::setCurrentTab(unsigned index)
           header.setIcon(tab->getIcon());
 #endif
 
-          if (isPageGroup())
+          if (isPageGroup()) {
             QuickMenu::setCurrentPage(tab->pageId(), icon);
+            QuickMenu::rememberVisitedPage(tab->pageId(), icon);
+          }
 
           lv_obj_enable_style_refresh(false);
           body.clear();
@@ -667,7 +677,10 @@ void PageGroupBase::onLongPressPGDN()
 {
   header.with([](PageGroupHeaderBase& header) { header.nextTab(); });
 }
-void PageGroupBase::onLongPressRTN() { onCancel(); }
+void PageGroupBase::onLongPressRTN()
+{
+  returnHomeFromLongPress();
+}
 #endif
 
 bool PageGroupBase::hasSubMenu(QMPage qmPage)

@@ -86,6 +86,7 @@ class QuickMenu : public NavWindow
   void enableSubMenu();
 
   static void setCurrentPage(QMPage newPage, EdgeTxIcon newIcon = EDGETX_ICONS_COUNT);
+  static void rememberVisitedPage(QMPage page, EdgeTxIcon groupIcon);
 
   PageGroupBase* getPageGroup() const { return pageGroup; }
   QuickMenuGroup* getTopMenu() const { return mainMenu; }

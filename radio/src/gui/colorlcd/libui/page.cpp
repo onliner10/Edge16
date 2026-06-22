@@ -205,7 +205,12 @@ void Page::onLongPressTELE()
   }
 }
 
-void Page::onLongPressRTN() { onCancel(); }
+void Page::onLongPressRTN()
+{
+  onCancel();
+  if (PageGroup* pageGroup = Window::pageGroup())
+    pageGroup->returnHomeFromLongPress();
+}
 #endif
 
 SubPage::SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, bool pauseRefresh) :
