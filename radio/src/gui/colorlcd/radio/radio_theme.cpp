@@ -179,7 +179,7 @@ class ColorEditPage : public Page
  public:
   ColorEditPage(ThemeFile *theme, LcdColorIndex indexOfColor,
                 std::function<void()> updateHandler = nullptr) :
-      Page(ICON_RADIO_EDIT_THEME, PAD_SMALL),
+      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),
       _updateHandler(std::move(updateHandler)),
       _indexOfColor(indexOfColor),
       _theme(theme)
@@ -326,7 +326,7 @@ class ThemeEditPage : public Page
   explicit ThemeEditPage(
       ThemeFile *theme,
       std::function<void(ThemeFile &theme)> saveHandler = nullptr) :
-      Page(ICON_RADIO_EDIT_THEME, PAD_SMALL),
+      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),
       _theme(*theme),
       page(this),
       saveHandler(std::move(saveHandler))

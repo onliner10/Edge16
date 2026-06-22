@@ -30,6 +30,8 @@
 #include "input_edit.h"
 #include "menu.h"
 #include "messaging.h"
+#include "page.h"
+#include "route.h"
 #include "tasks/mixer_task.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
@@ -191,6 +193,21 @@ ModelInputsPage::ModelInputsPage(const PageDef& pageDef) : InputMixPageBase(page
 {
 }
 
+bool ModelInputsPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_INPUT_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_EXPOS) return false;
+
+  ExpoData* expo = expoAddress(index);
+  if (!EXPO_VALID(expo)) return false;
+
+  editInput(expo->chn, index);
+  return true;
+}
+
 bool ModelInputsPage::reachExposLimit()
 {
   if (getExposCount() >= MAX_EXPOS) {
@@ -326,7 +343,8 @@ void ModelInputsPage::editInput(uint8_t input, uint8_t index)
 {
   _copyMode = 0;
 
-  auto edit = new InputEditWindow(input, index);
+  auto edit = new InputEditWindow(input, index,
+                               route().appended(RP_INPUT_EDIT, static_cast<int16_t>(index)));
   edit->setCloseHandler([=]() {
     Messaging::send(Messaging::REFRESH);
     rebuildFromModel(index);

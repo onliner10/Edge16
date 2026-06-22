@@ -30,6 +30,7 @@
 #include "menu.h"
 #include "numberedit.h"
 #include "page.h"
+#include "route.h"
 #include "sourcechoice.h"
 #include "textedit.h"
 #include "toggleswitch.h"
@@ -481,8 +482,8 @@ class SensorSourceChoice : public SourceChoice
 class SensorEditWindow : public SubPage
 {
  public:
-  explicit SensorEditWindow(uint8_t index) :
-      SubPage(ICON_MODEL_TELEMETRY, STR_MENUTELEMETRY, "", true), index(index)
+  explicit SensorEditWindow(uint8_t index, Route route) :
+      SubPage(ICON_MODEL_TELEMETRY, route, STR_MENUTELEMETRY, "", true), index(index)
   {
     buildHeader(header);
     buildBody(body);
@@ -881,6 +882,20 @@ ModelTelemetryPage::ModelTelemetryPage(const PageDef& pageDef) :
   tsStyle.init();
 }
 
+bool ModelTelemetryPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_SENSOR_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_TELEMETRY_SENSORS) return false;
+  if (!g_model.telemetrySensors[index].isAvailable()) return false;
+
+  auto* editWindow = new SensorEditWindow(index, r);
+  editWindow->setCloseHandler([=]() { buildSensorList(index); });
+  return true;
+}
+
 void ModelTelemetryPage::checkEvents()
 {
   int _lastKnownIndex = availableTelemetryIndex();
@@ -903,7 +918,8 @@ void ModelTelemetryPage::checkEvents()
 void ModelTelemetryPage::editSensor(uint8_t index)
 {
   lastKnownIndex = -1;
-  Window* editWindow = new SensorEditWindow(index);
+  Window* editWindow = new SensorEditWindow(index,
+      route().appended(RP_SENSOR_EDIT, static_cast<int16_t>(index)));
   editWindow->setCloseHandler([=]() { buildSensorList(index); });
 }
 

@@ -245,7 +245,7 @@ void RadioKeyDiagsPage::buildBody(Window *window)
   new RadioKeyDiagsWindow(window, {0, 0, window->width(), window->height()});
 }
 
-RadioKeyDiagsPage::RadioKeyDiagsPage() : Page(ICON_MODEL_SETUP)
+RadioKeyDiagsPage::RadioKeyDiagsPage(Route route) : Page(ICON_MODEL_SETUP, route)
 {
   buildHeader(header);
   buildBody(body);

@@ -34,7 +34,7 @@ class OutputEditStatusBar;
 class OutputEditWindow : public Page
 {
  public:
-  explicit OutputEditWindow(uint8_t channel);
+  explicit OutputEditWindow(uint8_t channel, Route route);
 
   static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_WIDTH, 250, 180)
 

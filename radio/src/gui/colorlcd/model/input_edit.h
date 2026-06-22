@@ -28,7 +28,9 @@
 class InputEditWindow : public Page
 {
  public:
-  InputEditWindow(int8_t input, uint8_t index);
+  InputEditWindow(int8_t input, uint8_t index, Route route);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   static LAYOUT_SIZE(CURVE_W_LANDSCAPE, 138, 120)
   static LAYOUT_ORIENTATION_SCALED(INPUT_EDIT_CURVE_WIDTH, CURVE_W_LANDSCAPE, 176)

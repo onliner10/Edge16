@@ -210,8 +210,8 @@ class CompatiblePackLine : public ListLineButton
   }
 };
 
-BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor)
-    : SubPage(ICON_MODEL_TELEMETRY, STR_MAIN_MENU_MODEL_SETTINGS,
+BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
+    : SubPage(ICON_MODEL_TELEMETRY, route, STR_MAIN_MENU_MODEL_SETTINGS,
               (std::string("Battery ") + std::to_string(monitor + 1)).c_str())
 {
   body->setFlexLayout();

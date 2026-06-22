@@ -627,7 +627,7 @@ void ModelInputsPage::openOutputQuickMenu(uint8_t channel)
 {
   Menu* menu = new Menu();
   menu->addLine(STR_EDIT, [=]() {
-    auto edit = new OutputEditWindow(channel);
+    auto edit = new OutputEditWindow(channel, Route{});
     edit->setCloseHandler([=]() { rebuildFromModel(); });
   });
   menu->addLine(STR_RESET, [=]() {
@@ -1193,7 +1193,7 @@ static const PageDef classicInputsPageDef = {
 class ClassicInputsWindow : public Page
 {
  public:
-  ClassicInputsWindow() : Page(ICON_MODEL_INPUTS), classicPage(classicInputsPageDef)
+  ClassicInputsWindow() : Page(ICON_MODEL_INPUTS, Route{}), classicPage(classicInputsPageDef)
   {
     header->setTitle(STR_MENUINPUTS);
     header->setTitle2("Advanced");

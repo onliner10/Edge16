@@ -27,8 +27,8 @@ class StaticText;
 class TextButton;
 
 class RadioCalibrationPage: public Page {
-  public:
-    explicit RadioCalibrationPage();
+ public:
+  explicit RadioCalibrationPage(Route route);
 
     void onLiveCheckEvents(LiveWindow& live) override;
     void onCancel() override;

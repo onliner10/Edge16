@@ -163,21 +163,21 @@ const static SetupLineDef setupLines[] = {
 };
 
 const static PageButtonDef calibrationButtons[] = {
-  {STR_DEF(STR_MENUCALIBRATION), []() { new RadioCalibrationPage(); }},
-  {STR_DEF(STR_STICKS), []() { new HWInputDialog<HWSticks>(STR_STICKS); }},
-  {STR_DEF(STR_POTS), []() { new HWInputDialog<HWPots>(STR_POTS, HWPots::POTS_WINDOW_WIDTH); }},
-  {STR_DEF(STR_SWITCHES), []() { new HWInputDialog<HWSwitches>(STR_SWITCHES, HWSwitches::SW_WINDOW_WIDTH); }},
+  {STR_DEF(STR_MENUCALIBRATION), [](Route r) { new RadioCalibrationPage(r); }},
+  {STR_DEF(STR_STICKS), [](Route) { new HWInputDialog<HWSticks>(STR_STICKS); }},
+  {STR_DEF(STR_POTS), [](Route) { new HWInputDialog<HWPots>(STR_POTS, HWPots::POTS_WINDOW_WIDTH); }},
+  {STR_DEF(STR_SWITCHES), [](Route) { new HWInputDialog<HWSwitches>(STR_SWITCHES, HWSwitches::SW_WINDOW_WIDTH); }},
 #if defined(FUNCTION_SWITCHES)
-  {STR_DEF(STR_FUNCTION_SWITCHES), []() { new RadioFunctionSwitches(); }},
+  {STR_DEF(STR_FUNCTION_SWITCHES), [](Route r) { new RadioFunctionSwitches(r); }},
 #endif
   {nullptr},
 };
 
 const static PageButtonDef debugButtons[] = {
-  {STR_DEF(STR_ANALOGS_BTN), []() { new RadioAnalogsDiagsViewPageGroup(); }},
-  {STR_DEF(STR_KEYS_BTN), []() { new RadioKeyDiagsPage(); }},
+  {STR_DEF(STR_ANALOGS_BTN), [](Route) { new RadioAnalogsDiagsViewPageGroup(); }},
+  {STR_DEF(STR_KEYS_BTN), [](Route r) { new RadioKeyDiagsPage(r); }},
 #if defined(FUNCTION_SWITCHES)
-  {STR_DEF(STR_FS_BTN), []() { new RadioCustSwitchesDiagsPage(); }},
+  {STR_DEF(STR_FS_BTN), [](Route r) { new RadioCustSwitchesDiagsPage(r); }},
 #endif
   {nullptr},
 };
@@ -209,8 +209,8 @@ void RadioHardwarePage::build(Window* window)
   new SerialConfigWindow(window, grid);
 
   // Calibration
-  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_INPUTS, BTN_COLS, PAD_ZERO, calibrationButtons);
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_INPUTS, BTN_COLS, PAD_ZERO, calibrationButtons, route());
 
   // Debugs
-  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_DEBUG, FS_BTN_COLS, PAD_ZERO, debugButtons);
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_DEBUG, FS_BTN_COLS, PAD_ZERO, debugButtons, route());
 }

@@ -1676,11 +1676,11 @@ class SetupTextButton : public TextButton
 {
  public:
   SetupTextButton(Window* parent, const rect_t& rect,
-                  const PageButtonDef& entry) :
-      TextButton(parent, rect, STR_VAL(entry.title))
+                  const PageButtonDef& entry, Route parentRoute) :
+      TextButton(parent, rect, STR_VAL(entry.title)), parentRoute(parentRoute)
   {
     setPressHandler([=] {
-      entry.createPage();
+      entry.createPage(parentRoute);
       return 0;
     });
     setCheckHandler([=]() {
@@ -1693,12 +1693,16 @@ class SetupTextButton : public TextButton
   }
 
  protected:
+  Route parentRoute;
+
+ protected:
 };
 
 SetupButtonGroup::SetupButtonGroup(Window* parent, const rect_t& rect,
                                    const char* title, int cols,
                                    PaddingSize padding,
                                    const PageButtonDef* pages,
+                                   Route parentRoute,
                                    coord_t btnHeight) :
     Window(parent, rect)
 {
@@ -1735,7 +1739,7 @@ SetupButtonGroup::SetupButtonGroup(Window* parent, const rect_t& rect,
     y = yo + (n / cols) * (btnHeight + PAD_MEDIUM);
 
     new (std::nothrow)
-        SetupTextButton(this, {x, y, buttonWidth, btnHeight}, pages[p]);
+        SetupTextButton(this, {x, y, buttonWidth, btnHeight}, pages[p], parentRoute);
     n += 1;
     remaining -= 1;
   }

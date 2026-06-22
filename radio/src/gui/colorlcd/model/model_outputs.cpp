@@ -23,8 +23,8 @@
 
 #include <array>
 
-#include "dialog.h"
 #include "channel_bar.h"
+#include "dialog.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
@@ -32,6 +32,8 @@
 #include "menu.h"
 #include "messaging.h"
 #include "output_edit.h"
+#include "page.h"
+#include "route.h"
 #include "toggleswitch.h"
 #include "ui_events.h"
 
@@ -226,6 +228,18 @@ ModelOutputsPage::ModelOutputsPage(const PageDef& pageDef) :
 {
 }
 
+bool ModelOutputsPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_OUTPUT_EDIT) return false;
+
+  uint8_t ch = static_cast<uint8_t>(r.params[depth]);
+  if (ch >= MAX_OUTPUT_CHANNELS) return false;
+
+  editOutput(ch, nullptr);
+  return true;
+}
+
 void ModelOutputsPage::build(Window* window)
 {
   window->padAll(PAD_ZERO);
@@ -293,7 +307,9 @@ void ModelOutputsPage::build(Window* window)
 
 void ModelOutputsPage::editOutput(uint8_t channel, OutputLineButton* btn)
 {
-  (new OutputEditWindow(channel))->setCloseHandler([=]() {
+  (new OutputEditWindow(channel,
+      route().appended(RP_OUTPUT_EDIT, static_cast<int16_t>(channel))))
+      ->setCloseHandler([=]() {
     btn->requestLineUpdate();
     publishModelOutputsChanged();
   });

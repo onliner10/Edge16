@@ -26,7 +26,7 @@
 class RadioGhostModuleConfig: public Page
 {
  public:
-  explicit RadioGhostModuleConfig(uint8_t moduleIdx);
+  explicit RadioGhostModuleConfig(uint8_t moduleIdx, Route route);
 
  protected:
   uint8_t moduleIdx;

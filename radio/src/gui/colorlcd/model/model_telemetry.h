@@ -23,6 +23,7 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class TextButton;
 
@@ -30,6 +31,8 @@ class ModelTelemetryPage : public PageGroupItem
 {
  public:
   ModelTelemetryPage(const PageDef& pageDef);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   void build(Window* window) override;
 

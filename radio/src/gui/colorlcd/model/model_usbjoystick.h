@@ -29,7 +29,7 @@ class TextButton;
 class ModelUSBJoystickPage : public Page
 {
 public:
-  ModelUSBJoystickPage();
+  ModelUSBJoystickPage(Route route);
 
 protected:
   void update();

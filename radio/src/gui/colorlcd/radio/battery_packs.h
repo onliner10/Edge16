@@ -26,7 +26,7 @@
 class BatteryPacksPage : public SubPage
 {
  public:
-  BatteryPacksPage();
+  BatteryPacksPage(Route route);
 
   void rebuild();
   void editPack(uint8_t slot);
@@ -38,7 +38,7 @@ class BatteryPacksPage : public SubPage
 class BatteryPackEditWindow : public Page
 {
  public:
-  BatteryPackEditWindow(uint8_t slot);
+  BatteryPackEditWindow(uint8_t slot, Route route);
 
  protected:
   uint8_t slot;

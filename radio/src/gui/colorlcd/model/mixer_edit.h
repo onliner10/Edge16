@@ -28,7 +28,9 @@ class Window;
 class MixEditWindow : public Page
 {
  public:
-  MixEditWindow(int8_t channel, uint8_t index);
+  MixEditWindow(int8_t channel, uint8_t index, Route route);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_WIDTH, 250, 180)
 

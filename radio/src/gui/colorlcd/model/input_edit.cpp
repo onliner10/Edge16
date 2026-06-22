@@ -29,6 +29,7 @@
 #include "getset_helpers.h"
 #include "gvar_numberedit.h"
 #include "input_source.h"
+#include "route.h"
 #include "source_numberedit.h"
 #include "switchchoice.h"
 #include "tasks/mixer_task.h"
@@ -54,7 +55,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 class InputEditAdvanced : public Page
 {
  public:
-  InputEditAdvanced(uint8_t input_n, uint8_t index) : Page(ICON_MODEL_INPUTS)
+  InputEditAdvanced(uint8_t input_n, uint8_t index, Route route) : Page(ICON_MODEL_INPUTS, route)
   {
     std::string title2(getSourceString(MIXSRC_FIRST_INPUT + input_n));
     header->setTitle(STR_MENUINPUTS);
@@ -105,8 +106,8 @@ class InputEditAdvanced : public Page
   }
 };
 
-InputEditWindow::InputEditWindow(int8_t input, uint8_t index) :
-    Page(ICON_MODEL_INPUTS), input(input), index(index)
+InputEditWindow::InputEditWindow(int8_t input, uint8_t index, Route route) :
+    Page(ICON_MODEL_INPUTS, route), input(input), index(index)
 {
   header->setTitle(STR_MENUINPUTS);
   headerSwitchName = header->setTitle2("");
@@ -154,6 +155,14 @@ InputEditWindow::InputEditWindow(int8_t input, uint8_t index) :
 void InputEditWindow::setTitle()
 {
   headerSwitchName->setText(getSourceString(MIXSRC_FIRST_INPUT + input));
+}
+
+bool InputEditWindow::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_INPUT_ADVANCED) return false;
+  new InputEditAdvanced(input, index, r);
+  return true;
 }
 
 void InputEditWindow::buildBody(Window* form)
@@ -249,7 +258,8 @@ void InputEditWindow::buildBody(Window* form)
   line->padAll(PAD_LARGE);
   auto btn =
       new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
-        new InputEditAdvanced(this->input, index);
+        new InputEditAdvanced(this->input, index,
+                            route().appended(RP_INPUT_ADVANCED, static_cast<int16_t>(index)));
         return 0;
       });
   btn->setWidth(lv_pct(100));

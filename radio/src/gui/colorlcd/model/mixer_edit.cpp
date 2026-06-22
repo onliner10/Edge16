@@ -31,6 +31,7 @@
 #include "mixer_edit_adv.h"
 #include "mixes.h"
 #include "pagegroup.h"
+#include "route.h"
 #include "source_numberedit.h"
 #include "sourcechoice.h"
 #include "switchchoice.h"
@@ -65,8 +66,8 @@ class MixerEditStatusBar : public Window
   int8_t _channel;
 };
 
-MixEditWindow::MixEditWindow(int8_t channel, uint8_t index) :
-    Page(ICON_MODEL_MIXER, PAD_MEDIUM), channel(channel), index(index)
+MixEditWindow::MixEditWindow(int8_t channel, uint8_t index, Route route) :
+    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)
 {
   buildBody(body);
   buildHeader(header);
@@ -83,6 +84,14 @@ void MixEditWindow::buildHeader(Window *window)
       {window->getRect().w - MIX_STATUS_BAR_WIDTH - PageGroup::PAGE_GROUP_BACK_BTN_W, 0,
        MIX_STATUS_BAR_WIDTH, EdgeTxStyles::MENU_HEADER_HEIGHT},
       channel);
+}
+
+bool MixEditWindow::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_MIX_ADVANCED) return false;
+  new MixEditAdvanced(channel, index, r);
+  return true;
 }
 
 #if !NARROW_LAYOUT
@@ -159,7 +168,8 @@ void MixEditWindow::buildBody(Window *form)
   line->padAll(PAD_LARGE);
   auto btn =
       new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
-        new MixEditAdvanced(channel, index);
+        new MixEditAdvanced(channel, index,
+                            route().appended(RP_MIX_ADVANCED, static_cast<int16_t>(index)));
         return 0;
       });
   btn->setWidth(lv_pct(100));

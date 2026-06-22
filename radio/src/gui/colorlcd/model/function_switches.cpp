@@ -309,7 +309,7 @@ class SwitchGroup : public Window
 
 //-----------------------------------------------------------------------------
 
-FunctionSwitchesBase::FunctionSwitchesBase(EdgeTxIcon icon, const char* title) : Page(icon)
+FunctionSwitchesBase::FunctionSwitchesBase(EdgeTxIcon icon, Route route, const char* title) : Page(icon, route)
 {
   header->setTitle(title);
   header->setTitle2(STR_FUNCTION_SWITCHES);
@@ -368,7 +368,7 @@ void FunctionSwitchesBase::onLiveCheckEvents(Window::LiveWindow& live)
 
 //-----------------------------------------------------------------------------
 
-ModelFunctionSwitches::ModelFunctionSwitches() : FunctionSwitchesBase(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS)
+ModelFunctionSwitches::ModelFunctionSwitches(Route route) : FunctionSwitchesBase(ICON_MODEL_SETUP, route, STR_MAIN_MENU_MODEL_SETTINGS)
 {
   for (uint8_t i = 0; i < switchGetMaxSwitches(); i += 1) {
     if (switchIsCustomSwitch(i))

@@ -26,7 +26,7 @@
 class RadioGpsTool: public Page
 {
 public:
-  explicit RadioGpsTool();
+  explicit RadioGpsTool(Route route);
 
 protected:
   int8_t gpsSensorID;

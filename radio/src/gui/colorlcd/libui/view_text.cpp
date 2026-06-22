@@ -266,7 +266,7 @@ class TextViewer
 
 ViewTextWindow::ViewTextWindow(const std::string path, const std::string name,
                                EdgeTxIcon icon) :
-    Page(icon, PAD_ZERO)
+    Page(icon, Route{}, PAD_ZERO)
 {
   textViewer = new (std::nothrow) TextViewer(path, name);
 
@@ -304,7 +304,7 @@ class ViewChecklistWindow : public Page, public TextViewer
  public:
   ViewChecklistWindow(const std::string path, const std::string name,
                       EdgeTxIcon icon) :
-      Page(icon, PAD_ZERO), TextViewer(path, name)
+      Page(icon, Route{}, PAD_ZERO), TextViewer(path, name)
   {
     header->setTitle(g_model.header.name);
     header->setTitle2(STR_PREFLIGHT);

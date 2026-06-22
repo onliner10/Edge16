@@ -476,29 +476,29 @@ const static SetupLineDef setupLines[] = {
 
 const static PageButtonDef modelSetupButtons[] = {
   // Modules
-  {STR_DEF(STR_INTERNALRF), []() { new ModulePage(INTERNAL_MODULE); }, []() { return g_model.moduleData[INTERNAL_MODULE].type > 0; }},
-  {STR_DEF(STR_EXTERNALRF), []() { new ModulePage(EXTERNAL_MODULE); }, []() { return g_model.moduleData[EXTERNAL_MODULE].type > 0; }},
-  {STR_DEF(STR_TRAINER), []() { new TrainerPage(); }, []() { return g_model.trainerData.mode > 0; }},
+  {STR_DEF(STR_INTERNALRF), [](Route r) { new ModulePage(INTERNAL_MODULE, r); }, []() { return g_model.moduleData[INTERNAL_MODULE].type > 0; }},
+  {STR_DEF(STR_EXTERNALRF), [](Route r) { new ModulePage(EXTERNAL_MODULE, r); }, []() { return g_model.moduleData[EXTERNAL_MODULE].type > 0; }},
+  {STR_DEF(STR_TRAINER), [](Route r) { new TrainerPage(r); }, []() { return g_model.trainerData.mode > 0; }},
   // Timer buttons
-  {STR_DEF(STR_TIMER_1), []() { new TimerWindow(0); }, []() { return g_model.timers[0].mode > 0; }},
-  {STR_DEF(STR_TIMER_2), []() { new TimerWindow(1); }, []() { return g_model.timers[1].mode > 0; }},
-  {STR_DEF(STR_TIMER_3), []() { new TimerWindow(2); }, []() { return g_model.timers[2].mode > 0; }},
+  {STR_DEF(STR_TIMER_1), [](Route r) { new TimerWindow(0, r); }, []() { return g_model.timers[0].mode > 0; }},
+  {STR_DEF(STR_TIMER_2), [](Route r) { new TimerWindow(1, r); }, []() { return g_model.timers[1].mode > 0; }},
+  {STR_DEF(STR_TIMER_3), [](Route r) { new TimerWindow(2, r); }, []() { return g_model.timers[2].mode > 0; }},
 
-  {STR_DEF(STR_PREFLIGHT), []() { new PreflightChecks(); }},
-  {STR_DEF(STR_TRIMS), []() { new SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS, STR_TRIMS, trimsSetupLines); }},
-  {STR_DEF(STR_THROTTLE_LABEL), []() { new SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS, STR_THROTTLE_LABEL, throttleParamsSetupLines); }},
-  {STR_DEF(STR_ENABLED_FEATURES), []() { new SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS, STR_ENABLED_FEATURES, viewOptionsPageSetupLines); }},
+  {STR_DEF(STR_PREFLIGHT), [](Route r) { new PreflightChecks(r); }},
+  {STR_DEF(STR_TRIMS), [](Route r) { new SubPage(ICON_MODEL_SETUP, r, STR_MAIN_MENU_MODEL_SETTINGS, STR_TRIMS, trimsSetupLines); }},
+  {STR_DEF(STR_THROTTLE_LABEL), [](Route r) { new SubPage(ICON_MODEL_SETUP, r, STR_MAIN_MENU_MODEL_SETTINGS, STR_THROTTLE_LABEL, throttleParamsSetupLines); }},
+  {STR_DEF(STR_ENABLED_FEATURES), [](Route r) { new SubPage(ICON_MODEL_SETUP, r, STR_MAIN_MENU_MODEL_SETTINGS, STR_ENABLED_FEATURES, viewOptionsPageSetupLines); }},
 #if defined(USBJ_EX)
-  {STR_DEF(STR_USBJOYSTICK_LABEL), []() { new ModelUSBJoystickPage(); }},
+  {STR_DEF(STR_USBJOYSTICK_LABEL), [](Route r) { new ModelUSBJoystickPage(r); }},
 #endif
 #if defined(FUNCTION_SWITCHES)
-  {STR_DEF(STR_FUNCTION_SWITCHES), []() { new ModelFunctionSwitches(); }},
+  {STR_DEF(STR_FUNCTION_SWITCHES), [](Route r) { new ModelFunctionSwitches(r); }},
 #endif
-  {STR_DEF(STR_MENU_OTHER), []() { new SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENU_OTHER, otherPageSetupLines); }},
+  {STR_DEF(STR_MENU_OTHER), [](Route r) { new SubPage(ICON_MODEL_SETUP, r, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENU_OTHER, otherPageSetupLines); }},
 #if defined(HELI)
-  {STR_DEF(STR_MENUHELISETUP), []() { return new ModelHeliPage(); }, nullptr, modelHeliEnabled},
+  {STR_DEF(STR_MENUHELISETUP), [](Route r) { new ModelHeliPage(r); }, nullptr, modelHeliEnabled},
 #endif
-  {STR_DEF(STR_BATTERY), []() { new BatteryMonitorPage(0); }, nullptr, nullptr, "model.setup.battery"},
+  {STR_DEF(STR_BATTERY), [](Route r) { new BatteryMonitorPage(0, r); }, nullptr, nullptr, "model.setup.battery"},
   {nullptr},
 };
 
@@ -506,5 +506,5 @@ void ModelSetupPage::build(Window * window)
 {
   coord_t y = SetupLine::showLines(window, 0, SubPage::EDT_X, padding, setupLines);
 
-  new SetupButtonGroup(window, {0, y, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, BTN_H);
+  new SetupButtonGroup(window, {0, y, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, route(), BTN_H);
 }

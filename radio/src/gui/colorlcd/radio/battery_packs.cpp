@@ -82,8 +82,8 @@ class BatteryPackButton : public Button
   uint8_t slot;
 };
 
-BatteryPacksPage::BatteryPacksPage() :
-    SubPage(ICON_RADIO, STR_MAIN_MENU_RADIO_SETTINGS, STR_BATTERY_PACKS)
+BatteryPacksPage::BatteryPacksPage(Route route) :
+    SubPage(ICON_RADIO, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_BATTERY_PACKS)
 {
   body->padAll(PAD_SMALL);
   body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
@@ -130,7 +130,8 @@ void BatteryPacksPage::rebuild()
 
 void BatteryPacksPage::editPack(uint8_t slot)
 {
-  auto editWindow = new BatteryPackEditWindow(slot);
+  auto editWindow = new BatteryPackEditWindow(slot,
+      route().appended(RP_BATTERY_PACK_EDIT, static_cast<int16_t>(slot)));
   editWindow->setCloseHandler([=]() { rebuild(); });
 }
 
@@ -235,8 +236,8 @@ BatteryPackEditBody::BatteryPackEditBody(BatteryPackEditWindow* page,
 #endif
 }
 
-BatteryPackEditWindow::BatteryPackEditWindow(uint8_t slot) :
-    Page(ICON_RADIO), slot(slot)
+BatteryPackEditWindow::BatteryPackEditWindow(uint8_t slot, Route route) :
+    Page(ICON_RADIO, route), slot(slot)
 {
   header->setTitle(STR_BATTERY_PACKS);
   header->setTitle2(std::to_string(slot + 1));

@@ -25,6 +25,7 @@
 #include "edgetx.h"
 #include "page.h"
 #include "pagegroup.h"
+#include "route.h"
 
 struct CustomFunctionData;
 class FunctionEditPage;
@@ -89,7 +90,7 @@ class FunctionLineButton : public ListLineButton
 class FunctionEditPage : public Page
 {
  public:
-  FunctionEditPage(uint8_t index, EdgeTxIcon icon, const char *title,
+  FunctionEditPage(uint8_t index, EdgeTxIcon icon, Route route, const char *title,
                    const char *prefix);
 
   void delayedInit() override;
@@ -126,6 +127,7 @@ class FunctionEditPage : public Page
 class FunctionsPage : public PageGroupItem
 {
  public:
+  bool openRoute(const Route& r, uint8_t depth) override;
   FunctionsPage(CustomFunctionData* functions, const PageDef& pageDef, const char* prefix);
 
   void build(Window* window) override;
@@ -139,6 +141,7 @@ class FunctionsPage : public PageGroupItem
   CustomFunctionData* functions;
   ButtonBase* addButton = nullptr;
   const char* prefix = nullptr;
+  Window* pageWindow = nullptr;
 
   void rebuild(Window* window);
   void newSF(Window* window, bool pasteSF);
@@ -153,6 +156,7 @@ class FunctionsPage : public PageGroupItem
 
   virtual CustomFunctionData* customFunctionData(uint8_t index) const = 0;
   virtual FunctionEditPage* editPage(uint8_t index) const = 0;
+  virtual uint8_t editorPageId() const = 0;
   virtual FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                          uint8_t index) const = 0;
   virtual void setDirty() const = 0;
@@ -168,6 +172,7 @@ class SpecialFunctionsPage : public FunctionsPage
  protected:
   CustomFunctionData* customFunctionData(uint8_t index) const override;
   FunctionEditPage* editPage(uint8_t index) const override;
+  uint8_t editorPageId() const override { return RP_SPECIAL_FUNCTION_EDIT; }
   FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                  uint8_t index) const override;
   void setDirty() const override;
@@ -183,6 +188,7 @@ class GlobalFunctionsPage : public FunctionsPage
  protected:
   CustomFunctionData* customFunctionData(uint8_t index) const override;
   FunctionEditPage* editPage(uint8_t index) const override;
+  uint8_t editorPageId() const override { return RP_GLOBAL_FUNCTION_EDIT; }
   FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                  uint8_t index) const override;
   void setDirty() const override;

@@ -189,7 +189,7 @@ class USBChannelButtonSel : public ButtonMatrix
 class USBChannelEditWindow : public Page
 {
  public:
-  USBChannelEditWindow(uint8_t channel) : Page(ICON_MODEL_USB, PAD_TINY), channel(channel)
+  USBChannelEditWindow(uint8_t channel, Route route) : Page(ICON_MODEL_USB, route, PAD_TINY), channel(channel)
   {
     body->padLeft(PAD_MEDIUM);
     body->padRight(PAD_MEDIUM);
@@ -483,7 +483,7 @@ class USBChannelLineButton : public ListLineButton
   StaticIcon* m_inverse;
 };
 
-ModelUSBJoystickPage::ModelUSBJoystickPage() : Page(ICON_MODEL_USB, PAD_BORDER)
+ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, route, PAD_BORDER)
 {
   header->setTitle(STR_MAIN_MENU_MODEL_SETTINGS);
   header->setTitle2(STR_USBJOYSTICK_LABEL);
@@ -570,6 +570,6 @@ void ModelUSBJoystickPage::update()
 void ModelUSBJoystickPage::editChannel(uint8_t channel,
                                        USBChannelLineButton* btn)
 {
-  auto chedit = new USBChannelEditWindow(channel);
+  auto chedit = new USBChannelEditWindow(channel, Route{});
   chedit->setCloseHandler([=]() { this->update(); btn->requestLineUpdate(); });
 }

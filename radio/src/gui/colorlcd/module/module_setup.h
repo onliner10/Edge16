@@ -24,6 +24,7 @@
 #include "page.h"
 
 struct ModulePage : public Page {
+  ModulePage(uint8_t moduleIdx, Route route);
   ModulePage(uint8_t moduleIdx);
 };
 

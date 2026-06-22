@@ -26,5 +26,5 @@
 class ModelHeliPage : public SubPage
 {
  public:
-  ModelHeliPage();
+  ModelHeliPage(Route route);
 };

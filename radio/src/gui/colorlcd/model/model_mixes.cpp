@@ -29,6 +29,8 @@
 #include "menu.h"
 #include "mixer_edit.h"
 #include "mixes.h"
+#include "page.h"
+#include "route.h"
 #include "toggleswitch.h"
 
 #define SET_DIRTY()     storageDirty(EE_MODEL)
@@ -209,6 +211,21 @@ ModelMixesPage::ModelMixesPage(const PageDef& pageDef) : InputMixPageBase(pageDe
 {
 }
 
+bool ModelMixesPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_MIX_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_MIXERS) return false;
+
+  MixData* mix = mixAddress(index);
+  if (is_memclear(mix, sizeof(MixData))) return false;
+
+  editMix(mix->destCh, index);
+  return true;
+}
+
 bool ModelMixesPage::reachMixesLimit()
 {
   if (getMixCount() >= MAX_MIXERS) {
@@ -343,7 +360,8 @@ void ModelMixesPage::editMix(uint8_t channel, uint8_t index)
 {
   _copyMode = 0;
 
-  auto edit = new MixEditWindow(channel, index);
+  auto edit = new MixEditWindow(channel, index,
+                               route().appended(RP_MIX_EDIT, static_cast<int16_t>(index)));
   edit->setCloseHandler([=]() {
     MixData* mix = mixAddress(index);
     if (is_memclear(mix, sizeof(MixData))) {

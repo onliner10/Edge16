@@ -31,6 +31,7 @@
 #include "menus.h"
 #include "numberedit.h"
 #include "page.h"
+#include "route.h"
 #include "sourcechoice.h"
 #include "textedit.h"
 
@@ -54,8 +55,8 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 class ScriptEditWindow : public Page
 {
  public:
-  explicit ScriptEditWindow(uint8_t idx) :
-      Page(ICON_MODEL_LUA_SCRIPTS), idx(idx)
+  explicit ScriptEditWindow(uint8_t idx, Route route) :
+      Page(ICON_MODEL_LUA_SCRIPTS, route), idx(idx)
   {
     buildBody(body);
     buildHeader(header);
@@ -260,6 +261,20 @@ ModelMixerScriptsPage::ModelMixerScriptsPage(const PageDef& pageDef) :
 {
 }
 
+bool ModelMixerScriptsPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_SCRIPT_EDIT) return false;
+
+  uint8_t idx = static_cast<uint8_t>(r.params[depth]);
+  if (idx >= MAX_SCRIPTS) return false;
+  if (!g_model.scriptsData[idx].file[0]) return false;
+
+  auto* editWindow = new ScriptEditWindow(idx, r);
+  editWindow->setCloseHandler([=]() { rebuild(pageWindow, idx); });
+  return true;
+}
+
 void ModelMixerScriptsPage::rebuild(Window* window, int8_t focusIdx)
 {
   auto scroll_y = window->getScrollY();
@@ -270,6 +285,7 @@ void ModelMixerScriptsPage::rebuild(Window* window, int8_t focusIdx)
 
 void ModelMixerScriptsPage::build(Window* window, int8_t focusIdx)
 {
+  pageWindow = window;
   window->padBottom(PAD_LARGE);
   window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
 
@@ -306,6 +322,7 @@ void ModelMixerScriptsPage::build(Window* window, int8_t focusIdx)
 
 void ModelMixerScriptsPage::editLine(Window* window, uint8_t idx)
 {
-  Window* editWindow = new ScriptEditWindow(idx);
+  Window* editWindow = new ScriptEditWindow(idx,
+      route().appended(RP_SCRIPT_EDIT, static_cast<int16_t>(idx)));
   editWindow->setCloseHandler([=]() { rebuild(window, idx); });
 }

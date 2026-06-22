@@ -23,6 +23,7 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class TextButton;
 
@@ -31,10 +32,13 @@ class ModelFlightModesPage : public PageGroupItem
  public:
   ModelFlightModesPage(const PageDef& pageDef);
 
+  bool openRoute(const Route& r, uint8_t depth) override;
+
   void build(Window* window) override;
 
  protected:
   TextButton* trimCheck = nullptr;
+  Window* pageWindow = nullptr;
 
   void checkEvents() override;
 };

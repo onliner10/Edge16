@@ -47,8 +47,8 @@
     SET_DIRTY();                             \
   }
 
-TimerWindow::TimerWindow(uint8_t timer) :
-  SubPage(ICON_STATS_TIMERS, STR_MAIN_MENU_MODEL_SETTINGS, (std::string(STR_TIMER) + std::to_string(timer + 1)).c_str())
+TimerWindow::TimerWindow(uint8_t timer, Route route) :
+  SubPage(ICON_STATS_TIMERS, route, STR_MAIN_MENU_MODEL_SETTINGS, (std::string(STR_TIMER) + std::to_string(timer + 1)).c_str())
 {
   body->setFlexLayout();
 

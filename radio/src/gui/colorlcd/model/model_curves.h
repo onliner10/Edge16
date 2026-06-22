@@ -23,6 +23,7 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class ModelCurvesPage : public PageGroupItem
 {
@@ -31,6 +32,8 @@ class ModelCurvesPage : public PageGroupItem
 
   static void pushEditCurve(int index, mixsrc_t source);
 
+  bool openRoute(const Route& r, uint8_t depth) override;
+
   virtual void build(Window* window) override;
 
   static LAYOUT_ORIENTATION(PER_ROW, 3, 2)
@@ -38,6 +41,7 @@ class ModelCurvesPage : public PageGroupItem
  protected:
   uint8_t focusIndex = -1;
   ButtonBase* addButton = nullptr;
+  Window* pageWindow = nullptr;
 
   void rebuild(Window* window);
   void editCurve(Window* window, uint8_t curve);

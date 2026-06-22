@@ -29,7 +29,7 @@ class NumberEdit;
 class PreflightChecks : public SubPage
 {
  public:
-  PreflightChecks();
+  PreflightChecks(Route route);
 
  protected:
   ToggleSwitch* interactive = nullptr;

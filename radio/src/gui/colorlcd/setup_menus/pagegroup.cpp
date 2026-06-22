@@ -27,6 +27,7 @@
 #include "menu.h"
 #include "model_select.h"
 #include "os/time.h"
+#include "page.h"
 #include "radio_tools.h"
 #include "screen_setup.h"
 #include "theme_manager.h"
@@ -34,6 +35,7 @@
 #include "view_channels.h"
 #include "view_main.h"
 
+#include <cstring>
 #include <limits>
 #include <new>
 
@@ -558,6 +560,14 @@ uint8_t PageGroupBase::tabCount() const
 void PageGroupBase::addTab(PageGroupItem* page)
 {
   header.with([&](PageGroupHeaderBase& header) { header.addTab(page); });
+  if (page) {
+    // Set the tab's route prefix: {sectionIcon, tabPageId}.
+    Route r;
+    r.rootIcon = icon;
+    r.pages[0] = static_cast<uint8_t>(page->pageId());
+    r.depth = 1;
+    page->setRoute(r);
+  }
   if (!currentTab && !deferInitialBuild) {
     setCurrentTab(0);
   }
@@ -603,6 +613,8 @@ void PageGroupBase::doBuild(Window& body, PageGroupItem* tab)
 
 void PageGroupBase::setCurrentTab(unsigned index)
 {
+  PageGroupItem* activatedTab = nullptr;
+
   withLive([&](LiveWindow&) {
     header.with([&](PageGroupHeaderBase& header) {
       body.with([&](Window& body) {
@@ -630,10 +642,62 @@ void PageGroupBase::setCurrentTab(unsigned index)
           lv_obj_enable_style_refresh(true);
 
           doBuild(body, tab);
+          activatedTab = tab;
         }
       });
     });
   });
+
+  // Route restoration is handled by tryRestorePendingRoute() in the
+  // PageGroup constructor, not here.  Tab switches within an already-open
+  // section are manual navigation and should not trigger route restore.
+}
+
+bool PageGroupBase::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;  // route exhausted
+
+  // Find the tab whose pageId matches this route segment.
+  PageGroupItem* tab = nullptr;
+  unsigned matchIndex = 0;
+  bool found = false;
+
+  header.with([&](PageGroupHeaderBase& hdr) {
+    for (uint8_t i = 0; i < hdr.tabCount(); i += 1) {
+      auto* t = hdr.pageTab(i);
+      if (t && static_cast<uint8_t>(t->pageId()) == r.pages[depth]) {
+        tab = t;
+        matchIndex = i;
+        found = true;
+        break;
+      }
+    }
+  });
+
+  if (!found || !tab) return false;
+
+  if (tab != currentTab)
+    setCurrentTab(matchIndex);
+
+  return tab->openRoute(r, depth + 1);
+}
+
+bool PageGroupBase::tryRestorePendingRoute()
+{
+  auto& pr = Page::pendingRoute();
+  if (!pr.valid || pr.route.rootIcon != icon) return false;
+
+  // Model-scoped routes are invalidated by a model switch.
+  if (pr.modelScoped &&
+      strncmp(pr.modelFilename, g_eeGeneral.currModelFilename,
+              sizeof(pr.modelFilename)) != 0) {
+    pr.valid = false;
+    return false;
+  }
+
+  Route route = pr.route;
+  pr.valid = false;  // consume (one-shot)
+  return openRoute(route, 0);
 }
 
 #if defined(HARDWARE_KEYS)
@@ -679,6 +743,9 @@ void PageGroupBase::onLongPressPGDN()
 }
 void PageGroupBase::onLongPressRTN()
 {
+  // Long RTN from the section level (no editor): clear any stale pending
+  // route.  Tab-level resume is handled by rememberVisitedPage above.
+  Page::clearRememberedRoute();
   returnHomeFromLongPress();
 }
 #endif
@@ -730,6 +797,9 @@ PageGroup::PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages,
 
   if (initialTab >= tabCount()) initialTab = 0;
   setCurrentTab(initialTab);
+
+  // Auto-descend if there's a pending remembered route for this section.
+  tryRestorePendingRoute();
 
 #if defined(HARDWARE_TOUCH)
 #if VERSION_MAJOR == 2

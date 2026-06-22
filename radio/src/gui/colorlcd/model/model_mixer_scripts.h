@@ -23,11 +23,14 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class ModelMixerScriptsPage : public PageGroupItem
 {
  public:
   ModelMixerScriptsPage(const PageDef& pageDef);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   virtual void build(Window* window) override { build(window, 0); }
 
@@ -35,4 +38,5 @@ class ModelMixerScriptsPage : public PageGroupItem
   void build(Window* window, int8_t focusIdx);
   void rebuild(Window* window, int8_t focusIdx);
   void editLine(Window* window, uint8_t idx);
+  Window* pageWindow = nullptr;
 };

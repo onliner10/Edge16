@@ -29,5 +29,5 @@ class AFHDS3_Options : public Page
   afhds3::Config_u* cfg;
 
  public:
-  AFHDS3_Options(uint8_t moduleIdx);
+  AFHDS3_Options(uint8_t moduleIdx, Route route);
 };

@@ -25,6 +25,8 @@
 #include "curveedit.h"
 #include "edgetx.h"
 #include "menu.h"
+#include "page.h"
+#include "route.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
@@ -110,7 +112,26 @@ void ModelCurvesPage::pushEditCurve(int index, mixsrc_t source)
     initPoints(curve, points);
   }
 
-  new CurveEditWindow(index, source);
+  Route r;
+  r.rootIcon = ICON_MODEL;
+  r.pages[0] = QM_MODEL_CURVES;
+  r.pages[1] = RP_CURVE_EDIT;
+  r.params[1] = static_cast<int16_t>(index);
+  r.depth = 2;
+  auto edit = new CurveEditWindow(index, r, source);
+}
+
+bool ModelCurvesPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_CURVE_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_CURVES || !isCurveUsed(index)) return false;
+  if (!pageWindow) return false;
+
+  editCurve(pageWindow, index);
+  return true;
 }
 
 void ModelCurvesPage::rebuild(Window *window)
@@ -121,7 +142,8 @@ void ModelCurvesPage::rebuild(Window *window)
 
 void ModelCurvesPage::editCurve(Window *window, uint8_t curve)
 {
-  Window *editWindow = new CurveEditWindow(curve);
+  Window *editWindow = new CurveEditWindow(curve,
+      route().appended(RP_CURVE_EDIT, static_cast<int16_t>(curve)));
   editWindow->setCloseHandler([=]() { rebuild(window); });
 }
 
@@ -188,6 +210,8 @@ void ModelCurvesPage::plusPopup(Window *window)
 
 void ModelCurvesPage::build(Window *window)
 {
+  pageWindow = window;
+
 #if LANDSCAPE
   static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                        LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};

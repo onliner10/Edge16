@@ -32,8 +32,8 @@
 
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
-QMFavoritesPage::QMFavoritesPage():
-        SubPage(ICON_RADIO, STR_MAIN_MENU_RADIO_SETTINGS, STR_QUICK_MENU_FAVORITES, true)
+QMFavoritesPage::QMFavoritesPage(Route route):
+        SubPage(ICON_RADIO, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_QUICK_MENU_FAVORITES, true)
 {
   auto qmPages = QuickMenu::menuPageNames(true);
 

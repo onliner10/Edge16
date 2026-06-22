@@ -26,6 +26,7 @@
 #include "hal/adc_driver.h"
 #include "menu.h"
 #include "page.h"
+#include "route.h"
 #include "sourcechoice.h"
 #include "switchchoice.h"
 #include "timeedit.h"
@@ -279,8 +280,8 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 #define PUSH_CS_DURATION_MAX 255  // 25.5s longest duration
 
 FunctionEditPage::FunctionEditPage(uint8_t index, EdgeTxIcon icon,
-                                   const char* title, const char* prefix) :
-    Page(icon), index(index)
+                                   Route route, const char* title, const char* prefix) :
+    Page(icon, route), index(index)
 {
   buildHeader(header, title, prefix);
 
@@ -762,6 +763,19 @@ void FunctionsPage::editSpecialFunction(Window* window, uint8_t index)
   });
 }
 
+bool FunctionsPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != editorPageId()) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_SPECIAL_FUNCTIONS) return false;
+  if (customFunctionData(index)->swtch == 0) return false;
+
+  editSpecialFunction(pageWindow, index);
+  return true;
+}
+
 void FunctionsPage::editSpecialFunction(Window* window, uint8_t index,
                                         FunctionLineButton& button)
 {
@@ -793,6 +807,7 @@ void FunctionsPage::plusPopup(Window* window)
 
 void FunctionsPage::build(Window* window)
 {
+  pageWindow = window;
   window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
 
   bool hasEmptyFunction = false;
@@ -961,8 +976,8 @@ class SpecialFunctionLineButton : public FunctionLineButton
 class SpecialFunctionEditPage : public FunctionEditPage
 {
  public:
-  SpecialFunctionEditPage(uint8_t index) :
-      FunctionEditPage(index, ICON_MODEL_SPECIAL_FUNCTIONS, STR_MENUCUSTOMFUNC,
+  SpecialFunctionEditPage(uint8_t index, Route route) :
+      FunctionEditPage(index, ICON_MODEL_SPECIAL_FUNCTIONS, route, STR_MENUCUSTOMFUNC,
                        "SF")
   {
   }
@@ -1012,7 +1027,8 @@ CustomFunctionData* SpecialFunctionsPage::customFunctionData(
 
 FunctionEditPage* SpecialFunctionsPage::editPage(uint8_t index) const
 {
-  return new SpecialFunctionEditPage(index);
+  return new SpecialFunctionEditPage(index,
+      route().appended(RP_SPECIAL_FUNCTION_EDIT, static_cast<int16_t>(index)));
 }
 
 FunctionLineButton* SpecialFunctionsPage::functionButton(Window* parent,
@@ -1055,8 +1071,8 @@ class GlobalFunctionLineButton : public FunctionLineButton
 class GlobalFunctionEditPage : public FunctionEditPage
 {
  public:
-  GlobalFunctionEditPage(uint8_t index) :
-      FunctionEditPage(index, ICON_RADIO_GLOBAL_FUNCTIONS, STR_MENUSPECIALFUNCS,
+  GlobalFunctionEditPage(uint8_t index, Route route) :
+      FunctionEditPage(index, ICON_RADIO_GLOBAL_FUNCTIONS, route, STR_MENUSPECIALFUNCS,
                        "GF")
   {
   }
@@ -1101,7 +1117,8 @@ CustomFunctionData* GlobalFunctionsPage::customFunctionData(uint8_t index) const
 
 FunctionEditPage* GlobalFunctionsPage::editPage(uint8_t index) const
 {
-  return new GlobalFunctionEditPage(index);
+  return new GlobalFunctionEditPage(index,
+      route().appended(RP_GLOBAL_FUNCTION_EDIT, static_cast<int16_t>(index)));
 }
 
 FunctionLineButton* GlobalFunctionsPage::functionButton(Window* parent,
