@@ -31,7 +31,7 @@ static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                      LV_GRID_TEMPLATE_LAST};
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
-TemplatePage::TemplatePage() : Page(ICON_MODEL_SELECT, PAD_ZERO)
+TemplatePage::TemplatePage() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO)
 {
   body->setFlexLayout();
 

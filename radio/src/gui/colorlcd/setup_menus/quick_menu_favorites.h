@@ -26,7 +26,7 @@
 class QMFavoritesPage : public SubPage
 {
  public:
-  QMFavoritesPage();
+  QMFavoritesPage(Route route);
 
  protected:
   bool changed = false;

@@ -24,8 +24,8 @@
 #include "button.h"
 #include "edgetx.h"
 
-RadioGpsTool::RadioGpsTool() :
-    Page(ICON_RADIO_TOOLS)
+RadioGpsTool::RadioGpsTool(Route route) :
+    Page(ICON_RADIO_TOOLS, route)
 {
   init();
   buildHeader(header);

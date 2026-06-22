@@ -339,8 +339,8 @@ class SpectrumWindow : public Window
   uint32_t lastSpan = 0;
 };
 
-RadioSpectrumAnalyser::RadioSpectrumAnalyser(uint8_t moduleIdx) :
-    Page(ICON_RADIO_TOOLS, PAD_ZERO), moduleIdx(moduleIdx)
+RadioSpectrumAnalyser::RadioSpectrumAnalyser(uint8_t moduleIdx, Route route) :
+    Page(ICON_RADIO_TOOLS, route, PAD_ZERO), moduleIdx(moduleIdx)
 {
   setCloseHandler([=]() { stop(); });
   init();

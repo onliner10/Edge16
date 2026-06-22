@@ -30,7 +30,7 @@ class CurveDataEdit;
 class CurveEditWindow : public Page
 {
  public:
-  CurveEditWindow(uint8_t index,
+  CurveEditWindow(uint8_t index, Route route,
                   mixsrc_t source = 0);
 
  protected:

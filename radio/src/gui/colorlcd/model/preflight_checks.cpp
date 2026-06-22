@@ -196,7 +196,7 @@ class PotWarnMatrix : public ButtonMatrix
   uint8_t pot_idx[MAX_POTS];
 };
 
-PreflightChecks::PreflightChecks() : SubPage(ICON_MODEL_SETUP, STR_MAIN_MENU_MODEL_SETTINGS, STR_PREFLIGHT)
+PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route, STR_MAIN_MENU_MODEL_SETTINGS, STR_PREFLIGHT)
 {
   body->setFlexLayout();
 

@@ -30,7 +30,7 @@
 #include "list_line_button.h"
 #include "numberedit.h"
 #include "page.h"
-
+#include "route.h"
 #include "switchchoice.h"
 #include "textedit.h"
 #include "ui_events.h"
@@ -158,7 +158,7 @@ class TrimEdit : public Window
 class FlightModeEdit : public Page
 {
  public:
-  FlightModeEdit(uint8_t index) : Page(ICON_MODEL_FLIGHT_MODES), index(index)
+  FlightModeEdit(uint8_t index, Route route) : Page(ICON_MODEL_FLIGHT_MODES, route), index(index)
   {
     std::string title2 = std::string(STR_FM) + std::to_string(index);
     header->setTitle(STR_MENUFLIGHTMODES);
@@ -390,6 +390,23 @@ ModelFlightModesPage::ModelFlightModesPage(const PageDef& pageDef) :
 {
 }
 
+bool ModelFlightModesPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_FLIGHT_MODE_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_FLIGHT_MODES) return false;
+
+  (new FlightModeEdit(index, r))->setCloseHandler([=]() {
+    if (pageWindow) {
+      pageWindow->clear();
+      build(pageWindow);
+    }
+  });
+  return true;
+}
+
 static const lv_coord_t fmt_col_dsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 
 static const lv_coord_t fmt_row_dsc[] = {LV_GRID_CONTENT,
@@ -397,6 +414,7 @@ static const lv_coord_t fmt_row_dsc[] = {LV_GRID_CONTENT,
 
 void ModelFlightModesPage::build(Window* form)
 {
+  pageWindow = form;
   form->padAll(PAD_ZERO);
   form->padBottom(PAD_LARGE);
 
@@ -406,7 +424,7 @@ void ModelFlightModesPage::build(Window* form)
     btn->setWidth(ListLineButton::GRP_W);
 
     btn->setPressHandler([=]() {
-      (new FlightModeEdit(i))->setCloseHandler([=]() {
+      (new FlightModeEdit(i, route().appended(RP_FLIGHT_MODE_EDIT, static_cast<int16_t>(i))))->setCloseHandler([=]() {
         btn->requestLineUpdate();
         publishModelFlightModesChanged();
       });

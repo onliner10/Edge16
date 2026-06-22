@@ -26,7 +26,7 @@
 class QMKeyShortcutsPage : public SubPage
 {
  public:
-  QMKeyShortcutsPage();
+  QMKeyShortcutsPage(Route route);
 
  protected:
   void addKey(event_t event, std::vector<std::string> qmPages, const char* nm);

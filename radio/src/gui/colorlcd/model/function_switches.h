@@ -121,7 +121,7 @@ class FunctionSwitchBase : public Window
 class FunctionSwitchesBase : public Page
 {
  public:
-  FunctionSwitchesBase(EdgeTxIcon icon, const char* title);
+  FunctionSwitchesBase(EdgeTxIcon icon, Route route, const char* title);
 
   void addQRCode();
 
@@ -141,7 +141,7 @@ class FunctionSwitchesBase : public Page
 class ModelFunctionSwitches : public FunctionSwitchesBase
 {
  public:
-  ModelFunctionSwitches();
+  ModelFunctionSwitches(Route route);
 
  protected:
   SwitchGroup* groupLines[3] = {nullptr};

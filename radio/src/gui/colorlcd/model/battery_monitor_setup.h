@@ -20,5 +20,5 @@
 class BatteryMonitorPage : public SubPage
 {
  public:
-  explicit BatteryMonitorPage(uint8_t monitor);
+  explicit BatteryMonitorPage(uint8_t monitor, Route route);
 };

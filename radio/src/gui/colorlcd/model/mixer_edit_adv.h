@@ -31,7 +31,7 @@ class NumberEdit;
 class MixEditAdvanced : public Page
 {
  public:
-  MixEditAdvanced(int8_t channel, uint8_t index);
+  MixEditAdvanced(int8_t channel, uint8_t index, Route route);
 
  protected:
   uint8_t channel;

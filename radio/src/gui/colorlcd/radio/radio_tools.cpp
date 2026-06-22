@@ -175,7 +175,7 @@ static bool isModelGPSSensorPresent()
 
 static void run_gpstool(const std::string&)
 {
-  new RadioGpsTool();
+  new RadioGpsTool(Route{});
 }
 
 #if defined(PXX2) || defined(MULTIMODULE)
@@ -183,14 +183,14 @@ static void run_gpstool(const std::string&)
 #if defined(HARDWARE_INTERNAL_MODULE)
 static void run_spektrum_int(const std::string&)
 {
-  new RadioSpectrumAnalyser(INTERNAL_MODULE);
+  new RadioSpectrumAnalyser(INTERNAL_MODULE, Route{});
 }
 #endif
 
 #if defined(HARDWARE_EXTERNAL_MODULE)
 static void run_spektrum_ext(const std::string&)
 {
-  new RadioSpectrumAnalyser(EXTERNAL_MODULE);
+  new RadioSpectrumAnalyser(EXTERNAL_MODULE, Route{});
 }
 #endif
 #endif  // defined(PXX2) || defined(MULTIMODULE)
@@ -207,7 +207,7 @@ static void run_pxx2_power(const std::string&)
 #if defined(GHOST)
 static void run_ghost_config(const std::string&)
 {
-  new RadioGhostModuleConfig(EXTERNAL_MODULE);
+  new RadioGhostModuleConfig(EXTERNAL_MODULE, Route{});
 }
 #endif
 

@@ -24,7 +24,7 @@
 class RadioCustSwitchesDiagsPage : public Page
 {
  public:
-  explicit RadioCustSwitchesDiagsPage();
+  explicit RadioCustSwitchesDiagsPage(Route route);
 
  protected:
   void buildHeader(Window* window);

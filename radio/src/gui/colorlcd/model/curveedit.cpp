@@ -271,8 +271,8 @@ class CurveDataEdit : public Window
   }
 };
 
-CurveEditWindow::CurveEditWindow(uint8_t index, mixsrc_t source) :
-    Page(ICON_MODEL_CURVES, PAD_ZERO), index(index), source(source)
+CurveEditWindow::CurveEditWindow(uint8_t index, Route route, mixsrc_t source) :
+    Page(ICON_MODEL_CURVES, route, PAD_ZERO), index(index), source(source)
 {
   buildBody(body);
   buildHeader(header);

@@ -96,7 +96,7 @@ struct FailsafeChoice : public Window {
               });
 
     optsBtn = new TextButton(this, rect_t{}, STR_SET, [=]() -> uint8_t {
-      new FailSafePage(moduleIdx);
+      new FailSafePage(moduleIdx, Route{});
       return 0;
     });
     optsBtn->show(md->failsafeMode == FAILSAFE_CUSTOM);
@@ -764,7 +764,7 @@ class ModuleSubTypeChoice : public Choice
   uint8_t moduleIdx;
 };
 
-ModulePage::ModulePage(uint8_t moduleIdx) : Page(ICON_MODEL_SETUP)
+ModulePage::ModulePage(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, route)
 {
   const char* title2 =
       moduleIdx == INTERNAL_MODULE ? STR_INTERNALRF : STR_EXTERNALRF;

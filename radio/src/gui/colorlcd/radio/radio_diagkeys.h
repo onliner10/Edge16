@@ -25,7 +25,7 @@
 
 class RadioKeyDiagsPage: public Page {
  public:
-  explicit RadioKeyDiagsPage();
+  explicit RadioKeyDiagsPage(Route route);
 
  protected:
   void buildHeader(Window * window);

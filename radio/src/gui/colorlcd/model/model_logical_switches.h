@@ -23,11 +23,14 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class ModelLogicalSwitchesPage : public PageGroupItem
 {
  public:
   ModelLogicalSwitchesPage(const PageDef& pageDef);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   virtual void build(Window* window) override;
 
@@ -36,6 +39,7 @@ class ModelLogicalSwitchesPage : public PageGroupItem
   int8_t prevFocusIndex = -1;
   bool isRebuilding = false;
   ButtonBase* addButton = nullptr;
+  Window* pageWindow = nullptr;
 
   void rebuild(Window* window);
   void newLS(Window* window, bool pasteLS);

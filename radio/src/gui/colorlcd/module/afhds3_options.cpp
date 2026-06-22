@@ -127,7 +127,7 @@ PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx ) :
   num_edit->show(pwmvalue_type == 2);
 }
 
-AFHDS3_Options::AFHDS3_Options(uint8_t moduleIdx) : Page(ICON_MODEL_SETUP)
+AFHDS3_Options::AFHDS3_Options(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, route)
 {
   cfg = afhds3::getConfig(moduleIdx);
   std::string title =

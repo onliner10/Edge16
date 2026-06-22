@@ -56,8 +56,8 @@ class OutputEditStatusBar : public Window
   int8_t _channel;
 };
 
-OutputEditWindow::OutputEditWindow(uint8_t channel) :
-    Page(ICON_MODEL_OUTPUTS), channel(channel)
+OutputEditWindow::OutputEditWindow(uint8_t channel, Route route) :
+    Page(ICON_MODEL_OUTPUTS, route), channel(channel)
 {
   std::string title2(getSourceString(MIXSRC_FIRST_CH + channel));
   header->setTitle(STR_MENULIMITS);

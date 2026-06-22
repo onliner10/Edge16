@@ -72,8 +72,8 @@ class StickCalibrationWindow : public Window
   StaticLZ4Image *calibStick = nullptr;
 };
 
-RadioCalibrationPage::RadioCalibrationPage() :
-    Page(ICON_RADIO_CALIBRATION)
+RadioCalibrationPage::RadioCalibrationPage(Route route) :
+    Page(ICON_RADIO_CALIBRATION, route)
 {
   buildHeader(header);
   buildBody(body);
@@ -198,4 +198,4 @@ void RadioCalibrationPage::nextStep()
   setState();
 }
 
-void startCalibration() { new RadioCalibrationPage(); }
+void startCalibration() { new RadioCalibrationPage(Route{}); }

@@ -194,7 +194,7 @@ static void set_failsafe(lv_event_t* e)
   if (combo) combo->update();
 }
 
-FailSafePage::FailSafePage(uint8_t moduleIdx) : Page(ICON_STATS_ANALOGS)
+FailSafePage::FailSafePage(uint8_t moduleIdx, Route route) : Page(ICON_STATS_ANALOGS, route)
 {
   header->setTitle(STR_FAILSAFESET);
 

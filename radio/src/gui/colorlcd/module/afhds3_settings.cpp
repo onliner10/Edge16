@@ -84,7 +84,7 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
 
   new TextButton(afhds3TypeForm, rect_t{}, STR_MODULE_OPTIONS, [=]() {
     afhds3::applyModelConfig(moduleIdx);
-    new AFHDS3_Options(moduleIdx);
+    new AFHDS3_Options(moduleIdx, Route{});
     return 0;
   });
 

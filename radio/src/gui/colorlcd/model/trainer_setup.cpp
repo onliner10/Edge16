@@ -144,7 +144,7 @@ void TrainerModuleWindow::update()
   }
 }
 
-TrainerPage::TrainerPage() : Page(ICON_MODEL_SETUP)
+TrainerPage::TrainerPage(Route route) : Page(ICON_MODEL_SETUP, route)
 {
   header->setTitle(STR_MAIN_MENU_MODEL_SETTINGS);
   header->setTitle2(STR_TRAINER);

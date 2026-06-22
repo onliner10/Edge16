@@ -40,8 +40,8 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
                                      LV_GRID_TEMPLATE_LAST};
 #endif
 
-ModelHeliPage::ModelHeliPage():
-  SubPage(ICON_MODEL_HELI, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENUHELISETUP)
+ModelHeliPage::ModelHeliPage(Route route):
+  SubPage(ICON_MODEL_HELI, route, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENUHELISETUP)
 {
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
   body->setFlexLayout();

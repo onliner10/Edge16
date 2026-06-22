@@ -21,6 +21,7 @@
 
 #include "page.h"
 
+#include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "keyboard_base.h"
 #include "mainwindow.h"
@@ -29,7 +30,10 @@
 #include "theme_manager.h"
 #include "view_main.h"
 
+#include <cstring>
 #include <new>
+
+static RememberedRoute pendingRememberedRoute;
 
 PageHeader::PageHeader(Window* parent, EdgeTxIcon icon) :
     Window(parent, {0, 0, LCD_W, EdgeTxStyles::MENU_HEADER_HEIGHT})
@@ -73,8 +77,8 @@ StaticText* PageHeader::setTitle2(std::string txt)
   return title2;
 }
 
-Page::Page(EdgeTxIcon icon, PaddingSize padding, bool pauseRefresh) :
-    NavWindow(MainWindow::instance(), {0, 0, LCD_W, LCD_H})
+Page::Page(EdgeTxIcon icon, Route route, PaddingSize padding, bool pauseRefresh) :
+    NavWindow(MainWindow::instance(), {0, 0, LCD_W, LCD_H}), _route(route)
 {
   if (pauseRefresh)
     lv_obj_enable_style_refresh(false);
@@ -129,6 +133,32 @@ void Page::onCancel()
 }
 
 void Page::onLiveClicked(LiveWindow&) { Keyboard::hide(false); }
+
+void Page::rememberRoute(const Route& r)
+{
+  auto& pr = pendingRememberedRoute;
+  pr.route = r;
+  pr.valid = r.valid();
+  if (r.valid() && r.rootIcon == ICON_MODEL) {
+    pr.modelScoped = true;
+    strncpy(pr.modelFilename, g_eeGeneral.currModelFilename,
+            sizeof(pr.modelFilename) - 1);
+    pr.modelFilename[sizeof(pr.modelFilename) - 1] = '\0';
+  } else {
+    pr.modelScoped = false;
+    pr.modelFilename[0] = '\0';
+  }
+}
+
+void Page::clearRememberedRoute()
+{
+  pendingRememberedRoute = {};
+}
+
+RememberedRoute& Page::pendingRoute()
+{
+  return pendingRememberedRoute;
+}
 
 void Page::enableRefresh()
 {
@@ -207,6 +237,10 @@ void Page::onLongPressTELE()
 
 void Page::onLongPressRTN()
 {
+  if (_route.valid())
+    rememberRoute(_route);
+  else
+    clearRememberedRoute();
   onCancel();
   Window::deferUiMutation([](UiMutationToken&) {
     if (PageGroup* pageGroup = Window::pageGroup())
@@ -215,8 +249,8 @@ void Page::onLongPressRTN()
 }
 #endif
 
-SubPage::SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, bool pauseRefresh) :
-  Page(icon, PAD_SMALL, pauseRefresh)
+SubPage::SubPage(EdgeTxIcon icon, Route route, const char* title, const char* subtitle, bool pauseRefresh) :
+  Page(icon, route, PAD_SMALL, pauseRefresh)
 {
   withPageFrame([&](PageHeader& header, Window& body) {
     body.padBottom(PAD_LARGE * 2);
@@ -226,8 +260,8 @@ SubPage::SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, bool 
   });
 }
 
-SubPage::SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, const SetupLineDef* setupLines) :
-  Page(icon, PAD_SMALL, true)
+SubPage::SubPage(EdgeTxIcon icon, Route route, const char* title, const char* subtitle, const SetupLineDef* setupLines) :
+  Page(icon, route, PAD_SMALL, true)
 {
   withPageFrame([&](PageHeader& header, Window& body) {
     body.padBottom(PAD_LARGE * 2);

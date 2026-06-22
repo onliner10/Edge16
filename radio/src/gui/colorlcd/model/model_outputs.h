@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "pagegroup.h"
+#include "route.h"
 
 class OutputLineButton;
 
@@ -31,6 +32,8 @@ class ModelOutputsPage : public PageGroupItem
 {
  public:
   ModelOutputsPage(const PageDef& pageDef);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   void build(Window* window) override;
 

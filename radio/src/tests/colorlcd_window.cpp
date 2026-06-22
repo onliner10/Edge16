@@ -65,6 +65,90 @@ bool quickMenuInvalidRememberedPageFallsBackForTest();
 
 namespace {
 
+bool routeApiScopedAndOneShotForTest()
+{
+  // --- Route struct ---
+  Route r;
+  r.rootIcon = ICON_MODEL;
+  r.pages[0] = QM_MODEL_MIXES;
+  r.pages[1] = RP_MIX_EDIT;
+  r.params[1] = 42;
+  r.depth = 2;
+
+  if (!r.valid()) return false;
+
+  // appended() adds a segment without mutating the original
+  Route r2 = r.appended(RP_CURVE_EDIT, 7);
+  if (r2.depth != 3 || r2.pages[2] != RP_CURVE_EDIT ||
+      r2.params[2] != 7 || r.depth != 2)
+    return false;
+
+  // --- Pending route: remember / clear / one-shot ---
+  Page::clearRememberedRoute();
+  if (Page::pendingRoute().valid) return false;
+
+  Page::rememberRoute(r);
+  if (!Page::pendingRoute().valid) return false;
+  if (!Page::pendingRoute().modelScoped) return false;  // ICON_MODEL
+  if (Page::pendingRoute().route.pages[1] != RP_MIX_EDIT) return false;
+  if (Page::pendingRoute().route.params[1] != 42) return false;
+
+  Page::clearRememberedRoute();
+  if (Page::pendingRoute().valid) return false;
+
+  // Non-model icon → not model-scoped
+  Route radioRoute;
+  radioRoute.rootIcon = ICON_RADIO;
+  radioRoute.pages[0] = QM_RADIO_HARDWARE;
+  radioRoute.depth = 1;
+  Page::rememberRoute(radioRoute);
+  if (Page::pendingRoute().modelScoped) return false;
+  Page::clearRememberedRoute();
+
+  // --- PageGroupItem openRoute dispatch ---
+  class TestTab : public PageGroupItem {
+   public:
+    bool opened = false;
+    uint8_t openedPage = 0;
+    int16_t openedParam = 0;
+
+    TestTab() : PageGroupItem("Test", QM_MODEL_MIXES) {}
+    void build(Window*) override {}
+    bool openRoute(const Route& r, uint8_t depth) override
+    {
+      if (depth >= r.depth) return true;
+      opened = true;
+      openedPage = r.pages[depth];
+      openedParam = r.params[depth];
+      return true;
+    }
+  };
+
+  TestTab tab;
+  Route tabRoute;
+  tabRoute.rootIcon = ICON_MODEL;
+  tabRoute.pages[0] = QM_MODEL_MIXES;
+  tabRoute.depth = 1;
+  tab.setRoute(tabRoute);
+
+  // Tab's openRoute receives depth 1 (segment 0 = tab, handled by PageGroup)
+  if (!tab.openRoute(r, 1)) return false;
+  if (!tab.opened || tab.openedPage != RP_MIX_EDIT || tab.openedParam != 42)
+    return false;
+
+  // Default PageGroupItem (no override): can't descend, but route-exhausted = ok
+  class DefaultTab : public PageGroupItem {
+   public:
+    DefaultTab() : PageGroupItem("Default", QM_MODEL_INPUTS) {}
+    void build(Window*) override {}
+  };
+  DefaultTab defaultTab;
+  if (defaultTab.openRoute(r, 0)) return false;   // can't descend
+  if (!defaultTab.openRoute(r, 2)) return false;  // exhausted → true
+
+  return true;
+}
+
 bool pageLongPressReturnDefersPageGroupCloseForTest()
 {
   class TestPageGroupItem : public PageGroupItem
@@ -77,7 +161,7 @@ bool pageLongPressReturnDefersPageGroupCloseForTest()
   class TestEditorPage : public Page
   {
    public:
-    TestEditorPage() : Page(ICON_MODEL_MIXER) {}
+    TestEditorPage() : Page(ICON_MODEL_MIXER, Route{}) {}
     void longPressReturnForTest() { onLongPressRTN(); }
   };
 
@@ -313,6 +397,22 @@ TEST(ColorWindow, QuickMenuInvalidRememberedPageFallsBack)
   if (pid == 0) {
     alarm(2);
     _exit(quickMenuInvalidRememberedPageFallsBackForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, RouteApiScopedAndOneShot)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(routeApiScopedAndOneShotForTest() ? 0 : 1);
   }
 
   int status = 0;

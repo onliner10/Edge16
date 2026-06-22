@@ -637,7 +637,7 @@ class ModelLayoutButton : public IconButton
 
 //-----------------------------------------------------------------------------
 
-ModelLabelsWindow::ModelLabelsWindow() : Page(ICON_MODEL_SELECT, PAD_ZERO, true)
+ModelLabelsWindow::ModelLabelsWindow() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO, true)
 {
 #if defined(SIMU)
   setAutomationId("page.manage_models");

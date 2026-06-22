@@ -93,8 +93,8 @@ class GhostModuleConfigWindow : public Window
   }
 };
 
-RadioGhostModuleConfig::RadioGhostModuleConfig(uint8_t moduleIdx) :
-    Page(ICON_RADIO_TOOLS), moduleIdx(moduleIdx)
+RadioGhostModuleConfig::RadioGhostModuleConfig(uint8_t moduleIdx, Route route) :
+    Page(ICON_RADIO_TOOLS, route), moduleIdx(moduleIdx)
 {
   setWindowFlag(NO_FOCUS | NO_SCROLL);
 

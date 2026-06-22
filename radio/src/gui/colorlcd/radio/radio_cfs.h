@@ -28,7 +28,7 @@
 class RadioFunctionSwitches : public FunctionSwitchesBase
 {
  public:
-  RadioFunctionSwitches();
+  RadioFunctionSwitches(Route route);
 
  protected:
   void setState() override;

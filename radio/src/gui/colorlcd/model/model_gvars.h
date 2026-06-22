@@ -23,16 +23,20 @@
 
 #include "edgetx.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class ModelGVarsPage : public PageGroupItem
 {
  public:
   ModelGVarsPage(const PageDef& pageDef);
 
+  bool openRoute(const Route& r, uint8_t depth) override;
+
   void cleanup() override;
 
  protected:
   Window* hdr = nullptr;
+  Window* pageWindow = nullptr;
 
   void build(Window* window) override;
   void rebuild(Window* window);

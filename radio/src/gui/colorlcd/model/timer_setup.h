@@ -26,7 +26,7 @@
 class TimerWindow : public SubPage
 {
  public:
-  TimerWindow(uint8_t timer);
+  TimerWindow(uint8_t timer, Route route);
 
   static LAYOUT_VAL_SCALED(COUNTDOWN_W, 144)
   static LAYOUT_SIZE(COUNTDOWN_LBL_YO, 0, (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY) / 2)

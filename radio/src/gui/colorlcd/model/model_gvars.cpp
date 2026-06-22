@@ -29,6 +29,7 @@
 #include "menu.h"
 #include "numberedit.h"
 #include "page.h"
+#include "route.h"
 #include "textedit.h"
 #include "toggleswitch.h"
 #include "ui_events.h"
@@ -317,8 +318,8 @@ class GVarHeader : public Window
 class GVarEditWindow : public Page
 {
  public:
-  explicit GVarEditWindow(uint8_t gvarIndex) :
-      Page(ICON_MODEL_GVARS), index(gvarIndex)
+  explicit GVarEditWindow(uint8_t gvarIndex, Route route) :
+      Page(ICON_MODEL_GVARS, route), index(gvarIndex)
   {
     buildHeader(header);
     buildBody(body);
@@ -552,6 +553,19 @@ ModelGVarsPage::ModelGVarsPage(const PageDef& pageDef) :
 {
 }
 
+bool ModelGVarsPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_GVAR_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_GVARS) return false;
+
+  auto* editWindow = new GVarEditWindow(index, r);
+  editWindow->setCloseHandler([=]() { rebuild(pageWindow); });
+  return true;
+}
+
 void ModelGVarsPage::cleanup()
 {
   if (hdr)
@@ -570,6 +584,7 @@ void ModelGVarsPage::rebuild(Window* window)
 
 void ModelGVarsPage::build(Window* window)
 {
+  pageWindow = window;
   coord_t yo = 0;
   if (modelFMEnabled()) {
     window->padTop(PAD_OUTLINE);
@@ -584,7 +599,8 @@ void ModelGVarsPage::build(Window* window)
     button->setPressHandler([=]() {
       Menu* menu = new Menu();
       menu->addLine(STR_EDIT, [=]() {
-        Window* editWindow = new GVarEditWindow(index);
+        Window* editWindow = new GVarEditWindow(index,
+            route().appended(RP_GVAR_EDIT, static_cast<int16_t>(index)));
         editWindow->setCloseHandler([=]() {
           rebuild(window);
           publishModelGVarsChanged();

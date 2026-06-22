@@ -51,8 +51,8 @@
     SET_DIRTY();                              \
   }
 
-MixEditAdvanced::MixEditAdvanced(int8_t channel, uint8_t index) :
-    Page(ICON_MODEL_MIXER, PAD_MEDIUM), channel(channel), index(index)
+MixEditAdvanced::MixEditAdvanced(int8_t channel, uint8_t index, Route route) :
+    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)
 {
   std::string title2(getSourceString(MIXSRC_FIRST_CH + channel));
   header->setTitle(STR_MIXES);

@@ -24,6 +24,7 @@
 #include "bitmaps.h"
 #include "messaging.h"
 #include "quick_menu.h"
+#include "route.h"
 
 class HeaderIcon;
 class PageGroupItem;
@@ -89,12 +90,27 @@ class PageGroupItem
 
   QMPage pageId() const { return qmPageId; }
 
+  // --- Route API ---------------------------------------------------------
+  // Each tab carries a route prefix ({sectionIcon, tabPageId}) set by
+  // PageGroupBase::addTab().  Tab pages that open sub-editors override
+  // openRoute() to descend one more level.
+  const Route& route() const { return _route; }
+  void setRoute(Route r) { _route = r; }
+
+  // Restore a sub-route starting at *depth* within this tab's subtree.
+  // Default: route exhausted (true) or cannot descend (false).
+  virtual bool openRoute(const Route& r, uint8_t depth)
+  {
+    return depth >= r.depth;
+  }
+
  protected:
   std::string title;
   EdgeTxIcon icon;
   QMPage qmPageId = QM_NONE;
   PaddingSize padding;
   const PageDef* pageDef = nullptr;
+  Route _route;
 };
 
 //-----------------------------------------------------------------------------
@@ -163,6 +179,16 @@ class PageGroupBase : public NavWindow
   PageGroupBase(coord_t bodyY, EdgeTxIcon icon);
 
   void setCurrentTab(unsigned index);
+
+  // Walk a Route from the tab level (depth 0 = first segment after root).
+  // Finds the tab whose pageId matches, activates it, and delegates to
+  // tab->openRoute() to descend further.
+  bool openRoute(const Route& r, uint8_t depth);
+
+  // If the pending remembered route matches this group's section icon (and
+  // model filename for model-scoped routes), consume it and descend.
+  // Called once from the PageGroup constructor.
+  bool tryRestorePendingRoute();
 
   void onLiveClicked(LiveWindow&) override;
   void onCancel() override;

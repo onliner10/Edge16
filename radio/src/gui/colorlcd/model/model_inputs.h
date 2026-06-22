@@ -23,11 +23,14 @@
 
 #include "list_line_button.h"
 #include "pagegroup.h"
+#include "route.h"
 
 class ModelInputsPage : public InputMixPageBase
 {
  public:
   ModelInputsPage(const PageDef& pageDef);
+
+  bool openRoute(const Route& r, uint8_t depth) override;
 
   void build(Window *window) override;
   void checkEvents() override;

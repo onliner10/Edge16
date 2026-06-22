@@ -26,7 +26,7 @@
 class RadioSpectrumAnalyser : public Page
 {
  public:
-  explicit RadioSpectrumAnalyser(uint8_t moduleIdx);
+  explicit RadioSpectrumAnalyser(uint8_t moduleIdx, Route route);
 
  protected:
   uint8_t moduleIdx;

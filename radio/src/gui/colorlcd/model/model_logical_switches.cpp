@@ -28,6 +28,7 @@
 #include "menu.h"
 #include "numberedit.h"
 #include "page.h"
+#include "route.h"
 #include "sourcechoice.h"
 #include "switchchoice.h"
 #include "switches.h"
@@ -47,8 +48,8 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 class LogicalSwitchEditPage : public Page
 {
  public:
-  explicit LogicalSwitchEditPage(uint8_t index) :
-      Page(ICON_MODEL_LOGICAL_SWITCHES, PAD_ZERO), index(index)
+  explicit LogicalSwitchEditPage(uint8_t index, Route route) :
+      Page(ICON_MODEL_LOGICAL_SWITCHES, route, PAD_ZERO), index(index)
   {
     buildHeader(header);
     buildBody(body);
@@ -502,6 +503,22 @@ ModelLogicalSwitchesPage::ModelLogicalSwitchesPage(const PageDef& pageDef) :
 {
 }
 
+bool ModelLogicalSwitchesPage::openRoute(const Route& r, uint8_t depth)
+{
+  if (depth >= r.depth) return true;
+  if (r.pages[depth] != RP_LOGICAL_SWITCH_EDIT) return false;
+
+  uint8_t index = static_cast<uint8_t>(r.params[depth]);
+  if (index >= MAX_LOGICAL_SWITCHES) return false;
+
+  LogicalSwitchData* ls = lswAddress(index);
+  if (ls->func == LS_FUNC_NONE) return false;
+
+  auto* lsWindow = new LogicalSwitchEditPage(index, r);
+  lsWindow->setCloseHandler([=]() { rebuild(pageWindow); });
+  return true;
+}
+
 void ModelLogicalSwitchesPage::rebuild(Window* window)
 {
   // When window.clear() is called the last button on screen is given focus
@@ -531,7 +548,8 @@ void ModelLogicalSwitchesPage::newLS(Window* window, bool pasteLS)
           focusIndex = i;
           rebuild(window);
         } else {
-          Window* lsWindow = new LogicalSwitchEditPage(i);
+          Window* lsWindow = new LogicalSwitchEditPage(i,
+              route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
           lsWindow->setCloseHandler([=]() {
             if (ls->func != LS_FUNC_NONE) {
               focusIndex = i;
@@ -558,6 +576,7 @@ void ModelLogicalSwitchesPage::plusPopup(Window* window)
 
 void ModelLogicalSwitchesPage::build(Window* window)
 {
+  pageWindow = window;
   window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_OUTLINE);
 
   bool hasEmptySwitch = false;
@@ -576,7 +595,8 @@ void ModelLogicalSwitchesPage::build(Window* window)
       button->setPressHandler([=]() {
         Menu* menu = new Menu();
         menu->addLine(STR_EDIT, [=]() {
-          Window* lsWindow = new LogicalSwitchEditPage(i);
+          Window* lsWindow = new LogicalSwitchEditPage(i,
+              route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
           lsWindow->setCloseHandler([=]() {
             if (ls->func == LS_FUNC_NONE)
               rebuild(window);

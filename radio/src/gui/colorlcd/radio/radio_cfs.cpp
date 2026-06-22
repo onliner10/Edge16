@@ -155,7 +155,7 @@ class RadioFunctionSwitch : public FunctionSwitchBase
 
 //-----------------------------------------------------------------------------
 
-RadioFunctionSwitches::RadioFunctionSwitches() : FunctionSwitchesBase(ICON_RADIO_HARDWARE, STR_HARDWARE)
+RadioFunctionSwitches::RadioFunctionSwitches(Route route) : FunctionSwitchesBase(ICON_RADIO_HARDWARE, route, STR_HARDWARE)
 {
   for (uint8_t i = 0; i < switchGetMaxSwitches(); i += 1) {
     if (switchIsCustomSwitch(i))

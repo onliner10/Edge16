@@ -24,5 +24,6 @@
 #include "page.h"
 
 struct TrainerPage: public Page {
+  TrainerPage(Route route);
   TrainerPage();
 };

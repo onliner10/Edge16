@@ -21,9 +21,14 @@
 
 #pragma once
 
+#include "route.h"
 #include "static.h"
 #include "messaging.h"
+#include "quick_menu_def.h"
 
+#include <cstdint>
+
+class PageGroupItem;
 class PageHeader : public Window
 {
  public:
@@ -44,7 +49,7 @@ class PageHeader : public Window
 class Page : public NavWindow
 {
  public:
-  explicit Page(EdgeTxIcon icon, PaddingSize padding = PAD_MEDIUM, bool pauseRefresh = false);
+  explicit Page(EdgeTxIcon icon, Route route, PaddingSize padding = PAD_MEDIUM, bool pauseRefresh = false);
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return "Page"; }
@@ -52,6 +57,27 @@ class Page : public NavWindow
 
   void onCancel() override;
   void onLiveClicked(LiveWindow&) override;
+
+  // --- Route API -----------------------------------------------------------
+  // Every Page carries a Route describing its location in the page tree.
+  // The Route is set at construction — the compiler demands it, so no
+  // editor can accidentally forget to declare its restorable path.
+  // Long-press RTN remembers the top page's route; reopening the matching
+  // section auto-descends to the remembered depth via openRoute().
+  const Route& route() const { return _route; }
+
+  // Restore a sub-route within this page's subtree.  Default: the route is
+  // exhausted (true) or this page cannot descend (false).  Override in pages
+  // that spawn sub-editors.
+  virtual bool openRoute(const Route& r, uint8_t depth)
+  {
+    return depth >= r.depth;
+  }
+
+  // Remembered-route management (one global slot, one-shot).
+  static void rememberRoute(const Route& r);
+  static void clearRememberedRoute();
+  static RememberedRoute& pendingRoute();
 
 #if defined(SIMU)
   std::string automationRole() const override { return "page"; }
@@ -65,6 +91,7 @@ protected:
   PageHeader* header = nullptr;
   Window* body = nullptr;
   Messaging quickMenuMsg;
+  Route _route;
 
   bool bubbleEvents() override { return false; }
 
@@ -105,8 +132,8 @@ protected:
 class SubPage : public Page
 {
  public:
-  SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, bool pauseRefresh = false);
-  SubPage(EdgeTxIcon icon, const char* title, const char* subtitle, const SetupLineDef* setupLines);
+  SubPage(EdgeTxIcon icon, Route route, const char* title, const char* subtitle, bool pauseRefresh = false);
+  SubPage(EdgeTxIcon icon, Route route, const char* title, const char* subtitle, const SetupLineDef* setupLines);
 
   Window* setupLine(const char* title, std::function<void(SetupLine*, coord_t, coord_t)> createEdit, coord_t lblYOffset = 0);
 

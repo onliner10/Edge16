@@ -30,6 +30,7 @@
 #include "edgetx_helpers.h"
 #include "etx_lv_theme.h"
 #include "messaging.h"
+#include "route.h"
 
 class Window;
 class FlexGridLayout;
@@ -813,7 +814,7 @@ class NavWindow : public Window
 
 struct PageButtonDef {
   STR_TYP title;
-  std::function<void()> createPage;
+  std::function<void(Route)> createPage;
   std::function<bool()> isActive;
   std::function<bool()> enabled;
   const char* automationId = nullptr;
@@ -826,6 +827,7 @@ class SetupButtonGroup : public Window
  public:
   SetupButtonGroup(Window* parent, const rect_t& rect, const char* title,
                    int cols, PaddingSize padding, const PageButtonDef* pages,
+                   Route parentRoute,
                    coord_t btnHeight = EdgeTxStyles::UI_ELEMENT_HEIGHT);
 
  protected:
