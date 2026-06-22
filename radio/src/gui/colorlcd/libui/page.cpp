@@ -208,8 +208,10 @@ void Page::onLongPressTELE()
 void Page::onLongPressRTN()
 {
   onCancel();
-  if (PageGroup* pageGroup = Window::pageGroup())
-    pageGroup->returnHomeFromLongPress();
+  Window::deferUiMutation([](UiMutationToken&) {
+    if (PageGroup* pageGroup = Window::pageGroup())
+      pageGroup->returnHomeFromLongPress();
+  });
 }
 #endif
 
