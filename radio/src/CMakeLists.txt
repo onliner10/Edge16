@@ -747,6 +747,12 @@ if(EDGE16_GCC_ANALYZER)
       # uninitialized through std::function callbacks; callbacks guard pointers.
       set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
         -Wno-analyzer-use-of-uninitialized-value)
+    elseif(src MATCHES "(^|/)gui/colorlcd/mainview/view_channels\\.cpp$")
+      # GCC 14 -fanalyzer flags conventional `new Window(...)` with -fno-exceptions
+      # as possibly-NULL when the result is passed as `this` to Window's constructor;
+      # UI window allocation failure is handled by LVGL parent-child ownership.
+      set_property(SOURCE ${src} APPEND PROPERTY COMPILE_OPTIONS
+        -Wno-analyzer-possible-null-argument)
     elseif(src MATCHES "(^|/)gui/colorlcd/mainview/widget_settings\\.cpp$")
       # GCC 14 -fanalyzer loses std::vector/std::string option state in choice
       # and file controls; UI allocations are guarded before handler use.

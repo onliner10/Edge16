@@ -118,7 +118,7 @@ void ModelCurvesPage::pushEditCurve(int index, mixsrc_t source)
   r.pages[1] = RP_CURVE_EDIT;
   r.params[1] = static_cast<int16_t>(index);
   r.depth = 2;
-  auto edit = new CurveEditWindow(index, r, source);
+  new CurveEditWindow(index, r, source);
 }
 
 bool ModelCurvesPage::openRoute(const Route& r, uint8_t depth)
