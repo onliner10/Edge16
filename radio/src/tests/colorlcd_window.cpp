@@ -28,6 +28,8 @@
 #include <new>
 
 #include "mainwindow.h"
+#include "page.h"
+#include "setup_menus/pagegroup.h"
 
 bool etxCreateObjectAllocationFailureReturnsNullForTest();
 bool etxLabelAllocationFailureReturnsNullForTest();
@@ -59,6 +61,57 @@ bool progressBarAllocationFailureFailsClosedForTest();
 bool listBoxObjectAllocationFailureFailsClosedForTest();
 bool lvglWrapperUnavailableMainWindowIsNotLoadedForTest();
 bool fullScreenDialogMessageLabelCreateFailureFailsClosedForTest();
+bool quickMenuInvalidRememberedPageFallsBackForTest();
+
+namespace {
+
+bool pageLongPressReturnDefersPageGroupCloseForTest()
+{
+  class TestPageGroupItem : public PageGroupItem
+  {
+   public:
+    explicit TestPageGroupItem(const PageDef& pageDef) : PageGroupItem(pageDef) {}
+    void build(Window*) override {}
+  };
+
+  class TestEditorPage : public Page
+  {
+   public:
+    TestEditorPage() : Page(ICON_MODEL_MIXER) {}
+    void longPressReturnForTest() { onLongPressRTN(); }
+  };
+
+  static const PageDef pages[] = {
+      { ICON_MODEL_MIXER, STR_DEF(STR_QM_MIXES), STR_DEF(STR_MIXES),
+        PAGE_CREATE, QM_MODEL_MIXES,
+        [](const PageDef& pageDef) -> PageGroupItem* {
+          return new (std::nothrow) TestPageGroupItem(pageDef);
+        } },
+      { EDGETX_ICONS_COUNT }
+  };
+
+  auto pageGroup = new (std::nothrow) PageGroup(ICON_MODEL, "Mixes", pages);
+  auto editor = new (std::nothrow) TestEditorPage();
+  if (!pageGroup || !editor) {
+    delete editor;
+    delete pageGroup;
+    return false;
+  }
+
+  const bool setup = Window::pageGroup() == pageGroup;
+  editor->longPressReturnForTest();
+
+  const bool notClosedInline = Window::pageGroup() == pageGroup;
+  Window::runDeferredCloseHandlersForTest();
+  const bool notClosedSameCycle = Window::pageGroup() == pageGroup;
+  Window::runDeferredCloseHandlersForTest();
+  const bool closedAfterDeferredCycle = Window::pageGroup() == nullptr;
+
+  return setup && notClosedInline && notClosedSameCycle &&
+         closedAfterDeferredCycle;
+}
+
+}  // namespace
 
 TEST(ColorEtxTheme, ObjectAllocationFailureReturnsNull)
 {
@@ -244,6 +297,38 @@ TEST(ColorWindow, CloseHandlerRunsAfterDeferredCycle)
   if (pid == 0) {
     alarm(2);
     _exit(windowCloseHandlerRunsAfterDeferredCycleForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, QuickMenuInvalidRememberedPageFallsBack)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(quickMenuInvalidRememberedPageFallsBackForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, LongPressReturnDefersPageGroupClose)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(pageLongPressReturnDefersPageGroupCloseForTest() ? 0 : 1);
   }
 
   int status = 0;
