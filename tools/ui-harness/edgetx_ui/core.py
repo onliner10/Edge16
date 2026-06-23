@@ -275,6 +275,10 @@ class SdlAutomationSession:
         self.height = height
         self.process: subprocess.Popen[str] | None = None
         self._log_lines: deque[str] = deque(maxlen=2000)
+        self._last_route = ""
+        self._last_route_title = ""
+        self._seq = 0
+        self._last_read_tail = ""
 
     @staticmethod
     def _named_fixture_path(value: str | Path) -> Path | None:
@@ -308,18 +312,13 @@ class SdlAutomationSession:
         destination.mkdir(parents=True, exist_ok=True)
         return destination
 
-    def start(self) -> dict[str, Any]:
-        if self.process and self.process.poll() is None:
-            return self.status()
-
+    def _spawn_process(self) -> None:
         if self.runtime_dir is None:
             self.runtime_dir = tempfile.TemporaryDirectory(prefix=f"edgetx-ui-{self.target.name}-")
-
         if self._using_explicit_sdcard:
             sdcard_copy = Path(self.runtime_dir.name) / f"sdcard-{self.target.name}"
             shutil.copytree(self.sdcard, sdcard_copy, dirs_exist_ok=True)
             self.sdcard = sdcard_copy
-
         self.sdcard.mkdir(parents=True, exist_ok=True)
         self.settings.mkdir(parents=True, exist_ok=True)
         executable = find_simu_executable(self.target.name)
@@ -344,44 +343,86 @@ class SdlAutomationSession:
             text=True,
             bufsize=1,
         )
-
         lockfile = Path(tempfile.gettempdir()) / f"edgetx-simulator-{self.target.name}-{self.process.pid}.lock"
         lockfile.write_text(str(self.process.pid))
         _ORPHANED_SIMU_LOCKFILES.append(lockfile)
 
-        # Generous default: concurrent agent sessions on one machine slow the
-        # simulator's first frames enough to miss a tight deadline.
-        try:
-            startup_timeout = float(os.environ.get("EDGETX_UI_STARTUP_TIMEOUT", "30"))
-        except ValueError:
-            startup_timeout = 30.0
-        deadline = time.monotonic() + startup_timeout
-        last_error: Exception | None = None
-        last_status: dict[str, Any] | None = None
-        poll_interval = 0.1
-        while time.monotonic() < deadline:
+    def _kill_process(self) -> None:
+        proc = self.process
+        if not proc:
+            return
+        if proc.poll() is None:
             try:
-                st = self.status()
+                self.command("stop", timeout=2.0)
+            except HarnessError:
+                proc.terminate()
+            try:
+                proc.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        for lockfile in Path(tempfile.gettempdir()).glob(f"edgetx-simulator-{self.target.name}-*.lock"):
+            try:
+                pid = int(lockfile.read_text().strip())
+                if pid == (proc.pid if proc.pid else 0):
+                    lockfile.unlink()
+                    if lockfile in _ORPHANED_SIMU_LOCKFILES:
+                        _ORPHANED_SIMU_LOCKFILES.remove(lockfile)
+            except Exception:
+                pass
+        self.process = None
+
+    def start(self) -> dict[str, Any]:
+        if self.process and self.process.poll() is None:
+            return self.status()
+
+        # The simulator boot is an inherently asynchronous "wait for an external
+        # process to become ready" operation. We wait for readiness with a
+        # generous budget and let each status probe use the remaining budget so a
+        # single probe survives the full boot; a bounded respawn covers genuinely
+        # stuck spawns so agents never observe a transient flake.
+        try:
+            startup_timeout = float(os.environ.get("EDGETX_UI_STARTUP_TIMEOUT", "90"))
+        except ValueError:
+            startup_timeout = 90.0
+
+        last_error = ""
+        last_status: dict[str, Any] | None = None
+        for attempt in range(2):
+            if self.process is not None:
+                self._kill_process()
+            self._spawn_process()
+            deadline = time.monotonic() + startup_timeout
+            result = self._await_startup(deadline)
+            if result is not None and result.get("startup_completed"):
+                return result
+            last_status = result
+            if self.process is not None and self.process.poll() is not None:
+                last_error = f"process exited with code {self.process.returncode}"
+            else:
+                last_error = "status command did not respond before startup timeout"
+
+        if last_status is not None:
+            return last_status | {"startup_pending": True}
+        raise HarnessError(f"simulator did not become ready: {last_error}")
+
+    def _await_startup(self, deadline: float) -> dict[str, Any] | None:
+        last_status: dict[str, Any] | None = None
+        while time.monotonic() < deadline:
+            remaining = max(2.0, deadline - time.monotonic())
+            try:
+                st = self.status(timeout=remaining)
                 last_status = st
                 if st.get("startup_completed"):
                     return st
-                poll_interval = min(poll_interval * 1.1, 2.0)
-                time.sleep(poll_interval)
-            except HarnessError as exc:
-                last_error = exc
-                if self.process.poll() is not None:
-                    break
-                poll_interval = min(poll_interval * 1.1, 2.0)
-                time.sleep(poll_interval)
-        if last_status is not None:
-            return last_status | {"startup_pending": True}
-        if last_error is not None:
-            reason = str(last_error)
-        elif self.process and self.process.poll() is not None:
-            reason = f"process exited with code {self.process.returncode}"
-        else:
-            reason = "status command did not respond before startup timeout"
-        raise HarnessError(f"simulator did not become ready: {reason}")
+                # Simulator is responding but boot is not finished yet; poll
+                # again shortly. This is sim-driven readiness, not a blind sleep.
+                time.sleep(0.2)
+            except HarnessError:
+                if self.process is not None and self.process.poll() is not None:
+                    return None  # process died
+                # The remaining-budget probe timed out: the simulator is stuck.
+                return last_status
+        return last_status
 
     def stop(self) -> dict[str, Any]:
         if not self.process:
@@ -411,17 +452,26 @@ class SdlAutomationSession:
                 pass
         return {"running": False}
 
-    def command(self, command: str, timeout: float = 5.0) -> dict[str, Any]:
-        if not self.process or self.process.poll() is not None:
-            raise HarnessError("simulator is not running")
-        assert self.process.stdin is not None
-        assert self.process.stdout is not None
-        self.process.stdin.write(command + "\n")
-        self.process.stdin.flush()
+    def _next_seq(self) -> int:
+        self._seq += 1
+        return self._seq
 
+    def _read_response(self, expected_seq: int, timeout: float) -> dict[str, Any] | None:
+        """Read complete stdout lines until the JSON response carrying
+        ``expected_seq`` arrives.
+
+        TRACE/debug output is written to the same stdout stream as automation
+        replies, and stale replies from prior commands can still be buffered.
+        Matching on the echoed ``seq`` (rather than "first {\"ok\"} line") makes
+        response correlation deterministic, so neither draining nor sleeps are
+        needed: interleaved and foreign lines are simply skipped here.
+        Returns the matched response, or None on timeout.
+        """
+        if not self.process or self.process.poll() is not None or self.process.stdout is None:
+            raise HarnessError("simulator is not running")
         deadline = time.monotonic() + timeout
-        recent_lines: deque[str] = deque(maxlen=200)
         buffer = ""
+        recent_lines: deque[str] = deque(maxlen=200)
         stdout_fd = self.process.stdout.fileno()
         while time.monotonic() < deadline:
             remaining = max(0.0, deadline - time.monotonic())
@@ -432,13 +482,6 @@ class SdlAutomationSession:
             if not chunk:
                 break
             buffer += chunk.decode("utf-8", errors="replace")
-            response = parse_json_response_line(buffer)
-            if response is not None:
-                if not response.get("ok", False):
-                    raise HarnessError(response.get("error", "simulator command failed"))
-                return response
-            if '{"ok"' in buffer:
-                continue
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
                 line = line.strip()
@@ -446,12 +489,43 @@ class SdlAutomationSession:
                     continue
                 recent_lines.append(line)
                 self._log_lines.append(line)
-        tail = "\n".join(recent_lines)
-        if tail:
+                try:
+                    response = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if response.get("seq") == expected_seq:
+                    return response
+                # Different seq (stale/foreign reply) or non-JSON debug line:
+                # skip deterministically rather than draining.
+        self._last_read_tail = "\n".join(recent_lines)
+        return None
+
+    def command(self, command: str, timeout: float = 5.0) -> dict[str, Any]:
+        if not self.process or self.process.poll() is not None:
+            raise HarnessError("simulator is not running")
+        assert self.process.stdin is not None
+        seq = self._next_seq()
+        self.process.stdin.write(f"#{seq} {command}\n")
+        self.process.stdin.flush()
+        response = self._read_response(seq, timeout)
+        if response is None:
+            tail = getattr(self, "_last_read_tail", "")
             raise HarnessError(
                 f"timed out waiting for simulator response to `{command}`\nRecent output:\n{tail}"
+                if tail else f"timed out waiting for simulator response to `{command}`"
             )
-        raise HarnessError(f"timed out waiting for simulator response to `{command}`")
+        if not response.get("ok", False):
+            raise HarnessError(response.get("error", "simulator command failed"))
+        return response
+
+    def command_with_accept(self, command: str, accept: Any, timeout: float = 5.0) -> dict[str, Any]:
+        # With seq-based correlation each command has exactly one matching reply.
+        # accept() now validates the shape of that single reply; if it rejects,
+        # there is no second reply to wait for, so we return it with a warning.
+        response = self.command(command, timeout)
+        if not accept(response):
+            return response | {"warning": "response did not match accept predicate"}
+        return response
 
     def text_input(self, text: str, replace: bool = True, submit: bool = True) -> dict[str, Any]:
         encoded = _hex_encode_text(text)
@@ -460,8 +534,8 @@ class SdlAutomationSession:
             timeout=5.0,
         )
 
-    def status(self) -> dict[str, Any]:
-        response = self.command("status", timeout=10.0)
+    def status(self, timeout: float = 10.0) -> dict[str, Any]:
+        response = self.command("status", timeout=timeout)
         result = {
             "target": self.target.name,
             "backend": "sdl-automation",
@@ -698,6 +772,38 @@ class SdlAutomationSession:
     def audio_history(self, max_lines: int = 200) -> dict[str, Any]:
         return self.command(f"audio_history {int(max_lines)}")
 
+    def _read_route_command(self, command: str, accept: Any) -> dict[str, Any]:
+        last: dict[str, Any] | None = None
+        for _ in range(6):
+            response = self.command(command, timeout=10.0)
+            last = response
+            if accept(response):
+                return response
+        raise HarnessError(f"unexpected response shape for `{command}`: {last}")
+
+    def current_route(self) -> dict[str, Any]:
+        return self._read_route_command("route_current", lambda response: "valid" in response or "route" in response)
+
+    def sitemap(self) -> dict[str, Any]:
+        return self._read_route_command("route_sitemap", lambda response: "routes" in response or "templates" in response)
+
+    def _read_ui_tree_raw(self) -> dict[str, Any]:
+        # Each ui_tree request blocks on a condition variable until the menu
+        # thread runs menuTick and produces a fresh snapshot, so successive
+        # attempts are deterministic frame advancement, not blind sleeps.
+        last_raw: dict[str, Any] = {"nodes": []}
+        for attempt in range(6):
+            response = self.command("ui_tree", timeout=5.0)
+            raw = response.get("ui", {"nodes": []})
+            raw = {**raw, "nodes": [_normalized_node(n) for n in raw.get("nodes", [])]}
+            last_raw = raw
+            if raw.get("nodes"):
+                return raw
+        raise HarnessError(
+            "ui_tree returned no nodes after retries; simulator UI stream is not ready or desynchronized. "
+            f"Last response keys: {sorted(last_raw.keys())}"
+        )
+
     def ui_tree(
         self,
         mode: str = "full",
@@ -706,9 +812,7 @@ class SdlAutomationSession:
         limit: int = 0,
         verbose: bool = True,
     ) -> dict[str, Any]:
-        response = self.command("ui_tree", timeout=5.0)
-        raw = response.get("ui", {"nodes": []})
-        raw = {**raw, "nodes": [_normalized_node(n) for n in raw.get("nodes", [])]}
+        raw = self._read_ui_tree_raw()
 
         if mode not in ("summary", "full"):
             raise HarnessError(f"unknown ui_tree mode: {mode}")
@@ -742,6 +846,13 @@ class SdlAutomationSession:
     def screen(self) -> dict[str, Any]:
         tree = self.ui_tree(mode="full", verbose=True)
         nodes = tree.get("nodes", [])
+        if not nodes:
+            for _ in range(3):
+                self.wait(100)
+                tree = self.ui_tree(mode="full", verbose=True)
+                nodes = tree.get("nodes", [])
+                if nodes:
+                    break
         visible_text = [
             str(n.get("label") or n.get("text", ""))
             for n in nodes
@@ -795,7 +906,22 @@ class SdlAutomationSession:
             and (n.get("label") or n.get("automation_id"))
         ][:10]
 
-        return {
+        route_info: dict[str, Any] = {}
+        try:
+            route_info = self.current_route()
+        except HarnessError:
+            route_info = {}
+        route = str(route_info.get("route", ""))
+        route_title = str(route_info.get("title", ""))
+        route_valid = bool(route_info.get("valid", False))
+        if route_valid and route:
+            self._last_route = route
+            self._last_route_title = route_title
+
+        result = {
+            "route": route,
+            "route_valid": route_valid,
+            "route_title": route_title,
             "title": title,
             "page": page or ({"label": title, "kind": "page", "actions": []} if title else {}),
             "context": context,
@@ -818,6 +944,286 @@ class SdlAutomationSession:
                 "visible_text": len(unique_visible_text),
             },
         }
+        overlay = self._overlay_context(result)
+        if overlay:
+            result["overlay"] = overlay
+        return result
+
+    def orient(self) -> dict[str, Any]:
+        empty_hash = hashlib.sha256(b"").hexdigest()[:16]
+        screen = self.screen()
+        if screen.get("route") and screen.get("screen_hash") == empty_hash:
+            for _ in range(3):
+                self.wait(100)
+                screen = self.screen()
+                if screen.get("screen_hash") != empty_hash:
+                    break
+        context = screen.get("context", {})
+        available_inputs = {item.get("input", "") for item in screen.get("available_inputs", []) if item.get("input")}
+        focus = screen.get("focused") or {}
+        if not focus:
+            active_fields = [field for field in screen.get("fields", []) if field.get("focused")]
+            focus = active_fields[0] if active_fields else {}
+        scroll_dirs = []
+        for node in screen.get("scrollables", []):
+            scroll = node.get("scroll", {})
+            for direction, key in (("up", "can_scroll_up"), ("down", "can_scroll_down"), ("left", "can_scroll_left"), ("right", "can_scroll_right")):
+                if scroll.get(key) and direction not in scroll_dirs:
+                    scroll_dirs.append(direction)
+        can = {
+            "back": "EXIT" in available_inputs,
+            "next_tab": "PAGEDN" in available_inputs,
+            "prev_tab": "PAGEUP" in available_inputs,
+            "edit": bool(context.get("type") in ("field_focus", "field_edit") or (focus and "click" in focus.get("actions", []))),
+        }
+        if scroll_dirs:
+            can["scroll"] = scroll_dirs
+        if context.get("type") == "blocking_dialog":
+            can["dismiss"] = True
+        result = {
+            "route": screen.get("route", ""),
+            "title": screen.get("route_title") or screen.get("title", ""),
+            "mode": context.get("type") or screen.get("page", {}).get("kind", "page"),
+            "focus": focus,
+            "can": can,
+            "hash": screen.get("screen_hash", ""),
+            **({"blocker": context} if context.get("type") == "blocking_dialog" else {}),
+        }
+        if screen.get("overlay"):
+            result["overlay"] = screen.get("overlay")
+        return result
+
+    def goto(self, route: str) -> dict[str, Any]:
+        before = self.orient()
+        try:
+            self.current_route()
+        except HarnessError:
+            pass
+        result = self.command(f"route_goto {route}", timeout=5.0)
+        after = before
+        observed_route = False
+        empty_hash = hashlib.sha256(b"").hexdigest()[:16]
+        for _ in range(10):
+            self.wait(100)
+            after = self.orient()
+            if after.get("route") == route and after.get("hash") != empty_hash:
+                observed_route = True
+                break
+        response = {
+            "ok": result.get("ok", True),
+            "route": after.get("route") or result.get("route", route),
+            "title": after.get("title") or result.get("title", ""),
+            "changed": before.get("hash", "") != after.get("hash", ""),
+            "before": {"route": before.get("route", ""), "title": before.get("title", ""), "hash": before.get("hash", "")},
+            "after": after,
+        }
+        if not observed_route:
+            response["warning"] = "route_not_observed_after_goto"
+        return response
+
+    def _overlay_context(self, screen: dict[str, Any]) -> dict[str, Any] | None:
+        context = screen.get("context", {})
+        page = screen.get("page", {})
+        actions = screen.get("actions", [])
+        visible_text = {str(text).lower() for text in screen.get("visible_text", [])}
+        is_dialog = page.get("kind") == "dialog" or not screen.get("route_valid", False)
+        if not is_dialog:
+            return None
+
+        action_labels = [str(action.get("label", "")) for action in actions if action.get("label")]
+        lower_labels = {label.lower() for label in action_labels}
+        overlay_type = str(context.get("type") or page.get("kind") or "overlay")
+        if {"ok", "cancel"}.issubset(lower_labels) and "value" in visible_text:
+            overlay_type = "number_editor"
+        elif actions and context.get("type") != "blocking_dialog":
+            overlay_type = "selector"
+
+        return {
+            "type": overlay_type,
+            "title": screen.get("title", ""),
+            "parent_route": self._last_route,
+            "parent_title": self._last_route_title,
+            "actions": actions[:12],
+        }
+
+    def inspect(
+        self,
+        fields: bool = True,
+        actions: bool = False,
+        visible_text: bool = False,
+        editable_only: bool = False,
+        text_contains: str | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        screen = self.screen()
+        needle = (text_contains or "").lower()
+
+        def matches(value: str) -> bool:
+            return not needle or needle in value.lower()
+
+        result = {"route": screen.get("route", ""), "title": screen.get("route_title") or screen.get("title", "")}
+        if fields:
+            field_items = []
+            for field in screen.get("fields", []):
+                if editable_only and not field.get("editable"):
+                    continue
+                haystack = " ".join(str(field.get(key, "")) for key in ("label", "value", "kind"))
+                if matches(haystack):
+                    field_items.append(field)
+            result["fields"] = field_items[:limit]
+        if actions:
+            action_items = []
+            for action in screen.get("actions", []):
+                haystack = " ".join(str(action.get(key, "")) for key in ("label", "automation_id", "role"))
+                if matches(haystack):
+                    action_items.append(action)
+            result["actions"] = action_items[:limit]
+        if visible_text:
+            texts = [text for text in screen.get("visible_text", []) if matches(str(text))]
+            result["visible_text"] = texts[:limit]
+        return result
+
+    def _stable_screen(self, max_reads: int = 6) -> dict[str, Any]:
+        """Read fresh UI snapshots until the screen hash stops changing.
+
+        Each ui_tree read yields on the simulator menuThread condition
+        variable, so successive reads are deterministic frame advancement,
+        not blind sleeps. This absorbs one- or few-tick UI transition lag
+        (e.g. a dialog whose contents populate the menuTick after it opens)
+        so decision helpers never act on a half-rendered frame.
+        """
+        screen = self.screen()
+        last_hash = screen.get("screen_hash", "")
+        for _ in range(max_reads):
+            nxt = self.screen()
+            nxt_hash = nxt.get("screen_hash", "")
+            if nxt_hash == last_hash and nxt.get("actions"):
+                return nxt
+            screen = nxt
+            last_hash = nxt_hash
+        return screen
+
+    def select_option(
+        self,
+        text: str | None = None,
+        text_contains: str | None = None,
+        index: int = 0,
+        max_scrolls: int = 30,
+    ) -> dict[str, Any]:
+        if not text and not text_contains:
+            raise HarnessError("select_option requires text or text_contains")
+        wanted = str(text or "")
+        needle = str(text_contains or text or "").lower()
+        visited_hashes: set[str] = set()
+        total_scrolls = 0
+
+        def matching_actions() -> list[dict[str, Any]]:
+            screen = self._stable_screen()
+            candidates = []
+            for action in screen.get("actions", []):
+                label = str(action.get("label", ""))
+                haystack = " ".join(str(action.get(key, "")) for key in ("label", "automation_id", "role"))
+                if text and label.lower() == wanted.lower():
+                    candidates.append(action)
+                elif text_contains and needle in haystack.lower():
+                    candidates.append(action)
+            return candidates
+
+        def try_click_visible() -> dict[str, Any] | None:
+            candidates = matching_actions()
+            if index < len(candidates):
+                selected = candidates[index]
+                clicked = self.ui_click({"runtime_id": selected["runtime_id"]})
+                return {"ok": True, "matched": selected, "scrolls": total_scrolls, "click": clicked}
+            return None
+
+        clicked = try_click_visible()
+        if clicked:
+            return clicked
+
+        for direction in ("down", "up"):
+            stable_count = 0
+            for _ in range(max_scrolls):
+                before = self.screen().get("screen_hash", "")
+                if before in visited_hashes and stable_count > 1:
+                    break
+                visited_hashes.add(before)
+                scrolled = self.scroll(direction, amount="small")
+                total_scrolls += 1
+                after = self.screen().get("screen_hash", "")
+                clicked = try_click_visible()
+                if clicked:
+                    clicked["last_scroll"] = scrolled
+                    return clicked
+                if after == before or not scrolled.get("changed", False):
+                    stable_count += 1
+                else:
+                    stable_count = 0
+        raise HarnessError(f"could not find selectable option {text or text_contains!r} after {total_scrolls} scroll attempts")
+
+    def confirm(self) -> dict[str, Any]:
+        try:
+            return self.ui_click({"text": "Ok"}) | {"method": "click_ok"}
+        except HarnessError:
+            self.press("ENTER")
+            self.wait(100)
+            return {"ok": True, "method": "ENTER"}
+
+    def cancel(self) -> dict[str, Any]:
+        try:
+            return self.ui_click({"text": "Cancel"}) | {"method": "click_cancel"}
+        except HarnessError:
+            self.press("EXIT")
+            self.wait(100)
+            return {"ok": True, "method": "EXIT"}
+
+    def set_number(
+        self,
+        value: int | float,
+        label: str | None = None,
+        confirm: bool = True,
+        max_steps: int = 250,
+    ) -> dict[str, Any]:
+        screen = self.screen()
+        overlay = screen.get("overlay", {})
+        if overlay.get("type") != "number_editor":
+            raise HarnessError("set_number requires an active number_editor overlay")
+        fields = screen.get("fields", [])
+        field: dict[str, Any] | None = None
+        if label:
+            field = _find_field(fields, label)
+        if not field:
+            numeric_fields = [field for field in fields if _first_number(str(field.get("value", ""))) is not None]
+            if len(numeric_fields) == 1:
+                field = numeric_fields[0]
+            else:
+                field = next((item for item in numeric_fields if str(item.get("label", "")).lower() in {"value", "y", "x"}), None)
+        if not field:
+            raise HarnessError("could not infer current number value from number_editor overlay; pass label")
+        current = _first_number(str(field.get("value", "")))
+        target = float(value)
+        if current is None:
+            raise HarnessError(f"field `{field.get('label', label or '')}` does not expose a numeric value")
+        delta = int(round(target - current))
+        if abs(delta) > max_steps:
+            raise HarnessError(f"set_number would require {abs(delta)} rotary steps, exceeding max_steps={max_steps}")
+        if delta:
+            self.rotate(delta)
+            self.wait(100)
+        after = self.screen()
+        after_field = _find_field(after.get("fields", []), str(field.get("label", label or ""))) if field.get("label") else None
+        final_value = after_field.get("value", "") if after_field else ""
+        result = {
+            "ok": True,
+            "label": field.get("label", label or ""),
+            "start_value": current,
+            "target_value": target,
+            "steps": abs(delta),
+            "final_value": final_value,
+        }
+        if confirm:
+            result["confirm"] = self.confirm()
+        return result
 
     def wait_for(
         self,
@@ -2107,6 +2513,53 @@ class HarnessService:
 
     def screen(self) -> dict[str, Any]:
         return self.require_session().screen()
+
+    def current_route(self) -> dict[str, Any]:
+        return self.require_session().current_route()
+
+    def sitemap(self) -> dict[str, Any]:
+        return self.require_session().sitemap()
+
+    def orient(self) -> dict[str, Any]:
+        return self.require_session().orient()
+
+    def goto(self, route: str) -> dict[str, Any]:
+        return self.require_session().goto(route)
+
+    def inspect(
+        self,
+        fields: bool = True,
+        actions: bool = False,
+        visible_text: bool = False,
+        editable_only: bool = False,
+        text_contains: str | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        return self.require_session().inspect(fields, actions, visible_text, editable_only, text_contains, limit)
+
+    def select_option(
+        self,
+        text: str | None = None,
+        text_contains: str | None = None,
+        index: int = 0,
+        max_scrolls: int = 30,
+    ) -> dict[str, Any]:
+        return self.require_session().select_option(text, text_contains, index, max_scrolls)
+
+    def confirm(self) -> dict[str, Any]:
+        return self.require_session().confirm()
+
+    def cancel(self) -> dict[str, Any]:
+        return self.require_session().cancel()
+
+    def set_number(
+        self,
+        value: int | float,
+        label: str | None = None,
+        confirm: bool = True,
+        max_steps: int = 250,
+    ) -> dict[str, Any]:
+        return self.require_session().set_number(value, label, confirm, max_steps)
 
     def wait_for(
         self,

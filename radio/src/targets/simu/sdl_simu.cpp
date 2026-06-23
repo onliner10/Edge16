@@ -104,10 +104,18 @@ extern void simuSetUsbState(bool plugged, int mode);
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 static SDL_Texture* screen_frame_buffer;
+// Request/response correlation: each automation command may be prefixed with
+// a unique sequence id ("#<digits> <command>"). The id is echoed in the reply
+// as "seq":<n> so the harness can match responses deterministically and skip
+// interleaved TRACE/debug output that shares the stdout stream.
 static bool automation_stdio = false;
 static bool automation_telemetry_streaming = false;
 static bool automation_wait_pending = false;
 static uint32_t automation_wait_deadline = 0;
+static uint64_t automation_reply_seq = 0;
+static bool automation_reply_has_seq = false;
+static uint64_t automation_wait_seq = 0;
+static bool automation_wait_has_seq = false;
 
 static std::mutex inputStateMutex;
 static GimbalState stick_left = {{0.5f, 0.5f}, false};
@@ -167,13 +175,16 @@ static std::string json_escape(const std::string& value)
 static void automation_reply_ok(const std::string& extra = "")
 {
   std::cout << "{\"ok\":true";
+  if (automation_reply_has_seq) std::cout << ",\"seq\":" << automation_reply_seq;
   if (!extra.empty()) std::cout << "," << extra;
   std::cout << "}" << std::endl;
 }
 
 static void automation_reply_error(const std::string& message)
 {
-  std::cout << "{\"ok\":false,\"error\":\"" << json_escape(message) << "\"}" << std::endl;
+  std::cout << "{\"ok\":false";
+  if (automation_reply_has_seq) std::cout << ",\"seq\":" << automation_reply_seq;
+  std::cout << ",\"error\":\"" << json_escape(message) << "\"}" << std::endl;
 }
 
 static bool hex_decode(const std::string& hex, std::string& output)
@@ -356,8 +367,28 @@ static bool automation_set_battery_telemetry(const std::string& sensor_name,
 
 static void automation_handle_command(const std::string& line)
 {
-  TRACE("automation_handle_command: '%s'", line.c_str());
-  std::istringstream in(line);
+  automation_reply_has_seq = false;
+  automation_reply_seq = 0;
+
+  // Optional leading sequence id for deterministic request/response matching:
+  //   "#<digits> <command> ..."
+  std::string body = line;
+  if (!body.empty() && body[0] == '#') {
+    const size_t sp = body.find(' ');
+    const std::string num = (sp == std::string::npos) ? body.substr(1) : body.substr(1, sp - 1);
+    bool all_digits = !num.empty();
+    for (char c : num) {
+      if (c < '0' || c > '9') { all_digits = false; break; }
+    }
+    if (all_digits) {
+      automation_reply_seq = strtoull(num.c_str(), nullptr, 10);
+      automation_reply_has_seq = true;
+      body = (sp == std::string::npos) ? "" : body.substr(sp + 1);
+    }
+  }
+
+  TRACE("automation_handle_command: '%s'", body.c_str());
+  std::istringstream in(body);
   std::string command;
   in >> command;
 
@@ -586,6 +617,38 @@ static void automation_handle_command(const std::string& line)
 
     automation_wait_pending = true;
     automation_wait_deadline = SDL_GetTicks() + wait_ms;
+    automation_wait_has_seq = automation_reply_has_seq;
+    automation_wait_seq = automation_reply_seq;
+  } else if (command == "route_current") {
+    std::string json;
+    std::string error;
+    if (!SimuUiAutomation::currentRouteJson(json, error)) {
+      automation_reply_error(error);
+      return;
+    }
+    automation_reply_ok(json);
+  } else if (command == "route_sitemap") {
+    std::string json;
+    std::string error;
+    if (!SimuUiAutomation::sitemapJson(json, error)) {
+      automation_reply_error(error);
+      return;
+    }
+    automation_reply_ok(json);
+  } else if (command == "route_goto") {
+    std::string route_id;
+    in >> route_id;
+    if (route_id.empty()) {
+      automation_reply_error("missing route id");
+      return;
+    }
+    std::string extra;
+    std::string error;
+    if (!SimuUiAutomation::gotoRoute(route_id, extra, error)) {
+      automation_reply_error(error);
+      return;
+    }
+    automation_reply_ok(extra);
   } else if (command == "ui_tree") {
     std::string json;
     std::string error;
@@ -790,6 +853,8 @@ static void automation_poll_stdin()
   if (automation_wait_pending) {
     if (SDL_TICKS_PASSED(SDL_GetTicks(), automation_wait_deadline)) {
       automation_wait_pending = false;
+      automation_reply_has_seq = automation_wait_has_seq;
+      automation_reply_seq = automation_wait_seq;
       automation_reply_ok();
     }
     return;

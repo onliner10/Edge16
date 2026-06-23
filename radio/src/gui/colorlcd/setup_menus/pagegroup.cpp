@@ -777,6 +777,15 @@ void PageGroupBase::setScrollY(coord_t y)
   });
 }
 
+#if defined(SIMU)
+bool PageGroupBase::automationRoute(Route& out) const
+{
+  if (!currentTab) return false;
+  out = currentTab->route();
+  return out.valid();
+}
+#endif
+
 //-----------------------------------------------------------------------------
 
 PageGroup::PageGroup(EdgeTxIcon icon, const char* title, const PageDef* pages,

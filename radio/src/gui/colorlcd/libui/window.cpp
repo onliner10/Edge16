@@ -1458,6 +1458,12 @@ std::string Window::automationRole() const
 
 std::string Window::automationText() const { return automationText_; }
 
+bool Window::automationRoute(Route& out) const
+{
+  (void)out;
+  return false;
+}
+
 bool Window::automationClickable() const
 {
   if (hasWindowFlag(NO_CLICK)) return false;

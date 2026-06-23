@@ -31,41 +31,6 @@ type FormattedResult = {
 	details: Record<string, unknown>;
 };
 
-const MCP_TOOL_NAMES = [
-	"edgetx_build_simulator",
-	"edgetx_start_simulator",
-	"edgetx_stop_simulator",
-	"edgetx_status",
-	"edgetx_press",
-	"edgetx_long_press",
-	"edgetx_rotate",
-	"edgetx_touch",
-	"edgetx_drag",
-	"edgetx_scroll",
-	"edgetx_scroll_to",
-	"edgetx_wait",
-	"edgetx_ui_tree",
-	"edgetx_screen",
-	"edgetx_activate",
-	"edgetx_adjust_field",
-	"edgetx_type_text",
-	"edgetx_click",
-	"edgetx_long_click",
-	"edgetx_assert_visible",
-	"edgetx_wait_for",
-	"edgetx_skip_storage_warning_if_present",
-	"edgetx_screenshot",
-	"edgetx_set_telemetry",
-	"edgetx_set_telemetry_streaming",
-	"edgetx_set_batt_voltage",
-	"edgetx_set_switch",
-	"edgetx_switch_sequence",
-	"edgetx_audio_history",
-	"edgetx_run_flow",
-	"edgetx_log",
-] as const;
-
-const MCP_TOOL_SET = new Set<string>(MCP_TOOL_NAMES);
 
 const ACTION_ALIASES: Record<string, string> = {
 	help: "help",
@@ -84,6 +49,14 @@ const ACTION_ALIASES: Record<string, string> = {
 	tree: "edgetx_ui_tree",
 	ui_tree: "edgetx_ui_tree",
 	screen: "edgetx_screen",
+	sitemap: "edgetx_sitemap",
+	orient: "edgetx_orient",
+	goto: "edgetx_goto",
+	inspect: "edgetx_inspect",
+	select_option: "edgetx_select_option",
+	confirm: "edgetx_confirm",
+	cancel: "edgetx_cancel",
+	set_number: "edgetx_set_number",
 	activate: "edgetx_activate",
 	adjust_field: "edgetx_adjust_field",
 	type_text: "edgetx_type_text",
@@ -110,6 +83,14 @@ const ACTION_HINTS: Record<string, string> = {
 	edgetx_start_simulator: "Start persistent simulator: args {target:'tx16s'|'tx16smk3', sdcard?, settings?}.",
 	edgetx_status: "Return simulator status. Defaults to args {compact:true} unless overridden.",
 	edgetx_screen: "Best first inspection tool: compact page/context/actions/fields/visible_text summary.",
+	edgetx_sitemap: "Return the firmware-owned route sitemap: stable routes plus verified templates.",
+	edgetx_orient: "Small route-first state summary: current route/title, focus, capabilities, blocker, and hash.",
+	edgetx_goto: "Navigate by stable firmware route id: args {route:'model.mixes'}.",
+	edgetx_inspect: "Targeted current-screen details: args {fields?, actions?, visible_text?, editable_only?, text_contains?, limit?}.",
+	edgetx_select_option: "Select an option from the current overlay/list, scrolling as needed: args {text:'CV1'}.",
+	edgetx_confirm: "Confirm the current overlay/editor by clicking Ok or pressing ENTER.",
+	edgetx_cancel: "Cancel the current overlay/editor by clicking Cancel or pressing EXIT.",
+	edgetx_set_number: "Set active number-editor value with bounded rotary steps: args {value:0, label?, confirm?}.",
 	edgetx_ui_tree: "LVGL tree. Prefer args {mode:'summary', actionable_only:true}; use mode:'full' sparingly.",
 	edgetx_activate: "Activate visible node by automation_id/semantic_id/text/text_contains/role/id; args {automation_id:'...', action:'click'}.",
 	edgetx_click: "Click visible node by selector; prefer automation_id over text/text_contains/role/raw coordinates.",
@@ -137,6 +118,7 @@ class McpClient {
 	private buffer = "";
 	private pending = new Map<number, PendingCall>();
 	private stderrTail: string[] = [];
+	private toolsCache?: McpTool[];
 
 	constructor(private readonly cwd: string) {}
 
@@ -146,8 +128,10 @@ class McpClient {
 
 	async listTools(signal?: AbortSignal): Promise<McpTool[]> {
 		await this.ensureStarted();
+		if (this.toolsCache) return this.toolsCache;
 		const result = (await this.request("tools/list", {}, DEFAULT_TIMEOUT_MS, signal)) as { tools?: McpTool[] };
-		return result.tools ?? [];
+		this.toolsCache = result.tools ?? [];
+		return this.toolsCache;
 	}
 
 	async callTool(name: string, args: Record<string, unknown>, timeoutMs: number, signal?: AbortSignal): Promise<string> {
@@ -180,6 +164,7 @@ class McpClient {
 	}
 
 	private async startProcess(): Promise<void> {
+		this.toolsCache = undefined;
 		const spec = this.commandSpec();
 		const child = spawn(spec.command, spec.args, {
 			cwd: this.cwd,
@@ -317,6 +302,7 @@ class McpClient {
 		const child = this.child;
 		if (!child) return;
 		this.child = undefined;
+		this.toolsCache = undefined;
 		this.rejectAll(new Error("edgetx-mcp stopped"));
 		await new Promise<void>((resolve) => {
 			let done = false;
@@ -336,13 +322,15 @@ class McpClient {
 	}
 }
 
-function normalizeAction(action: unknown): string {
+async function normalizeAction(action: unknown, client: McpClient, signal?: AbortSignal): Promise<string> {
 	const value = typeof action === "string" ? action.trim() : "";
 	if (!value) return "help";
 	if (ACTION_ALIASES[value]) return ACTION_ALIASES[value];
-	if (MCP_TOOL_SET.has(value)) return value;
+	if (value === "help" || value === "stop" || value === "edgetx_stop_simulator") return value;
+	const toolNames = new Set((await client.listTools(signal)).map((tool) => tool.name));
+	if (toolNames.has(value)) return value;
 	const prefixed = `edgetx_${value}`;
-	if (MCP_TOOL_SET.has(prefixed)) return prefixed;
+	if (toolNames.has(prefixed)) return prefixed;
 	return value;
 }
 
@@ -379,41 +367,159 @@ function isMissingSimulatorExecutable(error: unknown): boolean {
 	return message.includes("could not find built simulator executable") && message.includes("edgetx-ui build");
 }
 
+// --- ISON rendering (output only; MCP transport stays JSON) ---
+
+function isonQuoteString(s: string): string {
+	return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\t/g, "\\t").replace(/\r/g, "\\r") + '"';
+}
+
+function isonNeedsQuote(s: string): boolean {
+	if (s === "") return true;
+	if (/[\s"\\]/.test(s)) return true;
+	if (s === "true" || s === "false" || s === "null") return true;
+	if (/^-?[0-9]+$/.test(s)) return true;
+	if (/^-?[0-9]+\.[0-9]+$/.test(s)) return true;
+	if (s.startsWith(":")) return true;
+	return false;
+}
+
+function isonFieldName(key: string): string {
+	return key.replace(/[\s]/g, "_");
+}
+
+function isonFormatScalar(value: unknown): string {
+	if (value === null || value === undefined) return "null";
+	if (typeof value === "boolean") return value ? "true" : "false";
+	if (typeof value === "number") return Number.isFinite(value) ? String(value) : "null";
+	if (typeof value === "object") return isonQuoteString(JSON.stringify(value));
+	const s = String(value);
+	return isonNeedsQuote(s) ? isonQuoteString(s) : s;
+}
+
+function isonRootName(action: string): string {
+	return isonFieldName(action.replace(/^edgetx_/, "") || "result");
+}
+
+function isonFlattenObjectLeaves(obj: Record<string, unknown>, prefix: string, out: Array<[string, unknown]>): void {
+	for (const key of Object.keys(obj)) {
+		const path = prefix ? `${prefix}.${isonFieldName(key)}` : isonFieldName(key);
+		const v = obj[key];
+		if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+			isonFlattenObjectLeaves(v as Record<string, unknown>, path, out);
+		} else {
+			out.push([path, v]);
+		}
+	}
+}
+
+function isonEmitObject(obj: Record<string, unknown>, name: string, blocks: string[]): void {
+	const scalars: Array<[string, unknown]> = [];
+	const collections: Array<[string, unknown]> = [];
+	const walk = (o: Record<string, unknown>, prefix: string): void => {
+		for (const key of Object.keys(o)) {
+			const path = prefix ? `${prefix}.${isonFieldName(key)}` : isonFieldName(key);
+			const v = o[key];
+			if (Array.isArray(v)) {
+				collections.push([isonFieldName(key), v]);
+			} else if (v !== null && typeof v === "object") {
+				walk(v as Record<string, unknown>, path);
+			} else {
+				scalars.push([path, v]);
+			}
+		}
+	};
+	walk(obj, "");
+	if (scalars.length > 0) {
+		blocks.push(`object.${name}\n${scalars.map(([p]) => p).join(" ")}\n${scalars.map(([, v]) => isonFormatScalar(v)).join(" ")}`);
+	}
+	for (const [childName, childVal] of collections) {
+		isonEmit(childVal, childName, blocks);
+	}
+	if (scalars.length === 0 && collections.length === 0) {
+		blocks.push(`object.${name}\n_empty true`);
+	}
+}
+
+function isonEmitTable(rows: Array<Record<string, unknown>>, name: string, blocks: string[]): void {
+	const fieldList: string[] = [];
+	const fieldSet = new Set<string>();
+	for (const row of rows) {
+		for (const key of Object.keys(row)) {
+			const f = isonFieldName(key);
+			if (!fieldSet.has(f)) {
+				fieldSet.add(f);
+				fieldList.push(f);
+			}
+		}
+	}
+	const header = fieldList.join(" ");
+	const dataLines = rows.map((row) => fieldList.map((f) => isonFormatScalar(row[f] ?? null)).join(" "));
+	blocks.push(`table.${name}\n${header}\n${dataLines.join("\n")}`);
+}
+
+function isonEmit(value: unknown, name: string, blocks: string[]): void {
+	if (Array.isArray(value)) {
+		if (value.length === 0) {
+			blocks.push(`object.${name}\n_length 0`);
+			return;
+		}
+		if (value.every((v) => v !== null && typeof v === "object" && !Array.isArray(v))) {
+			isonEmitTable(value as Array<Record<string, unknown>>, name, blocks);
+		} else {
+			blocks.push(`table.${name}\nvalue\n${value.map((v) => isonFormatScalar(v)).join("\n")}`);
+		}
+		return;
+	}
+	if (value !== null && typeof value === "object") {
+		isonEmitObject(value as Record<string, unknown>, name, blocks);
+		return;
+	}
+	blocks.push(`object.${name}\nvalue\n${isonFormatScalar(value)}`);
+}
+
+function jsonToIson(value: unknown, name: string): string {
+	const blocks: string[] = [];
+	isonEmit(value, name, blocks);
+	return blocks.length ? blocks.join("\n\n") : `object.${name}\nvalue\nnull`;
+}
+
 async function formatResult(action: string, rawText: string): Promise<FormattedResult> {
 	const parsed = parseJson(rawText);
-	const compact = parsed === undefined ? rawText.trim() : JSON.stringify(parsed);
-	const lines = compact.split("\n");
-	const bytes = Buffer.byteLength(compact, "utf8");
+	const rootName = isonRootName(action);
+	const rendered = parsed === undefined ? rawText.trim() : jsonToIson(parsed, rootName);
+	const lines = rendered.split("\n");
+	const bytes = Buffer.byteLength(rendered, "utf8");
 	if (lines.length <= MAX_RESULT_LINES && bytes <= MAX_RESULT_BYTES) {
-		return { content: compact || "{}", details: { action, result: parsed ?? compact } };
+		return { content: rendered || `object.${rootName}\nvalue\nnull`, details: { action, format: "ison", result: parsed ?? rendered } };
 	}
 
 	const tempDir = await mkdtemp(join(tmpdir(), "pi-edgetx-ui-"));
 	const fullOutputPath = join(tempDir, `${action}.json`);
-	await writeFile(fullOutputPath, compact, "utf8");
+	await writeFile(fullOutputPath, JSON.stringify(parsed ?? rawText, null, 2), "utf8");
 
 	let truncated = lines.slice(0, MAX_RESULT_LINES).join("\n");
 	if (Buffer.byteLength(truncated, "utf8") > MAX_RESULT_BYTES) {
 		truncated = Buffer.from(truncated, "utf8").subarray(0, MAX_RESULT_BYTES).toString("utf8");
 	}
-	truncated += `\n\n[Output truncated: ${lines.length} lines, ${bytes} bytes. Full output saved to: ${fullOutputPath}]`;
+	truncated += `\n\n[Output truncated: ${lines.length} lines, ${bytes} bytes. Full JSON saved to: ${fullOutputPath}]`;
 	return {
 		content: truncated,
-		details: { action, truncated: true, fullOutputPath, totalLines: lines.length, totalBytes: bytes },
+		details: { action, format: "ison", truncated: true, fullOutputPath, totalLines: lines.length, totalBytes: bytes },
 	};
 }
 
 async function helpText(args: Record<string, unknown>, client: McpClient, signal?: AbortSignal): Promise<string> {
-	const requested = normalizeAction(args.action ?? args.tool ?? args.name);
+	const requested = await normalizeAction(args.action ?? args.tool ?? args.name, client, signal);
+	const tools = await client.listTools(signal);
 	if (args.full === true) {
-		const tools = await client.listTools(signal);
 		const selected = requested === "help" ? tools : tools.filter((tool) => tool.name === requested);
 		return JSON.stringify({ tools: selected.length ? selected : tools });
 	}
 	if (requested !== "help") {
+		const tool = tools.find((entry) => entry.name === requested);
 		return JSON.stringify({
 			action: requested,
-			hint: ACTION_HINTS[requested] ?? "No compact hint is available. Use args {full:true, action:'...'} for the MCP schema.",
+			hint: ACTION_HINTS[requested] ?? tool?.description ?? "No compact hint is available. Use args {full:true, action:'...'} for the MCP schema.",
 		});
 	}
 	return JSON.stringify({
@@ -421,12 +527,13 @@ async function helpText(args: Record<string, unknown>, client: McpClient, signal
 		recommended_flow: [
 			"edgetx_start_simulator target=tx16s or tx16smk3",
 			"edgetx_status compact=true; if startup_blocker appears, call edgetx_skip_storage_warning_if_present",
-			"edgetx_screen before interaction; use edgetx_ui_tree mode=summary/actionable_only only when needed",
+			"Prefer edgetx_sitemap once per session, then edgetx_orient after most actions",
+			"Use edgetx_screen or edgetx_ui_tree mode=summary/actionable_only only when route/focus context is insufficient",
 			"Prefer automation_id or semantic_id selectors; use raw touch coordinates only for hit-testing/timing work",
 			"Capture edgetx_screenshot for risky navigation, overlays, model switching, or surprising UI-tree results",
 		],
-		common_actions: Object.entries(ACTION_HINTS).map(([action, hint]) => ({ action, hint })),
-		all_actions: ["help", "stop", ...MCP_TOOL_NAMES],
+		common_actions: tools.map((tool) => ({ action: tool.name, hint: ACTION_HINTS[tool.name] ?? tool.description ?? "Use args.full=true for schema." })),
+		all_actions: ["help", "stop", ...tools.map((tool) => tool.name)],
 	});
 }
 
@@ -436,7 +543,7 @@ const EdgetxUiParams = {
 	properties: {
 		action: {
 			type: "string",
-			description: "UI harness action. Use MCP names like edgetx_screen/edgetx_start_simulator or short aliases like screen/start/status/click/help/stop.",
+			description: "UI harness action. Use MCP names like edgetx_screen/edgetx_sitemap/edgetx_start_simulator or short aliases like screen/sitemap/orient/goto/inspect/start/status/help/stop.",
 		},
 		args: {
 			type: "object",
@@ -461,10 +568,10 @@ export default function (pi: ExtensionAPI) {
 		name: "edgetx_ui",
 		label: "EdgeTX UI Harness",
 		description:
-			"Interact with the EdgeTX TX16S UI harness through one compact lazy MCP wrapper. Actions include start/status/screen/ui_tree/activate/click/adjust_field/type_text/scroll/wait_for/screenshot/log/run_flow/help/stop. The MCP process starts only on first non-help use; outputs are compact JSON and truncated to bounded size.",
+			"Interact with the EdgeTX TX16S UI harness through one compact lazy MCP wrapper. Actions include start/status/sitemap/orient/goto/inspect/select_option/confirm/cancel/set_number/screen/ui_tree/activate/click/adjust_field/type_text/scroll/wait_for/screenshot/log/run_flow/help/stop. MCP transport stays JSON; successful tool output is rendered to the agent as compact ISON (tables/blocks). Errors are plain text. The MCP process starts on first live discovery/call.",
 		promptSnippet: "Interact with the EdgeTX UI harness via one compact action wrapper",
 		promptGuidelines: [
-			"Use edgetx_ui action=screen or action=ui_tree with args {mode:'summary'} before interacting with unknown simulator state.",
+			"Prefer edgetx_ui action=sitemap once per session and action=orient after most actions; use action=screen or action=ui_tree with args {mode:'summary'} when more detail is needed.",
 			"Use edgetx_ui selectors in this order: automation_id or semantic_id, exact text, text_contains with role/index, raw coordinates only for hit-testing/timing.",
 		],
 		parameters: EdgetxUiParams as any,
@@ -485,7 +592,7 @@ export default function (pi: ExtensionAPI) {
 
 		async execute(_toolCallId, params, signal, onUpdate) {
 			const input = asRecord(params);
-			const action = normalizeAction(input.action);
+			const action = await normalizeAction(input.action, client, signal);
 			const args = { ...asRecord(input.args) };
 
 			if (action === "help") {
@@ -499,7 +606,8 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text: JSON.stringify({ ok: true, stopped: true }) }], details: { action, stopped: true } };
 			}
 
-			if (!MCP_TOOL_SET.has(action)) {
+			const toolNames = new Set((await client.listTools(signal)).map((tool) => tool.name));
+			if (!toolNames.has(action)) {
 				throw new Error(`Unknown EdgeTX UI harness action '${String(input.action)}'. Call edgetx_ui with action='help' for supported actions.`);
 			}
 

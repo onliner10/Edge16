@@ -32,7 +32,11 @@
 #include "view_channels.h"
 #include "view_main.h"
 
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
 #include <new>
+#include <sstream>
 
 //-----------------------------------------------------------------------------
 
@@ -343,6 +347,172 @@ static QMPage restoreLastVisitedSectionPage(QMPage requestedPage)
 
   return requestedPage;
 }
+
+#if defined(SIMU)
+static const PageDef* findPageDef(QMPage page)
+{
+  const auto* section = findSectionForPage(page);
+  if (!section || !section->subMenuItems)
+    return nullptr;
+
+  for (int i = 0; section->subMenuItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const PageDef& pageDef = section->subMenuItems[i];
+    if (pageDef.qmPage == page)
+      return &pageDef;
+  }
+
+  return nullptr;
+}
+
+static const char* sectionToken(QMPage page)
+{
+  switch (page) {
+    case QM_MODEL_SETUP:
+    case QM_MODEL_FLIGHTMODES:
+    case QM_MODEL_INPUTS:
+    case QM_MODEL_MIXES:
+    case QM_MODEL_OUTPUTS:
+    case QM_MODEL_CURVES:
+    case QM_MODEL_GVARS:
+    case QM_MODEL_LS:
+    case QM_MODEL_SF:
+    case QM_MODEL_SCRIPTS:
+    case QM_MODEL_TELEMETRY:
+    case QM_MODEL_NOTES:
+      return "model";
+    case QM_RADIO_SETUP:
+    case QM_RADIO_GF:
+    case QM_RADIO_TRAINER:
+    case QM_RADIO_HARDWARE:
+    case QM_RADIO_VERSION:
+      return "radio";
+    case QM_UI_THEMES:
+    case QM_UI_SETUP:
+    case QM_UI_SCREEN1:
+    case QM_UI_SCREEN2:
+    case QM_UI_SCREEN3:
+    case QM_UI_SCREEN4:
+    case QM_UI_SCREEN5:
+    case QM_UI_SCREEN6:
+    case QM_UI_SCREEN7:
+    case QM_UI_SCREEN8:
+    case QM_UI_SCREEN9:
+    case QM_UI_SCREEN10:
+    case QM_UI_ADD_PG:
+      return "ui";
+    case QM_TOOLS_APPS:
+    case QM_TOOLS_STORAGE:
+    case QM_TOOLS_RESET:
+    case QM_TOOLS_CHAN_MON:
+    case QM_TOOLS_LS_MON:
+    case QM_TOOLS_STATS:
+    case QM_TOOLS_DEBUG:
+      return "tools";
+    default:
+      return "unknown";
+  }
+}
+
+static const char* pageToken(QMPage page)
+{
+  switch (page) {
+    case QM_MODEL_SETUP: return "setup";
+    case QM_MODEL_FLIGHTMODES: return "flight_modes";
+    case QM_MODEL_INPUTS: return "inputs";
+    case QM_MODEL_MIXES: return "mixes";
+    case QM_MODEL_OUTPUTS: return "outputs";
+    case QM_MODEL_CURVES: return "curves";
+    case QM_MODEL_GVARS: return "gvars";
+    case QM_MODEL_LS: return "logical_switches";
+    case QM_MODEL_SF: return "special_functions";
+    case QM_MODEL_SCRIPTS: return "scripts";
+    case QM_MODEL_TELEMETRY: return "telemetry";
+    case QM_MODEL_NOTES: return "notes";
+    case QM_RADIO_SETUP: return "setup";
+    case QM_RADIO_GF: return "global_functions";
+    case QM_RADIO_TRAINER: return "trainer";
+    case QM_RADIO_HARDWARE: return "hardware";
+    case QM_RADIO_VERSION: return "about";
+    case QM_UI_THEMES: return "themes";
+    case QM_UI_SETUP: return "top_bar";
+    case QM_UI_SCREEN1: return "screen1";
+    case QM_UI_SCREEN2: return "screen2";
+    case QM_UI_SCREEN3: return "screen3";
+    case QM_UI_SCREEN4: return "screen4";
+    case QM_UI_SCREEN5: return "screen5";
+    case QM_UI_SCREEN6: return "screen6";
+    case QM_UI_SCREEN7: return "screen7";
+    case QM_UI_SCREEN8: return "screen8";
+    case QM_UI_SCREEN9: return "screen9";
+    case QM_UI_SCREEN10: return "screen10";
+    case QM_UI_ADD_PG: return "add_screen";
+    case QM_TOOLS_APPS: return "apps";
+    case QM_TOOLS_STORAGE: return "storage";
+    case QM_TOOLS_RESET: return "reset";
+    case QM_TOOLS_CHAN_MON: return "channel_monitor";
+    case QM_TOOLS_LS_MON: return "logical_switches_monitor";
+    case QM_TOOLS_STATS: return "stats";
+    case QM_TOOLS_DEBUG: return "debug";
+    default: return nullptr;
+  }
+}
+
+static const char* editorToken(uint8_t pageId)
+{
+  switch (pageId) {
+    case RP_MIX_EDIT: return "mix_edit";
+    case RP_INPUT_EDIT: return "input_edit";
+    case RP_CURVE_EDIT: return "curve_edit";
+    case RP_OUTPUT_EDIT: return "output_edit";
+    case RP_LOGICAL_SWITCH_EDIT: return "logical_switch_edit";
+    case RP_SPECIAL_FUNCTION_EDIT: return "special_function_edit";
+    case RP_GLOBAL_FUNCTION_EDIT: return "global_function_edit";
+    case RP_FLIGHT_MODE_EDIT: return "flight_mode_edit";
+    case RP_GVAR_EDIT: return "gvar_edit";
+    case RP_SENSOR_EDIT: return "sensor_edit";
+    case RP_SCRIPT_EDIT: return "script_edit";
+    case RP_TIMER_EDIT: return "timer_edit";
+    case RP_USB_CHANNEL_EDIT: return "usb_channel_edit";
+    case RP_MIX_ADVANCED: return "mix_advanced";
+    case RP_INPUT_ADVANCED: return "input_advanced";
+    case RP_BATTERY_PACK_EDIT: return "battery_pack_edit";
+    default: return nullptr;
+  }
+}
+
+static bool editorPageIdForToken(const std::string& token, uint8_t& pageId)
+{
+  const struct Entry {
+    const char* token;
+    uint8_t pageId;
+  } entries[] = {
+      {"mix_edit", RP_MIX_EDIT},
+      {"input_edit", RP_INPUT_EDIT},
+      {"curve_edit", RP_CURVE_EDIT},
+      {"output_edit", RP_OUTPUT_EDIT},
+      {"logical_switch_edit", RP_LOGICAL_SWITCH_EDIT},
+      {"special_function_edit", RP_SPECIAL_FUNCTION_EDIT},
+      {"global_function_edit", RP_GLOBAL_FUNCTION_EDIT},
+      {"flight_mode_edit", RP_FLIGHT_MODE_EDIT},
+      {"gvar_edit", RP_GVAR_EDIT},
+      {"sensor_edit", RP_SENSOR_EDIT},
+      {"script_edit", RP_SCRIPT_EDIT},
+      {"timer_edit", RP_TIMER_EDIT},
+      {"usb_channel_edit", RP_USB_CHANNEL_EDIT},
+      {"mix_advanced", RP_MIX_ADVANCED},
+      {"input_advanced", RP_INPUT_ADVANCED},
+      {"battery_pack_edit", RP_BATTERY_PACK_EDIT},
+  };
+
+  for (const auto& entry : entries) {
+    if (token == entry.token) {
+      pageId = entry.pageId;
+      return true;
+    }
+  }
+  return false;
+}
+#endif
 
 void QuickMenu::openQuickMenu()
 {
@@ -837,5 +1007,172 @@ void QuickMenu::onPressPGUP()
 {
   mainMenu->prevEntry();
   afterPG();
+}
+#endif
+
+#if defined(SIMU)
+std::string routeToStableId(const Route& route)
+{
+  if (!route.valid() || route.depth == 0)
+    return {};
+
+  const QMPage page = static_cast<QMPage>(route.pages[0]);
+  const char* section = sectionToken(page);
+  const char* pageName = pageToken(page);
+  if (!section || !pageName || std::string(section) == "unknown")
+    return {};
+
+  std::string out = std::string(section) + "." + pageName;
+  for (uint8_t depth = 1; depth < route.depth; depth += 1) {
+    const char* token = editorToken(route.pages[depth]);
+    if (token)
+      out += "." + std::string(token);
+    else
+      out += ".seg" + std::to_string(route.pages[depth]);
+    out += "[" + std::to_string(route.params[depth]) + "]";
+  }
+  return out;
+}
+
+std::string routeToTitle(const Route& route)
+{
+  if (!route.valid() || route.depth == 0)
+    return {};
+
+  const PageDef* pageDef = findPageDef(static_cast<QMPage>(route.pages[0]));
+  if (!pageDef)
+    return routeToStableId(route);
+
+  std::string title = STR_VAL(pageDef->title);
+  for (uint8_t depth = 1; depth < route.depth; depth += 1) {
+    if (const char* token = editorToken(route.pages[depth])) {
+      title += " / ";
+      title += token;
+      title += " ";
+      title += std::to_string(route.params[depth]);
+    }
+  }
+  return title;
+}
+
+bool routeIdToRoute(const std::string& routeId, Route& route, std::string* error)
+{
+  route = {};
+  const PageDef* matchedPage = nullptr;
+  std::string matchedBase;
+
+  for (int i = QuickMenu::FIRST_SEARCH_IDX; qmTopItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const QMMainDef& section = qmTopItems[i];
+    if (section.pageAction != QM_SUBMENU || !section.subMenuItems)
+      continue;
+
+    for (int j = 0; section.subMenuItems[j].icon != EDGETX_ICONS_COUNT; j += 1) {
+      const PageDef& pageDef = section.subMenuItems[j];
+      if (pageDef.pageAction != PAGE_CREATE)
+        continue;
+
+      std::string base = routeToStableId(Route{section.icon, 1, {static_cast<uint8_t>(pageDef.qmPage)}, {0}});
+      if (base.empty())
+        continue;
+      if (routeId == base || routeId.rfind(base + ".", 0) == 0) {
+        if (base.size() > matchedBase.size()) {
+          matchedBase = base;
+          matchedPage = &pageDef;
+        }
+      }
+    }
+  }
+
+  if (!matchedPage) {
+    if (error) *error = "unknown route: " + routeId;
+    return false;
+  }
+
+  const auto* section = findSectionForPage(matchedPage->qmPage);
+  if (!section) {
+    if (error) *error = "route section not found: " + routeId;
+    return false;
+  }
+
+  route.rootIcon = section->icon;
+  route.depth = 1;
+  route.pages[0] = static_cast<uint8_t>(matchedPage->qmPage);
+
+  size_t pos = matchedBase.size();
+  while (pos < routeId.size()) {
+    if (routeId[pos] != '.') {
+      if (error) *error = "invalid route segment in: " + routeId;
+      return false;
+    }
+    pos += 1;
+
+    size_t bracket = routeId.find('[', pos);
+    if (bracket == std::string::npos) {
+      if (error) *error = "missing parameter in route segment: " + routeId;
+      return false;
+    }
+    std::string token = routeId.substr(pos, bracket - pos);
+    size_t endBracket = routeId.find(']', bracket + 1);
+    if (endBracket == std::string::npos) {
+      if (error) *error = "unterminated route parameter: " + routeId;
+      return false;
+    }
+    std::string paramText = routeId.substr(bracket + 1, endBracket - bracket - 1);
+    errno = 0;
+    char* endPtr = nullptr;
+    long parsed = strtol(paramText.c_str(), &endPtr, 10);
+    if (errno != 0 || !endPtr || *endPtr != '\0' ||
+        parsed < std::numeric_limits<int16_t>::min() ||
+        parsed > std::numeric_limits<int16_t>::max()) {
+      if (error) *error = "invalid route parameter: " + paramText;
+      return false;
+    }
+    int param = static_cast<int>(parsed);
+
+    uint8_t pageId = 0;
+    if (!editorPageIdForToken(token, pageId)) {
+      if (error) *error = "unknown route segment: " + token;
+      return false;
+    }
+    if (route.depth >= Route::MAX_SEGMENTS) {
+      if (error) *error = "route too deep: " + routeId;
+      return false;
+    }
+    route.pages[route.depth] = pageId;
+    route.params[route.depth] = param;
+    route.depth += 1;
+    pos = endBracket + 1;
+  }
+
+  return route.valid();
+}
+
+std::string routeSitemapJson()
+{
+  std::ostringstream out;
+  out << "\"routes\":[";
+  bool first = true;
+  for (int i = QuickMenu::FIRST_SEARCH_IDX; qmTopItems[i].icon != EDGETX_ICONS_COUNT; i += 1) {
+    const QMMainDef& section = qmTopItems[i];
+    if (section.pageAction != QM_SUBMENU || !section.subMenuItems)
+      continue;
+
+    for (int j = 0; section.subMenuItems[j].icon != EDGETX_ICONS_COUNT; j += 1) {
+      const PageDef& pageDef = section.subMenuItems[j];
+      if (pageDef.pageAction != PAGE_CREATE || (pageDef.enabled && !pageDef.enabled()))
+        continue;
+      Route route;
+      route.rootIcon = section.icon;
+      route.depth = 1;
+      route.pages[0] = static_cast<uint8_t>(pageDef.qmPage);
+      if (!first) out << ",";
+      first = false;
+      out << "{\"id\":\"" << routeToStableId(route)
+          << "\",\"label\":\"" << replaceAll(STR_VAL(pageDef.title), "\"", "\\\"")
+          << "\",\"section\":\"" << sectionToken(pageDef.qmPage) << "\"}";
+    }
+  }
+  out << "],\"templates\":[]";
+  return out.str();
 }
 #endif

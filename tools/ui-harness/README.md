@@ -41,17 +41,22 @@ while the harness drives it, set `EDGETX_UI_SHOW_WINDOW=1`; an explicitly set
 
 ### Agent-friendly patterns
 
-Prefer `edgetx_screen` (low-token accessibility-style summary) or
-`edgetx_ui_tree mode=summary` (labeled/actionable nodes only) over the full
-tree. Click/assert results are compact by default; use `verbose=true` for full
-node details. The MCP deliberately does not provide screen-jump navigation:
-actions are limited to visible, user-reachable controls and radio inputs.
+Prefer `edgetx_orient` for the default low-token route-first summary, and use
+`edgetx_sitemap` once per session to learn stable navigable routes. Fall back to
+`edgetx_screen` or `edgetx_ui_tree mode=summary` only when route/focus context is
+not enough. Click/assert results are compact by default; use `verbose=true` for
+full node details. Route navigation is available through `edgetx_goto` for
+stable firmware-owned pages; direct actions remain limited to visible,
+user-reachable controls and radio inputs.
 
 ```text
 edgetx_start_simulator target=tx16s
 edgetx_status                                 # if startup_blocker is present, use its skip_tool
 edgetx_skip_storage_warning_if_present        # bounded ENTER/action attempts for storage warnings
-edgetx_screen                                # low-token: title, fields, actions, visible_text
+edgetx_sitemap                               # one-time route graph + editor templates
+edgetx_orient                                # tiny route/title/focus/capabilities summary
+edgetx_goto route=model.mixes                # route-first navigation
+edgetx_screen                                # richer accessibility-style summary when needed
 edgetx_ui_tree mode=summary actionable_only=true  # only clickable nodes
 edgetx_activate automation_id=model.model2.yml
 edgetx_adjust_field label=Cells target_value=4
@@ -63,21 +68,30 @@ edgetx_screenshot name=after-model-click
 
 ### Tool reference
 
-`edgetx_ui_tree` — LVGL tree. mode=summary (default for agents) returns
-labeled/actionable nodes with compact fields. mode=full returns the full tree.
-Use `actionable_only`, `text_contains`, `limit`, `verbose` to filter.
+`edgetx_sitemap` — Firmware-owned route graph plus any verified parameterized
+editor route templates. Fetch once per session and cache it.
 
-`edgetx_screen` — Low-token accessibility-style summary: `{title, page,
-context, focused, screen_hash,
-actions:[{kind,label,automation_id,semantic_id,actions}], fields, scrollables,
-available_inputs, next_actions, visible_text, counts}`. Text is normalized for
-matching and display. Use this instead of ui_tree when you only need to know the
-current page, whether you are on a menu grid or form, what is focused, what is
-visible, which meaningful containers can scroll, and what user-equivalent
-controls can be activated. Blocking startup dialogs report
-`context.type=blocking_dialog`, include `skip_tool`, and put
-`edgetx_skip_storage_warning_if_present` first in `next_actions`.
-Visible form rows are summarized as `fields`, for example
+`edgetx_orient` — Smallest recommended state read: `{route,title,mode,focus,can,
+hash,blocker?}`. Use after most actions instead of re-reading the full screen.
+
+`edgetx_goto` — Navigate by stable firmware route id, for example
+`route=model.mixes` or `route=radio.hardware`. This avoids repeated
+observe-click-observe loops.
+
+`edgetx_inspect` — Targeted current-screen details instead of the full tree:
+fields, actions, and/or visible text with optional filtering.
+
+`edgetx_ui_tree` — LVGL tree. mode=summary returns labeled/actionable nodes with
+compact fields. mode=full returns the full tree. Use `actionable_only`,
+`text_contains`, `limit`, `verbose` to filter.
+
+`edgetx_screen` — Richer accessibility-style summary:
+`{route,route_valid,route_title,title,page,context,focused,screen_hash,actions,fields,scrollables,available_inputs,next_actions,visible_text,counts}`.
+Text is normalized for matching and display. Use this when route/focus context
+is not enough and you need visible values or actions. Blocking startup dialogs
+report `context.type=blocking_dialog`, include `skip_tool`, and put
+`edgetx_skip_storage_warning_if_present` first in `next_actions`. Visible form
+rows are summarized as `fields`, for example
 `{label:"Cells", value:"3", kind:"number", editable:true, runtime_id:"..."}`.
 Focused fields use `context.type=field_focus`; ambiguous edit states use
 `context.type=field_edit` with guidance for rotary, `ENTER`, `EXIT`, or text

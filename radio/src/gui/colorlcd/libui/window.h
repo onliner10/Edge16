@@ -426,6 +426,7 @@ class Window
   virtual std::string automationText() const;
   virtual bool automationClickable() const;
   virtual bool automationLongClickable() const { return false; }
+  virtual bool automationRoute(Route& out) const;
 #else
   void setAutomationId(const char*) {}
   void setAutomationId(const std::string&) {}

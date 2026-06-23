@@ -15,4 +15,9 @@ bool requestAction(const std::string& id, const std::string& action,
                    std::string& extra, std::string& error,
                    uint32_t timeoutMs = 1000);
 
+bool currentRouteJson(std::string& json, std::string& error);
+bool sitemapJson(std::string& json, std::string& error);
+bool gotoRoute(const std::string& routeId, std::string& extra,
+               std::string& error);
+
 }
