@@ -66,9 +66,15 @@ void RadioGpsTool::init()
 void RadioGpsTool::refresh()
 {
   if (gpsSensorID >= 0) {
-    static TelemetryItem& gpsItem = telemetryItems[gpsSensorID];
-    char gps_uri[64];
-    snprintf(gps_uri, sizeof(gps_uri), "geo:0,0?q=%f,%f", (float)gpsItem.gps.latitude / 1000000, (float)gpsItem.gps.longitude / 1000000);
+    TelemetryItem& gpsItem = telemetryItems[gpsSensorID];
+    // Google Maps universal cross-platform URL: opens the native Maps app on
+    // iOS (Universal Links) and Android. The previous "geo:0,0?q=..." form is
+    // not reliably handled by iOS and produced wrong locations.
+    char gps_uri[96];
+    snprintf(gps_uri, sizeof(gps_uri),
+             "https://www.google.com/maps/search/?api=1&query=%f,%f",
+             (double)gpsItem.gps.latitude / 1000000,
+             (double)gpsItem.gps.longitude / 1000000);
     gpsQR->setData(gps_uri);
     gpsQR->show();
     gpsLabel->setText(getGPSSensorValue(gpsItem, 0));
