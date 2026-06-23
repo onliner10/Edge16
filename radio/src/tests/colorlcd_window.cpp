@@ -241,6 +241,30 @@ bool pageLongPressReturnKeepsEditorVisibleUntilHomeForTest()
       });
 }
 
+bool pageLongPressReturnRunsEditorCloseHandlerBeforeParentCloseForTest()
+{
+  bool editorCloseHandlerCalled = false;
+  bool parentAliveInEditorCloseHandler = false;
+  return withLongPressReturnStackForTest(
+      [&](PageGroup* pageGroup, LongPressReturnTestEditorPage* editor) {
+        if (Window::pageGroup() != pageGroup || Window::topWindow() != editor)
+          return false;
+
+        editor->setCloseHandler([&]() {
+          editorCloseHandlerCalled = true;
+          parentAliveInEditorCloseHandler = Window::pageGroup() == pageGroup;
+        });
+        editor->longPressReturnForTest();
+
+        Window::runDeferredCloseHandlersForTest();
+        Window::runDeferredCloseHandlersForTest();
+        Window::runDeferredCloseHandlersForTest();
+
+        return Window::pageGroup() == nullptr && editorCloseHandlerCalled &&
+               parentAliveInEditorCloseHandler;
+      });
+}
+
 }  // namespace
 
 TEST(ColorEtxTheme, ObjectAllocationFailureReturnsNull)
@@ -491,6 +515,24 @@ TEST(ColorWindow, LongPressReturnKeepsEditorVisibleUntilHome)
   if (pid == 0) {
     alarm(2);
     _exit(pageLongPressReturnKeepsEditorVisibleUntilHomeForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, LongPressReturnRunsEditorCloseHandlerBeforeParentClose)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(pageLongPressReturnRunsEditorCloseHandlerBeforeParentCloseForTest()
+              ? 0
+              : 1);
   }
 
   int status = 0;

@@ -246,7 +246,10 @@ void Page::onLongPressRTN()
   // PageGroup for a frame, while closing that parent inline caused freezes.
   deferWindowMutation([](Window& window, UiMutationToken&) {
     auto& page = static_cast<Page&>(window);
+    auto closeHandler = std::move(page.closeHandler);
+    page.closeHandler = nullptr;
     page.onCancel();
+    if (closeHandler) closeHandler();
 
     if (PageGroup* pageGroup = Window::pageGroup())
       pageGroup->returnHomeFromLongPress();
