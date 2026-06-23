@@ -105,7 +105,7 @@ HWPots::HWPots(Window* parent) :
 
   setCloseHandler([=]() {
     if (potsChanged) {
-      Window::deferUiMutation(
+      Window::deferGlobalUiMutation(
           [](UiMutationToken& token) { LayoutFactory::replaceCustomScreens(token); });
     }
   });

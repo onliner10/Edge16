@@ -138,6 +138,8 @@ Window* Layer::walk(std::function<bool(Window* w)> check)
 
 std::list<Window*> Window::trash;
 std::list<Window*> Window::pendingTrash;
+std::list<Window::LiveWindowRef> Window::liveWindowRefs;
+uint32_t Window::nextWindowLifetimeId = 0;
 std::list<Window::DeferredMutation> Window::deferredMutationsReady;
 std::list<Window::DeferredMutation> Window::deferredMutationsPending;
 
@@ -159,6 +161,50 @@ PageGroup* Window::pageGroup()
   Window* w =
       Layer::walk([=](Window* w) mutable -> bool { return w->isPageGroup(); });
   return (PageGroup*)w;
+}
+
+//-----------------------------------------------------------------------------
+
+uint32_t Window::registerLiveWindow(Window* window)
+{
+  const uint32_t id = ++nextWindowLifetimeId;
+  liveWindowRefs.push_back({window, id});
+  return id;
+}
+
+void Window::unregisterLiveWindow(Window* window, uint32_t lifetimeId)
+{
+  for (auto it = liveWindowRefs.begin(); it != liveWindowRefs.end(); ++it) {
+    if (it->window == window && it->lifetimeId == lifetimeId) {
+      liveWindowRefs.erase(it);
+      return;
+    }
+  }
+}
+
+bool Window::isLiveWindowRef(const WindowRef& ref)
+{
+  for (const auto& liveRef : liveWindowRefs) {
+    if (liveRef.window == ref.window && liveRef.lifetimeId == ref.lifetimeId)
+      return true;
+  }
+  return false;
+}
+
+Window::WindowRef Window::refForDeferredMutation()
+{
+  return WindowRef(this, lifetimeId);
+}
+
+bool Window::WindowRef::withLiveWindow(std::function<void(Window&)> fn) const
+{
+  if (!window || !fn || !Window::isLiveWindowRef(*this) ||
+      !window->hasLiveLvObj()) {
+    return false;
+  }
+
+  fn(*window);
+  return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -296,12 +342,14 @@ lv_obj_t* Window::liveLvObj() const
 Window::Window(const rect_t& rect) :
     rect(rect), parent(nullptr), availability(Availability::Available)
 {
+  lifetimeId = registerLiveWindow(this);
   lvobj = nullptr;
 }
 
 Window::Window(Window* parent, const rect_t& rect, LvglCreate objConstruct) :
     rect(rect), parent(parent), availability(Availability::Available)
 {
+  lifetimeId = registerLiveWindow(this);
   lv_obj_t* lv_parent = nullptr;
   if (parent) {
     parent->withLive([&](LiveWindow& live) { lv_parent = live.lvobj(); });
@@ -340,6 +388,7 @@ Window::~Window()
 {
   TRACE_WINDOWS("Destroy %p %s", this, getWindowDebugString().c_str());
 
+  unregisterLiveWindow(this, lifetimeId);
   disconnectUiConnections();
   lv_async_call_cancel(Window::asyncDelayLoader, this);
 
@@ -917,6 +966,22 @@ void Window::runDeferredCloseHandlers()
 void Window::deferUiMutation(DeferredMutation mutation)
 {
   if (mutation) deferredMutationsPending.push_back(std::move(mutation));
+}
+
+void Window::deferGlobalUiMutation(DeferredMutation mutation)
+{
+  deferUiMutation(std::move(mutation));
+}
+
+void Window::deferWindowMutation(DeferredWindowMutation mutation)
+{
+  if (!mutation) return;
+
+  deferUiMutation([owner = refForDeferredMutation(),
+                   mutation = std::move(mutation)](
+                      UiMutationToken& token) mutable {
+    owner.withLiveWindow([&](Window& window) { mutation(window, token); });
+  });
 }
 
 bool Window::hasFocus() const

@@ -493,7 +493,7 @@ class ModelsPageBody : public Window
     job.reload = reload;
     job.close = std::move(close);
 
-    Window::deferUiMutation([job](UiMutationToken& token) mutable {
+    Window::deferGlobalUiMutation([job](UiMutationToken& token) mutable {
       if (job.close) job.close();
       performModelSwitch(token, job.filename, job.reload);
     });
@@ -747,7 +747,7 @@ void ModelLabelsWindow::newModel()
     // Close Window
     onCancel();
 
-    Window::deferUiMutation([folder, name](UiMutationToken& token) {
+    Window::deferGlobalUiMutation([folder, name](UiMutationToken& token) {
       (void)token;
       // Check for not 'Blank Model'
       if (name.size() > 0) {

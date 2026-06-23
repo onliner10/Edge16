@@ -241,8 +241,13 @@ void Page::onLongPressRTN()
     rememberRoute(_route);
   else
     clearRememberedRoute();
-  onCancel();
-  Window::deferUiMutation([](UiMutationToken&) {
+
+  // Defer both closes together: closing the editor inline reveals the parent
+  // PageGroup for a frame, while closing that parent inline caused freezes.
+  deferWindowMutation([](Window& window, UiMutationToken&) {
+    auto& page = static_cast<Page&>(window);
+    page.onCancel();
+
     if (PageGroup* pageGroup = Window::pageGroup())
       pageGroup->returnHomeFromLongPress();
   });

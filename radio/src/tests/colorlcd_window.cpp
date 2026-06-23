@@ -149,50 +149,96 @@ bool routeApiScopedAndOneShotForTest()
   return true;
 }
 
-bool pageLongPressReturnDefersPageGroupCloseForTest()
+class LongPressReturnTestPageGroupItem : public PageGroupItem
 {
-  class TestPageGroupItem : public PageGroupItem
+ public:
+  explicit LongPressReturnTestPageGroupItem(const PageDef& pageDef) :
+      PageGroupItem(pageDef)
   {
-   public:
-    explicit TestPageGroupItem(const PageDef& pageDef) : PageGroupItem(pageDef) {}
-    void build(Window*) override {}
-  };
+  }
+  void build(Window*) override {}
+};
 
-  class TestEditorPage : public Page
-  {
-   public:
-    TestEditorPage() : Page(ICON_MODEL_MIXER, Route{}) {}
-    void longPressReturnForTest() { onLongPressRTN(); }
-  };
+class LongPressReturnTestEditorPage : public Page
+{
+ public:
+  LongPressReturnTestEditorPage() : Page(ICON_MODEL_MIXER, Route{}) {}
+  void longPressReturnForTest() { onLongPressRTN(); }
+};
 
-  static const PageDef pages[] = {
-      { ICON_MODEL_MIXER, STR_DEF(STR_QM_MIXES), STR_DEF(STR_MIXES),
-        PAGE_CREATE, QM_MODEL_MIXES,
-        [](const PageDef& pageDef) -> PageGroupItem* {
-          return new (std::nothrow) TestPageGroupItem(pageDef);
-        } },
-      { EDGETX_ICONS_COUNT }
-  };
+static const PageDef longPressReturnPages[] = {
+    { ICON_MODEL_MIXER, STR_DEF(STR_QM_MIXES), STR_DEF(STR_MIXES),
+      PAGE_CREATE, QM_MODEL_MIXES,
+      [](const PageDef& pageDef) -> PageGroupItem* {
+        return new (std::nothrow) LongPressReturnTestPageGroupItem(pageDef);
+      } },
+    { EDGETX_ICONS_COUNT }
+};
 
-  auto pageGroup = new (std::nothrow) PageGroup(ICON_MODEL, "Mixes", pages);
-  auto editor = new (std::nothrow) TestEditorPage();
+template <typename Fn>
+bool withLongPressReturnStackForTest(Fn check)
+{
+  auto pageGroup = new (std::nothrow) PageGroup(ICON_MODEL, "Mixes",
+                                                longPressReturnPages);
+  auto editor = new (std::nothrow) LongPressReturnTestEditorPage();
   if (!pageGroup || !editor) {
     delete editor;
     delete pageGroup;
     return false;
   }
 
-  const bool setup = Window::pageGroup() == pageGroup;
-  editor->longPressReturnForTest();
+  return check(pageGroup, editor);
+}
 
-  const bool notClosedInline = Window::pageGroup() == pageGroup;
-  Window::runDeferredCloseHandlersForTest();
-  const bool notClosedSameCycle = Window::pageGroup() == pageGroup;
-  Window::runDeferredCloseHandlersForTest();
-  const bool closedAfterDeferredCycle = Window::pageGroup() == nullptr;
+bool pageLongPressReturnDefersPageGroupCloseForTest()
+{
+  return withLongPressReturnStackForTest(
+      [](PageGroup* pageGroup, LongPressReturnTestEditorPage* editor) {
+        const bool setup = Window::pageGroup() == pageGroup;
+        editor->longPressReturnForTest();
 
-  return setup && notClosedInline && notClosedSameCycle &&
-         closedAfterDeferredCycle;
+        const bool notClosedInline = Window::pageGroup() == pageGroup;
+        Window::runDeferredCloseHandlersForTest();
+        const bool notClosedSameCycle = Window::pageGroup() == pageGroup;
+        Window::runDeferredCloseHandlersForTest();
+        const bool closedAfterDeferredCycle = Window::pageGroup() == nullptr;
+
+        return setup && notClosedInline && notClosedSameCycle &&
+               closedAfterDeferredCycle;
+      });
+}
+
+bool ownerBoundDeferredMutationSkipsDeletedWindowForTest()
+{
+  bool called = false;
+  auto window = new (std::nothrow) Window(MainWindow::instance(), rect_t{});
+  if (!window) return false;
+
+  window->deferWindowMutation([&](Window&, UiMutationToken&) { called = true; });
+  window->deleteLater();
+  Window::runDeferredCloseHandlersForTest();
+
+  return !called;
+}
+
+bool pageLongPressReturnKeepsEditorVisibleUntilHomeForTest()
+{
+  return withLongPressReturnStackForTest(
+      [](PageGroup* pageGroup, LongPressReturnTestEditorPage* editor) {
+        const bool setup = Window::pageGroup() == pageGroup &&
+                           Window::topWindow() == editor;
+        editor->longPressReturnForTest();
+
+        const bool editorStillTopInline = Window::topWindow() == editor;
+        Window::runDeferredCloseHandlersForTest();
+        const bool editorStillTopSameCycle = Window::topWindow() == editor;
+        Window::runDeferredCloseHandlersForTest();
+        const bool closedAfterDeferredCycle = Window::pageGroup() == nullptr &&
+                                              Window::topWindow() != pageGroup;
+
+        return setup && editorStillTopInline && editorStillTopSameCycle &&
+               closedAfterDeferredCycle;
+      });
 }
 
 }  // namespace
@@ -429,6 +475,38 @@ TEST(ColorWindow, LongPressReturnDefersPageGroupClose)
   if (pid == 0) {
     alarm(2);
     _exit(pageLongPressReturnDefersPageGroupCloseForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, LongPressReturnKeepsEditorVisibleUntilHome)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(pageLongPressReturnKeepsEditorVisibleUntilHomeForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorWindow, OwnerBoundDeferredMutationSkipsDeletedWindow)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(ownerBoundDeferredMutationSkipsDeletedWindowForTest() ? 0 : 1);
   }
 
   int status = 0;

@@ -256,11 +256,30 @@ class Window
   void clearTextFlag(LcdFlags flag);
   LcdFlags getTextFlags() const { return textFlags; }
 
+  class WindowRef
+  {
+   public:
+    WindowRef() = default;
+    bool withLiveWindow(std::function<void(Window&)> fn) const;
+
+   private:
+    friend class Window;
+    WindowRef(Window* window, uint32_t lifetimeId) :
+        window(window), lifetimeId(lifetimeId)
+    {
+    }
+
+    Window* window = nullptr;
+    uint32_t lifetimeId = 0;
+  };
+
   typedef std::function<void()> CloseHandler;
   void setCloseHandler(CloseHandler h) { closeHandler = std::move(h); }
 
   typedef std::function<void(UiMutationToken&)> DeferredMutation;
-  static void deferUiMutation(DeferredMutation mutation);
+  typedef std::function<void(Window&, UiMutationToken&)> DeferredWindowMutation;
+  static void deferGlobalUiMutation(DeferredMutation mutation);
+  void deferWindowMutation(DeferredWindowMutation mutation);
 
   typedef std::function<void(bool)> FocusHandler;
   void setFocusHandler(FocusHandler h) { focusHandler = std::move(h); }
@@ -478,10 +497,24 @@ class Window
   void assignLvGroup(lv_group_t* g, bool setDefault);
 
  private:
+  struct LiveWindowRef
+  {
+    Window* window = nullptr;
+    uint32_t lifetimeId = 0;
+  };
+
+  WindowRef refForDeferredMutation();
+  static bool isLiveWindowRef(const WindowRef& ref);
+  static uint32_t registerLiveWindow(Window* window);
+  static void unregisterLiveWindow(Window* window, uint32_t lifetimeId);
+
   static std::list<Window*> trash;
   static std::list<Window*> pendingTrash;
+  static std::list<LiveWindowRef> liveWindowRefs;
+  static uint32_t nextWindowLifetimeId;
   static std::list<DeferredMutation> deferredMutationsReady;
   static std::list<DeferredMutation> deferredMutationsPending;
+  static void deferUiMutation(DeferredMutation mutation);
   static void runDeferredCloseHandlers();
 
  protected:
@@ -493,6 +526,7 @@ class Window
   lv_obj_t* liveLvObj() const;
 
   lv_obj_t* lvobj = nullptr;
+  uint32_t lifetimeId = 0;
 
  protected:
   std::list<Window*> children;
