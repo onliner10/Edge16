@@ -81,6 +81,11 @@ class Page : public NavWindow
 
 #if defined(SIMU)
   std::string automationRole() const override { return "page"; }
+  bool automationRoute(Route& out) const override
+  {
+    out = _route;
+    return _route.valid();
+  }
 #endif
 
   void enableRefresh();

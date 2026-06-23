@@ -23,6 +23,7 @@
 
 #include "window.h"
 #include "bitmaps.h"
+#include "libui/route.h"
 #include <vector>
 #include "quick_menu_group.h"
 #include "quick_menu_def.h"
@@ -58,6 +59,14 @@ struct QMMainDef {
 };
 
 extern const QMMainDef qmTopItems[];
+
+#if defined(SIMU)
+std::string routeToStableId(const Route& route);
+std::string routeToTitle(const Route& route);
+bool routeIdToRoute(const std::string& routeId, Route& route,
+                    std::string* error = nullptr);
+std::string routeSitemapJson();
+#endif
 
 //-----------------------------------------------------------------------------
 

@@ -203,6 +203,10 @@ class PageGroupBase : public NavWindow
   coord_t getScrollY();
   void setScrollY(coord_t y);
 
+#if defined(SIMU)
+  bool automationRoute(Route& out) const override;
+#endif
+
   EdgeTxIcon getIcon() const { return icon; }
 
  protected:

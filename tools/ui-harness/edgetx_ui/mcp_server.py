@@ -26,6 +26,65 @@ TOOLS: dict[str, dict[str, Any]] = {
         "description": "Return simulator status and LCD geometry. If startup is blocked by a visible warning dialog, startup_blocker includes the suggested skip tool.",
         "inputSchema": {"type": "object", "properties": {"compact": {"type": "boolean", "default": False}}},
     },
+    "edgetx_sitemap": {
+        "description": "Return the firmware-owned route sitemap for navigable pages and editor route templates.",
+        "inputSchema": {"type": "object"},
+    },
+    "edgetx_orient": {
+        "description": "Return a compact route-first orientation summary: current route/title, focus, capabilities, blocker state, and hash.",
+        "inputSchema": {"type": "object"},
+    },
+    "edgetx_goto": {
+        "description": "Navigate to a stable firmware route id such as model.mixes or radio.hardware.",
+        "inputSchema": {"type": "object", "properties": {"route": {"type": "string"}}, "required": ["route"]},
+    },
+    "edgetx_inspect": {
+        "description": "Return targeted current-screen details instead of the full UI tree: fields, actions, and/or visible_text with optional filtering.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "fields": {"type": "boolean", "default": True},
+                "actions": {"type": "boolean", "default": False},
+                "visible_text": {"type": "boolean", "default": False},
+                "editable_only": {"type": "boolean", "default": False},
+                "text_contains": {"type": "string"},
+                "limit": {"type": "integer", "default": 10}
+            }
+        },
+    },
+    "edgetx_select_option": {
+        "description": "Select an option from the current visible/scrollable overlay by text, scrolling as needed.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "text_contains": {"type": "string"},
+                "index": {"type": "integer", "default": 0},
+                "max_scrolls": {"type": "integer", "default": 30},
+            },
+        },
+    },
+    "edgetx_confirm": {
+        "description": "Confirm the current overlay/editor by clicking Ok when visible, otherwise pressing ENTER.",
+        "inputSchema": {"type": "object"},
+    },
+    "edgetx_cancel": {
+        "description": "Cancel/dismiss the current overlay/editor by clicking Cancel when visible, otherwise pressing EXIT.",
+        "inputSchema": {"type": "object"},
+    },
+    "edgetx_set_number": {
+        "description": "Set the value in an active number-editor overlay using bounded rotary steps, optionally confirming it.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "value": {"type": "number"},
+                "label": {"type": "string"},
+                "confirm": {"type": "boolean", "default": True},
+                "max_steps": {"type": "integer", "default": 250},
+            },
+            "required": ["value"],
+        },
+    },
     "edgetx_press": {
         "description": "Press a named radio key.",
         "inputSchema": {
@@ -363,6 +422,8 @@ def selector_from_args(args: dict[str, Any]) -> dict[str, Any]:
 LARGE_RESULT_TOOLS = {
     "edgetx_ui_tree",
     "edgetx_screen",
+    "edgetx_sitemap",
+    "edgetx_inspect",
     "edgetx_screenshot",
     "edgetx_log",
     "edgetx_audio_history",
@@ -412,6 +473,39 @@ class McpServer:
             if args.get("compact"):
                 return {k: v for k, v in st.items() if k not in ("sdcard", "settings")}
             return st
+        if name == "edgetx_sitemap":
+            return self.service.sitemap()
+        if name == "edgetx_orient":
+            return self.service.orient()
+        if name == "edgetx_goto":
+            return self.service.goto(args["route"])
+        if name == "edgetx_inspect":
+            return self.service.inspect(
+                fields=bool(args.get("fields", True)),
+                actions=bool(args.get("actions", False)),
+                visible_text=bool(args.get("visible_text", False)),
+                editable_only=bool(args.get("editable_only", False)),
+                text_contains=args.get("text_contains"),
+                limit=int(args.get("limit", 10)),
+            )
+        if name == "edgetx_select_option":
+            return self.service.select_option(
+                text=args.get("text"),
+                text_contains=args.get("text_contains"),
+                index=int(args.get("index", 0)),
+                max_scrolls=int(args.get("max_scrolls", 30)),
+            )
+        if name == "edgetx_confirm":
+            return self.service.confirm()
+        if name == "edgetx_cancel":
+            return self.service.cancel()
+        if name == "edgetx_set_number":
+            return self.service.set_number(
+                value=float(args["value"]),
+                label=args.get("label"),
+                confirm=bool(args.get("confirm", True)),
+                max_steps=int(args.get("max_steps", 250)),
+            )
         if name == "edgetx_press":
             return self.service.press(args["key"], int(args.get("duration_ms", 120)))
         if name == "edgetx_long_press":

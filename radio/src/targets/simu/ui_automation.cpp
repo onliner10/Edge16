@@ -1,9 +1,11 @@
 #include "simu_ui_automation.h"
 
 #if defined(COLORLCD)
+#include "gui/colorlcd/libui/page.h"
 #include "gui/colorlcd/libui/table.h"
 #include "gui/colorlcd/libui/window.h"
 #include "gui/colorlcd/lcd.h"
+#include "gui/colorlcd/setup_menus/quick_menu.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/widgets/table/lv_table_private.h"
 #endif
@@ -50,6 +52,22 @@ std::string requestedAction;
 std::string latestActionExtra;
 [[maybe_unused]]
 std::string latestActionError;
+[[maybe_unused]]
+uint64_t requestedRouteRevision = 0;
+[[maybe_unused]]
+uint64_t completedRouteRevision = 0;
+[[maybe_unused]]
+bool routeRequested = false;
+[[maybe_unused]]
+std::string requestedRouteOperation;
+[[maybe_unused]]
+std::string requestedRouteId;
+[[maybe_unused]]
+bool latestRouteOk = false;
+[[maybe_unused]]
+std::string latestRouteJson;
+[[maybe_unused]]
+std::string latestRouteError;
 
 std::string jsonEscape(const std::string& value)
 {
@@ -652,20 +670,30 @@ bool invokeAction(const std::string& id, const std::string& action,
 
 }  // namespace
 
+static bool buildCurrentRouteJsonNow(std::string& json, std::string& error);
+static bool buildSitemapJsonNow(std::string& json, std::string& error);
+static bool performGotoRouteNow(const std::string& routeId, std::string& extra,
+                                std::string& error);
+
 void menuTick()
 {
 #if defined(COLORLCD)
   uint64_t snapshotRevision = 0;
   uint64_t actionRevision = 0;
+  uint64_t routeRevision = 0;
   bool buildTree = false;
   bool runAction = false;
+  bool runRoute = false;
   std::string actionId;
   std::string action;
+  std::string routeOperation;
+  std::string routeId;
   {
     std::lock_guard<std::mutex> lock(snapshotMutex);
     buildTree = snapshotRequested;
     runAction = actionRequested;
-    if (!buildTree && !runAction) return;
+    runRoute = routeRequested;
+    if (!buildTree && !runAction && !runRoute) return;
 
     if (buildTree) {
       snapshotRequested = false;
@@ -677,6 +705,12 @@ void menuTick()
       actionId = requestedActionId;
       action = requestedAction;
     }
+    if (runRoute) {
+      routeRequested = false;
+      routeRevision = requestedRouteRevision;
+      routeOperation = requestedRouteOperation;
+      routeId = requestedRouteId;
+    }
   }
 
   bool actionOk = false;
@@ -684,6 +718,20 @@ void menuTick()
   std::string actionError;
   if (runAction) {
     actionOk = invokeAction(actionId, action, actionExtra, actionError);
+  }
+
+  bool routeOk = false;
+  std::string routeJson;
+  std::string routeError;
+  if (runRoute) {
+    if (routeOperation == "current")
+      routeOk = buildCurrentRouteJsonNow(routeJson, routeError);
+    else if (routeOperation == "sitemap")
+      routeOk = buildSitemapJsonNow(routeJson, routeError);
+    else if (routeOperation == "goto")
+      routeOk = performGotoRouteNow(routeId, routeJson, routeError);
+    else
+      routeError = "unknown route operation: " + routeOperation;
   }
 
   std::string snapshot;
@@ -698,6 +746,12 @@ void menuTick()
       latestActionExtra = std::move(actionExtra);
       latestActionError = std::move(actionError);
       completedActionRevision = actionRevision;
+    }
+    if (runRoute) {
+      latestRouteOk = routeOk;
+      latestRouteJson = std::move(routeJson);
+      latestRouteError = std::move(routeError);
+      completedRouteRevision = routeRevision;
     }
     if (buildTree) {
       latestTreeJson = std::move(snapshot);
@@ -766,6 +820,134 @@ bool requestAction(const std::string& id, const std::string& action,
   error = "UI actions are only available for color LCD simulator builds";
   return false;
 #endif
+}
+
+static bool buildCurrentRouteJsonNow(std::string& json, std::string& error)
+{
+#if defined(COLORLCD)
+  auto* top = Window::topWindow();
+  if (!top) {
+    error = "no top window";
+    return false;
+  }
+
+  Route route;
+  const bool hasRoute = top->automationRoute(route);
+  const std::string routeId = hasRoute ? routeToStableId(route) : std::string();
+  const bool valid = !routeId.empty();
+  std::ostringstream out;
+  out << "\"valid\":" << (valid ? "true" : "false")
+      << ",\"role\":\"" << jsonEscape(top->automationRole()) << "\"";
+  if (!top->automationId().empty()) {
+    out << ",\"automation_id\":\"" << jsonEscape(top->automationId()) << "\"";
+  }
+  const std::string text = top->automationText();
+  if (!text.empty()) {
+    out << ",\"label\":\"" << jsonEscape(text) << "\"";
+  }
+  if (valid) {
+    out << ",\"route\":\"" << jsonEscape(routeId) << "\""
+        << ",\"title\":\"" << jsonEscape(routeToTitle(route)) << "\""
+        << ",\"depth\":" << int(route.depth);
+  }
+  json = out.str();
+  return true;
+#else
+  error = "routes are only available for color LCD simulator builds";
+  return false;
+#endif
+}
+
+static bool buildSitemapJsonNow(std::string& json, std::string& error)
+{
+#if defined(COLORLCD)
+  json = routeSitemapJson();
+  return true;
+#else
+  error = "routes are only available for color LCD simulator builds";
+  return false;
+#endif
+}
+
+static bool performGotoRouteNow(const std::string& routeId, std::string& extra, std::string& error)
+{
+#if defined(COLORLCD)
+  Route route;
+  if (!routeIdToRoute(routeId, route, &error))
+    return false;
+
+  Page::rememberRoute(route);
+  QuickMenu::openPage(static_cast<QMPage>(route.pages[0]));
+
+  if (auto* screen = lv_scr_act()) {
+    lv_obj_invalidate(screen);
+    lv_obj_update_layout(screen);
+  }
+  lvglRefreshNowIfIdle();
+
+  std::ostringstream out;
+  out << "\"route\":\"" << jsonEscape(routeToStableId(route)) << "\""
+      << ",\"title\":\"" << jsonEscape(routeToTitle(route)) << "\"";
+  extra = out.str();
+  return true;
+#else
+  (void)routeId;
+  error = "routes are only available for color LCD simulator builds";
+  return false;
+#endif
+}
+
+static bool requestRouteOperation(const std::string& operation,
+                                  const std::string& routeId,
+                                  std::string& json,
+                                  std::string& error,
+                                  uint32_t timeoutMs = 1000)
+{
+#if defined(COLORLCD)
+  std::unique_lock<std::mutex> lock(snapshotMutex);
+  const uint64_t revision = ++requestedRouteRevision;
+  requestedRouteOperation = operation;
+  requestedRouteId = routeId;
+  routeRequested = true;
+  const auto timeout = std::chrono::steady_clock::now() +
+                       std::chrono::milliseconds(timeoutMs);
+
+  if (!snapshotCv.wait_until(lock, timeout, [revision] {
+        return completedRouteRevision >= revision;
+      })) {
+    error = "timed out waiting for route operation";
+    return false;
+  }
+
+  if (!latestRouteOk) {
+    error = latestRouteError;
+    return false;
+  }
+
+  json = latestRouteJson;
+  return true;
+#else
+  (void)operation;
+  (void)routeId;
+  (void)timeoutMs;
+  error = "routes are only available for color LCD simulator builds";
+  return false;
+#endif
+}
+
+bool currentRouteJson(std::string& json, std::string& error)
+{
+  return buildCurrentRouteJsonNow(json, error);
+}
+
+bool sitemapJson(std::string& json, std::string& error)
+{
+  return buildSitemapJsonNow(json, error);
+}
+
+bool gotoRoute(const std::string& routeId, std::string& extra, std::string& error)
+{
+  return requestRouteOperation("goto", routeId, extra, error);
 }
 
 #if defined(COLORLCD) && defined(SIMU)
