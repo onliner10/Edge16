@@ -270,8 +270,8 @@ uint32_t s_anaFilt[MAX_ANALOG_INPUTS];
 #define ANA_FILT(chan)    (getFilteredAnalog(chan) / (JITTER_ALPHA * ANALOG_MULTIPLIER))
 
 #if defined(RADIO_TX16S) || defined(RADIO_TX16SMK3)
-// TX16S Hall gimbals are stable enough to avoid the legacy long time constant.
-#define MAIN_INPUT_JITTER_ALPHA 4
+// TX16S Hall gimbals still use a shorter time constant than the legacy filter.
+#define MAIN_INPUT_JITTER_ALPHA 8
 #else
 #define MAIN_INPUT_JITTER_ALPHA JITTER_ALPHA
 #endif
