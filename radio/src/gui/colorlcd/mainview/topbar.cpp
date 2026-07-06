@@ -85,11 +85,6 @@ bool TopBarPersistentData::hasWidget(int idx)
   return !zones[idx].widgetName.empty();
 }
 
-bool TopBarPersistentData::isWidget(int idx, const char* s)
-{
-  return zones[idx].widgetName == s;
-}
-
 //-----------------------------------------------------------------------------
 
 SetupTopBarWidgetsPage::SetupTopBarWidgetsPage() :
@@ -351,31 +346,6 @@ void TopBar::removeWidget(unsigned int index)
 {
   if (index >= zoneCount) return;
 
-  bool mark = false;
-
-  // If user manually removes 'system' widgets, mark name so widget does not get reloaded on restart
-  if ((index == (unsigned int)(zoneCount - 1)) && g_eeGeneral.getTopbarData()->isWidget(index, "Date Time"))
-    mark = true;
-  if ((index == (unsigned int)(zoneCount - 2)) &&
-      (g_eeGeneral.getTopbarData()->isWidget(index, "Volume") ||
-       g_eeGeneral.getTopbarData()->isWidget(index, "Radio Info")))
-    mark = true;
-  if ((zoneCount > 2) && (index == (unsigned int)(zoneCount - 3)) &&
-      g_eeGeneral.getTopbarData()->isWidget(index, "TX Battery"))
-    mark = true;
-  if ((zoneCount > 3) && (index == (unsigned int)(zoneCount - 4)) &&
-      g_eeGeneral.getTopbarData()->isWidget(index, "Link"))
-    mark = true;
-#if defined(INTERNAL_GPS)
-  if ((zoneCount > 4) && (index == (unsigned int)(zoneCount - 5)) &&
-      g_eeGeneral.getTopbarData()->isWidget(index, "Internal GPS"))
-    mark = true;
-#endif
-
-  // If user manually removes 'system' widgets, mark name so widget does not get reloaded on restart
-  if (mark)
-    g_eeGeneral.getTopbarData()->setWidgetName(index, "---");
-
   g_eeGeneral.getTopbarData()->clearZone(index);
 
   WidgetsContainer::removeWidget(index);
@@ -457,11 +427,6 @@ Widget* TopBar::createWidget(unsigned int index,
   storageDirty(EE_GENERAL);
 
   return widget;
-}
-
-void TopBar::create()
-{
-  g_eeGeneral.getTopbarData()->clear();
 }
 
 //-----------------------------------------------------------------------------

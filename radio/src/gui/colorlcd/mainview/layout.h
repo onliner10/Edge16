@@ -203,7 +203,6 @@ class LayoutFactory
   static WidgetsContainer* loadLayout(Window* parent, int screenNum);
   static const LayoutFactory* getLayoutFactory(const char* name);
   static void deleteCustomScreens();
-  static void deleteTopBarWidgets();
   static void loadCustomScreens();
   static void loadDefaultLayout();
   WidgetsContainer* createCustomScreen(unsigned customScreenIndex) const;

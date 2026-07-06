@@ -73,12 +73,6 @@ void WidgetsContainer::removeWidget(unsigned int index)
   widgets[index] = nullptr;
 }
 
-void WidgetsContainer::removeAllWidgets()
-{
-  for (unsigned int i = 0; i < zoneCount; i++)
-    removeWidget(i);
-}
-
 void WidgetsContainer::updateZones()
 {
   for (int i = 0; i < zoneCount; i++) {

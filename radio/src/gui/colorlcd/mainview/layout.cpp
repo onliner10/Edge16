@@ -19,6 +19,7 @@
  * GNU General Public License for more details.
  */
 
+#include <cstring>
 #include <new>
 
 #include "edgetx.h"
@@ -117,12 +118,6 @@ void LayoutFactory::deleteCustomScreens()
   }
 }
 
-// Clear top bar
-void LayoutFactory::deleteTopBarWidgets()
-{
-  ViewMain::instance()->getTopbar()->removeAllWidgets();
-}
-
 void LayoutFactory::loadDefaultLayout()
 {
   auto& screen = customScreens[0];
@@ -217,7 +212,6 @@ void LayoutFactory::replaceTemplateScreens(UiMutationToken& token,
                                            ScreenDataLoader loadScreenData)
 {
   deleteCustomScreens();
-  deleteTopBarWidgets();
   if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
   screenReplacementInProgress = true;
   if (loadScreenData) loadScreenData();
@@ -232,7 +226,6 @@ void LayoutFactory::replaceDefaultLayout()
 {
   UiMutationToken token;
   deleteCustomScreens();
-  deleteTopBarWidgets();
   if (!MainWindow::instance()->settleUiLifecycleForRebuild(token)) return;
   loadDefaultLayout();
 }
@@ -440,6 +433,54 @@ bool layoutWidgetsArrayAllocationFailureHasNoFullscreenWidgetForTest()
   bool result = !layout->hasFullScreenWidget();
   layout->deleteLater();
   return result;
+}
+
+namespace {
+
+void seedRadioTopbarForTest()
+{
+  auto* topbarData = g_eeGeneral.getTopbarData();
+  topbarData->clear();
+  topbarData->setWidgetName(0, "Timer");
+  topbarData->setWidgetName(1, "ModelName");
+  // Non-zero widths disarm postModelLoad's first-boot default re-seeding, so a
+  // wipe cannot be masked by the defaults being written back.
+  for (int i = 0; i < MAX_TOPBAR_ZONES; i += 1)
+    g_eeGeneral.topbarWidgetWidth[i] = 1;
+}
+
+bool radioTopbarStillSeededForTest()
+{
+  auto* topbarData = g_eeGeneral.getTopbarData();
+  return topbarData->hasWidget(0) &&
+         !strcmp(topbarData->getWidgetName(0), "Timer") &&
+         topbarData->hasWidget(1) &&
+         !strcmp(topbarData->getWidgetName(1), "ModelName");
+}
+
+}  // namespace
+
+// Loading or creating a model without custom screen data must not wipe the
+// radio-global top bar. Regression test for widgets disappearing from the top
+// bar: replaceDefaultLayout() is reached from postModelLoad() (every boot/model
+// load whose model lacks screen data) and applyDefaultTemplate().
+bool replaceDefaultLayoutPreservesRadioTopbarForTest()
+{
+  seedRadioTopbarForTest();
+  g_model.resetScreenData();
+  LayoutFactory::replaceDefaultLayout();
+  return radioTopbarStillSeededForTest();
+}
+
+// Explicitly removing a top bar widget (widget settings / slot replacement)
+// must still clear that zone.
+bool explicitTopbarRemovalStillClearsZoneForTest()
+{
+  auto* topbarData = g_eeGeneral.getTopbarData();
+  topbarData->clear();
+  topbarData->setWidgetName(0, "Timer");
+  ViewMain::instance()->getTopbar()->removeWidget(0);
+  return !topbarData->hasWidget(0);
 }
 #endif
 

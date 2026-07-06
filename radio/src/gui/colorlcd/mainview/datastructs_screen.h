@@ -211,7 +211,6 @@ struct TopBarPersistentData {
   void setWidgetName(int idx, const char* s);
   WidgetPersistentData* getWidgetData(int idx);
   bool hasWidget(int idx);
-  bool isWidget(int idx, const char* s);
 #endif
 };
 

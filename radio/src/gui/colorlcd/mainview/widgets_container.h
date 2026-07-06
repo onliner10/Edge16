@@ -79,7 +79,6 @@ class WidgetsContainer: public Window
   {
     return {index, index};
   }
-  void removeAllWidgets();
   void updateZones();
   void showWidgets(bool visible = true);
   void hideWidgets() { showWidgets(false); }

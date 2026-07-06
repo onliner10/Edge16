@@ -93,8 +93,6 @@ class TopBar: public WidgetsContainer
 
   Widget* createWidget(unsigned int index, const WidgetFactory* factory) override;
 
-  void create();
-
   void load();
 
   static LAYOUT_VAL_SCALED(HDR_DATE_XO, 48)
