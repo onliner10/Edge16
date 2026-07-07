@@ -511,6 +511,26 @@ static std::string limitDisplayString(int value)
   return formatNumberAsString(value, PREC1);
 }
 
+// A limit min/max may hold a GVAR reference instead of a plain value; the
+// quick card must never decode (or overwrite) those as percentages.
+static bool outputLimitsGVarBound(uint8_t channel)
+{
+  const LimitData* output = limitAddress(channel);
+  return GV_IS_GV_VALUE(output->min) || GV_IS_GV_VALUE(output->max);
+}
+
+// rawValue: the stored LimitData min/max; decodedValue: the same value with
+// the min/max offset already removed (only meaningful when not GVAR-bound).
+static std::string limitCellString(int16_t rawValue, int decodedValue)
+{
+  if (GV_IS_GV_VALUE(rawValue)) {
+    char buf[16];
+    getGVarString(buf, GV_INDEX_FROM_VALUE(rawValue));
+    return buf;
+  }
+  return limitDisplayString(decodedValue);
+}
+
 static std::string quickInputLabel(const ExpoData* input, uint8_t index)
 {
   std::string label(getSourceString(MIXSRC_FIRST_INPUT + input->chn));
@@ -914,6 +934,14 @@ struct LimitsWheelLiveContext {
   QuickTuneValueConfig maxCfg;
   int originalMin = 0;
   int originalMax = 0;
+  // Roller index each roller started on (original value rounded to the
+  // roller grid and clamped to its range).  A roller only writes to the
+  // model once the user moves it off this index; an untouched roller keeps
+  // the exact original raw value (which may be off-grid or out of range).
+  int initialMinIdx = 0;
+  int initialMaxIdx = 0;
+  bool minTouched = false;
+  bool maxTouched = false;
   lv_obj_t* minRoller = nullptr;
   lv_obj_t* maxRoller = nullptr;
   lv_obj_t* minLabel = nullptr;
@@ -932,11 +960,20 @@ static void updateLimitsWheelLabels(LimitsWheelLiveContext* ctx)
 {
   if (!ctx) return;
   if (ctx->minLabel && ctx->minRoller) {
-    auto text = std::string("Min ") + ctx->minCfg.displayValue(limitsWheelValue(ctx->minCfg, ctx->minRoller));
+    // Untouched roller: show the exact original value (may be off-grid).
+    int value = ((int)lv_roller_get_selected(ctx->minRoller) ==
+                 ctx->initialMinIdx)
+                    ? ctx->originalMin
+                    : limitsWheelValue(ctx->minCfg, ctx->minRoller);
+    auto text = std::string("Min ") + ctx->minCfg.displayValue(value);
     lv_label_set_text(ctx->minLabel, text.c_str());
   }
   if (ctx->maxLabel && ctx->maxRoller) {
-    auto text = std::string("Max ") + ctx->maxCfg.displayValue(limitsWheelValue(ctx->maxCfg, ctx->maxRoller));
+    int value = ((int)lv_roller_get_selected(ctx->maxRoller) ==
+                 ctx->initialMaxIdx)
+                    ? ctx->originalMax
+                    : limitsWheelValue(ctx->maxCfg, ctx->maxRoller);
+    auto text = std::string("Max ") + ctx->maxCfg.displayValue(value);
     lv_label_set_text(ctx->maxLabel, text.c_str());
   }
 }
@@ -944,8 +981,24 @@ static void updateLimitsWheelLabels(LimitsWheelLiveContext* ctx)
 static void applyLimitsWheelLiveValue(LimitsWheelLiveContext* ctx)
 {
   if (!ctx || ctx->suppressLiveApply || !ctx->minRoller || !ctx->maxRoller) return;
-  ctx->minCfg.setValue(limitsWheelValue(ctx->minCfg, ctx->minRoller));
-  ctx->maxCfg.setValue(limitsWheelValue(ctx->maxCfg, ctx->maxRoller));
+  // Only write the roller(s) the user actually moved; an untouched roller
+  // must keep its exact original raw value (the roller grid quantizes to
+  // fineStep and clamps out-of-range values).
+  if ((int)lv_roller_get_selected(ctx->minRoller) != ctx->initialMinIdx) {
+    ctx->minTouched = true;
+    ctx->minCfg.setValue(limitsWheelValue(ctx->minCfg, ctx->minRoller));
+  } else if (ctx->minTouched) {
+    // Moved away and back: restore the exact original value.
+    ctx->minTouched = false;
+    ctx->minCfg.setValue(ctx->originalMin);
+  }
+  if ((int)lv_roller_get_selected(ctx->maxRoller) != ctx->initialMaxIdx) {
+    ctx->maxTouched = true;
+    ctx->maxCfg.setValue(limitsWheelValue(ctx->maxCfg, ctx->maxRoller));
+  } else if (ctx->maxTouched) {
+    ctx->maxTouched = false;
+    ctx->maxCfg.setValue(ctx->originalMax);
+  }
   updateLimitsWheelLabels(ctx);
 }
 
@@ -1085,8 +1138,18 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     if (i > cfg_max.vmin) maxOpts += '\n';
     maxOpts += limitDisplayString(i);
   }
-  int minIdx = (cfg_min.getValue() - cfg_min.vmin) / cfg_min.fineStep;
-  int maxIdx = (cfg_max.getValue() - cfg_max.vmin) / cfg_max.fineStep;
+  // Nearest roller entry, clamped to the roller range.  Off-grid or
+  // out-of-range originals are only displayed here; they stay untouched in
+  // storage until the user actually moves the roller.
+  auto rollerIndex = [](const QuickTuneValueConfig& cfg) -> int {
+    int count = (cfg.vmax - cfg.vmin) / cfg.fineStep + 1;
+    int idx = (cfg.getValue() - cfg.vmin + cfg.fineStep / 2) / cfg.fineStep;
+    return limit(0, idx, count - 1);
+  };
+  int minIdx = rollerIndex(cfg_min);
+  int maxIdx = rollerIndex(cfg_max);
+  ctx->initialMinIdx = minIdx;
+  ctx->initialMaxIdx = maxIdx;
 
   // Roller container: two columns, label above each roller, rollers flex-grow
   lv_obj_t* minRoller = nullptr;
@@ -1222,8 +1285,10 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
 
   auto* cancelBtn = new TextButton(btnRow, rect_t{}, "Cancel", [=]() {
     ctx->suppressLiveApply = true;
-    ctx->minCfg.setValue(ctx->originalMin);
-    ctx->maxCfg.setValue(ctx->originalMax);
+    // Untouched rollers never wrote to the model; only undo live-applied
+    // changes.
+    if (ctx->minTouched) ctx->minCfg.setValue(ctx->originalMin);
+    if (ctx->maxTouched) ctx->maxCfg.setValue(ctx->originalMax);
     lv_indev_reset(nullptr, nullptr);
     wheel->deleteLater();
     scheduleRebuild();
@@ -1409,8 +1474,11 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
   auto addLimitsCard = [&](uint8_t channel) {
     auto cfg_min = outputLimitConfig(channel, true);
     auto cfg_max = outputLimitConfig(channel, false);
+    // GVAR-bound limits stay read-only here: show the GVAR name(s) and keep
+    // editing in the advanced Outputs page.
+    const bool gvarBound = outputLimitsGVarBound(channel);
     auto* card = new TextButton(grid, rect_t{}, "", [=]() {
-      openLimitsWheel(channel);
+      if (!gvarBound) openLimitsWheel(channel);
       return 0;
     });
     card->setWindowFlag(NO_SCROLL);
@@ -1424,11 +1492,14 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
     new StaticText(card, rect_t{}, quickOutputLabel(channel),
                    COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD) | CENTERED);
 
+    const LimitData* output = limitAddress(channel);
     new StaticText(card, rect_t{},
-                   std::string("Min ") + limitDisplayString(cfg_min.getValue()),
+                   std::string("Min ") +
+                       limitCellString(output->min, cfg_min.getValue()),
                    COLOR_THEME_SECONDARY1_INDEX, FONT(XS) | CENTERED);
     new StaticText(card, rect_t{},
-                   std::string("Max ") + limitDisplayString(cfg_max.getValue()),
+                   std::string("Max ") +
+                       limitCellString(output->max, cfg_max.getValue()),
                    COLOR_THEME_SECONDARY1_INDEX, FONT(XS) | CENTERED);
   };
 
