@@ -32,6 +32,7 @@
 #include "getset_helpers.h"
 #include "hal/rotary_encoder.h"
 #include "menu.h"
+#include "menus.h"
 #include "numberedit.h"
 #include "output_edit.h"
 #include "static.h"
@@ -339,6 +340,7 @@ static bool quickTunePageIsInput(QuickTunePage page)
 
 static swsrc_t s_quickTuneSelectedSwitch = 0;
 static swsrc_t s_quickTuneLastActiveSwitch = 0;
+static uint8_t s_quickTuneLastFlightMode = 0;
 
 static std::vector<swsrc_t> quickTuneSwitchProfiles()
 {
@@ -525,42 +527,299 @@ static std::string quickInputProfileLabel(uint8_t input)
   return getSourceString(MIXSRC_FIRST_INPUT + input);
 }
 
-static int quickInputLineForProfile(uint8_t input, swsrc_t profileSwitch,
-                                    bool& exactProfile)
+// A resolved input line plus how well it matches the current flight mode and
+// the selected switch profile.  A non-exact dimension means an edit must
+// materialize a dedicated line first (copy-on-write) so the edit does not
+// bleed into other flight modes / profiles.
+struct QuickTuneLineRef {
+  int index = -1;
+  bool fmExact = false;
+  bool profileExact = false;
+};
+
+static uint16_t quickTuneAllFlightModes()
 {
-  exactProfile = false;
-  int fallback = -1;
-  int always = -1;
+  return (1 << MAX_FLIGHT_MODES) - 1;
+}
+
+// True when flight modes can actually change at runtime: the flight-modes
+// feature must be enabled for the model AND another mode must have an
+// activation switch assigned (FM0 is the only reachable mode otherwise,
+// mirroring getFlightMode()).  Requiring modelFMEnabled() too keeps stale
+// flightModeData[].swtch left behind by a disabled feature from creating FM
+// splits/masks the Advanced editor does not even display.
+static bool quickTuneFlightModesInUse()
+{
+  if (!modelFMEnabled()) return false;
+  for (uint8_t i = 1; i < MAX_FLIGHT_MODES; i++) {
+    if (g_model.flightModeData[i].swtch != SWSRC_NONE) return true;
+  }
+  return false;
+}
+
+// ExpoData::flightModes is a DISABLE bitmask: bit set = line disabled in that
+// flight mode.
+static bool quickTuneLineFMEnabled(const ExpoData* line, uint8_t flightMode)
+{
+  return (line->flightModes & (1 << flightMode)) == 0;
+}
+
+static bool quickTuneLineFMExact(const ExpoData* line, uint8_t flightMode)
+{
+  if (!quickTuneFlightModesInUse()) return true;
+  return line->flightModes ==
+         (quickTuneAllFlightModes() & ~(1 << flightMode));
+}
+
+static QuickTuneLineRef quickResolveInputLine(uint8_t input,
+                                              swsrc_t profileSwitch,
+                                              uint8_t flightMode)
+{
+  const bool fmAware = quickTuneFlightModesInUse();
+
+  int found = -1;
+  int profileFallback = -1;
+  int fmActive = -1;
+  int fmAlways = -1;
+  int fmFallback = -1;
   int active = -1;
+  int always = -1;
+  int fallback = -1;
 
   for (uint8_t index = 0; index < MAX_EXPOS; index++) {
     ExpoData* line = expoAddress(index);
     if (!EXPO_VALID(line)) break;
     if (line->chn != input) continue;
 
+    bool fmEnabled = !fmAware || quickTuneLineFMEnabled(line, flightMode);
+
     if (profileSwitch && line->swtch == profileSwitch) {
-      exactProfile = true;
-      return index;
+      // Exact profile match: the mixer picks the first line enabled in the
+      // current flight mode (switch state intentionally ignored here).
+      if (fmEnabled) {
+        found = index;
+        break;
+      }
+      if (profileFallback < 0) profileFallback = index;
+      continue;
+    }
+
+    if (fmEnabled) {
+      if (!profileSwitch && isExpoActive(index)) fmActive = index;
+      if (!line->swtch && fmAlways < 0) fmAlways = index;
+      if (fmFallback < 0) fmFallback = index;
     }
     if (!profileSwitch && isExpoActive(index)) active = index;
     if (!line->swtch && always < 0) always = index;
     if (fallback < 0) fallback = index;
   }
 
-  if (active >= 0) return active;
-  if (always >= 0) return always;
-  return fallback;
+  if (found < 0) {
+    // A profile-matching line wins even when it is FM-disabled in the
+    // current flight mode: the card must keep tracking the selected profile,
+    // and an edit still lands correctly because the FM mismatch forces a
+    // copy-on-write split.  Intentional -- do not "fix" by preferring the
+    // fm* candidates below.
+    if (profileFallback >= 0)
+      found = profileFallback;
+    else if (fmActive >= 0)
+      found = fmActive;
+    else if (fmAlways >= 0)
+      found = fmAlways;
+    else if (fmFallback >= 0)
+      found = fmFallback;
+    else if (active >= 0)
+      found = active;
+    else if (always >= 0)
+      found = always;
+    else
+      found = fallback;
+  }
+
+  QuickTuneLineRef ref;
+  ref.index = found;
+  if (found >= 0) {
+    ExpoData* line = expoAddress(found);
+    ref.fmExact = quickTuneLineFMExact(line, flightMode);
+    ref.profileExact = profileSwitch != 0 && line->swtch == profileSwitch;
+  }
+  return ref;
 }
 
-static QuickTuneValueConfig inputRateConfig(uint8_t index)
+// Validate a line index pinned when the card was built and refresh its
+// exactness flags from the live line.  The pin keeps a whole edit session
+// (wheel rotations, cancel restore) writing to the SAME line even when
+// switch/stick movement would make quickResolveInputLine() pick a different
+// one mid-session.  Re-deriving fmExact/profileExact (instead of reusing the
+// build-time flags) is what limits a session to a single copy-on-write
+// split: after quickTuneMaterializeLine() the materialized line sits at the
+// pinned index and now IS exact, so later writes land in place.
+//
+// If the pinned line vanished (deleted underneath us -- normally impossible
+// because the page rebuilds on overlay close and on FM/profile changes),
+// fall back to a fresh resolve; callers must then re-check editability
+// before writing.
+static QuickTuneLineRef quickTuneSessionRef(int pinnedIndex, uint8_t input,
+                                            swsrc_t profileSwitch,
+                                            uint8_t flightMode)
+{
+  if (pinnedIndex >= 0 && pinnedIndex < MAX_EXPOS) {
+    ExpoData* line = expoAddress(pinnedIndex);
+    if (EXPO_VALID(line) && line->chn == input) {
+      QuickTuneLineRef ref;
+      ref.index = pinnedIndex;
+      ref.fmExact = quickTuneLineFMExact(line, flightMode);
+      ref.profileExact = profileSwitch != 0 && line->swtch == profileSwitch;
+      return ref;
+    }
+  }
+  return quickResolveInputLine(input, profileSwitch, flightMode);
+}
+
+// Copy-on-write bookkeeping: when an edit splits off a dedicated line, we
+// remember it so the split can be undone if the edit session ends with the
+// value unchanged (e.g. the wheel dialog was cancelled).
+struct QuickTunePendingSplit {
+  bool active = false;
+  int newIndex = -1;
+  uint8_t chn = 0;
+  bool fmSplit = false;
+  uint8_t flightMode = 0;
+  uint16_t originFlightModes = 0;
+  bool profileSplit = false;
+  swsrc_t profileSwitch = 0;
+};
+
+static QuickTunePendingSplit s_quickTunePendingSplit;
+
+// Materialize a dedicated line for the current flight mode / profile before
+// writing to a shared line.  Returns the index the edit must be applied to.
+static int quickTuneMaterializeLine(const QuickTuneLineRef& ref,
+                                    swsrc_t profileSwitch, uint8_t flightMode)
+{
+  bool needsFMSplit = quickTuneFlightModesInUse() && !ref.fmExact;
+  bool needsProfileSplit = profileSwitch != 0 && !ref.profileExact;
+  if (!needsFMSplit && !needsProfileSplit) return ref.index;
+
+  // Table full: fall back to editing the shown line in place.
+  if (getExposCount() >= MAX_EXPOS) return ref.index;
+
+  // A previous split can no longer be finalized once a new one starts.
+  s_quickTunePendingSplit = {};
+
+  uint16_t originFlightModes = expoAddress(ref.index)->flightModes;
+  uint8_t chn = expoAddress(ref.index)->chn;
+
+  // Insert a copy of the resolved line immediately before it, so the mixer
+  // picks the new line first.  copyExpo() handles the mixer task stop/start
+  // and storage dirty itself.
+  ::copyExpo(ref.index, ref.index, chn);
+
+  {
+    MixerTaskLockGuard lock;
+    ExpoData* line = expoAddress(ref.index);
+    ExpoData* origin = expoAddress(ref.index + 1);
+    if (needsFMSplit) {
+      // New line: enabled only in the current flight mode.
+      line->flightModes = quickTuneAllFlightModes() & ~(1 << flightMode);
+      // Original line no longer applies in the current flight mode.
+      origin->flightModes |= (1 << flightMode);
+    }
+    if (needsProfileSplit) line->swtch = profileSwitch;
+    SET_DIRTY();
+  }
+
+  s_quickTunePendingSplit.active = true;
+  s_quickTunePendingSplit.newIndex = ref.index;
+  s_quickTunePendingSplit.chn = chn;
+  s_quickTunePendingSplit.fmSplit = needsFMSplit;
+  s_quickTunePendingSplit.flightMode = flightMode;
+  s_quickTunePendingSplit.originFlightModes = originFlightModes;
+  s_quickTunePendingSplit.profileSplit = needsProfileSplit;
+  s_quickTunePendingSplit.profileSwitch = profileSwitch;
+
+  return ref.index;
+}
+
+// Equality of everything a quick-tune edit can touch, ignoring the fields the
+// split itself changed (swtch, flightModes).
+static bool quickTuneLinesEquivalent(const ExpoData* a, const ExpoData* b)
+{
+  ExpoData ca, cb;
+  memcpy(&ca, a, sizeof(ExpoData));
+  memcpy(&cb, b, sizeof(ExpoData));
+  ca.swtch = 0;
+  ca.flightModes = 0;
+  cb.swtch = 0;
+  cb.flightModes = 0;
+  return memcmp(&ca, &cb, sizeof(ExpoData)) == 0;
+}
+
+// If the last split ended up holding the same value as the line it was split
+// from (edit cancelled or committed unchanged), remove the redundant line and
+// restore the origin line's flight modes.  Returns true if a pending split
+// was processed (caller should rebuild).
+static bool quickTuneFinalizePendingSplit()
+{
+  if (!s_quickTunePendingSplit.active) return false;
+  QuickTunePendingSplit split = s_quickTunePendingSplit;
+  s_quickTunePendingSplit = {};
+
+  // Validate that the model still looks exactly like we left it; if anything
+  // moved underneath us, keep the materialized line as-is.
+  if (split.newIndex < 0 || split.newIndex + 1 >= MAX_EXPOS) return true;
+  ExpoData* line = expoAddress(split.newIndex);
+  ExpoData* origin = expoAddress(split.newIndex + 1);
+  if (!EXPO_VALID(line) || !EXPO_VALID(origin)) return true;
+  if (line->chn != split.chn || origin->chn != split.chn) return true;
+  if (split.profileSplit && line->swtch != split.profileSwitch) return true;
+  if (split.fmSplit) {
+    if (line->flightModes !=
+        (quickTuneAllFlightModes() & ~(1 << split.flightMode)))
+      return true;
+    if (origin->flightModes !=
+        (split.originFlightModes | (1 << split.flightMode)))
+      return true;
+  }
+  if (!quickTuneLinesEquivalent(line, origin)) return true;
+
+  ::deleteExpo(split.newIndex);
+  if (split.fmSplit) {
+    MixerTaskLockGuard lock;
+    expoAddress(split.newIndex)->flightModes = split.originFlightModes;
+    SET_DIRTY();
+  }
+  return true;
+}
+
+// pinnedIndex is the line resolved when the card was built; the closures pin
+// the whole edit session to it via quickTuneSessionRef() instead of
+// re-resolving against live mixer state on every get/set.
+static QuickTuneValueConfig inputRateConfig(int pinnedIndex, uint8_t input,
+                                            swsrc_t profileSwitch,
+                                            uint8_t flightMode)
 {
   return {-100,
           100,
           1,
           5,
           8,
-          [=]() -> int { return sourceNumValue(expoAddress(index)->weight); },
+          [=]() -> int {
+            auto ref = quickTuneSessionRef(pinnedIndex, input, profileSwitch,
+                                           flightMode);
+            if (ref.index < 0) return 0;
+            if (sourceNumIsSource(expoAddress(ref.index)->weight)) return 0;
+            return sourceNumValue(expoAddress(ref.index)->weight);
+          },
           [=](int newValue) {
+            auto ref = quickTuneSessionRef(pinnedIndex, input, profileSwitch,
+                                           flightMode);
+            if (ref.index < 0) return;
+            // The card's editable rule: never overwrite a source-bound
+            // weight with a plain value (matters on the fallback path, where
+            // the resolved line may differ from the one the card showed).
+            if (sourceNumIsSource(expoAddress(ref.index)->weight)) return;
+            int index = quickTuneMaterializeLine(ref, profileSwitch, flightMode);
             MixerTaskLockGuard lock;
             expoAddress(index)->weight = makeSourceNumVal(newValue);
             SET_DIRTY();
@@ -569,7 +828,9 @@ static QuickTuneValueConfig inputRateConfig(uint8_t index)
           100, true};
 }
 
-static QuickTuneValueConfig inputExpoConfig(uint8_t index)
+static QuickTuneValueConfig inputExpoConfig(int pinnedIndex, uint8_t input,
+                                            swsrc_t profileSwitch,
+                                            uint8_t flightMode)
 {
   return {-100,
           100,
@@ -577,9 +838,21 @@ static QuickTuneValueConfig inputExpoConfig(uint8_t index)
           5,
           8,
           [=]() -> int {
-            return sourceNumValue(expoAddress(index)->curve.value);
+            auto ref = quickTuneSessionRef(pinnedIndex, input, profileSwitch,
+                                           flightMode);
+            if (ref.index < 0) return 0;
+            if (!isQuickExpoEditable(expoAddress(ref.index))) return 0;
+            return sourceNumValue(expoAddress(ref.index)->curve.value);
           },
           [=](int newValue) {
+            auto ref = quickTuneSessionRef(pinnedIndex, input, profileSwitch,
+                                           flightMode);
+            if (ref.index < 0) return;
+            // The card's editable rule: never stomp a custom/function curve
+            // or a source-driven expo (matters on the fallback path, where
+            // the resolved line may differ from the one the card showed).
+            if (!isQuickExpoEditable(expoAddress(ref.index))) return;
+            int index = quickTuneMaterializeLine(ref, profileSwitch, flightMode);
             MixerTaskLockGuard lock;
             expoAddress(index)->curve.type = CURVE_REF_EXPO;
             expoAddress(index)->curve.value = makeSourceNumVal(newValue);
@@ -1007,6 +1280,19 @@ void ModelInputsPage::buildQuickTuneTabs(Window* window)
   addTab(QuickTunePage::Rate);
   addTab(QuickTunePage::Limits);
 
+  if (quickTunePageIsInput(s_quickTunePage) && quickTuneFlightModesInUse()) {
+    // Show which flight mode Expo/Rate edits apply to.
+    std::string fmName = stringFromNtString(
+        g_model.flightModeData[mixerCurrentFlightMode].name);
+    if (fmName.empty()) {
+      char fmId[8];
+      fmName = getFlightModeString(fmId, mixerCurrentFlightMode + 1);
+    }
+    auto fmChip = new StaticText(row, rect_t{}, fmName,
+                                 COLOR_THEME_SECONDARY1_INDEX, CENTERED);
+    fmChip->setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
+  }
+
   auto profiles = quickTuneSwitchProfiles();
   syncQuickTuneSelectedProfile(profiles);
   if (quickTunePageIsInput(s_quickTunePage) &&
@@ -1078,9 +1364,12 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
   };
 
   // --- Expo / Rate cards ---
+  // readOnlyText: shown instead of the numeric value when not editable
+  // (source/GVAR/curve-ref values must not be rendered as percentages).
   auto addInputCard = [&](const std::string& label,
                          const QuickTuneValueConfig& cfg,
-                         bool editable = true) {
+                         bool editable = true,
+                         const std::string& readOnlyText = std::string()) {
     auto* card = new Window(grid, rect_t{});
     card->setWindowFlag(NO_SCROLL);
     card->withLive([styleCard](Window::LiveWindow& live) {
@@ -1095,10 +1384,13 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
                    COLOR_THEME_PRIMARY1_INDEX, FONT(BOLD) | CENTERED);
 
     if (!editable) {
-      new StaticText(card, rect_t{},
-                     cfg.displayValue ? cfg.displayValue(cfg.getValue())
-                                      : std::to_string(cfg.getValue()),
-                     COLOR_THEME_SECONDARY1_INDEX, CENTERED);
+      std::string text = readOnlyText;
+      if (text.empty()) {
+        text = cfg.displayValue ? cfg.displayValue(cfg.getValue())
+                                : std::to_string(cfg.getValue());
+      }
+      new StaticText(card, rect_t{}, text, COLOR_THEME_SECONDARY1_INDEX,
+                     CENTERED);
       return;
     }
 
@@ -1142,23 +1434,62 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
 
   // --- Populate ---
   if (inputPage) {
+    // Captured per card so a whole wheel-edit session stays pinned to the
+    // flight mode it was opened in; checkEvents() rebuilds on FM change.
+    const uint8_t flightMode = mixerCurrentFlightMode;
+    const bool fmInUse = quickTuneFlightModesInUse();
+    // The "#n" suffix disambiguates only when a channel genuinely has
+    // several lines active at once (e.g. switch-gated dual rates): in
+    // profile mode the selector already disambiguates, and a pure FM split
+    // has one line per flight mode.
+    auto channelEnabledLineCount = [&](uint8_t chn) -> int {
+      int count = 0;
+      for (uint8_t i = 0; i < MAX_EXPOS; i++) {
+        ExpoData* line = expoAddress(i);
+        if (!EXPO_VALID(line)) break;
+        if (line->chn != chn) continue;
+        if (fmInUse && !quickTuneLineFMEnabled(line, flightMode)) continue;
+        count += 1;
+      }
+      return count;
+    };
     for (uint8_t input = 0; input < MAX_INPUTS; input++) {
-      bool exactProfile = false;
-      int index = quickInputLineForProfile(input, s_quickTuneSelectedSwitch,
-                                           exactProfile);
-      if (index < 0) continue;
-      ExpoData* lineData = expoAddress(index);
+      auto ref = quickResolveInputLine(input, s_quickTuneSelectedSwitch,
+                                       flightMode);
+      if (ref.index < 0) continue;
+      ExpoData* lineData = expoAddress(ref.index);
 
-      std::string label = profileMode
+      std::string label = (profileMode || channelEnabledLineCount(input) <= 1)
                               ? quickInputProfileLabel(input)
-                              : quickInputLabel(lineData, index);
+                              : quickInputLabel(lineData, ref.index);
 
       if (s_quickTunePage == QuickTunePage::Rate) {
-        addInputCard(label, inputRateConfig(index),
-                     !sourceNumIsSource(lineData->weight));
+        const bool editable = !sourceNumIsSource(lineData->weight);
+        std::string readOnlyText;
+        if (!editable) {
+          // Weight is a source/GVAR reference: show its name.
+          char buf[32];
+          getValueOrSrcVarString(buf, sizeof(buf), lineData->weight, 0, "%");
+          readOnlyText = buf;
+        }
+        addInputCard(label,
+                     inputRateConfig(ref.index, input,
+                                     s_quickTuneSelectedSwitch, flightMode),
+                     editable, readOnlyText);
       } else {
-        addInputCard(label, inputExpoConfig(index),
-                     isQuickExpoEditable(lineData));
+        const bool editable = isQuickExpoEditable(lineData);
+        std::string readOnlyText;
+        if (!editable) {
+          // Function/custom-curve or source-driven expo: show the curve
+          // reference, not a bogus percentage.
+          char buf[32] = "";
+          getCurveRefString(buf, sizeof(buf), lineData->curve);
+          readOnlyText = buf;
+        }
+        addInputCard(label,
+                     inputExpoConfig(ref.index, input,
+                                     s_quickTuneSelectedSwitch, flightMode),
+                     editable, readOnlyText);
       }
     }
   } else {
@@ -1170,9 +1501,34 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
   }
 }
 
+// True when something (wheel dialog, menu, another page...) is stacked above
+// the page group this page lives in.  Rebuilding the page underneath such an
+// overlay would destroy the widgets it is attached to, so model-driven
+// rebuilds are deferred until the overlay is gone (checkEvents keeps polling).
+static bool quickTuneOverlayActive()
+{
+  Window* top = Window::topWindow();
+  return top && !top->isPageGroup();
+}
+
 void ModelInputsPage::checkEvents()
 {
-  if (quickTunePageIsInput(s_quickTunePage) && pageWindow) {
+  if (!pageWindow) return;
+  if (quickTuneOverlayActive()) return;
+
+  if (quickTuneFinalizePendingSplit()) {
+    rebuildFromModel();
+    return;
+  }
+
+  if (quickTunePageIsInput(s_quickTunePage)) {
+    if (quickTuneFlightModesInUse() &&
+        mixerCurrentFlightMode != s_quickTuneLastFlightMode) {
+      s_quickTuneLastFlightMode = mixerCurrentFlightMode;
+      rebuildFromModel();
+      return;
+    }
+
     auto profiles = quickTuneSwitchProfiles();
     if (quickTuneHasSwitchProfiles(profiles)) {
       swsrc_t active = quickTuneActiveSwitch(profiles);
@@ -1218,6 +1574,8 @@ void ModelInputsPage::build(Window* window)
   window->scrollbar();
   window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
   window->setAutomationId("model.inputs.quick");
+
+  s_quickTuneLastFlightMode = mixerCurrentFlightMode;
 
   buildQuickTuneTabs(window);
   buildQuickTuneRows(window);
