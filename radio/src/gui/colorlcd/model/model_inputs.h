@@ -37,6 +37,10 @@ class ModelInputsPage : public InputMixPageBase
   void buildClassic(Window *window);
 
  protected:
+  // Set by buildClassic(): rebuilds (rebuildFromModel -> build) must rebuild
+  // the same view this instance was built with, not the quick-tune view.
+  bool classicBuild = false;
+
   InputMixGroupBase* getGroupByIndex(uint8_t index) override;
 
   InputMixGroupBase* createGroup(Window* form, mixsrc_t src) override;

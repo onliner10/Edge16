@@ -420,6 +420,8 @@ void ModelInputsPage::pasteInputAfter(uint8_t dst_idx)
 
 void ModelInputsPage::buildClassic(Window* window)
 {
+  classicBuild = true;
+
   bindPageWindow(window);
 
   // reset clipboard

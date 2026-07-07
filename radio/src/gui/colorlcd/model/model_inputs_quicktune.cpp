@@ -1513,6 +1513,9 @@ static bool quickTuneOverlayActive()
 
 void ModelInputsPage::checkEvents()
 {
+  // The classic (advanced) list needs none of the quick-tune polling.
+  if (classicBuild) return;
+
   if (!pageWindow) return;
   if (quickTuneOverlayActive()) return;
 
@@ -1562,6 +1565,14 @@ class ClassicInputsWindow : public Page
 
 void ModelInputsPage::build(Window* window)
 {
+  // Rebuilds (rebuildFromModel) of an instance built via buildClassic() must
+  // stay in the classic view; the quick builder below is only for the
+  // quick-tune tab instance.
+  if (classicBuild) {
+    buildClassic(window);
+    return;
+  }
+
   bindPageWindow(window);
 
   // reset clipboard
@@ -1589,10 +1600,18 @@ void ModelInputsPage::build(Window* window)
     addButton->setWidth(lv_pct(100));
   }
 
-  auto advancedButton = new TextButton(window, rect_t{}, "Advanced input lines",
-                                       [=]() {
-                                         new ClassicInputsWindow();
-                                         return 0;
-                                       });
+  auto advancedButton = new TextButton(
+      window, rect_t{}, "Advanced input lines", [=]() {
+        auto advanced = new ClassicInputsWindow();
+        // Lines may have been added/edited/deleted there; rebuild so the
+        // quick cards reflect the current model.  checkEvents() cannot see
+        // this transition itself: an OPAQUE Page suspends checkEvents() of
+        // everything underneath it.
+        advanced->setCloseHandler([=]() {
+          quickTuneFinalizePendingSplit();
+          rebuildFromModel();
+        });
+        return 0;
+      });
   advancedButton->setWidth(lv_pct(100));
 }
