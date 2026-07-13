@@ -906,16 +906,6 @@ static QuickTuneValueConfig outputLimitConfig(uint8_t channel, bool minimum)
           limitDisplayString};
 }
 
-void ModelInputsPage::openInputQuickMenu(uint8_t input, uint8_t index)
-{
-  Menu* menu = new Menu();
-  menu->addLine(STR_EDIT, [=]() { editInput(input, index); });
-  if (!reachExposLimit()) {
-    menu->addLine(STR_INSERT_AFTER, [=]() { insertInput(input, index + 1); });
-  }
-  menu->addLine(STR_DELETE, [=]() { deleteInput(index); });
-}
-
 void ModelInputsPage::openOutputQuickMenu(uint8_t channel)
 {
   Menu* menu = new Menu();

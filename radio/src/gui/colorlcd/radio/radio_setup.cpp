@@ -748,14 +748,6 @@ const static SetupLineDef viewOptionsPageSetupLines[] = {
 
 const static SetupLineDef manageModelsSetupLines[] = {
   {
-    // Model quick select
-    STR_DEF(STR_MODEL_QUICK_SELECT),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
-                      GET_SET_DEFAULT(g_eeGeneral.modelQuickSelect));
-    }
-  },
-  {
     // Label single/multi select
     STR_DEF(STR_LABELS_SELECT),
     [](Window* parent, coord_t x, coord_t y) {

@@ -334,14 +334,8 @@ class ModelsPageBody : public Window
 
       // Press Handler for Models
       button->setPressHandler([=]() -> uint8_t {
-        if (model == focusedModel) {
-          if (g_eeGeneral.modelQuickSelect)
-            selectModel(model);
-          else
-            openMenu();
-        } else {
-          focusedModel = model;
-        }
+        focusedModel = model;
+        selectModel(model);
         return model == modelslist.getCurrentModel();
       });
 
@@ -407,8 +401,7 @@ class ModelsPageBody : public Window
   {
     Menu *menu = new Menu();
     menu->setTitle(focusedModel->modelName);
-    if (g_eeGeneral.modelQuickSelect ||
-        focusedModel != modelslist.getCurrentModel()) {
+    if (focusedModel != modelslist.getCurrentModel()) {
       menu->addLine(STR_SELECT_MODEL, [=]() { selectModel(focusedModel); });
     }
     menu->addLine(STR_DUPLICATE_MODEL, [=]() { duplicateModel(focusedModel); });

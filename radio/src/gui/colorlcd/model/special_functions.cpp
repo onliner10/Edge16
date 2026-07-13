@@ -841,6 +841,11 @@ void FunctionsPage::build(Window* window)
       });
 
       button->setPressHandler([=]() {
+        editSpecialFunction(window, i, *button);
+        return 0;
+      });
+
+      button->setLongPressHandler([=]() -> uint8_t {
         Menu* menu = new Menu();
         menu->addLine(STR_EDIT,
                       [=]() { editSpecialFunction(window, i, *button); });
@@ -907,14 +912,6 @@ void FunctionsPage::build(Window* window)
             });
             break;
           }
-        }
-        return 0;
-      });
-
-      button->setLongPressHandler([=]() -> uint8_t {
-        if (addButton) {
-          addButton->focus();
-          plusPopup(window);
         }
         return 0;
       });

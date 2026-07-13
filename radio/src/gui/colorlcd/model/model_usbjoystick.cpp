@@ -537,6 +537,10 @@ ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, r
 
     USBJoystickChData* cch = usbJChAddress(ch);
     btn->setPressHandler([=]() -> uint8_t {
+      editChannel(ch, btn);
+      return 0;
+    });
+    btn->setLongPressHandler([=]() -> uint8_t {
       if (cch->mode == USBJOYS_CH_NONE) {
         editChannel(ch, btn);
       } else {

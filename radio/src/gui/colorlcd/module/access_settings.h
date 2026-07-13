@@ -36,6 +36,7 @@ class ReceiverButton : public TextButton
                  uint8_t receiverIdx);
 
   uint8_t pressBind();
+  uint8_t pressMenu();
   void startBind();
   void onLiveCheckEvents(LiveWindow& live) override;
 

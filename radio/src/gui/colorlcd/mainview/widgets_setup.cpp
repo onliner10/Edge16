@@ -49,41 +49,25 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
     auto container = currentContainer();
     if (!container) return 0;
 
+    auto widget = container->getWidget(this->slot.asUnsigned());
+    if (widget) {
+      if (widget->hasOptions())
+        new (std::nothrow) WidgetSettings(widget);
+      else
+        openWidgetMenu();
+    } else {
+      addNewWidget();
+    }
+
+    return 0;
+  });
+
+  setLongPressHandler([this]() -> uint8_t {
+    auto container = currentContainer();
+    if (!container) return 0;
+
     if (container->getWidget(this->slot.asUnsigned())) {
-      Menu::open([this](Menu& menu) {
-        menu.addLine(STR_SELECT_WIDGET, [this]() { addNewWidget(); });
-
-        auto container = currentContainer();
-        if (!container) return;
-
-        auto widget = container->getWidget(this->slot.asUnsigned());
-        if (!widget) return;
-
-        if (widget->hasOptions())
-          menu.addLine(STR_WIDGET_SETTINGS, [this]() {
-            auto container = currentContainer();
-            if (!container) return;
-            auto widget = container->getWidget(this->slot.asUnsigned());
-            if (widget && widget->hasOptions())
-              new (std::nothrow) WidgetSettings(widget);
-          });
-        if (container->canMoveWidget(this->slot, WidgetMoveDirection::Left))
-          menu.addLine(STR_MOVE_LEFT,
-                       [this]() { moveWidget(WidgetMoveDirection::Left); });
-        if (container->canMoveWidget(this->slot, WidgetMoveDirection::Right))
-          menu.addLine(STR_MOVE_RIGHT,
-                       [this]() { moveWidget(WidgetMoveDirection::Right); });
-        menu.addLine(STR_REMOVE_WIDGET, [this]() {
-          auto container = currentContainer();
-          if (!container) return;
-
-          container->removeWidget(this->slot.asUnsigned());
-          if (this->topBarSetupPage) {
-            static_cast<TopBar*>(container)->load();
-            this->topBarSetupPage->refreshSlots(this->slot.asUnsigned());
-          }
-        });
-      });
+      openWidgetMenu();
     } else {
       addNewWidget();
     }
@@ -114,6 +98,44 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
   setFocusState();
 
   setFocusHandler([=](bool) { setFocusState(); });
+}
+
+void SetupWidgetsPageSlot::openWidgetMenu()
+{
+  Menu::open([this](Menu& menu) {
+    menu.addLine(STR_SELECT_WIDGET, [this]() { addNewWidget(); });
+
+    auto container = currentContainer();
+    if (!container) return;
+
+    auto widget = container->getWidget(this->slot.asUnsigned());
+    if (!widget) return;
+
+    if (widget->hasOptions())
+      menu.addLine(STR_WIDGET_SETTINGS, [this]() {
+        auto container = currentContainer();
+        if (!container) return;
+        auto widget = container->getWidget(this->slot.asUnsigned());
+        if (widget && widget->hasOptions())
+          new (std::nothrow) WidgetSettings(widget);
+      });
+    if (container->canMoveWidget(this->slot, WidgetMoveDirection::Left))
+      menu.addLine(STR_MOVE_LEFT,
+                   [this]() { moveWidget(WidgetMoveDirection::Left); });
+    if (container->canMoveWidget(this->slot, WidgetMoveDirection::Right))
+      menu.addLine(STR_MOVE_RIGHT,
+                   [this]() { moveWidget(WidgetMoveDirection::Right); });
+    menu.addLine(STR_REMOVE_WIDGET, [this]() {
+      auto container = currentContainer();
+      if (!container) return;
+
+      container->removeWidget(this->slot.asUnsigned());
+      if (this->topBarSetupPage) {
+        static_cast<TopBar*>(container)->load();
+        this->topBarSetupPage->refreshSlots(this->slot.asUnsigned());
+      }
+    });
+  });
 }
 
 WidgetsContainer* SetupWidgetsPageSlot::currentContainer() const

@@ -32,6 +32,7 @@ class FileBrowser : public TableField
   FileBrowser(Window* parent, const rect_t& rect, const char* dir);
 
   void setFileAction(FileAction fct);
+  void setFileLongPress(FileAction fct);
   void setFileSelected(FileAction fct);
   void refresh();
 
@@ -56,5 +57,6 @@ class FileBrowser : public TableField
  private:
   const char* selected = nullptr;
   FileAction fileAction;
+  FileAction fileLongPress;
   FileAction fileSelected;
 };

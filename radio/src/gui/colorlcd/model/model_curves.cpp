@@ -244,6 +244,10 @@ void ModelCurvesPage::build(Window *window)
       auto button =
           new CurveButton(line, rect_t{0, 0, CurveButton::CURVE_BTN_W, CurveButton::CURVE_BTH_H}, index);
       button->setPressHandler([=]() -> uint8_t {
+        editCurve(window, index);
+        return 0;
+      });
+      button->setLongPressHandler([=]() -> uint8_t {
         Menu *menu = new Menu();
         menu->setTitle(STR_CURVE);
         menu->addLine(STR_EDIT, [=]() { editCurve(window, index); });
@@ -262,14 +266,6 @@ void ModelCurvesPage::build(Window *window)
       });
       button->setFocusHandler([=](bool hasFocus) {
         if (hasFocus) focusIndex = index;
-      });
-
-      button->setLongPressHandler([=]() -> uint8_t {
-        if (addButton) {
-          addButton->focus();
-          plusPopup(window);
-        }
-        return 0;
       });
 
       if (!firstCurveButton) {

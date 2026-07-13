@@ -597,6 +597,15 @@ void ModelGVarsPage::build(Window* window)
     auto button = new GVarButton(window, index);
     button->setPos(0, yo + index * (GVarButton::BTN_H + PAD_OUTLINE));
     button->setPressHandler([=]() {
+      Window* editWindow = new GVarEditWindow(index,
+          route().appended(RP_GVAR_EDIT, static_cast<int16_t>(index)));
+      editWindow->setCloseHandler([=]() {
+        rebuild(window);
+        publishModelGVarsChanged();
+      });
+      return 0;
+    });
+    button->setLongPressHandler([=]() -> uint8_t {
       Menu* menu = new Menu();
       menu->addLine(STR_EDIT, [=]() {
         Window* editWindow = new GVarEditWindow(index,

@@ -169,6 +169,7 @@ FileBrowser::FileBrowser(Window* parent, const rect_t& rect, const char* dir) :
 }
 
 void FileBrowser::setFileAction(FileAction fct) { fileAction = std::move(fct); }
+void FileBrowser::setFileLongPress(FileAction fct) { fileLongPress = std::move(fct); }
 void FileBrowser::setFileSelected(FileAction fct) { fileSelected = std::move(fct); }
 
 void FileBrowser::refresh()
@@ -307,10 +308,7 @@ void FileBrowser::onPress(const char* name, bool is_dir)
     return;
   }
 
-  if (!selected || (selected != name)) {
-    onSelected(name, is_dir);
-    return;
-  }
+  onSelected(name, is_dir);
 
   if (fileAction){
     fileAction(path, name, fullpath, is_dir);
@@ -326,7 +324,9 @@ void FileBrowser::onPressLong(const char* name, bool is_dir)
     onSelected(name, is_dir);
   }
 
-  if (fileAction){
+  if (fileLongPress){
+    fileLongPress(path, name, fullpath, is_dir);
+  } else if (fileAction){
     fileAction(path, name, fullpath, is_dir);
   }
 }

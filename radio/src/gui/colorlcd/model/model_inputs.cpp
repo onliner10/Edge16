@@ -242,6 +242,11 @@ InputMixButtonBase* ModelInputsPage::createLineButton(InputMixGroupBase* group,
 
   uint8_t input = group->getMixSrc() - MIXSRC_FIRST_INPUT;
   button->setPressHandler([=]() -> uint8_t {
+    uint8_t idx = button->getIndex();
+    editInput(input, idx);
+    return 0;
+  });
+  button->setLongPressHandler([=]() -> uint8_t {
     Menu* menu = new Menu();
     menu->addLine(STR_EDIT, [=]() {
       uint8_t idx = button->getIndex();

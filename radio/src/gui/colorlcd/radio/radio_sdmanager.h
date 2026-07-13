@@ -43,8 +43,10 @@ class RadioSdManagerPage : public PageGroupItem
   Window* loading = nullptr;
   const char* previewFilename = nullptr;
 
+  void filePress(const char* path, const char* name, const char* fullpath);
   void fileAction(const char* path, const char* name, const char* fullpath);
   void dirAction(const char* path, const char* name, const char* fullpath);
+  void viewTextFile(const char* path, const char* name, const char* fullpath);
 
 #if defined(FIRMWARE_FORMAT_UF2)
   void FirmwareUpdate(const char* fn);

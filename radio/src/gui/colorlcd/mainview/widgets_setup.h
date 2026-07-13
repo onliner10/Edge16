@@ -88,5 +88,6 @@ class SetupWidgetsPageSlot : public ButtonBase
   WidgetsContainer* currentContainer() const;
 
   void addNewWidget();
+  void openWidgetMenu();
   void moveWidget(WidgetMoveDirection direction);
 };

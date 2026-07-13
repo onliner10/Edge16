@@ -268,6 +268,10 @@ void ModelOutputsPage::build(Window* window)
 
     LimitData* output = limitAddress(ch);
     btn->setPressHandler([=]() -> uint8_t {
+      editOutput(ch, btn);
+      return 0;
+    });
+    btn->setLongPressHandler([=]() -> uint8_t {
       Menu* menu = new Menu();
       menu->addLine(STR_EDIT, [=]() { editOutput(ch, btn); });
       menu->addLine(STR_RESET, [=]() {

@@ -937,6 +937,10 @@ void ModelTelemetryPage::buildSensorList(int8_t focusSensorIndex)
       if (!first) first = button;
 
       button->setPressHandler([=]() -> uint8_t {
+        editSensor(idx);
+        return 0;
+      });
+      button->setLongPressHandler([=]() -> uint8_t {
         Menu* menu = new Menu();
         menu->addLine(STR_EDIT, [=]() { editSensor(idx); });
         menu->addLine(STR_COPY, [=]() {

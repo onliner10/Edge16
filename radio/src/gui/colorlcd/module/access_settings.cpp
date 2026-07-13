@@ -242,9 +242,20 @@ ReceiverButton::ReceiverButton(Window* parent, rect_t rect, uint8_t moduleIdx,
     moduleIdx(moduleIdx),
     receiverIdx(receiverIdx)
 {
+  setLongPressHandler(std::bind(&ReceiverButton::pressMenu, this));
 }
 
 uint8_t ReceiverButton::pressBind()
+{
+  if (g_model.moduleData[moduleIdx].pxx2.receiverName[receiverIdx][0] == '\0') {
+    startBind();
+  } else {
+    new RxOptions(moduleIdx, receiverIdx);
+  }
+  return 0;
+}
+
+uint8_t ReceiverButton::pressMenu()
 {
   if (g_model.moduleData[moduleIdx].pxx2.receiverName[receiverIdx][0] == '\0') {
     startBind();

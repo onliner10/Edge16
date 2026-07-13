@@ -593,6 +593,18 @@ void ModelLogicalSwitchesPage::build(Window* window)
       auto button = new LogicalSwitchButton(window, i);
 
       button->setPressHandler([=]() {
+        Window* lsWindow = new LogicalSwitchEditPage(i,
+            route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
+        lsWindow->setCloseHandler([=]() {
+          if (ls->func == LS_FUNC_NONE)
+            rebuild(window);
+          else
+            button->requestLineUpdate();
+        });
+        return 0;
+      });
+
+      button->setLongPressHandler([=]() -> uint8_t {
         Menu* menu = new Menu();
         menu->addLine(STR_EDIT, [=]() {
           Window* lsWindow = new LogicalSwitchEditPage(i,
@@ -625,14 +637,6 @@ void ModelLogicalSwitchesPage::build(Window* window)
       if (focusIndex == i) {
         button->focus();
       }
-
-      button->setLongPressHandler([=]() -> uint8_t {
-        if (addButton) {
-          addButton->focus();
-          plusPopup(window);
-        }
-        return 0;
-      });
 
       button->setFocusHandler([=](bool hasFocus) {
         if (hasFocus && !isRebuilding) {

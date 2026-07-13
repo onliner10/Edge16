@@ -232,6 +232,10 @@ void RadioSdManagerPage::build(Window * window)
   preview = new FilePreview(box, {0, 0, previewWidth, previewHeight});
 
   browser->setFileAction([=](const char* path, const char* name, const char* fullpath, bool isDir) {
+      if (!isDir)
+        filePress(path, name, fullpath);
+  });
+  browser->setFileLongPress([=](const char* path, const char* name, const char* fullpath, bool isDir) {
       if (isDir)
         dirAction(path, name, fullpath);
       else
@@ -302,6 +306,48 @@ void RadioSdManagerPage::dirAction(const char* path, const char* name,
   });
 }
 
+void RadioSdManagerPage::viewTextFile(const char* path, const char* name,
+                                      const char* fullpath)
+{
+  FIL file;
+  if (FR_OK == f_open(&file, fullpath, FA_OPEN_EXISTING | FA_READ)) {
+    const int fileLength = file.obj.objsize;
+    f_close(&file);
+
+    if (fileLength > WARN_FILE_LENGTH) {
+      char buf[64];
+      sprintf(buf, " %s %dkB. %s", STR_FILE_SIZE, fileLength / 1024,
+              STR_FILE_OPEN);
+      new ConfirmDialog(STR_WARNING, buf,
+                        [=] { new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER); });
+    } else {
+      new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER);
+    }
+  }
+}
+
+void RadioSdManagerPage::filePress(const char* path, const char* name,
+                                   const char* fullpath)
+{
+  const char* ext = getFileExtension(name);
+  if (ext) {
+    if (!strcasecmp(ext, SOUNDS_EXT)) {
+      audioQueue.stopAll();
+      audioQueue.playFile(fullpath, 0, ID_PLAY_FROM_SD_MANAGER);
+      return;
+    }
+    if (isExtensionMatching(ext, BITMAPS_EXT)) {
+      return;
+    }
+    if (!strcasecmp(ext, TEXT_EXT) || !strcasecmp(ext, LOGS_EXT) ||
+        !strcasecmp(ext, SCRIPT_EXT)) {
+      viewTextFile(path, name, fullpath);
+      return;
+    }
+  }
+  fileAction(path, name, fullpath);
+}
+
 void RadioSdManagerPage::fileAction(const char* path, const char* name,
                                     const char* fullpath)
 {
@@ -347,21 +393,7 @@ void RadioSdManagerPage::fileAction(const char* path, const char* name,
     } else if (!strcasecmp(ext, TEXT_EXT) || !strcasecmp(ext, LOGS_EXT) ||
                !strcasecmp(ext, SCRIPT_EXT)) {
       menu->addLine(STR_VIEW_TEXT, [=]() {
-        FIL file;
-        if (FR_OK == f_open(&file, fullpath, FA_OPEN_EXISTING | FA_READ)) {
-          const int fileLength = file.obj.objsize;
-          f_close(&file);
-
-          if (fileLength > WARN_FILE_LENGTH) {
-            char buf[64];
-            sprintf(buf, " %s %dkB. %s", STR_FILE_SIZE, fileLength / 1024,
-                    STR_FILE_OPEN);
-            new ConfirmDialog(STR_WARNING, buf,
-                              [=] { new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER); });
-          } else {
-            new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER);
-          }
-        }
+        viewTextFile(path, name, fullpath);
       });
     }
     if (!strcasecmp(ext, FIRMWARE_EXT)) {
