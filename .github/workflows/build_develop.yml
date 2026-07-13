@@ -1,0 +1,98 @@
+---
+name: Develop Firmware Builds
+on:
+  push:
+    branches:
+      - 'develop'
+  workflow_dispatch:
+
+concurrency:
+  group: develop-firmware
+  cancel-in-progress: true
+
+env:
+  EDGE16_SUPPORTED_FLAVORS: 'tx16s;tx16smk3'
+
+jobs:
+  test:
+    name: Commit tests (${{ matrix.radio }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: tx16s
+            radio: RadioMaster TX16S MK2
+          - target: tx16smk3
+            radio: RadioMaster TX16S MK3
+    container:
+      image: ghcr.io/edgetx/edgetx-dev:latest
+      volumes:
+        - ${{ github.workspace }}:/src
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Test ${{ matrix.radio }}
+        env:
+          FLAVOR: ${{ matrix.target }}
+          EDGE16_UV_ACTIVE: 1
+          EXTRA_OPTIONS: "-DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON"
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: |
+          echo "Running commit tests"
+          uv run --with-requirements requirements.txt bash ./tools/commit-tests.sh
+
+  build:
+    name: Firmware build (${{ matrix.radio }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: tx16s
+            radio: RadioMaster TX16S MK2
+          - target: tx16smk3
+            radio: RadioMaster TX16S MK3
+    container:
+      image: ghcr.io/edgetx/edgetx-dev:latest
+      volumes:
+        - ${{ github.workspace }}:/src
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Compute short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build ${{ matrix.radio }}
+        env:
+          FLAVOR: ${{ matrix.target }}
+          EDGE16_UV_ACTIVE: 1
+          EXTRA_OPTIONS: "-DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON"
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: |
+          echo "Running firmware build"
+          uv run --with-requirements requirements.txt bash ./tools/build-gh.sh
+
+      - name: Upload ${{ matrix.radio }} firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: edge16-develop-${{ matrix.target }}-${{ steps.vars.outputs.sha_short }}
+          path: |
+            fw.json
+            LICENSE
+            ${{ matrix.target }}-*.bin
+            ${{ matrix.target }}-*.uf2
+          retention-days: 14
+          if-no-files-found: error
