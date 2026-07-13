@@ -32,6 +32,7 @@
 #include "menutoolbar.h"
 #include "static.h"
 #include "table.h"
+#include "ui_feedback.h"
 
 #if defined(SIMU)
 static bool forceMenuIconCanvasCreateFailure = false;
@@ -215,14 +216,21 @@ class MenuBody : public TableField
     Menu* menu = getParentMenu();
     if (row < lines.size()) {
       if (menu->isMultiple()) {
+        withLive(
+            [](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
         if (selectedIndex == (int)row)
           lines[row]->onPress();
         else {
           setIndex(row);
           lines[row]->onPress();
         }
+        withLive([](LiveWindow& live) {
+          lv_obj_clear_state(live.lvobj(), LV_STATE_PRESSED);
+        });
       } else {
         auto onPress = lines[row]->onPress;
+        withLive(
+            [](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
         // delete menu first to avoid
         // focus issues with onPress()
         menu->deleteLater();

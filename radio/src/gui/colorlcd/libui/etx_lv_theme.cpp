@@ -255,7 +255,7 @@ EdgeTxStyles::EdgeTxStyles()
   lv_color_filter_dsc_init(&dark_filter, dark_color_filter_cb);
   lv_style_init(&pressed);
   lv_style_set_color_filter_dsc(&pressed, &dark_filter);
-  lv_style_set_color_filter_opa(&pressed, 35);
+  lv_style_set_color_filter_opa(&pressed, 77);
 
   lv_color_filter_dsc_init(&grey_filter, grey_filter_cb);
   lv_style_init(&disabled);

@@ -23,6 +23,7 @@
 #include "etx_lv_theme.h"
 #include "mainwindow.h"
 #include "static.h"
+#include "ui_feedback.h"
 
 //-----------------------------------------------------------------------------
 
@@ -217,7 +218,16 @@ bool ButtonBase::onLiveLongPress(Window::LiveWindow& live)
   return true;
 }
 
-void ButtonBase::onLiveClicked(Window::LiveWindow& live) { onLivePress(live); }
+void ButtonBase::onLiveClicked(Window::LiveWindow& live)
+{
+  UiFeedback::ackFrame(live.lvobj());
+
+  onLivePress(live);
+
+  withLive([](Window::LiveWindow& live) {
+    lv_obj_clear_state(live.lvobj(), LV_STATE_PRESSED);
+  });
+}
 
 void ButtonBase::onLiveCheckEvents(Window::LiveWindow& live)
 {

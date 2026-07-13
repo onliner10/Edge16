@@ -32,6 +32,7 @@
 #include "screen_setup.h"
 #include "theme_manager.h"
 #include "topbar.h"
+#include "ui_feedback.h"
 #include "view_channels.h"
 #include "view_main.h"
 
@@ -634,6 +635,8 @@ void PageGroupBase::setCurrentTab(unsigned index)
             QuickMenu::rememberVisitedPage(tab->pageId(), icon);
           }
 
+          Window* scrim = UiFeedback::showBuildScrim(*this, body.getRect());
+
           lv_obj_enable_style_refresh(false);
           body.clear();
           if (currentTab)
@@ -643,6 +646,8 @@ void PageGroupBase::setCurrentTab(unsigned index)
 
           doBuild(body, tab);
           activatedTab = tab;
+
+          if (scrim) scrim->deleteLater();
         }
       });
     });
