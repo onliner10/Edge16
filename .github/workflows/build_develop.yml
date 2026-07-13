@@ -72,7 +72,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Compute short SHA
-        run: echo "SHORT_SHA=${GITHUB_SHA::10}" >> "$GITHUB_ENV"
+        run: echo "SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-10)" >> "$GITHUB_ENV"
 
       - name: Build ${{ matrix.radio }}
         env:
