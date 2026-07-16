@@ -88,6 +88,11 @@ class NumberWheel : public ModalWindow
   WheelLayout layout;
   std::vector<Option> options;  // single-column shorthand (alias of layout.columns[0])
   int originalValue = 0;
+  // Raw units per one display-precision unit (e.g. 1 for a PREC1 field whose
+  // fine column steps by 0.1, or getStep() for integer split fields).  For a
+  // split wheel a single encoder detent moves the *composed* value by this,
+  // carrying across columns, so rotary resolution matches the finest column.
+  int fineStepRaw = 1;
   std::string titleText;  // base edit title, used in title refresh
 
   void buildContent();
@@ -104,6 +109,10 @@ class NumberWheel : public ModalWindow
   void previewSelection(int idx);  // single-column only; calls applyCurrentSelection
   void onLiveEvent(LiveWindow& live, event_t event) override;
   static void onRollerKey(lv_event_t* e);
+  // Preprocess KEY handler for split wheels: adjusts the whole composed value by
+  // one fineStepRaw per detent (with carry) so every user-paced detent is a
+  // single display-precision step regardless of which column is focused.
+  static void onWheelEncoder(lv_event_t* e);
   static void onRollerChanged(lv_event_t* e);
   static void onButtonKey(lv_event_t* e);
   void onLiveClicked(LiveWindow& live) override;

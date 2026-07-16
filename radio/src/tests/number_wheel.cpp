@@ -284,7 +284,9 @@ TEST(NumberWheel, SplitPpmCenterRange)
 {
   // PPM-style 1000..2000, step 1, no precision.
   // fineUnit=1, K=10 → coarse bases 1000,1010,…,1990 (100 entries) + appended
-  // 1991 (to reach vmax=2000 via 1991+9) = 101 coarse entries.
+  // grid-aligned top base 2000 (vmax is on the coarse grid) = 101 coarse
+  // entries.  The top base is 2000 (not the off-grid 1991 overlap base) so every
+  // coarse label stays on the fine grid and a single detent is a uniform step.
   auto w = Window::makeLive<Window>(nullptr, rect_t{});
   auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 1000, 2000,
                               []() { return 1500; }, nullptr);
@@ -296,15 +298,41 @@ TEST(NumberWheel, SplitPpmCenterRange)
 
   EXPECT_EQ(coarse.size(), 101u);
   EXPECT_EQ(coarse.front().rawValue, 1000);
-  EXPECT_EQ(coarse[99].rawValue, 1990);   // last regular base
-  EXPECT_EQ(coarse.back().rawValue, 1991); // appended overlap base
+  EXPECT_EQ(coarse[99].rawValue, 1990);    // last regular base
+  EXPECT_EQ(coarse.back().rawValue, 2000); // appended grid-aligned top base
 
   EXPECT_EQ(fine.size(), 10u);
   EXPECT_EQ(fine.front().label, "+0");
   EXPECT_EQ(fine.back().label, "+9");
 
-  // compose(base 1991, fine +9) == 2000 == vmax
-  EXPECT_EQ(NumberWheel::composeValue(layout, {100, 9}), 2000);
+  // vmax is reached cleanly as top base + fine 0 (no off-grid residue).
+  EXPECT_EQ(NumberWheel::composeValue(layout, {100, 0}), 2000);
+}
+
+TEST(NumberWheel, SplitTopBaseIsGridAligned)
+{
+  // Regression for the two-column detent bug: when vmax lands on the coarse
+  // grid, the top coarse base must equal vmax (fine offset 0) so the highlighted
+  // row after Reset reads cleanly (e.g. "100.0", not the old off-grid "99.1")
+  // and every coarse base is a whole multiple of the coarse span.
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  // Output Max field: 0..1000 PREC1 → display 0.0 .. 100.0.
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              []() { return 1000; }, nullptr, PREC1);
+  auto layout = NumberWheel::buildLayoutFor(edit);
+  ASSERT_TRUE(layout.split());
+  const auto& coarse = layout.columns[0];
+
+  // Every coarse base is on the 10-raw (=1.0 display) grid.
+  for (const auto& c : coarse) EXPECT_EQ(c.rawValue % 10, 0);
+  EXPECT_EQ(coarse.back().rawValue, 1000);
+
+  // vmax decomposes to the top base with fine offset 0 -> clean highlight.
+  auto idxs = NumberWheel::decomposeValue(layout, 1000);
+  ASSERT_EQ(idxs.size(), 2u);
+  EXPECT_EQ(idxs[1], 0);  // fine column highlights "+.0"
+  EXPECT_EQ(coarse[idxs[0]].rawValue, 1000);
+  EXPECT_NE(coarse[idxs[0]].label.find("100.0"), std::string::npos);
 }
 
 TEST(NumberWheel, SplitNegativePrec1Limits)

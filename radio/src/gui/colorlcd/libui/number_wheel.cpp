@@ -207,11 +207,28 @@ NumberWheel::WheelLayout NumberWheel::buildLayoutFor(NumberEdit* edit)
       if (base + (K - 1) * fineUnit > vmax) break;
       coarse.push_back({base, edit->getDisplayValFor(base)});
     }
-    // Append overlapping last base so vmax is reachable
+    // The regular loop stops at the last base whose *full* fine range fits below
+    // vmax, so it drops the top base whenever vmax sits on the coarse grid
+    // (e.g. range 0..1000, K*fineUnit=10: base 1000 is excluded because 1000+9 >
+    // 1000).  Append a top base so vmax stays reachable.  Prefer the grid-aligned
+    // base (largest multiple of K*fineUnit <= vmax): that keeps every coarse
+    // label on the fine grid (all end in ".0"), so a single detent is a uniform
+    // step and the highlighted row after Reset reads cleanly (100.0, not 99.1).
+    // Fall back to the old vmax-(K-1)*fineUnit base only when the aligned base
+    // cannot represent vmax with a fine offset (odd remainder) — that guarantees
+    // vmax stays reachable for unusual ranges without changing their behaviour.
     int lastCoveredMax =
         coarse.empty() ? vmin - 1 : coarse.back().rawValue + (K - 1) * fineUnit;
     if (lastCoveredMax < vmax) {
-      int lastBase = vmax - (K - 1) * fineUnit;
+      int span = K * fineUnit;
+      int alignedTop = vmin + ((vmax - vmin) / span) * span;
+      int lastBase;
+      if (alignedTop > (coarse.empty() ? vmin - 1 : coarse.back().rawValue) &&
+          (vmax - alignedTop) % fineUnit == 0) {
+        lastBase = alignedTop;
+      } else {
+        lastBase = vmax - (K - 1) * fineUnit;
+      }
       coarse.push_back({lastBase, edit->getDisplayValFor(lastBase)});
     }
 
@@ -283,6 +300,18 @@ NumberWheel::NumberWheel(NumberEdit* numEdit) :
 {
   originalValue = edit ? edit->getValue() : 0;
   layout = buildLayoutFor(edit);
+
+  // Raw units per one display-precision step — mirrors the fineUnit used to lay
+  // out the fine column in buildLayoutFor().  A split-wheel detent moves the
+  // composed value by this amount.
+  if (edit) {
+    if (edit->hasDecimalPrecision()) {
+      fineStepRaw = edit->getPrecisionScale() / 10;
+      if (fineStepRaw < 1) fineStepRaw = 1;
+    } else {
+      fineStepRaw = std::max(1, edit->getStep());
+    }
+  }
 
   if (layout.valid() && !layout.split()) {
     options = layout.columns[0];
@@ -388,7 +417,15 @@ void NumberWheel::buildMultiRollers(lv_obj_t* parent)
                                     makeOptsStr(layout.columns[c]),
                                     c < (int)idxs.size() ? idxs[c] : 0,
                                     visibleRows);
-    if (r) rollers.push_back(r);
+    if (r) {
+      // Intercept encoder LEFT/RIGHT before the roller class handler so one
+      // detent steps the whole composed value by fineStepRaw (with carry across
+      // columns) instead of moving only the focused column by a whole index.
+      lv_obj_add_event_cb(
+          r, &NumberWheel::onWheelEncoder,
+          (lv_event_code_t)(LV_EVENT_KEY | LV_EVENT_PREPROCESS), this);
+      rollers.push_back(r);
+    }
   }
   rollerObj = rollers.empty() ? nullptr : rollers[0];
 }
@@ -569,11 +606,15 @@ void NumberWheel::applyCurrentSelection(bool tick)
   int val = currentComposedValue();
   edit->setValue(val);
   if (titleLabel && layout.split()) {
-    // Refresh the title to show the composed value
+    // Refresh the title to show the composed value.  A grid-aligned top coarse
+    // base can compose slightly past vmax if the fine column is touch-scrolled
+    // at the very top; setValue() already clamps the stored value, so clamp the
+    // displayed value too instead of briefly showing an out-of-range number.
+    int shown = LV_CLAMP(edit->getMin(), val, edit->getMax());
     // Use += to avoid operator+(string&&,string&&) chains that confuse GCC -fanalyzer.
     std::string text = titleText;
     text += " \xe2\x80\x94 ";
-    text += edit->getDisplayValFor(val);
+    text += edit->getDisplayValFor(shown);
     titleLabel->withLive([&](LiveWindow& l) {
       lv_label_set_text(l.lvobj(), text.c_str());
     });
@@ -658,6 +699,46 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   lv_group_t* g = lv_obj_get_group(roller);
   if (g) lv_group_set_editing(g, true);
   nw->applyCurrentSelection(true);
+}
+
+void NumberWheel::onWheelEncoder(lv_event_t* e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_KEY) return;
+  uint32_t key = lv_event_get_key(e);
+  // Only handle rotation keys here; ENTER / ESC fall through to the roller class
+  // handler and onRollerKey (two-step confirm, cancel) unchanged.
+  if (key != LV_KEY_LEFT && key != LV_KEY_RIGHT && key != LV_KEY_UP &&
+      key != LV_KEY_DOWN)
+    return;
+
+  auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
+  if (!nw || !nw->edit || !nw->layout.split()) return;
+
+  int dir = (key == LV_KEY_RIGHT || key == LV_KEY_DOWN) ? 1 : -1;
+  int step = nw->fineStepRaw > 0 ? nw->fineStepRaw : 1;
+
+  // Match the inline-editor acceleration feel: extra steps for a fast spin, but
+  // always a whole number of fineStepRaw units so we can never land off the
+  // display-precision grid (no sticky ".9" residue).
+  int accel = (rotaryEncoderGetAccel() * nw->edit->getAccelFactor()) / 8;
+  if (accel < 0) accel = 0;
+  int units = 1 + accel;
+
+  int cur = nw->currentComposedValue();
+  int target =
+      LV_CLAMP(nw->edit->getMin(), cur + dir * units * step, nw->edit->getMax());
+  if (target != cur) {
+    auto idxs = decomposeValue(nw->layout, target);
+    // set_selected does not emit VALUE_CHANGED, so update every column silently
+    // then apply once (single tick, one title/model refresh).
+    for (size_t c = 0; c < nw->rollers.size() && c < idxs.size(); c++)
+      lv_roller_set_selected(nw->rollers[c], idxs[c], LV_ANIM_OFF);
+  }
+  nw->applyCurrentSelection(true);
+
+  // We fully handled this detent: stop before the roller class handler so it
+  // does not also move the focused column by one whole index.
+  lv_event_stop_processing(e);
 }
 
 void NumberWheel::onRollerKey(lv_event_t* e)
