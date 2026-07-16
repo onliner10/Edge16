@@ -116,6 +116,22 @@ static uint64_t automation_reply_seq = 0;
 static bool automation_reply_has_seq = false;
 static uint64_t automation_wait_seq = 0;
 static bool automation_wait_has_seq = false;
+// Pending touch/drag gesture state: touch and drag are driven from
+// automation_poll_stdin() once per main-loop iteration (like real mouse
+// input in draw_screen()/SimuScreenMouseEvent) instead of blocking the
+// main thread with SDL_Delay(), which would starve handleTimerEvents()/
+// per10ms() and prevent LVGL from ever observing the intermediate
+// TE_DOWN state.
+static bool automation_touch_pending = false;
+static uint32_t automation_touch_start = 0;
+static uint32_t automation_touch_duration = 0;
+static int automation_touch_x1 = 0;
+static int automation_touch_y1 = 0;
+static int automation_touch_x2 = 0;
+static int automation_touch_y2 = 0;
+static int automation_touch_steps = 1;
+static uint64_t automation_touch_seq = 0;
+static bool automation_touch_has_seq = false;
 
 static std::mutex inputStateMutex;
 static GimbalState stick_left = {{0.5f, 0.5f}, false};
@@ -587,25 +603,33 @@ static void automation_handle_command(const std::string& line)
   } else if (command == "touch") {
     int x = 0, y = 0, duration_ms = 120;
     in >> x >> y >> duration_ms;
+
+    automation_touch_pending = true;
+    automation_touch_start = SDL_GetTicks();
+    automation_touch_duration = static_cast<uint32_t>(std::max(1, duration_ms));
+    automation_touch_x1 = automation_touch_x2 = x;
+    automation_touch_y1 = automation_touch_y2 = y;
+    automation_touch_steps = 1;
+    automation_touch_has_seq = automation_reply_has_seq;
+    automation_touch_seq = automation_reply_seq;
     simuTouchDown(x, y);
-    SDL_Delay(std::max(1, duration_ms));
-    simuTouchUp();
-    automation_reply_ok();
+    // Reply is deferred until the gesture completes; see automation_touch_tick().
   } else if (command == "drag") {
     int x1 = 0, y1 = 0, x2 = 0, y2 = 0, duration_ms = 300, steps = 12;
     in >> x1 >> y1 >> x2 >> y2 >> duration_ms >> steps;
-    steps = std::max(1, steps);
-    const int step_delay = std::max(1, duration_ms / steps);
 
+    automation_touch_pending = true;
+    automation_touch_start = SDL_GetTicks();
+    automation_touch_duration = static_cast<uint32_t>(std::max(1, duration_ms));
+    automation_touch_x1 = x1;
+    automation_touch_y1 = y1;
+    automation_touch_x2 = x2;
+    automation_touch_y2 = y2;
+    automation_touch_steps = std::max(1, steps);
+    automation_touch_has_seq = automation_reply_has_seq;
+    automation_touch_seq = automation_reply_seq;
     simuTouchDown(x1, y1);
-    for (int i = 1; i <= steps; i += 1) {
-      int x = x1 + ((x2 - x1) * i) / steps;
-      int y = y1 + ((y2 - y1) * i) / steps;
-      SDL_Delay(step_delay);
-      simuTouchDown(x, y);
-    }
-    simuTouchUp();
-    automation_reply_ok();
+    // Reply is deferred until the gesture completes; see automation_touch_tick().
   } else if (command == "wait") {
     int duration_ms = 0;
     in >> duration_ms;
@@ -846,9 +870,45 @@ static void automation_handle_command(const std::string& line)
   }
 }
 
+// Advances a pending touch/drag gesture by one main-loop frame: re-asserts
+// simuTouchDown() at the current interpolated position (mirroring how real
+// mouse input is re-injected every frame in draw_screen()/
+// SimuScreenMouseEvent) until the gesture's duration has elapsed, then
+// releases with simuTouchUp() and sends the deferred reply.
+static void automation_touch_tick()
+{
+  if (!automation_touch_pending) return;
+
+  const uint32_t now = SDL_GetTicks();
+  if (SDL_TICKS_PASSED(now, automation_touch_start + automation_touch_duration)) {
+    simuTouchUp();
+    automation_touch_pending = false;
+    automation_reply_has_seq = automation_touch_has_seq;
+    automation_reply_seq = automation_touch_seq;
+    automation_reply_ok();
+    return;
+  }
+
+  const uint32_t elapsed = now - automation_touch_start;
+  const int steps = std::max(1, automation_touch_steps);
+  int idx = static_cast<int>((static_cast<uint64_t>(elapsed) * steps) /
+                              automation_touch_duration);
+  if (idx > steps) idx = steps;
+  const int x =
+      automation_touch_x1 + ((automation_touch_x2 - automation_touch_x1) * idx) / steps;
+  const int y =
+      automation_touch_y1 + ((automation_touch_y2 - automation_touch_y1) * idx) / steps;
+  simuTouchDown(x, y);
+}
+
 static void automation_poll_stdin()
 {
   if (!automation_stdio) return;
+
+  if (automation_touch_pending) {
+    automation_touch_tick();
+    return;
+  }
 
   if (automation_wait_pending) {
     if (SDL_TICKS_PASSED(SDL_GetTicks(), automation_wait_deadline)) {
