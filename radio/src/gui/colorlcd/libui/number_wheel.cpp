@@ -449,6 +449,12 @@ void NumberWheel::buildContent()
     m.cardW, m.cardH
   });
   if (!card) return;
+  // Mark the card opaque so a tap anywhere inside the card's visual bounds is
+  // absorbed here instead of bubbling up to the modal scrim.  Without this a
+  // tap on the card background (e.g. the sliver between the roller's clipped
+  // bottom edge and the button row) fell through to onLiveClicked and silently
+  // committed the live-previewed roller value.
+  card->setWindowFlag(OPAQUE);
   card->withLive([&](LiveWindow& l) {
     cardObj = l.lvobj();
     lv_obj_set_style_bg_color(cardObj, lv_color_white(), 0);
@@ -663,11 +669,13 @@ void NumberWheel::onCancel()
 
 void NumberWheel::onLiveClicked(LiveWindow&)
 {
-  // Tapping outside the card commits.  Live preview has already applied the
-  // scrolled value to the model, so silently reverting here would surprise a
-  // pilot who just watched the value take effect.  EXIT / Cancel remain the
-  // explicit revert paths.
-  onConfirm();
+  // Reached only for a tap on the dark scrim OUTSIDE the card (taps inside the
+  // card are absorbed by the opaque card window).  A tap outside a modal is a
+  // CANCEL: restore the exact pre-open value, identical to EXIT / the Cancel
+  // button.  Committing here (the previous behaviour) meant an accidental
+  // near-miss saved whatever value the live preview happened to be showing —
+  // on an RC transmitter a mis-tap must never write an unintended value.
+  onCancel();
 }
 
 void NumberWheel::onLiveEvent(LiveWindow& live, event_t event)

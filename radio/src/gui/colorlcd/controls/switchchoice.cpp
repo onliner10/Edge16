@@ -163,7 +163,12 @@ void SwitchChoice::openMenu()
 
     // fillMenu(menu); - called by MenuToolbar
 
-    menu.setCloseHandler([=]() { setEditMode(false); });
+    // Runs for every close path (pick, EXIT, Cancel button, or a tap on the
+    // scrim).  Clearing inMenu here guarantees a cancel leaves no transient
+    // edit state behind: getIntValue()/the text handler stop returning the
+    // abs()/inverted view, so the field keeps showing exactly its pre-open
+    // value instead of a stale or blanked one.
+    menu.setCloseHandler([=]() { inMenu = false; setEditMode(false); });
   }, [&]() {
     inMenu = false;
     setEditMode(false);

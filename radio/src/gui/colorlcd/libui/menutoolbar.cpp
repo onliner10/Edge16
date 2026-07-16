@@ -30,6 +30,11 @@
 
 #include <new>
 
+// Per-side hit-area expansion for the category filter buttons.  36x32 visual +
+// 2*8 -> ~52x48 effective touch target (>= 48px), applied via ext_click_area so
+// nothing moves visually.  Scales with the display like the button width.
+static LAYOUT_VAL_SCALED(MENUS_TOOLBAR_HIT_EXPAND, 8)
+
 #if defined(SIMU)
 static bool forceMenuToolbarLabelCreateFailure = false;
 
@@ -78,6 +83,18 @@ MenuToolbarButton::MenuToolbarButton(Window* parent, const rect_t& rect,
 {
   withLive([](LiveWindow& live) {
     lv_obj_add_flag(live.lvobj(), LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+  });
+
+  // The category filter icons are only MENUS_TOOLBAR_BUTTON_WIDTH (36) x
+  // UI_ELEMENT_HEIGHT (32) and tightly packed.  That is well below a usable
+  // touch target for field use (sun, gloves).  Extend the clickable area on
+  // every side so the effective target is >= 48px and the small gaps between
+  // adjacent icons resolve to the nearest filter instead of doing nothing (or,
+  // at the toolbar edge, letting a near-miss slip onto the dismiss scrim).
+  // ext_click_area only enlarges hit-testing, so the visual layout is
+  // unchanged.
+  withLive([](LiveWindow& live) {
+    lv_obj_set_ext_click_area(live.lvobj(), MENUS_TOOLBAR_HIT_EXPAND);
   });
 
   withLive([](LiveWindow& live) {
