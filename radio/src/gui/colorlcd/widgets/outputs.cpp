@@ -337,18 +337,16 @@ class OutputsWidget : public NativeWidget
 
     bool changed = false;
 
-    // Native cards use the design-system text color, not legacy theme whites.
-    LcdFlags f = compact ? widgetData->options[4].value.unsignedValue
+    // No colour options: cards use the design-system ink; the compact top bar
+    // uses the light PRIMARY2 ink and a quieter SECONDARY2 bar.
+    LcdFlags f = compact ? COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX)
                          : COLOR2FLAGS(COLOR_BLACK_INDEX);
-    if (compact && f == COLOR2FLAGS(COLOR_THEME_PRIMARY1_INDEX))
-      f = COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX);
     if (f != txtColor) {
       txtColor = f;
       changed = true;
     }
-    f = widgetData->options[5].value.unsignedValue;
-    if (compact && f == COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX))
-      f = COLOR2FLAGS(COLOR_THEME_SECONDARY2_INDEX);
+    f = compact ? COLOR2FLAGS(COLOR_THEME_SECONDARY2_INDEX)
+                : COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX);
     if (f != barColor) {
       barColor = f;
       changed = true;
@@ -489,11 +487,10 @@ const WidgetOption OutputsWidget::options[] = {
      {1},
      {MAX_OUTPUT_CHANNELS}},
     {STR_FILL_BACKGROUND, WidgetOption::Bool, false},
-    {STR_BG_COLOR, WidgetOption::Color,
-     COLOR2FLAGS(COLOR_THEME_SECONDARY3_INDEX)},
-    {STR_TEXT_COLOR, WidgetOption::Color,
-     COLOR2FLAGS(COLOR_THEME_PRIMARY1_INDEX)},
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX)},
+    // Retired Color options kept as hidden placeholders for positional YAML compat.
+    {"", WidgetOption::Deprecated, 0},
+    {"", WidgetOption::Deprecated, 0},
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 // Note: Must be a template class otherwise the linker will discard the

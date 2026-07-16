@@ -1070,6 +1070,7 @@ PACK(struct RadioData {
   N_HORUS_FIELD(int8_t currModel);
   N_HORUS_FIELD(uint8_t contrast);
   NOBACKUP(uint8_t vBatWarn);
+  NOBACKUP(uint8_t vBatCrit);
   NOBACKUP(int8_t txVoltageCalibration);
   uint8_t backlightMode:3 ENUM(BacklightMode);
   int8_t antennaMode:2 ENUM(AntennaModes);

@@ -23,6 +23,7 @@
 #include "edgetx.h"
 #include "static.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 #define ETX_STATE_BG_WARNING LV_STATE_USER_1
 #define EXT_NAME_ALIGN_RIGHT LV_STATE_USER_1
@@ -214,7 +215,20 @@ class TimerWidget : public NativeWidget
       }
 
       // Set colors if timer has elapsed.
-      if (lastValue < 0 && lastValue % 2) {
+      if (usesCardChrome()) {
+        // State-aware tokens on the card: Warning inside the countdown announce
+        // window, Critical when expired. The digit blink for the expired timer
+        // is preserved (recoloured to tokens); the card cue stays STEADY.
+        uint8_t level = timerWidgetStateLevel(index);
+        bool blinkOff = (lastValue < 0) && (lastValue % 2 == 0);
+        valLabel.with([&](lv_obj_t* obj) {
+          lv_obj_set_style_text_color(obj,
+                                      blinkOff ? paletteLvColor(PAL_MUTED)
+                                               : paletteStateTextColor(level),
+                                      LV_PART_MAIN);
+        });
+        setCardStateCue(level);
+      } else if (lastValue < 0 && lastValue % 2) {
         if (isLarge) {
           nameLabel.with([](lv_obj_t* obj) {
             lv_obj_add_state(obj, ETX_NAME_TXT_WARNING);

@@ -566,6 +566,7 @@ void perturbRadioWithinWriterDomain(uint32_t seed)
   g_eeGeneral.timezoneMinutes = nextSignedRange(state, -3, 3);
   g_eeGeneral.ppmunit = nextRange(state, 3);
   g_eeGeneral.vBatWarn = 65 + nextRange(state, 40);
+  g_eeGeneral.vBatCrit = 30 + nextRange(state, 30);
   g_eeGeneral.txVoltageCalibration = nextSignedRange(state, -20, 20);
   g_eeGeneral.backlightMode = nextRange(state, e_backlight_mode_on + 1);
   g_eeGeneral.antennaMode = nextSignedRange(state, 0, 2);

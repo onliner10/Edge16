@@ -547,6 +547,7 @@
 #define TR_BATTERYFULL                 "Baterie nabitá"
 #define TR_BATTERYNONE                 "Žádná baterie!"
 #define TR_BATTERYWARNING              "Vybitá baterie"
+#define TR_BATTERYCRITICAL           "Battery critical"
 #define TR_INACTIVITYALARM             TR("Nečinnost", "Nečinnost rádia")
 #define TR_MEMORYWARNING               "Plná pamět'"
 #define TR_ALARMWARNING                TR("Vypnutý zvuk", "Upozornit na vypnutý zvuk")
@@ -1447,6 +1448,7 @@
 #define TR_ROLLER_VARIO_PITCH_MAX     "Vario Pitch Max"
 #define TR_ROLLER_VARIO_REPEAT        "Vario Repeat"
 #define TR_ROLLER_BATTERY_WARNING     "Battery Warning"
+#define TR_ROLLER_BATTERY_CRITICAL   "Battery Critical"
 #define TR_ROLLER_INACTIVITY_TIMER    "Inactivity Timer"
 #define TR_ROLLER_BACKLIGHT_DELAY     "Backlight Delay"
 #define TR_ROLLER_POWER_OFF_TIMER     "Power Off Timer"

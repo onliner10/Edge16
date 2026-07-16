@@ -11,6 +11,7 @@
 #include "edgetx.h"
 #include "telemetry/battery_monitor.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 class BatteryMonitorWidget : public NativeWidget
 {
@@ -443,12 +444,7 @@ class BatteryMonitorWidget : public NativeWidget
           }
           d.remainingPct = (uint8_t)pct;
           d.hasRemaining = true;
-
-          int consumed = 100 - d.remainingPct;
-          if (consumed >= 80)
-            d.warningLevel = 2;
-          else if (consumed >= 65)
-            d.warningLevel = 1;
+          d.warningLevel = flightBatteryRemainingWarningLevel(d.remainingPct);
         }
       }
     }
@@ -481,19 +477,11 @@ class BatteryMonitorWidget : public NativeWidget
       }
 
       if (perCell > 0) {
-        uint16_t minCv = batteryTypeMatchMinPerCellCv(chem);
-        uint16_t maxCv = batteryTypeMatchMaxPerCellCv(chem);
-        if (maxCv > minCv) {
-          int pct = (int)(perCell - (int32_t)minCv) * 100 / (maxCv - minCv);
-          if (pct < 0) pct = 0;
-          if (pct > 100) pct = 100;
+        int pct = flightBatteryVoltageRemainingPercent(perCell, chem);
+        if (pct >= 0) {
           d.remainingPct = (uint8_t)pct;
           d.hasRemaining = true;
-
-          if (d.remainingPct <= 20)
-            d.warningLevel = 2;
-          else if (d.remainingPct <= 35)
-            d.warningLevel = 1;
+          d.warningLevel = flightBatteryRemainingWarningLevel(pct);
         }
       }
     }
@@ -876,10 +864,16 @@ class BatteryMonitorWidget : public NativeWidget
     percentLabel.with([&](lv_obj_t* obj) {
       lv_label_set_text(obj, pctBuf);
       if (usesCardChrome())
-        lv_obj_set_style_text_color(obj, primaryTextColor(), LV_PART_MAIN);
+        // State-aware token: the primary reading escalates to Warning/Critical
+        // from the monitor's already-computed warningLevel.
+        lv_obj_set_style_text_color(obj, paletteStateTextColor(d.warningLevel),
+                                    LV_PART_MAIN);
       else
         etx_txt_color(obj, COLOR_BLACK_INDEX);
     });
+
+    // Redundant, non-colour structural cue on the whole card (border + tint).
+    setCardStateCue(d.warningLevel);
 
     statusPill.with([&](lv_obj_t* obj) {
       if (d.warningLevel == 2)

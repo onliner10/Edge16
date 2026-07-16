@@ -86,17 +86,13 @@ class ModelNameWidget : public TrackedWidget
   {
     auto widgetData = getPersistentData();
 
-    // set font colour from options[0], if use theme color option off
+    // No colour options: the model name always uses the theme ink (PRIMARY2 on
+    // the dark top bar, SECONDARY1 elsewhere).
     label.withLive([&](LiveWindow& live) {
-      if (widgetData->options[4].value.boolValue) {
-        etx_txt_color(live.lvobj(),
-                      isTopBarWidget() ? COLOR_THEME_PRIMARY2_INDEX
-                                       : COLOR_THEME_SECONDARY1_INDEX,
-                      LV_PART_MAIN);
-      } else {
-        etx_txt_color_from_flags(live.lvobj(),
-                                 widgetData->options[0].value.unsignedValue);
-      }
+      etx_txt_color(live.lvobj(),
+                    isTopBarWidget() ? COLOR_THEME_PRIMARY2_INDEX
+                                     : COLOR_THEME_SECONDARY1_INDEX,
+                    LV_PART_MAIN);
     });
 
     rect_t labelRect = {0, 0, width(), height()};
@@ -105,10 +101,9 @@ class ModelNameWidget : public TrackedWidget
       layoutTextLabel(live.lvobj(), labelRect, font);
     });
 
-    // get fill color from options[3]
+    // Fill background uses the theme SECONDARY3 surface (no colour option).
     withLive([&](LiveWindow& live) {
-      etx_bg_color_from_flags(live.lvobj(),
-                              widgetData->options[3].value.unsignedValue);
+      etx_bg_color(live.lvobj(), COLOR_THEME_SECONDARY3_INDEX);
 
       // Set background opacity from options[2]
       if (widgetData->options[2].value.boolValue)
@@ -196,12 +191,14 @@ class ModelImageWidget : public TrackedWidget
   uint32_t getHash() { return hash(g_model.header.bitmap, LEN_BITMAP_NAME); }
 };
 
+// Retired colour options are kept as hidden Deprecated placeholders so
+// positionally-stored model YAML keeps the remaining options at their indices.
 const WidgetOption ModelNameWidget::options[] = {
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX)},
+    {"", WidgetOption::Deprecated, 0},
     {"", WidgetOption::TextSize, FONT_STD_INDEX},
     {STR_FILL_BACKGROUND, WidgetOption::Bool, false},
-    {STR_BG_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_SECONDARY3_INDEX)},
-    {STR_USE_THEME_COLOR, WidgetOption::Bool, true},
+    {"", WidgetOption::Deprecated, 0},
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 const WidgetOption ModelImageWidget::options[] = {{nullptr, WidgetOption::Bool}};

@@ -20,7 +20,9 @@
  */
 
 #include "edgetx.h"
+#include "telemetry/battery_monitor.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 #define ETX_STATE_TIMER_ELAPSED LV_STATE_USER_1
 #define ETX_STATE_TELEM_STALE LV_STATE_USER_2
@@ -106,6 +108,67 @@ class ValueWidget : public NativeWidget
         });
   }
 
+  // State escalation from thresholds the pilot ALREADY configured elsewhere.
+  // No widget-level colour/threshold options exist. Returns Default/Warning/
+  // Critical (WidgetStateLevel). Stale telemetry is handled separately as Muted.
+  uint8_t computeStateLevel(mixsrc_t field)
+  {
+    if (field >= MIXSRC_FIRST_TIMER && field <= MIXSRC_LAST_TIMER) {
+      // Single source of truth: same rule the countdown audio uses.
+      return timerWidgetStateLevel(field - MIXSRC_FIRST_TIMER);
+    }
+
+    if (field == MIXSRC_TX_VOLTAGE) {
+      // Warning at the radio "battery warning" voltage; Critical at the new
+      // radio-level "critical voltage" setting. Both in 0.1V units.
+      int32_t v = getValue(field);
+      if (g_eeGeneral.vBatCrit > 0 && v <= (int32_t)g_eeGeneral.vBatCrit)
+        return WIDGET_STATE_CRITICAL;
+      if (v <= (int32_t)g_eeGeneral.vBatWarn) return WIDGET_STATE_WARNING;
+      return WIDGET_STATE_NORMAL;
+    }
+
+    if (field >= MIXSRC_FIRST_TELEM)
+      return telemetryVoltageStateLevel((field - MIXSRC_FIRST_TELEM) / 3);
+
+    return WIDGET_STATE_NORMAL;
+  }
+
+  // A telemetry voltage sensor gets Warning/Critical ONLY when it is the
+  // voltage source of an enabled battery monitor, reusing that monitor's
+  // chemistry curve + warning bands (single source of truth). A sensor that no
+  // monitor references gets NO state (Default) — never guess a battery
+  // estimate. Stale data is rendered Muted by the caller, not here.
+  uint8_t telemetryVoltageStateLevel(int sensorIdx)
+  {
+    for (int m = 0; m < MAX_BATTERY_MONITORS; m++) {
+      auto& config = g_model.batteryMonitors[m];
+      if (!config.enabled || config.sourceIndex - 1 != sensorIdx) continue;
+
+      uint8_t cells = config.cellCount;
+      BatteryType chem = (BatteryType)config.batteryType;
+      if (config.selectedPackSlot > 0) {
+        uint8_t slot = config.selectedPackSlot - 1;
+        if (slot < MAX_BATTERY_PACKS && g_eeGeneral.batteryPacks[slot].active) {
+          cells = g_eeGeneral.batteryPacks[slot].cellCount;
+          chem = (BatteryType)g_eeGeneral.batteryPacks[slot].batteryType;
+        }
+      }
+      if (cells == 0) return WIDGET_STATE_NORMAL;
+
+      auto& sensor = g_model.telemetrySensors[sensorIdx];
+      auto& item = telemetryItems[sensorIdx];
+      if (!sensor.isAvailable() || !item.isAvailable() || item.isOld())
+        return WIDGET_STATE_NORMAL;
+
+      int32_t cv = convertTelemetryValue(item.value, sensor.unit, sensor.prec,
+                                         UNIT_VOLTS, 2);
+      int pct = flightBatteryVoltageRemainingPercent(cv / cells, chem);
+      return flightBatteryRemainingWarningLevel(pct);
+    }
+    return WIDGET_STATE_NORMAL;
+  }
+
   uint32_t contentRefreshKey() override
   {
     auto widgetData = getPersistentData();
@@ -113,6 +176,7 @@ class ValueWidget : public NativeWidget
 
     WidgetRefreshKey key;
     key.add((int32_t)field).add((int32_t)getValue(field));
+    key.add((int32_t)computeStateLevel(field));
 
     if (field >= MIXSRC_FIRST_TELEM) {
       TelemetryItem& telemetryItem =
@@ -134,51 +198,64 @@ class ValueWidget : public NativeWidget
     // get source from options[0]
     mixsrc_t field = widgetData->options[0].value.unsignedValue;
 
+    // if the state level changed (threshold trip)
+    uint8_t stateLevel = computeStateLevel(field);
+    if (stateLevel != lastStateLevel) {
+      lastStateLevel = stateLevel;
+      changed = true;
+    }
+
+    // stale/lost telemetry -> rendered Muted (absence of data != emergency)
+    bool telemStale = false;
+    if (field >= MIXSRC_FIRST_TELEM) {
+      TelemetryItem& telemetryItem =
+          telemetryItems[(field - MIXSRC_FIRST_TELEM) / 3];
+      telemStale = !telemetryItem.isAvailable() || telemetryItem.isOld();
+    }
+
     // if value changed
     auto newValue = getValue(field);
     if (lastValue != newValue) {
       lastValue = newValue;
       changed = true;
-    } else {
-      // if telemetry value, and telemetry offline or old data
-      if (field >= MIXSRC_FIRST_TELEM) {
-        TelemetryItem& telemetryItem =
-            telemetryItems[(field - MIXSRC_FIRST_TELEM) / 3];
-        bool telemState = !telemetryItem.isAvailable() || telemetryItem.isOld();
-        if (lastTelemState != telemState) {
-          lastTelemState = telemState;
-          changed = true;
-        }
-      }
+    } else if (lastTelemState != telemStale) {
+      lastTelemState = telemStale;
+      changed = true;
     }
 
     if (changed) {
-      // Set color to option value
-      label.with([](lv_obj_t* obj) {
-        lv_obj_clear_state(obj,
-                           static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
-      });
-      value.with([](lv_obj_t* obj) {
-        lv_obj_clear_state(obj,
-                           static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
-      });
+      if (usesCardChrome()) {
+        // State-aware palette tokens: value text renders in Default and
+        // escalates to Warning/Critical; the card border + tint (setCardStateCue)
+        // is the redundant, non-colour structural cue. Stale telemetry renders
+        // Muted with no state cue.
+        lv_color_t valColor = telemStale ? paletteLvColor(PAL_MUTED)
+                                         : paletteStateTextColor(stateLevel);
+        value.with([&](lv_obj_t* obj) {
+          lv_obj_set_style_text_color(obj, valColor, LV_PART_MAIN);
+        });
+        setCardStateCue(telemStale ? WIDGET_STATE_NORMAL : stateLevel);
+      } else {
+        // legacy top-bar path: keep the existing theme-state text styling
+        label.with([](lv_obj_t* obj) {
+          lv_obj_clear_state(obj,
+                             static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
+        });
+        value.with([](lv_obj_t* obj) {
+          lv_obj_clear_state(obj,
+                             static_cast<lv_state_t>(ETX_STATE_TIMER_ELAPSED | ETX_STATE_TELEM_STALE));
+        });
 
-      // Check for disabled or warning color states
-      if (field >= MIXSRC_FIRST_TIMER && field <= MIXSRC_LAST_TIMER) {
-        if (getTimerStateValue(field - MIXSRC_FIRST_TIMER) < 0) {
-          // Set warning color
-          label.with([](lv_obj_t* obj) {
-            lv_obj_add_state(obj, ETX_STATE_TIMER_ELAPSED);
-          });
-          value.with([](lv_obj_t* obj) {
-            lv_obj_add_state(obj, ETX_STATE_TIMER_ELAPSED);
-          });
-        }
-      } else if (field >= MIXSRC_FIRST_TELEM) {
-        TelemetryItem& telemetryItem =
-            telemetryItems[(field - MIXSRC_FIRST_TELEM) / 3];
-        if (!telemetryItem.isAvailable() || telemetryItem.isOld()) {
-          // Set disabled color
+        if (field >= MIXSRC_FIRST_TIMER && field <= MIXSRC_LAST_TIMER) {
+          if (getTimerStateValue(field - MIXSRC_FIRST_TIMER) < 0) {
+            label.with([](lv_obj_t* obj) {
+              lv_obj_add_state(obj, ETX_STATE_TIMER_ELAPSED);
+            });
+            value.with([](lv_obj_t* obj) {
+              lv_obj_add_state(obj, ETX_STATE_TIMER_ELAPSED);
+            });
+          }
+        } else if (telemStale) {
           label.with([](lv_obj_t* obj) {
             lv_obj_add_state(obj, ETX_STATE_TELEM_STALE);
           });
@@ -224,6 +301,20 @@ class ValueWidget : public NativeWidget
           [&](lv_obj_t* obj) { lv_label_set_text(obj, valueTxt.c_str()); });
       valueShadow.with(
           [&](lv_obj_t* obj) { lv_label_set_text(obj, valueTxt.c_str()); });
+
+      // Re-fit the card value font to the ACTUAL text so telemetry values
+      // render in full at any precision (never ellipsised). layoutContent fits
+      // the font before the value is known; different readings vary in width
+      // (e.g. "12.60V" vs "9.60V"), so the font must be chosen per value.
+      if (cardValueFit) {
+        value.with([&](lv_obj_t* obj) {
+          coord_t vy = 0, vfh = 0;
+          FontIndex f =
+              fitCardStackValue(valueTxt.c_str(), cardRectSaved, vy, vfh);
+          etx_font(obj, f);
+          setObjRect(obj, 0, vy, cardRectSaved.w, vfh);
+        });
+      }
     }
   }
 
@@ -232,6 +323,11 @@ class ValueWidget : public NativeWidget
  protected:
   int32_t lastValue = -10000;
   bool lastTelemState = false;
+  uint8_t lastStateLevel = 255;
+  // Card stack geometry captured at layout time so refreshContent can re-fit
+  // the value font to the actual value text (see refreshContent).
+  bool cardValueFit = false;
+  rect_t cardRectSaved = {0, 0, 0, 0};
   lv_style_t labelStyle;
   lv_style_t valueStyle;
   RequiredLvObj label;
@@ -250,24 +346,28 @@ class ValueWidget : public NativeWidget
   {
     auto widgetData = getPersistentData();
 
+    // Only the stacked card path re-fits the value font (set below).
+    cardValueFit = false;
+
     // get source from options[0]
     mixsrc_t field = widgetData->options[0].value.unsignedValue;
 
-    // get color from options[1]
+    // No colour option (index 1 is a retired placeholder). On cards: Muted
+    // labels + Default value token (state colours applied in refreshContent).
+    // Top bar (dark surface): legacy PRIMARY2 ink.
     bool nativeCard = usesCardChrome();
     label.with([&](lv_obj_t* obj) {
       if (nativeCard)
         lv_obj_set_style_text_color(obj, mutedTextColor(), LV_PART_MAIN);
       else
-        etx_txt_color_from_flags(obj,
-                                 widgetData->options[1].value.unsignedValue);
+        etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
     });
     value.with([&](lv_obj_t* obj) {
       if (nativeCard)
-        lv_obj_set_style_text_color(obj, primaryTextColor(), LV_PART_MAIN);
+        lv_obj_set_style_text_color(obj, paletteLvColor(PAL_DEFAULT),
+                                    LV_PART_MAIN);
       else
-        etx_txt_color_from_flags(obj,
-                                 widgetData->options[1].value.unsignedValue);
+        etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
     });
 
     // get label alignment from options[3]
@@ -299,18 +399,27 @@ class ValueWidget : public NativeWidget
             obj, content, showLabel ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW,
             cardGap(content), LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
       });
-      if (showLabel)
+      if (showLabel) {
+        // Stacked title + value: refreshContent re-fits the value font to the
+        // actual reading so it never ellipsises.
+        cardValueFit = true;
+        cardRectSaved = content;
         contentBox.with([&](lv_obj_t* row) {
           label.with([&](lv_obj_t* title) {
             value.with([&](lv_obj_t* val) {
               layoutCardStack(row, title, val, content);
+              // layoutCardStack resets the value colour; re-apply the Default
+              // token (state colours are applied afterwards in refreshContent).
+              lv_obj_set_style_text_color(val, paletteLvColor(PAL_DEFAULT),
+                                          LV_PART_MAIN);
             });
           });
         });
-      else
+      } else
         value.with([&](lv_obj_t* obj) {
           etx_font(obj, cardStackValueFont(content));
-          lv_obj_set_style_text_color(obj, primaryTextColor(), LV_PART_MAIN);
+          lv_obj_set_style_text_color(obj, paletteLvColor(PAL_DEFAULT),
+                                      LV_PART_MAIN);
           lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
           setFlexChild(obj, content.w, content.h, 1);
         });
@@ -475,9 +584,13 @@ class ValueWidget : public NativeWidget
   }
 };
 
+// No Color option: value colours are state-driven theme palette tokens. The
+// retired Color slot is kept as a hidden Deprecated placeholder so that
+// positionally-stored model YAML keeps shadow/align at their original indices;
+// the legacy colour value is ignored and dropped on next save.
 const WidgetOption ValueWidget::options[] = {
     {STR_SOURCE, WidgetOption::Source, MIXSRC_FIRST_STICK},
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX)},
+    {"", WidgetOption::Deprecated, 0},
     {STR_SHADOW, WidgetOption::Bool, false},
     {STR_ALIGN_LABEL, WidgetOption::Align, ALIGN_LEFT},
     {STR_ALIGN_VALUE, WidgetOption::Align, ALIGN_LEFT},

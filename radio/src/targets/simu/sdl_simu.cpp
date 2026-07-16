@@ -853,6 +853,33 @@ static void automation_handle_command(const std::string& line)
           << (flightBatteryArmingAllowed() ? 1 : 0)
           << ",\"battery_state\":" << int(flightBatterySessionState(0));
     automation_reply_ok(extra.str());
+  } else if (command == "set_timer") {
+    // Configure and set a timer for state-aware widget testing:
+    // set_timer <idx> <start_s> <value_s> <countdownBeep> <countdownStart>
+    int idx = 0, start = 0, value = 0, beep = 1, cds = 0;
+    in >> idx >> start >> value >> beep >> cds;
+    if (!in || idx < 0 || idx >= TIMERS) {
+      automation_reply_error(
+          "usage: set_timer <idx 0-2> <start_s> <value_s> <countdownBeep> <countdownStart>");
+      return;
+    }
+    g_model.timers[idx].start = start;
+    g_model.timers[idx].countdownBeep = beep;
+    g_model.timers[idx].countdownStart = cds;
+    setTimerStateValue(idx, value);
+    std::ostringstream extra;
+    extra << "\"idx\":" << idx << ",\"start\":" << start
+          << ",\"value\":" << value;
+    automation_reply_ok(extra.str());
+  } else if (command == "battery_monitor_enable") {
+    int monitor = 0, enabled = 1;
+    in >> monitor >> enabled;
+    if (!in || monitor < 0 || monitor >= MAX_BATTERY_MONITORS) {
+      automation_reply_error("usage: battery_monitor_enable <monitor 0-3> <0|1>");
+      return;
+    }
+    g_model.batteryMonitors[monitor].enabled = enabled ? 1 : 0;
+    automation_reply_ok(automation_battery_state_json(uint8_t(monitor)));
   } else if (command == "audio_history") {
     int maxLines = 200;
     in >> maxLines;

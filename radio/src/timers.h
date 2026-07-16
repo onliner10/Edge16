@@ -61,6 +61,12 @@ inline void setTimerStateValue(uint8_t idx, tmrval_t value)
 
 void timerReset(uint8_t idx);
 
+// State level for state-aware timer widgets: 0 normal, 1 warning, 2 critical.
+// Warning is raised only inside the timer's configured countdown-announce
+// window (and only when that announce is enabled) so the colour cue and the
+// countdown audio agree; Critical is a countdown timer that has expired.
+uint8_t timerWidgetStateLevel(uint8_t idx);
+
 void timerSet(int idx, int val);
 
 bool isTimerMinuteBeepDue(const TimerData &timer, tmrval_t announceVal);

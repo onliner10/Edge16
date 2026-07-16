@@ -430,6 +430,7 @@
 #define STR_BATTERYFULL currentLangStrings->STR_BATTERYFULL
 #define STR_BATTERYNONE currentLangStrings->STR_BATTERYNONE
 #define STR_BATTERYWARNING currentLangStrings->STR_BATTERYWARNING
+#define STR_BATTERYCRITICAL currentLangStrings->STR_BATTERYCRITICAL
 #define STR_BAUDRATE currentLangStrings->STR_BAUDRATE
 #define STR_BEEP_LENGTH currentLangStrings->STR_BEEP_LENGTH
 #define STR_BEEP_VOLUME currentLangStrings->STR_BEEP_VOLUME

@@ -116,6 +116,15 @@ void postRadioSettingsLoad()
     g_eeGeneral.internalModule = DEFAULT_INTERNAL_MODULE;
   }
 #endif
+
+  // Critical TX voltage: radios saved before this setting existed load it as 0.
+  // Give them a sensible default below the warning voltage (kept in the valid
+  // 3.0-12.0V range and strictly below the warning) so it is always active.
+  if (g_eeGeneral.vBatCrit == 0 || g_eeGeneral.vBatCrit >= g_eeGeneral.vBatWarn) {
+    int crit = (int)g_eeGeneral.vBatWarn - 3;
+    if (crit < 30) crit = 30;
+    g_eeGeneral.vBatCrit = (uint8_t)crit;
+  }
 #if !defined(DEBUG)
   // clean up leftovers from a previous DEBUG config
   for (uint8_t port_nr = 0; port_nr < MAX_AUX_SERIAL; port_nr++) {

@@ -546,6 +546,7 @@
 #define TR_BATTERYFULL                 "Akku voll"
 #define TR_BATTERYNONE                 "Keine!"
 #define TR_BATTERYWARNING              TR("Akku Warnung", "Akkuspannungswarnung")
+#define TR_BATTERYCRITICAL           "Battery critical"
 #define TR_INACTIVITYALARM             TR("Inaktivität", "Inaktivität nach")
 #define TR_MEMORYWARNING               "Speicher voll"
 #define TR_ALARMWARNING                TR("Alle Töne aus?", "Alle Töne ganz aus?")
@@ -1442,6 +1443,7 @@
 #define TR_ROLLER_VARIO_PITCH_MAX     "Vario Pitch Max"
 #define TR_ROLLER_VARIO_REPEAT        "Vario Repeat"
 #define TR_ROLLER_BATTERY_WARNING     "Battery Warning"
+#define TR_ROLLER_BATTERY_CRITICAL   "Battery Critical"
 #define TR_ROLLER_INACTIVITY_TIMER    "Inactivity Timer"
 #define TR_ROLLER_BACKLIGHT_DELAY     "Backlight Delay"
 #define TR_ROLLER_POWER_OFF_TIMER     "Power Off Timer"

@@ -786,14 +786,13 @@ class RadioInfoWidget : public Widget
 
     layoutStatus();
 
-    // get colors from options
-    etx_bg_color_from_flags(
-        batteryFill, widgetData->options[2].value.unsignedValue, LV_PART_MAIN);
-    etx_bg_color_from_flags(batteryFill,
-                            widgetData->options[1].value.unsignedValue,
+    // No colour options: fixed battery-level fills (high/mid/low).
+    (void)widgetData;
+    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0x4C, 0xAF, 0x50),
+                            LV_PART_MAIN);
+    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0xFF, 0xC1, 0x07),
                             LV_STATE_USER_1);
-    etx_bg_color_from_flags(batteryFill,
-                            widgetData->options[0].value.unsignedValue,
+    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0xF4, 0x43, 0x36),
                             LV_STATE_USER_2);
   }
 
@@ -1011,9 +1010,10 @@ class RadioInfoWidget : public Widget
 };
 
 const WidgetOption RadioInfoWidget::options[] = {
-    {STR_LOW_BATT_COLOR, WidgetOption::Color, RGB2FLAGS(0xF4, 0x43, 0x36)},
-    {STR_MID_BATT_COLOR, WidgetOption::Color, RGB2FLAGS(0xFF, 0xC1, 0x07)},
-    {STR_HIGH_BATT_COLOR, WidgetOption::Color, RGB2FLAGS(0x4C, 0xAF, 0x50)},
+    // Retired Color options kept as hidden placeholders for positional YAML compat.
+    {"", WidgetOption::Deprecated, 0},
+    {"", WidgetOption::Deprecated, 0},
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 class DateTimeWidget : public Widget
@@ -1041,11 +1041,10 @@ class DateTimeWidget : public Widget
   {
     auto widgetData = getPersistentData();
 
-    // get color from options
-    uint32_t color;
-    memcpy(&color, &widgetData->options[0].value.unsignedValue, sizeof(color));
+    // No colour option: use the theme ink (PRIMARY2).
+    (void)widgetData;
     if (!dateTime) return;
-    dateTime->setColor(color);
+    dateTime->setColor(COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX));
     bool compact = isCompactTopBarWidget();
     coord_t pad = TOPBAR_CONTENT_PAD;
     coord_t displayWidth =
@@ -1071,7 +1070,7 @@ class DateTimeWidget : public Widget
 };
 
 const WidgetOption DateTimeWidget::options[] = {
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX)},
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 BaseWidgetFactory<DateTimeWidget> DateTimeWidget("Date Time",
@@ -1119,8 +1118,10 @@ class DateTextWidget : public Widget
   void onUpdate() override
   {
     auto widgetData = getPersistentData();
+    (void)widgetData;
 
-    memcpy(&color, &widgetData->options[0].value.unsignedValue, sizeof(color));
+    // No colour option: use the theme ink (PRIMARY2).
+    color = COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX);
 
     const bool topbar = isCompactTopBarWidget();
     const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL;
@@ -1190,7 +1191,7 @@ class DateTextWidget : public Widget
 };
 
 const WidgetOption DateTextWidget::options[] = {
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX)},
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 class ClockWidget : public DateTextWidget

@@ -65,7 +65,9 @@ WidgetSettings::WidgetSettings(Widget* w) :
   auto* widgetData = widget->getPersistentData();
 
   while (opt && opt->name != nullptr) {
-    if (opt->name[0] == '\0') {
+    // Skip hidden (empty-name) options and retired Color slots kept only to
+    // preserve positional YAML compatibility (WidgetOption::Deprecated).
+    if (opt->name[0] == '\0' || opt->type == WidgetOption::Deprecated) {
       optIdx++;
       opt++;
       continue;

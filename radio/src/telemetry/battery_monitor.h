@@ -121,6 +121,35 @@ inline uint16_t batteryTypeMatchMaxPerCellCv(BatteryType type)
   }
 }
 
+// Remaining-charge percent (0..100) for a per-cell reading, using the same
+// linear interpolation between the chemistry's match-min and match-max per-cell
+// voltage that the Battery Monitor widget's voltage-fallback path uses. Returns
+// -1 when the reading is unusable (no cells / bad curve / non-positive volts) so
+// callers can render a neutral state rather than guess.
+inline int flightBatteryVoltageRemainingPercent(int32_t perCellCv,
+                                                 BatteryType chem)
+{
+  if (perCellCv <= 0) return -1;
+  const uint16_t minCv = batteryTypeMatchMinPerCellCv(chem);
+  const uint16_t maxCv = batteryTypeMatchMaxPerCellCv(chem);
+  if (maxCv <= minCv) return -1;
+  int pct = (int)(perCellCv - (int32_t)minCv) * 100 / (maxCv - minCv);
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  return pct;
+}
+
+// Single source of truth for the 35%/20% warning bands shared by the Battery
+// Monitor widget and any telemetry-voltage widget that mirrors a monitor:
+// 0 = normal, 1 = warning (<= 35% remaining), 2 = critical (<= 20% remaining).
+inline uint8_t flightBatteryRemainingWarningLevel(int remainingPercent)
+{
+  if (remainingPercent < 0) return 0;
+  if (remainingPercent <= 20) return 2;
+  if (remainingPercent <= 35) return 1;
+  return 0;
+}
+
 inline bool flightBatteryPackMatchesChemistry(uint16_t packVoltageCv,
                                                uint8_t cellCount,
                                                BatteryType type)

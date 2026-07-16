@@ -22,6 +22,7 @@
 #include "edgetx.h"
 #include "static.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 class GaugeWidget : public NativeWidget
 {
@@ -231,7 +232,8 @@ class GaugeWidget : public NativeWidget
       }
     });
     bar.with([&](lv_obj_t* obj) {
-      etx_bg_color_from_flags(obj, widgetData->options[3].value.unsignedValue);
+      // No colour option: the gauge fill uses the Emphasis theme token.
+      lv_obj_set_style_bg_color(obj, paletteLvColor(PAL_EMPHASIS), LV_PART_MAIN);
       if (stackCard) lv_obj_move_background(obj);
     });
     lastValue = -10000;
@@ -290,7 +292,8 @@ const WidgetOption GaugeWidget::options[] = {
      WIDGET_OPTION_VALUE_SIGNED(-RESX), WIDGET_OPTION_VALUE_SIGNED(RESX)},
     {STR_MAX, WidgetOption::Integer, WIDGET_OPTION_VALUE_SIGNED(RESX),
      WIDGET_OPTION_VALUE_SIGNED(-RESX), WIDGET_OPTION_VALUE_SIGNED(RESX)},
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_WARNING_INDEX)},
+    // Retired Color slot kept as a hidden placeholder for positional YAML compat.
+    {"", WidgetOption::Deprecated, 0},
     {nullptr, WidgetOption::Bool}};
 
 BaseWidgetFactory<GaugeWidget> gaugeWidget("Gauge", GaugeWidget::options,

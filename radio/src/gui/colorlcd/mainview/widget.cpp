@@ -28,6 +28,7 @@
 #include "etx_lv_theme.h"
 #include "menu.h"
 #include "view_main.h"
+#include "widget_palette.h"
 #include "widget_settings.h"
 
 #if defined(HARDWARE_TOUCH)
@@ -276,6 +277,23 @@ bool NativeWidget::usesCardChrome() const
   return isMainViewWidget() && !isCompactTopBarWidget();
 }
 
+void NativeWidget::setCardStateCue(uint8_t level)
+{
+  if (!usesCardChrome()) return;
+  // Redundant, non-colour structural cue for colour-blind pilots: normal keeps
+  // a 1px quiet border and the plain card; Warning/Critical add a 3px coloured
+  // border and a validated surface tint. Implemented once here so every
+  // state-aware data widget escalates identically. The card cue stays STEADY
+  // (never blinks) to avoid overload; digit blink lives in the widget.
+  card.with([&](lv_obj_t* obj) {
+    lv_obj_set_style_bg_color(obj, paletteStateCardTint(level), LV_PART_MAIN);
+    lv_obj_set_style_border_color(obj, paletteStateBorderColor(level),
+                                  LV_PART_MAIN);
+    lv_obj_set_style_border_width(obj, level != WIDGET_STATE_NORMAL ? 3 : 1,
+                                  LV_PART_MAIN);
+  });
+}
+
 rect_t NativeWidget::cardRect() const
 {
   if (!usesCardChrome()) return {0, 0, width(), height()};
@@ -441,11 +459,9 @@ void NativeWidget::layoutCardHeader(lv_obj_t* row, lv_obj_t* title,
   }
 }
 
-void NativeWidget::layoutCardStack(lv_obj_t* column, lv_obj_t* title,
-                                   lv_obj_t* value, const rect_t& rect)
+FontIndex NativeWidget::fitCardStackValue(const char* text, const rect_t& rect,
+                                          coord_t& outY, coord_t& outFontH)
 {
-  if (!column) return;
-
   coord_t gap = cardGap(rect);
   FontIndex titleFont = cardStackTitleFont(rect);
   coord_t titleH = getFontHeight(LcdFlags(titleFont) << 8u);
@@ -459,13 +475,35 @@ void NativeWidget::layoutCardStack(lv_obj_t* column, lv_obj_t* title,
   static constexpr FontIndex valueFonts[] = {
       FONT_XXL_INDEX, FONT_LXL_INDEX, FONT_XL_INDEX,   FONT_L_INDEX,
       FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
-  const char* valueText = value ? lv_label_get_text(value) : "";
-  if (!valueText || valueText[0] == '\0') valueText = "0000";
-  FontIndex valueFont = fitTextFont(valueText, rect.w, valueH, valueFonts,
-                                    DIM(valueFonts));
+  if (!text || text[0] == '\0') text = "0000";
+  FontIndex valueFont =
+      fitTextFont(text, rect.w, valueH, valueFonts, DIM(valueFonts));
   coord_t valueFontH = getFontHeight(LcdFlags(valueFont) << 8u);
   coord_t valueY = titleH + gap;
   if (valueH > valueFontH) valueY += (valueH - valueFontH) / 2;
+
+  outY = valueY;
+  outFontH = valueFontH;
+  return valueFont;
+}
+
+void NativeWidget::layoutCardStack(lv_obj_t* column, lv_obj_t* title,
+                                   lv_obj_t* value, const rect_t& rect)
+{
+  if (!column) return;
+
+  coord_t gap = cardGap(rect);
+  FontIndex titleFont = cardStackTitleFont(rect);
+  coord_t titleH = getFontHeight(LcdFlags(titleFont) << 8u);
+  coord_t usableH = rect.h > gap ? rect.h - gap : rect.h;
+  if (usableH <= titleH)
+    titleH = usableH > 2 ? usableH / 2 : usableH;
+  else if (titleH > usableH / 2)
+    titleH = usableH / 2;
+
+  const char* valueText = value ? lv_label_get_text(value) : "";
+  coord_t valueY = 0, valueFontH = 0;
+  FontIndex valueFont = fitCardStackValue(valueText, rect, valueY, valueFontH);
 
   setObjRect(column, rect.x, rect.y, rect.w, rect.h);
   lv_obj_set_layout(column, 0);

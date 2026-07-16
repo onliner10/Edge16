@@ -406,6 +406,17 @@ const static SetupLineDef alarmsPageSetupLines[] = {
     }
   },
   {
+    // Battery critical (state-aware TX battery widget escalates to Critical here)
+    STR_DEF(STR_BATTERYCRITICAL),
+    [](Window* parent, coord_t x, coord_t y) {
+      auto edit = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
+                                GET_SET_DEFAULT(g_eeGeneral.vBatCrit), PREC1);
+      edit->setSuffix("V");
+      edit->setDirectKeyboard(false);
+      edit->setEditTitle(STR_ROLLER_BATTERY_CRITICAL);
+    }
+  },
+  {
     // Inactivity alarm
     STR_DEF(STR_INACTIVITYALARM),
     [](Window* parent, coord_t x, coord_t y) {

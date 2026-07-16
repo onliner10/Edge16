@@ -132,6 +132,11 @@ struct WidgetOption {
     Slider,
     Choice,
     File,
+    // Reserved placeholder that keeps a removed option's array position so
+    // positionally-stored model YAML does not shift the remaining options.
+    // Stored as WOV_Unsigned, hidden from the settings UI, ignored by widgets.
+    // Used to retire the per-widget Color options in favour of theme tokens.
+    Deprecated,
   };
 
   const char* name;
@@ -260,6 +265,11 @@ class NativeWidget : public Widget
   bool usesCardChrome() const;
   void invalidateNativeRefresh() { refreshPending = true; }
 
+  // Redundant, non-colour state cue on the widget card (border + surface tint)
+  // for the escalation levels in widget_palette.h. Shared by all state-aware
+  // data widgets; no-op for non-card (top bar) widgets. Stays steady.
+  void setCardStateCue(uint8_t level);
+
   static void setObjRect(lv_obj_t* obj, coord_t x, coord_t y, coord_t w,
                          coord_t h);
   static void setObjVisible(lv_obj_t* obj, bool visible);
@@ -282,6 +292,12 @@ class NativeWidget : public Widget
                                const rect_t& rect, coord_t valueWidth = 0);
   static void layoutCardStack(lv_obj_t* column, lv_obj_t* title,
                               lv_obj_t* value, const rect_t& rect);
+  // Chooses the largest value font that renders `text` in full inside a card
+  // stack of the given size (never ellipsised), and reports the value line's
+  // y-offset and height. Shared by layoutCardStack and widgets that re-fit the
+  // font when their value text changes (e.g. telemetry precision).
+  static FontIndex fitCardStackValue(const char* text, const rect_t& rect,
+                                     coord_t& outY, coord_t& outFontH);
   static rect_t insetRect(const rect_t& rect, coord_t inset);
   static FontIndex fitTextFont(const char* text, coord_t width, coord_t height,
                                const FontIndex* fonts, uint8_t fontCount);

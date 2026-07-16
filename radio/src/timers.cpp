@@ -48,6 +48,19 @@ void timerReset(uint8_t idx)
   timerState.val_10ms = 0 ;
 }
 
+uint8_t timerWidgetStateLevel(uint8_t idx)
+{
+  if (idx >= TIMERS) return 0;
+  const tmrval_t v = getTimerStateValue(idx);
+  if (v < 0) return 2;  // expired countdown -> critical
+  const TimerData& t = g_model.timers[idx];
+  // Match the countdown audio announce so colour and sound agree.
+  if (t.start > 0 && t.countdownBeep != COUNTDOWN_SILENT &&
+      v <= (tmrval_t)TIMER_COUNTDOWN_START(idx))
+    return 1;  // inside the announced countdown window -> warning
+  return 0;
+}
+
 void timerSet(int idx, int val)
 {
   if (idx < 0 || idx >= TIMERS) return;

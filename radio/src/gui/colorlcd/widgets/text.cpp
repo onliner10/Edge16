@@ -21,6 +21,7 @@
 
 #include "edgetx.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 #define TEXT_WIDGET_DEFAULT_LABEL "My Label"
 
@@ -87,16 +88,14 @@ class TextWidget : public NativeWidget
       lv_label_set_text(obj, widgetData->options[0].value.stringValue.c_str());
     });
 
-    auto color = widgetData->options[1].value.unsignedValue;
+    // No colour option (index 1 is a retired placeholder). Cards use the
+    // Default token; the top bar keeps its light PRIMARY2 ink.
     label.with([&](lv_obj_t* obj) {
-      if (usesCardChrome()) {
-        lv_obj_set_style_text_color(obj, primaryTextColor(), LV_PART_MAIN);
-      } else if (isCompactTopBarWidget() &&
-                 color == COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX)) {
+      if (usesCardChrome())
+        lv_obj_set_style_text_color(obj, paletteLvColor(PAL_DEFAULT),
+                                    LV_PART_MAIN);
+      else
         etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
-      } else {
-        etx_txt_color_from_flags(obj, color);
-      }
     });
 
     FontIndex font = responsiveTextFont(content.h);
@@ -139,7 +138,7 @@ class TextWidget : public NativeWidget
 const WidgetOption TextWidget::options[] = {
     {STR_TEXT, WidgetOption::String,
      WIDGET_OPTION_VALUE_STRING(TEXT_WIDGET_DEFAULT_LABEL)},
-    {STR_COLOR, WidgetOption::Color, COLOR2FLAGS(COLOR_THEME_SECONDARY1_INDEX)},
+    {"", WidgetOption::Deprecated, 0},
     {"", WidgetOption::TextSize, 0},
     {STR_SHADOW, WidgetOption::Bool, false},
     {"", WidgetOption::Align, ALIGN_LEFT},

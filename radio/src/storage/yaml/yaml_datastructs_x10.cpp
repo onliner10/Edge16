@@ -415,6 +415,7 @@ static const struct YamlNode struct_RadioData[] = {
   YAML_ARRAY("calib", 48, 20, struct_CalibData, NULL),
   YAML_PADDING( 16 ),
   YAML_UNSIGNED( "vBatWarn", 8 ),
+  YAML_UNSIGNED( "vBatCrit", 8 ),
   YAML_SIGNED( "txVoltageCalibration", 8 ),
   YAML_ENUM("backlightMode", 3, enum_BacklightMode, NULL),
   YAML_ENUM("antennaMode", 2, enum_AntennaModes, NULL),

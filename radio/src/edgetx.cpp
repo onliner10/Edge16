@@ -358,6 +358,8 @@ void generalDefault()
   // vBatWarn is voltage in 100mV, vBatMin is in 100mV but with -9V offset,
   // vBatMax has a -12V offset
   g_eeGeneral.vBatWarn = BATTERY_WARN;
+  // Critical TX voltage: a sensible default 0.3V below the warning voltage.
+  g_eeGeneral.vBatCrit = BATTERY_WARN > 3 ? BATTERY_WARN - 3 : BATTERY_WARN;
   if (BATTERY_MIN != 90)
     g_eeGeneral.vBatMin = BATTERY_MIN - 90;
   if (BATTERY_MAX != 120)
