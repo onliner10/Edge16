@@ -2658,6 +2658,23 @@ class HarnessService:
                 self.ui_long_click(selector, int(value.get("duration_ms", 0)))
         elif "assert_visible" in step:
             self.assert_visible(step["assert_visible"])
+        elif "type_text" in step:
+            value = step["type_text"]
+            if isinstance(value, str):
+                text, submit, replace = value, True, True
+            else:
+                text = str(value["text"])
+                submit = bool(value.get("submit", True))
+                replace = bool(value.get("replace", True))
+            # Call the raw automation protocol method directly rather than the
+            # type_text() wrapper: that wrapper additionally requires the
+            # screen-context heuristic to report "field_edit", which pairs a
+            # label node with a same-row value node -- a layout this app's
+            # title-above-field text dialogs (e.g. ModelNameDialog, the
+            # existing "Model name" field) don't match, even though a real
+            # on-screen keyboard is genuinely open (Keyboard::activeKeyboard
+            # is set) and text_input() works against it directly.
+            self.require_session().text_input(text, replace=replace, submit=submit)
         elif "skip_storage_warning_if_present" in step:
             self.skip_storage_warning_if_present()
         elif step.get("invoke") == "skip_storage_warning_if_present":
@@ -2709,6 +2726,16 @@ class HarnessService:
             )
         elif "switch_sequence" in step:
             self.switch_sequence(step["switch_sequence"])
+        elif "set_switch" in step:
+            value = step["set_switch"]
+            self.set_switch(int(value["index"]), int(value["position"]))
+        elif "goto" in step:
+            value = step["goto"]
+            self.goto(value if isinstance(value, str) else str(value["route"]))
+        elif "audio_history" in step:
+            value = step["audio_history"]
+            max_lines = int(value.get("max_lines", 200)) if isinstance(value, dict) else 200
+            screenshots.append({"audio_history": self.audio_history(max_lines)})
         elif "screenshot" in step:
             screenshots.append(self.screenshot(str(step["screenshot"]), str(output_dir)))
         else:

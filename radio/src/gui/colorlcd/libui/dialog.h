@@ -24,6 +24,7 @@
 class StaticText;
 class DynamicText;
 class Progress;
+class TextEdit;
 
 #define DIALOG_DEFAULT_WIDTH ((coord_t)(LCD_W * 0.8))
 #define DIALOG_DEFAULT_HEIGHT ((coord_t)(LCD_H * 0.8))
@@ -143,4 +144,43 @@ class LabelDialog : public ModalWindow
  protected:
   std::function<void(std::string)> saveHandler;
   char label[MAX_LABEL_LENGTH + 1];
+};
+
+//-----------------------------------------------------------------------------
+
+// Prompts for a name with the on-screen keyboard already open, so the
+// pilot's very first keystroke replaces the ghost/placeholder hint instead
+// of being spent tapping the field open or backspacing over an existing
+// auto-generated value. Used at model creation time (see
+// ModelLabelsWindow::newModel).
+//
+// 'currentName'/'length' is the fixed-length (not necessarily
+// null-terminated) auto-generated name shown as the placeholder hint; it is
+// never mutated by this dialog.
+//
+// doneHandler(applied, name) fires exactly once, whether confirmed or
+// cancelled:
+//  - Checkmark/OK with a non-empty typed name: applied=true, name=typed text.
+//  - EXIT/cancel, or OK with an empty field: applied=false, name="" -- the
+//    caller keeps whichever name creation would otherwise have produced.
+// Creation is never blocked on naming.
+class ModelNameDialog : public ModalWindow
+{
+ public:
+  ModelNameDialog(const char* currentName, uint8_t length,
+                  std::function<void(bool applied, std::string name)>
+                      doneHandler);
+
+  static constexpr uint8_t MAX_NAME_LEN = 64;
+
+  void onCancel() override { finish(false); }
+
+ protected:
+  uint8_t fieldLen;
+  char edited[MAX_NAME_LEN + 1] = {};
+  char hint[MAX_NAME_LEN + 1] = {};
+  std::function<void(bool, std::string)> doneHandler;
+  TextEdit* nameField = nullptr;
+
+  void finish(bool wantApply);
 };

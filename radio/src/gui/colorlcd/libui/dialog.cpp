@@ -314,3 +314,222 @@ LabelDialog::LabelDialog(const char *label, int length, const char* title,
       },
       this, rect_t{});
 }
+
+//-----------------------------------------------------------------------------
+
+ModelNameDialog::ModelNameDialog(
+    const char* currentName, uint8_t length,
+    std::function<void(bool, std::string)> _doneHandler) :
+    ModalWindow(false), doneHandler(std::move(_doneHandler))
+{
+  fieldLen = (uint8_t)std::max(
+      0, std::min((int)length, (int)MAX_NAME_LEN));
+
+  // Capture the auto-generated name as the placeholder hint; trim the
+  // trailing padding a fixed-length model-name buffer may carry so the hint
+  // reads cleanly (e.g. "MODEL03" rather than "MODEL03\0\0\0\0\0\0\0\0").
+  if (currentName && fieldLen > 0) {
+    memcpy(hint, currentName, fieldLen);
+  }
+  hint[fieldLen] = '\0';
+  for (int i = fieldLen - 1; i >= 0 && (hint[i] == '\0' || hint[i] == ' '); i--)
+    hint[i] = '\0';
+
+  // Edit buffer starts empty: with the placeholder showing, the pilot's
+  // first keystroke is a real character, not a backspace over the hint.
+  edited[0] = '\0';
+
+  buildRequiredWindow<Window>(
+      [&](Window& form) {
+        form.padAll(PAD_ZERO);
+        form.setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO, LCD_W * 0.8,
+                           LV_SIZE_CONTENT);
+        form.withLive([](Window::LiveWindow& live) {
+          etx_solid_bg(live.lvobj());
+          // Anchored to the top, not centered: the on-screen keyboard opens
+          // immediately and occupies the bottom ~2/5 of the screen (see
+          // Keyboard::Keyboard / KEYBOARD_HEIGHT), so a vertically centered
+          // dialog would push its own EXIT/OK buttons underneath the
+          // keyboard and make them untappable while it's showing.
+          lv_obj_align(live.lvobj(), LV_ALIGN_TOP_MID, 0, PAD_LARGE);
+        });
+
+        auto hdr = Window::makeLive<StaticText>(
+            &form, rect_t{0, 0, LV_PCT(100), 0}, STR_MODELNAME,
+            COLOR_THEME_PRIMARY2_INDEX);
+        if (hdr) {
+          hdr->withLive([](Window::LiveWindow& live) {
+            etx_solid_bg(live.lvobj(), COLOR_THEME_SECONDARY1_INDEX);
+          });
+          hdr->padAll(PAD_MEDIUM);
+        }
+
+        buildRequiredWindow<Window>(
+            [&](Window& box) {
+              box.padAll(PAD_MEDIUM);
+              box.setFlexLayout(LV_FLEX_FLOW_ROW, 40, LV_PCT(100),
+                                LV_SIZE_CONTENT);
+              box.withLive([](Window::LiveWindow& live) {
+                lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
+                                      LV_FLEX_ALIGN_CENTER,
+                                      LV_FLEX_ALIGN_SPACE_BETWEEN);
+              });
+
+              buildRequiredWindow<TextEdit>(
+                  [&](TextEdit& te) { nameField = &te; }, &box,
+                  rect_t{0, 0, LV_PCT(100), 0}, this->edited, fieldLen,
+                  nullptr, this->hint);
+            },
+            &form, rect_t{});
+
+        buildRequiredWindow<Window>(
+            [&](Window& box) {
+              box.padAll(PAD_MEDIUM);
+              box.setFlexLayout(LV_FLEX_FLOW_ROW, 40, LV_PCT(100),
+                                LV_SIZE_CONTENT);
+              box.withLive([](Window::LiveWindow& live) {
+                lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
+                                      LV_FLEX_ALIGN_CENTER,
+                                      LV_FLEX_ALIGN_SPACE_BETWEEN);
+              });
+
+              // EXIT/cancel: never blocks creation, just keeps whatever
+              // name creation would otherwise have produced.
+              buildRequiredWindow<TextButton>(
+                  [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_EXIT,
+                  [=]() {
+                    finish(false);
+                    return 0;
+                  });
+
+              // Checkmark/confirm: applies the typed name.
+              buildRequiredWindow<TextButton>(
+                  [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_OK,
+                  [=]() {
+                    finish(true);
+                    return 0;
+                  });
+            },
+            &form, rect_t{});
+      },
+      this, rect_t{});
+
+  // Open the keyboard immediately -- no tap needed to start typing, so the
+  // pilot's first keystroke always counts.
+  if (nameField) nameField->openNow();
+}
+
+void ModelNameDialog::finish(bool wantApply)
+{
+  bool applied = false;
+  std::string result;
+
+  if (wantApply) {
+    int len = fieldLen;
+    while (len > 0 &&
+          (edited[len - 1] == '\0' || edited[len - 1] == ' '))
+      len--;
+    if (len > 0) {
+      result.assign(edited, len);
+      applied = true;
+    }
+  }
+
+  auto handler = doneHandler;
+  deleteLater();
+  if (handler) handler(applied, result);
+}
+
+#if defined(SIMU)
+namespace {
+class TestModelNameDialog : public ModelNameDialog
+{
+ public:
+  TestModelNameDialog(const char* currentName, uint8_t length,
+                      std::function<void(bool, std::string)> doneHandler) :
+      ModelNameDialog(currentName, length, std::move(doneHandler))
+  {
+  }
+
+  // Simulates the pilot typing, bypassing the real on-screen keyboard so the
+  // test doesn't depend on LVGL input-device plumbing.
+  void typeForTest(const char* text)
+  {
+    strncpy(edited, text, sizeof(edited) - 1);
+    edited[sizeof(edited) - 1] = '\0';
+  }
+
+  void pressOkForTest() { finish(true); }
+  void pressExitForTest() { finish(false); }
+  bool keyboardOpenedForTest() const { return nameField != nullptr; }
+  std::string hintForTest() const { return std::string(hint); }
+};
+}  // namespace
+
+// Confirming with a typed name applies it, and the placeholder hint offered
+// is the auto-generated name -- i.e. the ghost-text design described in
+// ModelLabelsWindow::newModel.
+bool modelNameDialogAppliesTypedNameOnConfirmForTest()
+{
+  bool applied = false;
+  std::string result = "unset";
+
+  auto* dlg = new (std::nothrow) TestModelNameDialog(
+      "MODEL03", 7, [&](bool a, std::string n) {
+        applied = a;
+        result = n;
+      });
+  if (!dlg || !dlg->isAvailable()) return false;
+
+  bool keyboardOpened = dlg->keyboardOpenedForTest();
+  bool hintIsAutoName = dlg->hintForTest() == "MODEL03";
+
+  dlg->typeForTest("Test1");
+  dlg->pressOkForTest();
+  MainWindow::instance()->runMainLoopTick();
+
+  return keyboardOpened && hintIsAutoName && applied && result == "Test1";
+}
+
+// EXIT/cancel never blocks creation and never applies partially typed text
+// -- the caller is told to keep whatever name creation would otherwise have
+// produced.
+bool modelNameDialogKeepsAutoNameOnExitForTest()
+{
+  bool applied = true;
+  std::string result = "unset";
+
+  auto* dlg = new (std::nothrow) TestModelNameDialog(
+      "MODEL04", 7, [&](bool a, std::string n) {
+        applied = a;
+        result = n;
+      });
+  if (!dlg || !dlg->isAvailable()) return false;
+
+  dlg->typeForTest("ShouldBeIgnored");
+  dlg->pressExitForTest();
+  MainWindow::instance()->runMainLoopTick();
+
+  return !applied && result.empty();
+}
+
+// Confirming with an empty field must not block or "apply" a blank name --
+// it degrades to the same outcome as EXIT.
+bool modelNameDialogEmptyConfirmKeepsAutoNameForTest()
+{
+  bool applied = true;
+  std::string result = "unset";
+
+  auto* dlg = new (std::nothrow) TestModelNameDialog(
+      "MODEL05", 7, [&](bool a, std::string n) {
+        applied = a;
+        result = n;
+      });
+  if (!dlg || !dlg->isAvailable()) return false;
+
+  dlg->pressOkForTest();  // 'edited' left empty -- nothing typed
+  MainWindow::instance()->runMainLoopTick();
+
+  return !applied && result.empty();
+}
+#endif

@@ -1,0 +1,35 @@
+{
+  "target": "tx16s",
+  "output": "build/ui-harness/screenshots/sf-audio-debug",
+  "steps": [
+    { "wait": { "ms": 2000 } },
+    { "skip_storage_warning_if_present": true },
+    { "wait": { "ms": 500 } },
+    { "goto": "model.special_functions" },
+    { "wait": { "ms": 500 } },
+
+    { "touch": { "x": 238, "y": 99 } },
+    { "wait": { "ms": 400 } },
+    { "click": { "text": "SF2" } },
+    { "wait": { "ms": 400 } },
+    { "touch": { "x": 210, "y": 70 } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "SA-" } },
+    { "wait": { "ms": 300 } },
+    { "touch": { "x": 210, "y": 107 } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "Play Sound" } },
+    { "wait": { "ms": 300 } },
+    { "press": { "key": "EXIT", "duration_ms": 120 } },
+    { "wait": { "ms": 400 } },
+
+    { "audio_history": { "max_lines": 100 } },
+    { "set_switch": { "index": 0, "position": -1 } },
+    { "wait": { "ms": 1500 } },
+    { "screenshot": "00-switch-down" },
+    { "audio_history": { "max_lines": 100 } },
+    { "set_switch": { "index": 0, "position": 0 } },
+    { "wait": { "ms": 300 } },
+    { "audio_history": { "max_lines": 100 } }
+  ]
+}

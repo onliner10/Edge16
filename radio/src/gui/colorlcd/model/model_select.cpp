@@ -721,6 +721,35 @@ void ModelLabelsWindow::onPressPGUP() { onPressPG(false); }
 void ModelLabelsWindow::onPressPGDN() { onPressPG(true); }
 #endif
 
+// Writes the pilot's typed name (if any) into g_model/the current
+// ModelCell. Split out from applyChosenModelName() so the name-precedence
+// logic is testable without touching storage I/O. A no-op when the pilot
+// didn't type anything (EXIT/cancel, or confirming an empty field): the
+// model keeps whichever name creation already produced.
+static void applyChosenModelNameData(bool applied, const std::string& typedName)
+{
+  if (!applied) return;
+
+  strncpy(g_model.header.name, typedName.c_str(), sizeof(g_model.header.name));
+  if (auto model = modelslist.getCurrentModel()) {
+    model->setModelName(g_model.header.name);
+  }
+}
+
+// Applies the pilot's typed name (if any) to the model that was just
+// created. Must run *after* any template has been loaded (loadModel()
+// overwrites g_model wholesale, including header.name, with the template's
+// own stored name) -- otherwise a typed name would silently be discarded
+// for every non-blank template, not just Blank Model.
+static void applyChosenModelName(bool applied, const std::string& typedName)
+{
+  if (!applied) return;
+
+  applyChosenModelNameData(applied, typedName);
+  storageDirty(EE_MODEL);
+  storageCheck(true);
+}
+
 void ModelLabelsWindow::newModel()
 {
   // Save current
@@ -734,45 +763,61 @@ void ModelLabelsWindow::newModel()
     if (!newCell) return;
     modelslist.setCurrentModel(newCell);
 
-    // Make the new model
+    // Make the new model. This assigns and persists the auto-generated name
+    // (e.g. "MODEL03") that the name dialog below offers as a placeholder.
     createModel();
 
-    // Close Window
-    onCancel();
+    // Prompt for a name immediately, keyboard already open, so the pilot's
+    // first keystroke counts instead of being spent tapping the field open
+    // or backspacing over the auto-generated name. EXIT/cancel (or
+    // confirming an empty field) never blocks creation -- it just keeps
+    // whichever name creation would otherwise have produced.
+    new ModelNameDialog(
+        g_model.header.name, sizeof(g_model.header.name),
+        [=](bool applied, std::string typedName) {
+          // Close Window
+          onCancel();
 
-    Window::deferGlobalUiMutation([folder, name](UiMutationToken& token) {
-      (void)token;
-      // Check for not 'Blank Model'
-      if (name.size() > 0) {
-        static constexpr size_t LEN_BUFFER =
-            sizeof(TEMPLATES_PATH) + 2 * TEXT_FILENAME_MAXLEN + 1;
+          Window::deferGlobalUiMutation([folder, name, applied, typedName](
+                                            UiMutationToken& token) {
+            (void)token;
+            // Check for not 'Blank Model'
+            if (name.size() > 0) {
+              static constexpr size_t LEN_BUFFER =
+                  sizeof(TEMPLATES_PATH) + 2 * TEXT_FILENAME_MAXLEN + 1;
 
-        char path[LEN_BUFFER + 1];
-        snprintf(path, LEN_BUFFER, "%s/%s", TEMPLATES_PATH, folder.c_str());
+              char path[LEN_BUFFER + 1];
+              snprintf(path, LEN_BUFFER, "%s/%s", TEMPLATES_PATH, folder.c_str());
 
-        // Read model template
-        LayoutFactory::replaceTemplateScreens(token, [&]() {
-          loadModel((name + YAML_EXT).c_str(), false, path);
-          storageFlushCurrentModel();
-          storageCheck(true);
-        });
+              // Read model template
+              LayoutFactory::replaceTemplateScreens(token, [&]() {
+                loadModel((name + YAML_EXT).c_str(), false, path);
+                storageFlushCurrentModel();
+                storageCheck(true);
+              });
 
-        // Update the current cell's data
-        modelslist.updateCurrentModelCell();
+              // Update the current cell's data
+              modelslist.updateCurrentModelCell();
 
 #if defined(LUA)
-        // If there is a wizard Lua script, fire it up
-        int len = strlen(path);
-        snprintf(path + len, LEN_BUFFER - len, "/%s%s", name.c_str(),
-                 SCRIPT_EXT);
-        if (f_stat(path, 0) == FR_OK) {
-          luaExecStandalone(path);
-        }
+              // If there is a wizard Lua script, fire it up
+              int len = strlen(path);
+              snprintf(path + len, LEN_BUFFER - len, "/%s%s", name.c_str(),
+                       SCRIPT_EXT);
+              if (f_stat(path, 0) == FR_OK) {
+                luaExecStandalone(path);
+              }
 #endif
-      } else {
-        LayoutFactory::replaceCustomScreens(token);
-      }
-    });
+            } else {
+              LayoutFactory::replaceCustomScreens(token);
+            }
+
+            // Apply the pilot's chosen name last, so it survives template
+            // loading above (which would otherwise overwrite it with the
+            // template's own stored name).
+            applyChosenModelName(applied, typedName);
+          });
+        });
   });
 }
 
@@ -1079,3 +1124,51 @@ void ModelLabelsWindow::setTitle()
   header->setTitle(STR_MAIN_MENU_MANAGE_MODELS);
   header->setTitle2(title2);
 }
+
+#if defined(SIMU)
+// A typed name must survive template loading, not just apply to Blank
+// Model: newModel() calls applyChosenModelName() *after* the deferred
+// template-load mutation, because loadModel() overwrites g_model.header.name
+// wholesale with the template's own stored name. This proves the ordering
+// without needing a real template file on the harness's SD card fixture --
+// it simulates exactly what a template load does to g_model.header.name and
+// checks the pilot's typed name still wins.
+bool chosenModelNameSurvivesSimulatedTemplateLoadForTest()
+{
+  char saved[sizeof(g_model.header.name)];
+  memcpy(saved, g_model.header.name, sizeof(saved));
+
+  // Emulate createModel() giving the slot an auto-generated name...
+  strncpy(g_model.header.name, "MODEL03", sizeof(g_model.header.name));
+  // ...then a template load overwriting it with the template's own name,
+  // exactly like loadModel() would for any non-blank template.
+  strncpy(g_model.header.name, "TemplateStock", sizeof(g_model.header.name));
+
+  applyChosenModelNameData(true, "Test1");
+
+  bool nameApplied =
+      strncmp(g_model.header.name, "Test1", sizeof(g_model.header.name)) == 0;
+
+  memcpy(g_model.header.name, saved, sizeof(saved));
+  return nameApplied;
+}
+
+// EXIT/confirming empty must not disturb whatever name creation (or
+// template loading) already produced -- applyChosenModelNameData() must be
+// a true no-op when 'applied' is false.
+bool unchosenModelNameLeavesTemplateNameUntouchedForTest()
+{
+  char saved[sizeof(g_model.header.name)];
+  memcpy(saved, g_model.header.name, sizeof(saved));
+
+  strncpy(g_model.header.name, "TemplateStock", sizeof(g_model.header.name));
+
+  applyChosenModelNameData(false, "ShouldBeIgnored");
+
+  bool nameUnchanged = strncmp(g_model.header.name, "TemplateStock",
+                               sizeof(g_model.header.name)) == 0;
+
+  memcpy(g_model.header.name, saved, sizeof(saved));
+  return nameUnchanged;
+}
+#endif

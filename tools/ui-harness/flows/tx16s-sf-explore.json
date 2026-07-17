@@ -1,0 +1,12 @@
+{
+  "target": "tx16s",
+  "output": "build/ui-harness/screenshots/sf-explore",
+  "steps": [
+    { "wait": { "ms": 2000 } },
+    { "skip_storage_warning_if_present": true },
+    { "wait": { "ms": 500 } },
+    { "goto": "model.special_functions" },
+    { "wait": { "ms": 500 } },
+    { "screenshot": "00-sf-page" }
+  ]
+}

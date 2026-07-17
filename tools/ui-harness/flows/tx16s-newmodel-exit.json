@@ -1,0 +1,32 @@
+{
+  "target": "tx16s",
+  "output": "build/ui-harness/screenshots/newmodel-exit",
+  "steps": [
+    { "wait": { "ms": 2000 } },
+    { "skip_storage_warning_if_present": true },
+    { "wait": { "ms": 500 } },
+    { "click": { "automation_id": "nav.quick_menu" } },
+    { "wait": { "ms": 400 } },
+    { "click": { "text_contains": "Manage Models" } },
+    { "wait": { "ms": 400 } },
+    { "screenshot": "00-manage-models-before" },
+    { "click": { "text": "New" } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "New Model" } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "Blank Model" } },
+    { "wait": { "ms": 500 } },
+    { "screenshot": "01-name-prompt" },
+    { "type_text": { "text": "ShouldBeDiscarded", "submit": true } },
+    { "wait": { "ms": 300 } },
+    { "screenshot": "02-typed-then-will-exit" },
+    { "click": { "text": "RTN" } },
+    { "wait": { "ms": 800 } },
+    { "screenshot": "03-home-after-exit" },
+    { "click": { "automation_id": "nav.quick_menu" } },
+    { "wait": { "ms": 400 } },
+    { "click": { "text_contains": "Manage Models" } },
+    { "wait": { "ms": 400 } },
+    { "screenshot": "04-manage-models-after-exit" }
+  ]
+}

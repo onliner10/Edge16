@@ -27,7 +27,8 @@ class TextEdit : public TextButton
 {
  public:
   TextEdit(Window* parent, const rect_t& rect, char* text, uint8_t length,
-           std::function<void(void)> updateHandler = nullptr);
+           std::function<void(void)> updateHandler = nullptr,
+           const char* placeholder = nullptr);
 
 #if defined(DEBUG_WINDOWS)
   std::string getName() const override { return std::string("TextEdit \"") + text + "\""; }
@@ -36,11 +37,19 @@ class TextEdit : public TextButton
   void preview(bool edited, char* text, uint8_t length);
   void update();
 
+  // Opens the edit field and its on-screen keyboard immediately, as if the
+  // user had already tapped the field. Used by flows (e.g. naming a model at
+  // creation time) where the keyboard must be showing on the field's very
+  // first frame so the pilot's first keystroke is never spent tapping the
+  // field open.
+  void openNow() { openEdit(); }
+
  protected:
   std::function<void(void)> updateHandler = nullptr;
   TextArea* edit = nullptr;
   char* text;
   uint8_t length;
+  const char* placeholder;
 
   void openEdit();
 };

@@ -41,6 +41,43 @@ static void publishSpecialFunctionsChanged()
   UiEventHub::publish(UiTopic::SpecialFunctionsChanged);
 }
 
+// A freshly zeroed CustomFunctionData defaults 'func' to raw value 0, which
+// is FUNC_OVERRIDE_CHANNEL (channel 1, value 0) -- an armed, *active*
+// channel override, not an inert placeholder. That's harmless today only
+// because a brand new slot also defaults 'active' to 0. Special/Global
+// Functions are now created enabled by default (so a fully-configured new
+// function actually fires instead of silently doing nothing), which means a
+// slot must be genuinely inert before any function is chosen, not just
+// "disabled". FUNC_PLAY_TRACK with an empty track name is a verified no-op
+// (see playCustomFunctionFile(): it does nothing when play.name[0] == '\0'),
+// is available for both model (Special) and radio-wide (Global) functions,
+// and needs no enum reordering that would break stored-model migration. Call
+// this on any newly created (never-before-configured) slot before opening
+// its editor.
+static void presetNewFunctionData(CustomFunctionData* cfn)
+{
+  cfn->func = FUNC_PLAY_TRACK;
+  cfn->active = 1;
+}
+
+// CFN_RESET() unconditionally clears 'active' whenever a function's type
+// changes (its accumulated state may not mean the same thing under a new
+// function, so re-arming automatically would be unsafe for an
+// already-configured function). But applied verbatim to a brand new slot,
+// it silently undoes newSF()'s "created enabled" preset the instant the
+// pilot actually picks a function -- e.g. switch + Play Sound, exit, would
+// still land disabled. Call this right after CFN_RESET(); it re-affirms
+// 'active' only for a slot that was completely unconfigured
+// (CustomFunctionData::isEmpty(), i.e. no switch yet) when its editor was
+// opened, so first-time setup in one sitting ends up enabled while
+// repurposing an existing configured function still requires an explicit
+// re-enable.
+static void applyFunctionChangeActiveState(CustomFunctionData* cfn,
+                                           bool wasEmptyOnOpen)
+{
+  if (wasEmptyOnOpen) cfn->active = 1;
+}
+
 //-----------------------------------------------------------------------------
 
 static const char* _failsafe_module[] = {
@@ -642,6 +679,17 @@ void FunctionEditPage::buildBody(Window* form)
 
   CustomFunctionData* cfn = customFunctionData();
 
+  // Was this slot completely unconfigured when this editor was opened? If
+  // so, the pilot is setting it up for the first time in one sitting
+  // (assign a switch, then pick a function) and it should come out enabled
+  // per newSF()'s preset -- CFN_RESET() below unconditionally clears
+  // 'active' on every function-type change, which otherwise re-disables a
+  // brand new function the instant its actual function is chosen. That
+  // reset is still wanted when *editing an already-configured* function
+  // (repurposing it should force the pilot to re-confirm enable), so it
+  // only gets overridden here for genuinely new slots.
+  const bool wasEmptyOnOpen = cfn->isEmpty();
+
   // Switch
   auto line = form->newLine(grid);
   new StaticText(line, rect_t{}, STR_SF_SWITCH);
@@ -675,6 +723,7 @@ void FunctionEditPage::buildBody(Window* form)
           LUA_LOAD_MODEL_SCRIPTS();
         CFN_FUNC(cfn) = newFunc;
         CFN_RESET(cfn);
+        applyFunctionChangeActiveState(cfn, wasEmptyOnOpen);
         SET_DIRTY();
         updateSpecialFunctionOneWindow();
       });
@@ -720,6 +769,7 @@ void FunctionsPage::newSF(Window* window, bool pasteSF)
         if (pasteSF) {
           pasteSpecialFunction(window, i);
         } else {
+          presetNewFunctionData(cfn);
           editSpecialFunction(window, i);
         }
       });
@@ -884,6 +934,7 @@ void FunctionsPage::build(Window* window)
                         (MAX_SPECIAL_FUNCTIONS - i - 1) *
                             sizeof(CustomFunctionData));
                 memset(cfn, 0, sizeof(CustomFunctionData));
+                presetNewFunctionData(cfn);
                 editSpecialFunction(window, i);
               });
               break;
@@ -1126,3 +1177,104 @@ FunctionLineButton* GlobalFunctionsPage::functionButton(Window* parent,
 }
 
 void GlobalFunctionsPage::setDirty() const { storageDirty(EE_GENERAL); }
+
+//-----------------------------------------------------------------------------
+
+#if defined(SIMU)
+void playCustomFunctionFile(const CustomFunctionData* sd, uint8_t id);
+
+// A brand new Special/Global Function slot must come out both enabled (so a
+// fully-configured function actually fires, per the new-creation UX) and
+// genuinely inert until the pilot picks a real function (so an untouched
+// slot -- e.g. only a trigger switch was assigned -- can never silently
+// start doing something, such as the raw zero-default FUNC_OVERRIDE_CHANNEL
+// would).
+bool presetNewFunctionDataIsEnabledAndInertForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+
+  presetNewFunctionData(&cfn);
+
+  bool enabled = CFN_ACTIVE(&cfn) == 1;
+  bool usesPlayTrack = CFN_FUNC(&cfn) == FUNC_PLAY_TRACK;
+  bool trackNameEmpty = cfn.play.name[0] == '\0';
+  bool assignableForSF = isAssignableFunctionAvailable(FUNC_PLAY_TRACK, true);
+  bool assignableForGF = isAssignableFunctionAvailable(FUNC_PLAY_TRACK, false);
+
+  // Still an "empty" (invisible/inert) slot until a trigger switch is
+  // assigned -- presetting func/active must not by itself make the function
+  // fire or show up in the list.
+  bool stillEmptyUntilSwitchChosen = cfn.isEmpty();
+
+  return enabled && usesPlayTrack && trackNameEmpty && assignableForSF &&
+        assignableForGF && stillEmptyUntilSwitchChosen;
+}
+
+bool presetFunctionDataDoesNotPlayWithEmptyTrackNameForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  presetNewFunctionData(&cfn);
+
+  // playCustomFunctionFile() early-returns when play.name[0] == '\0', so
+  // this must not crash and must be a pure no-op (no file lookup, no audio
+  // queued). There is no lightweight way to assert "nothing was queued" from
+  // a unit test without a full audio harness, so this proves the no-crash /
+  // early-return contract that the runtime relies on for inertness.
+  playCustomFunctionFile(&cfn, 0);
+  return true;
+}
+
+// Reproduces the exact "create a new Special Function (trigger + Play
+// Sound), exit" scenario at the data level: newSF() presets a fresh slot
+// enabled, the pilot assigns a switch (still empty until then), then picks
+// a real function from the Choice widget -- which calls CFN_RESET()
+// (clearing 'active') followed by applyFunctionChangeActiveState(). The
+// slot must still be enabled afterwards, or a fully-configured new SF would
+// once again silently land disabled.
+bool firstTimeFunctionPickStaysEnabledForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  presetNewFunctionData(&cfn);
+
+  // FunctionEditPage::buildBody() captures this before the pilot touches
+  // anything.
+  const bool wasEmptyOnOpen = cfn.isEmpty();
+  if (!wasEmptyOnOpen) return false;  // sanity: preset must not set swtch
+
+  // Pilot assigns a trigger switch (still doesn't touch 'active' or 'func').
+  cfn.swtch = 1;
+
+  // Pilot picks "Play Sound" from the Function choice -- mirrors
+  // FunctionEditPage::buildBody()'s onChange handler exactly.
+  cfn.func = FUNC_PLAY_SOUND;
+  CFN_RESET(&cfn);
+  applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
+
+  return cfn.active == 1;
+}
+
+// Repurposing an *already configured* function must still require an
+// explicit re-enable: applyFunctionChangeActiveState() must be a no-op when
+// the slot wasn't empty when its editor opened.
+bool functionChangeOnExistingSlotStillRequiresReenableForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  cfn.swtch = 1;       // already configured...
+  cfn.func = FUNC_PLAY_SOUND;
+  cfn.active = 1;       // ...and enabled
+
+  const bool wasEmptyOnOpen = cfn.isEmpty();
+  if (wasEmptyOnOpen) return false;  // sanity: slot must be non-empty
+
+  // Pilot repurposes it to a different function.
+  cfn.func = FUNC_PLAY_TRACK;
+  CFN_RESET(&cfn);
+  applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
+
+  return cfn.active == 0;
+}
+#endif

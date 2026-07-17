@@ -33,7 +33,8 @@
 class TextArea : public FormField
 {
  public:
-  TextArea(Window* parent, const rect_t& rect, char* value, uint8_t length) :
+  TextArea(Window* parent, const rect_t& rect, char* value, uint8_t length,
+           const char* placeholder = "---") :
       FormField(parent, rect, etx_textarea_create), value(value), length(length)
   {
     setWindowFlag(NO_FOCUS);
@@ -41,7 +42,7 @@ class TextArea : public FormField
     withLive([&](LiveWindow& live) {
       auto obj = live.lvobj();
       lv_textarea_set_max_length(obj, length);
-      lv_textarea_set_placeholder_text(obj, "---");
+      lv_textarea_set_placeholder_text(obj, (placeholder && placeholder[0]) ? placeholder : "---");
     });
 
     setFocusHandler([=](bool focus) {
@@ -136,7 +137,8 @@ class TextArea : public FormField
   button in order to edit the value.
 */
 TextEdit::TextEdit(Window* parent, const rect_t& rect, char* text,
-                   uint8_t length, std::function<void(void)> updateHandler) :
+                   uint8_t length, std::function<void(void)> updateHandler,
+                   const char* placeholder) :
     TextButton(parent, rect, "",
                [=]() {
                  openEdit();
@@ -144,7 +146,8 @@ TextEdit::TextEdit(Window* parent, const rect_t& rect, char* text,
                }),
     updateHandler(updateHandler),
     text(text),
-    length(length)
+    length(length),
+    placeholder(placeholder)
 {
   if (rect.w == 0) setWidth(EdgeTxStyles::EDIT_FLD_WIDTH);
 
@@ -168,7 +171,8 @@ void TextEdit::openEdit()
 {
   if (edit == nullptr) {
     auto newEdit = Window::makeLive<TextArea>(
-        this, rect_t{0, 0, width(), height()}, text, length);
+        this, rect_t{0, 0, width(), height()}, text, length,
+        (placeholder && placeholder[0]) ? placeholder : "---");
     if (!newEdit) return;
     edit = newEdit;
     edit->setChangeHandler([=]() {
