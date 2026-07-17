@@ -90,34 +90,31 @@ FunctionLineButton::FunctionLineButton(Window* parent, const rect_t& rect,
                                        uint8_t index, const char* prefix) :
     ListLineButton(parent, index, LineDependencies::LiveValues), cfn(cfn), prefix(prefix)
 {
-  setHeight(FunctionsPage::SF_BUTTON_H);
-  padAll(PAD_ZERO);
+  // DESIGN SYSTEM: the ds:: layer owns row height, padding and slot layout.
+  setWidth(LV_PCT(100));
+  setHeight(ds::rowHeight(ds::RowSize::TwoLine));
 }
 
 void FunctionLineButton::onLineLoaded()
 {
   if (!withLive([&](LiveWindow& live) {
+        dsRow = std::make_unique<ds::RowContent>(this, ds::RowSize::TwoLine);
+        Window* slot = dsRow->leadingSlot();
+        if (!slot) return false;
+        coord_t sz = ds::embeddedControlSize();
         sfEnable = new CheckButton(
-            this, {EN_X, EN_Y, EN_SZ, EN_SZ},
+            slot, {0, 0, sz, sz},
             [=]() -> uint8_t { return functionEnabled(); },
             [=](uint8_t enabled) { setFunctionEnabled(enabled); });
         if (!sfEnable || !sfEnable->isAvailable()) return false;
         sfEnable->setWindowFlag(NO_FOCUS);
+        dsRow->expandHitArea(sfEnable);
         onRefresh();
         lv_obj_invalidate(live.lvobj());
         return true;
       }))
     return;
 
-}
-
-void FunctionLineButton::describeLine(LineView& view) const
-{
-  view.text(NM_X, NM_Y, NM_W, EdgeTxStyles::STD_FONT_HEIGHT, sfNameText);
-  view.text(SW_X, SW_Y, SW_W, EdgeTxStyles::STD_FONT_HEIGHT, sfSwitchText);
-  view.text(FN_X, FN_Y, FN_W, EdgeTxStyles::STD_FONT_HEIGHT, sfFuncText);
-  view.text(RP_X, RP_Y, RP_W, EdgeTxStyles::STD_FONT_HEIGHT, sfRepeatText, 0,
-            LV_TEXT_ALIGN_RIGHT);
 }
 
 void FunctionLineButton::updateAutomationText()
@@ -297,6 +294,17 @@ void FunctionLineButton::onRefresh()
 
   sfRepeatText[0] = '\0';
   strAppend(sfRepeatText, s, sizeof(sfRepeatText) - 1);
+
+  // DESIGN SYSTEM row content: title = function, subtitle = slot + switch,
+  // trailing = repeat annotation.
+  snprintf(sfSubtitleText, sizeof(sfSubtitleText), "%s  %s", sfNameText,
+           sfSwitchText);
+  if (dsRow) {
+    dsRow->setTitle(sfFuncText);
+    dsRow->setSubtitle(sfSubtitleText);
+    dsRow->setTrailing(sfRepeatText, ds::TextRole::Muted);
+  }
+
   updateAutomationText();
   withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
 }
@@ -858,7 +866,11 @@ void FunctionsPage::plusPopup(Window* window)
 void FunctionsPage::build(Window* window)
 {
   pageWindow = window;
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+
+  // DESIGN SYSTEM: the list container owns page margins and inter-row gaps.
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN);
+  Window* list = new ds::List(window);
+  if (!list) return;
 
   bool hasEmptyFunction = false;
 
@@ -872,12 +884,8 @@ void FunctionsPage::build(Window* window)
 
     if (isActive) {
       auto button = functionButton(
-          window,
-          rect_t{0, 0, window->width() - PAD_LARGE - PAD_SMALL, SF_BUTTON_H},
-          i);
-
-      button->setGridCell(LV_GRID_ALIGN_CENTER, 0, 1, LV_GRID_ALIGN_CENTER, 0,
-                          1);
+          list,
+          rect_t{0, 0, LV_PCT(100), ds::rowHeight(ds::RowSize::TwoLine)}, i);
 
       if (focusIndex == i) {
         button->focus();
@@ -973,7 +981,7 @@ void FunctionsPage::build(Window* window)
 
   if (hasEmptyFunction) {
     addButton = new TextButton(
-        window, rect_t{0, 0, window->width() - PAD_SMALL * 2, SF_BUTTON_H},
+        list, rect_t{0, 0, LV_PCT(100), ds::rowHeight(ds::RowSize::OneLine)},
         LV_SYMBOL_PLUS, [=]() {
           plusPopup(window);
           return 0;

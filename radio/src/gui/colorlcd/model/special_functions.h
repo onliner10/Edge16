@@ -21,6 +21,9 @@
 
 #pragma once
 
+#include <memory>
+
+#include "ds_core.h"
 #include "list_line_button.h"
 #include "edgetx.h"
 #include "page.h"
@@ -46,28 +49,13 @@ class FunctionLineButton : public ListLineButton
 #endif
 
   void onLineLoaded() override;
-  void describeLine(LineView& view) const override;
 
   void onRefresh() override;
   bool functionEnabled() const;
   void setFunctionEnabled(bool enabled);
 
-  static constexpr coord_t NM_X = PAD_TINY;
-  static LAYOUT_SIZE_SCALED(NM_Y, 4, 10)
-  static LAYOUT_SIZE_SCALED(NM_W, 43, 40)
-  static constexpr coord_t SW_X = NM_X + NM_W + PAD_TINY;
-  static LAYOUT_SIZE(SW_Y, NM_Y, 0)
-  static LAYOUT_SIZE_SCALED(SW_W, 70, 198)
-  static LAYOUT_SIZE(FN_X, SW_X + SW_W + PAD_TINY, NM_X + NM_W + PAD_TINY)
-  static LAYOUT_SIZE_SCALED(FN_Y, 4, 20)
-  static LAYOUT_SIZE_SCALED(RP_W, 40, 34)
-  static LAYOUT_VAL_SCALED(EN_SZ, 16)
-  static constexpr coord_t EN_X =
-      ListLineButton::GRP_W - PAD_BORDER * 2 - EN_SZ - PAD_SMALL;
-  static constexpr coord_t RP_X = EN_X - PAD_TINY - RP_W;
-  static constexpr coord_t RP_Y = NM_Y;
-  static constexpr coord_t FN_W = RP_X - FN_X - PAD_TINY;
-  static constexpr coord_t EN_Y = NM_Y + PAD_TINY;
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): row geometry is owned by
+  // ds::RowContent — no per-screen coordinate constants.
 
  protected:
   CustomFunctionData *cfn;
@@ -78,8 +66,10 @@ class FunctionLineButton : public ListLineButton
   char sfNameText[16] = {};
   char sfSwitchText[32] = {};
   char sfFuncText[96] = {};
+  char sfSubtitleText[56] = {};
   char sfRepeatText[32] = {};
   CheckButton *sfEnable = nullptr;
+  std::unique_ptr<ds::RowContent> dsRow;
 
   virtual bool isActive() const override = 0;
   virtual void setDirty() const = 0;
@@ -131,8 +121,6 @@ class FunctionsPage : public PageGroupItem
   FunctionsPage(CustomFunctionData* functions, const PageDef& pageDef, const char* prefix);
 
   void build(Window* window) override;
-
-  static LAYOUT_SIZE_SCALED(SF_BUTTON_H, 32, 44)
 
  protected:
   int8_t focusIndex = -1;
