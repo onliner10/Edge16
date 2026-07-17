@@ -512,21 +512,49 @@ class OutputsWidgetFactory : public WidgetFactory
   }
 
   // Fix the options loaded from the model file to account for
-  // addition of the 'last channel' option
+  // addition of the 'last channel' option.
+  //
+  // Legacy (pre 'last channel') positional layout was:
+  //   [0] firstChan, [1] fillBackground (Bool), [2..] retired Color options
+  // Current layout inserts 'lastChan' (Signed) at index 1, so everything
+  // from the old index 1 onward must shift up by one slot:
+  //   [0] firstChan, [1] lastChan (new), [2] fillBackground, [3..] retired
+  //
+  // 'options[1].type == WOV_Bool' is the marker that a widget was saved
+  // under the old layout (in the new layout index 1 is always Signed).
+  // The vector may legitimately be shorter than the full legacy 5-entry
+  // layout (trailing default-valued options can be trimmed on save), so
+  // this must not assume a fixed size — it must grow the vector to make
+  // room for the inserted slot *before* shifting into it, and shift only
+  // as many entries as actually exist.
   const void checkOptions(const WidgetLocation& location) const override
   {
     auto widgetData = location.persistentData();
-    if (widgetData && widgetData->options.size() >= 4) {
-      if (widgetData->options[1].type == WOV_Bool) {
-        widgetData->options[5] = widgetData->options[4];
-        widgetData->options[4] = widgetData->options[3];
-        widgetData->options[3] = widgetData->options[2];
-        widgetData->options[2] = widgetData->options[1];
-        widgetData->options[1].type = WOV_Signed;
-        widgetData->options[1].value.signedValue = MAX_OUTPUT_CHANNELS;
-        widgetData->markChanged();
-        storageDirty(location.isTopBar() ? EE_GENERAL : EE_MODEL);
+    if (!widgetData) return;
+
+    auto& options = widgetData->options;
+    if (options.size() >= 2 && options[1].type == WOV_Bool) {
+      size_t oldSize = options.size();
+
+      // Grow by one to make room for the inserted 'last channel' slot
+      // (mirrors WidgetPersistentData::addEntry()'s filler convention).
+      WidgetOptionValueTyped filler;
+      filler.type = WOV_Unsigned;
+      filler.value.unsignedValue = 0;
+      options.push_back(filler);
+
+      // Shift old[1..oldSize-1] up to new[2..oldSize], starting from the
+      // top so earlier entries aren't clobbered before they're copied.
+      for (size_t i = oldSize; i >= 2; i--) {
+        options[i] = options[i - 1];
       }
+
+      // Insert the new 'last channel' default in its now-vacated slot.
+      options[1].type = WOV_Signed;
+      options[1].value.signedValue = MAX_OUTPUT_CHANNELS;
+
+      widgetData->markChanged();
+      storageDirty(location.isTopBar() ? EE_GENERAL : EE_MODEL);
     }
   }
 };
