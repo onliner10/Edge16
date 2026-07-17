@@ -104,3 +104,16 @@ Spotted by the owner: a dialog titled "Select role" rendered a "ROLES" header ov
 - **Harness improvements** shipped alongside features: new sim automation commands (battery/timer/telemetry setup), touch-typing flow support, faithful raw-touch injection.
 - **Design proposals awaiting decision:** [Switch Layout — roles-only + co-assignment + conflicts + voice feedback](https://github.com/onliner10/Edge16/blob/proposal-switch-layout/proposal-swl2/README.md) · [Visibility bridge — timer/battery to home screen, in-field reset](https://github.com/onliner10/Edge16/blob/proposal-visibility-bridge/proposal-vb/README.md) · [Design-system spec + open questions](https://github.com/onliner10/Edge16/blob/proposal-design-system/proposal-ds/README.md)
 - **In limbo (stopped mid-work, resumable):** small-fry batch (timer page fold order, recently-used picker ordering, list snap-settle fix) and ui-harness hardening (precondition flow steps, ccache builds, agent guide).
+
+---
+
+## Final verification pass — SF persistence suspect (cleared)
+
+A consistency audit flagged a possible regression: a newly added Special Function not appearing in the list. Verified empirically on the design-system candidate build (commit `bb2d7a13fb`) — it is a **false alarm**, the intended inert-until-triggered behavior:
+
+| Add SF2, exit WITHOUT a trigger | Add SF2, commit trigger SA⇧, exit |
+|---|---|
+| ![no trigger](img/triage-03-list-after-exit-no-trigger.png) | ![trigger set](img/triage-04-list-after-trigger-set.png) |
+| Only SF1 shows — SF2 has no trigger yet (`swtch==0`), intentionally hidden | SF2 appears, created **enabled**, on the DS-migrated two-line row |
+
+A Special Function with an unset trigger is inert by design and not listed (locked by existing unit tests); it appears the moment a trigger is committed. Tap = edit and long-press = context menu both verified on the migrated screen; rows measure 52px (≥40px touch floor).
