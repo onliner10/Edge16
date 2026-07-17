@@ -158,6 +158,29 @@ def simulator_environment() -> dict[str, str]:
     return env
 
 
+def _ccache_launcher_flags() -> list[str]:
+    """Return CMake compiler-launcher flags for ccache, when it should be
+    used: ccache is on PATH and EDGETX_UI_NO_CCACHE is not set truthy.
+
+    Agent worktrees are cloned fresh often (several times a day) and a
+    from-scratch simulator build takes many minutes; ccache turns repeat
+    builds of the same worktree (or across worktrees sharing a cache dir)
+    into a near-instant relink for unchanged translation units. This is
+    opt-out, not opt-in, so it helps by default wherever the dev shell
+    already provides ccache; EDGETX_UI_NO_CCACHE=1 disables it for
+    environments where ccache is undesired (e.g. measuring cold-cache
+    build times, or a ccache installation that is broken/misconfigured).
+    """
+    if os.environ.get("EDGETX_UI_NO_CCACHE", "").lower() in ("1", "true", "yes"):
+        return []
+    if shutil.which("ccache") is None:
+        return []
+    return [
+        "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+    ]
+
+
 def configure_command(target: str) -> list[str]:
     cfg = target_config(target)
     python_exec = project_python_executable()
@@ -176,6 +199,7 @@ def configure_command(target: str) -> list[str]:
         f"-DPython3_EXECUTABLE={python_exec}",
         f"-DPCB={cfg.pcb}",
     ]
+    command.extend(_ccache_launcher_flags())
     if cfg.pcbrev:
         command.append(f"-DPCBREV={cfg.pcbrev}")
     return command
@@ -300,8 +324,9 @@ class SdlAutomationSession:
     def _copy_fixture_to_runtime(self, kind: str, source: Path) -> Path:
         destination = self._runtime_destination(kind)
         shutil.copytree(source, destination, dirs_exist_ok=True)
-        if kind == "settings":
-            normalize_yaml_line_endings(destination)
+        # Settings-overlay normalization/validation (P6) runs uniformly in
+        # _spawn_process for every settings directory -- copied fixture,
+        # named fixture, or explicit path -- so it isn't duplicated here.
         return destination
 
     def runtime_fixture_path(self, kind: str, use_fixture: bool = True) -> Path:
@@ -321,6 +346,7 @@ class SdlAutomationSession:
             self.sdcard = sdcard_copy
         self.sdcard.mkdir(parents=True, exist_ok=True)
         self.settings.mkdir(parents=True, exist_ok=True)
+        _prepare_settings_directory(self.settings, self.target.name)
         executable = find_simu_executable(self.target.name)
         self.process = subprocess.Popen(
             [
@@ -500,20 +526,46 @@ class SdlAutomationSession:
         self._last_read_tail = "\n".join(recent_lines)
         return None
 
-    def command(self, command: str, timeout: float = 5.0) -> dict[str, Any]:
+    def command(
+        self,
+        command: str,
+        timeout: float = 5.0,
+        retries: int = 0,
+        retry_backoff: float = 0.3,
+    ) -> dict[str, Any]:
+        """Send a command and wait for its correlated reply.
+
+        ``retries`` is a bounded retry budget applied only on a *timeout*
+        (no reply observed within ``timeout``), not on an error reply. It
+        exists for read-only queries (e.g. ``ui_tree``) that can time out
+        while the simulator is mid storage-flush ("SD card write" bursts):
+        the menu thread stalls long enough that a single request misses its
+        window, even though the simulator is healthy and the next request
+        succeeds. Mutating commands must not pass ``retries`` > 0: resending
+        them on a timeout could double-apply an action if the original
+        request actually landed and only the reply was delayed.
+        """
         if not self.process or self.process.poll() is not None:
             raise HarnessError("simulator is not running")
         assert self.process.stdin is not None
-        seq = self._next_seq()
-        self.process.stdin.write(f"#{seq} {command}\n")
-        self.process.stdin.flush()
-        response = self._read_response(seq, timeout)
-        if response is None:
-            tail = getattr(self, "_last_read_tail", "")
-            raise HarnessError(
-                f"timed out waiting for simulator response to `{command}`\nRecent output:\n{tail}"
-                if tail else f"timed out waiting for simulator response to `{command}`"
-            )
+        attempt = 0
+        while True:
+            seq = self._next_seq()
+            self.process.stdin.write(f"#{seq} {command}\n")
+            self.process.stdin.flush()
+            response = self._read_response(seq, timeout)
+            if response is not None:
+                break
+            if attempt >= retries:
+                tail = getattr(self, "_last_read_tail", "")
+                raise HarnessError(
+                    f"timed out waiting for simulator response to `{command}`"
+                    + (f" after {attempt + 1} attempt(s)" if retries else "")
+                    + (f"\nRecent output:\n{tail}" if tail else "")
+                )
+            attempt += 1
+            if retry_backoff > 0:
+                time.sleep(retry_backoff)
         if not response.get("ok", False):
             raise HarnessError(response.get("error", "simulator command failed"))
         return response
@@ -546,6 +598,14 @@ class SdlAutomationSession:
             "depth": int(response.get("depth", 0)),
             "sdcard": str(self.sdcard),
             "settings": str(self.settings),
+            # P7: the MCP server builds/runs whatever source tree it was
+            # started in, which is not necessarily the worktree the calling
+            # agent is sitting in. Surfacing both here lets any agent check
+            # `status.git_commit == git rev-parse --short HEAD` (in *their*
+            # worktree) before trusting a result, instead of silently
+            # driving/observing the wrong checkout.
+            "source_root": str(REPO_ROOT),
+            "git_commit": git_commit(),
         }
         if result["running"] and not result["startup_completed"]:
             try:
@@ -752,6 +812,123 @@ class SdlAutomationSession:
     def set_usb(self, plugged: bool, mode: int = 1) -> dict[str, Any]:
         return self.command(f"set_usb {1 if plugged else 0} {int(mode)}")
 
+    # -- Battery/telemetry/timer preconditions ---------------------------
+    # These wrap simulator automation commands that exist specifically to
+    # let flows set up test preconditions (a bound battery pack, a
+    # configured battery monitor, an injected telemetry sensor, a running
+    # timer) without dozens of UI taps. Method names and argument order
+    # mirror the raw protocol commands 1:1 (see automation_handle_command in
+    # radio/src/targets/simu/sdl_simu.cpp) so the mapping from flow JSON to
+    # protocol wire format is obvious.
+
+    def battery_reset(self) -> dict[str, Any]:
+        """Clear all battery packs and battery monitors back to defaults."""
+        return self.command("battery_reset")
+
+    def battery_pack(
+        self,
+        slot: int,
+        active: bool,
+        battery_type: str,
+        cells: int,
+        capacity_mah: int,
+    ) -> dict[str, Any]:
+        """Configure a global battery-pack library slot (1-16).
+
+        battery_type is one of lipo|liion|life|nimh|pb (or its numeric
+        BATTERY_TYPE_* code).
+        """
+        return self.command(
+            f"battery_pack {int(slot)} {1 if active else 0} {battery_type} "
+            f"{int(cells)} {int(capacity_mah)}"
+        )
+
+    def battery_monitor(
+        self,
+        monitor: int,
+        battery_type: str,
+        cells: int,
+        capacity_mah: int,
+        compatible_mask: int = 0,
+        cap_alert: bool = True,
+        volt_alert: bool = True,
+    ) -> dict[str, Any]:
+        """Configure a model battery-monitor slot (0-3) and bind sensors
+        VFAS/Capa in telemetry slots 0/1, matching what the model Battery
+        page's inline pack-creation flow does."""
+        return self.command(
+            f"battery_monitor {int(monitor)} {battery_type} {int(cells)} "
+            f"{int(capacity_mah)} {int(compatible_mask)} "
+            f"{1 if cap_alert else 0} {1 if volt_alert else 0}"
+        )
+
+    def battery_monitor_enable(self, monitor: int, enabled: bool = True) -> dict[str, Any]:
+        return self.command(f"battery_monitor_enable {int(monitor)} {1 if enabled else 0}")
+
+    def battery_set_telemetry(
+        self, sensor_name: str, value: int, update_seconds: int | None = None
+    ) -> dict[str, Any]:
+        """Inject a value for the VFAS or Capa sensor and advance the flight
+        battery session state machine update_seconds times (defaults to the
+        firmware's present-debounce window) so state-aware UI reflects it."""
+        cmd = f"battery_set_telemetry {sensor_name} {int(value)}"
+        if update_seconds is not None:
+            cmd += f" {int(update_seconds)}"
+        return self.command(cmd)
+
+    def battery_telemetry_lost(self, seconds: int | None = None) -> dict[str, Any]:
+        """Simulate telemetry loss and advance the session state machine
+        seconds times (defaults to the firmware's loss-swap window)."""
+        cmd = "battery_telemetry_lost" + (f" {int(seconds)}" if seconds is not None else "")
+        return self.command(cmd)
+
+    def battery_tick(self, seconds: int = 1) -> dict[str, Any]:
+        """Advance the flight battery session state machine by N seconds."""
+        return self.command(f"battery_tick {int(seconds)}")
+
+    def battery_check_alerts(self, count: int = 1) -> dict[str, Any]:
+        """Run the flight battery alert check N times; reports alerts_fired."""
+        return self.command(f"battery_check_alerts {int(count)}")
+
+    def battery_confirm(self, monitor: int, selected_pack_slot: int) -> dict[str, Any]:
+        """Confirm a flight battery pack selection for a monitor, as if the
+        operator had answered the pack-selection prompt."""
+        return self.command(f"battery_confirm {int(monitor)} {int(selected_pack_slot)}")
+
+    def battery_state(self, monitor: int = 0) -> dict[str, Any]:
+        # Read-only query: safe to retry a bare timeout (see command()).
+        return self.command(f"battery_state {int(monitor)}", retries=2)
+
+    def set_timer(
+        self,
+        idx: int,
+        start_s: int,
+        value_s: int,
+        countdown_beep: int = 1,
+        countdown_start: int = 0,
+    ) -> dict[str, Any]:
+        """Configure and set model timer idx (0-2) for state-aware widget
+        testing, e.g. a running/countdown timer without navigating the timer
+        setup UI."""
+        return self.command(
+            f"set_timer {int(idx)} {int(start_s)} {int(value_s)} "
+            f"{int(countdown_beep)} {int(countdown_start)}"
+        )
+
+    def add_telemetry_sensor(
+        self, slot: int, label: str, unit: str, prec: int | None = None
+    ) -> dict[str, Any]:
+        """Register a telemetry sensor of a given unit in slot (1-N) without
+        touching any battery-monitor binding, so flows can set up
+        exactly-one / two / zero sensor cases directly. unit is one of
+        volts|mah|cells|amps|raw|num (or its numeric UNIT_* code). label
+        must not contain spaces (it is a single whitespace-delimited
+        protocol token)."""
+        cmd = f"add_telemetry_sensor {int(slot)} {label} {unit}"
+        if prec is not None:
+            cmd += f" {int(prec)}"
+        return self.command(cmd)
+
     def set_switch(self, index: int, position: int) -> dict[str, Any]:
         return self.command(f"set_switch {int(index)} {int(position)}")
 
@@ -770,12 +947,17 @@ class SdlAutomationSession:
         )
 
     def audio_history(self, max_lines: int = 200) -> dict[str, Any]:
-        return self.command(f"audio_history {int(max_lines)}")
+        # Read-only query: safe to retry a bare timeout (see command()).
+        return self.command(f"audio_history {int(max_lines)}", retries=2)
 
     def _read_route_command(self, command: str, accept: Any) -> dict[str, Any]:
         last: dict[str, Any] | None = None
         for _ in range(6):
-            response = self.command(command, timeout=10.0)
+            # Read-only query: retries=2 absorbs a timeout while the
+            # simulator is mid storage-flush; the outer loop above still
+            # separately retries on an unexpected (but successfully
+            # received) response shape.
+            response = self.command(command, timeout=10.0, retries=2)
             last = response
             if accept(response):
                 return response
@@ -791,9 +973,13 @@ class SdlAutomationSession:
         # Each ui_tree request blocks on a condition variable until the menu
         # thread runs menuTick and produces a fresh snapshot, so successive
         # attempts are deterministic frame advancement, not blind sleeps.
+        # ui_tree is read-only, so pass retries=2: this is the query most
+        # often observed timing out mid "SD card write" storage-flush
+        # bursts, where the menu thread stalls long enough to miss one
+        # request window even though the simulator is otherwise healthy.
         last_raw: dict[str, Any] = {"nodes": []}
         for attempt in range(6):
-            response = self.command("ui_tree", timeout=5.0)
+            response = self.command("ui_tree", timeout=5.0, retries=2)
             raw = response.get("ui", {"nodes": []})
             raw = {**raw, "nodes": [_normalized_node(n) for n in raw.get("nodes", [])]}
             last_raw = raw
@@ -2399,6 +2585,143 @@ def normalize_yaml_line_endings(base: Path) -> None:
         path.write_bytes(normalized.replace(b"\n", b"\r\n"))
 
 
+def _crc16_ccitt(data: bytes, crc: int = 0xFFFF) -> int:
+    """CRC16-CCITT (poly 0x1021, init 0xFFFF, no reflection), matching
+    crc16(0, ...) in radio/src/crc.cpp (crc16tab_1021)."""
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return crc
+
+
+def _radio_yaml_declared_and_computed_checksum(data: bytes) -> tuple[int | None, int | None]:
+    """Mirrors the checksum handling in readYamlFile()
+    (radio/src/storage/sdcard_yaml.cpp): the checksum is a CRC16 computed
+    over the file content *after* a leading ``checksum: N`` line. Returns
+    (declared, computed). declared is None when the file has no leading
+    checksum line -- the firmware treats that as a legacy file and skips
+    the check entirely (ChecksumResult::Success unconditionally when the
+    file is otherwise non-trivial), so None means "nothing to validate",
+    not an error.
+    """
+    prefix = b"checksum: "
+    if not data.startswith(prefix):
+        return None, None
+    nl = data.find(b"\n", len(prefix))
+    if nl < 0:
+        return None, None
+    line = data[: nl + 1]
+    cr = line.find(b"\r")
+    value_end = cr if cr >= 0 else len(line) - 1
+    try:
+        declared = int(line[len(prefix) : value_end].strip())
+    except ValueError:
+        return None, None
+    computed = _crc16_ccitt(data[len(line) :])
+    return declared, computed
+
+
+def _check_radio_yaml_checksum(path: Path) -> None:
+    """Raise an actionable HarnessError if path's embedded checksum does
+    not match its content, the way the firmware's own checksum check
+    would reject it at boot (P6a). See
+    _radio_yaml_declared_and_computed_checksum for the algorithm."""
+    data = path.read_bytes()
+    if len(data) == 0:
+        raise HarnessError(
+            f"fixture settings overlay has an empty radio.yml: {path}\n"
+            "Expected a real radio.yml body (see "
+            "tools/ui-harness/fixtures/settings-tx16s/RADIO/radio.yml for "
+            "the shape), or remove the RADIO directory entirely so the "
+            "harness auto-provisions a default (only works when the "
+            "fixture also has MODELS/*.yml)."
+        )
+    declared, computed = _radio_yaml_declared_and_computed_checksum(data)
+    if declared is None or declared == computed:
+        return
+    if re.search(rb"(?m)^manuallyEdited:\s*1\s*$", data):
+        # The firmware itself forgives a checksum mismatch when the file
+        # parses successfully and declares manuallyEdited: 1.
+        return
+    raise HarnessError(
+        f"fixture settings overlay has an invalid radio.yml checksum: {path}\n"
+        f"  declared checksum:  {declared}\n"
+        f"  computed checksum:  {computed}  (CRC16 over the file content after the first line)\n"
+        "The simulator firmware validates this checksum on boot; a mismatch produces "
+        "'radio settings: Reading failed' / 'File is corrupted, attempting alternative "
+        "file' / 'Unable to read valid radio settings' instead of starting normally -- "
+        "cryptic firmware trace output, not a harness error, so it is easy to mistake "
+        "for a broken simulator.\n"
+        "THIS IS NOT JUST COSMETIC: after the firmware gives up recovering, it calls "
+        "storageEraseAll() -> storageFormat(), which reformats the settings overlay in "
+        "place and writes fresh factory-default radio + model data over whatever was "
+        "there -- including silently overwriting MODELS/*.yml in the SAME directory "
+        "with a default MODEL01. If this settings path is an explicit (uncopied) "
+        "fixture directory, that is a real, on-disk, irreversible loss of the "
+        "fixture's actual model data, not just a failed boot. The harness raises this "
+        "error *before* the simulator ever starts specifically to prevent that.\n"
+        "The harness already normalizes fixture .yml line endings to CRLF before this "
+        "check runs (real device exports use CRLF and the checksum is computed over "
+        "those bytes), so a mismatch here means the file content itself was edited "
+        "after the checksum was written. Fix options: "
+        "(1) delete the `checksum: ...` line entirely -- files with no checksum line "
+        "are treated as legacy and always accepted; "
+        "(2) add `manuallyEdited: 1`, which the firmware itself uses to forgive a "
+        "checksum mismatch on a hand-edited file; "
+        "(3) regenerate the checksum by booting the simulator once against an "
+        "unmodified radio.yml and letting it save, then diffing the result."
+    )
+
+
+def _provision_default_radio_yaml(dest: Path, target: str) -> bool:
+    """Auto-provision a valid default radio.yml when a fixture supplies
+    MODELS but no RADIO/radio.yml (P6b). Without this, resolveForRead()
+    (radio/src/targets/simu/simufatfs.cpp) silently falls through to
+    whatever radio.yml the SD-card fixture happens to have (or none), so a
+    models-only settings fixture boots against a mismatched or missing
+    radio configuration instead of a predictable default. Returns True if
+    a template was found and copied."""
+    template = default_fixture_path("settings", target) / "RADIO" / "radio.yml"
+    if not template.exists():
+        return False
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(template, dest)
+    normalize_yaml_line_endings(dest.parent)
+    return True
+
+
+def _prepare_settings_directory(path: Path, target: str) -> None:
+    """Normalize and validate a settings-overlay directory before the
+    simulator reads it (P6), regardless of whether it is a copied fixture
+    or an explicit --settings path passed straight through. Real-device
+    radio.yml exports use CRLF line endings and embed a checksum computed
+    over those CRLF bytes; a fixture radio.yml saved with LF-only line
+    endings (the default for most editors and for files committed to
+    git) still declares the CRLF-computed checksum, so the firmware's own
+    checksum check fails at boot with a cryptic "File is corrupted"
+    cascade even though the YAML content is entirely valid. Normalizing
+    line endings first fixes that whole class of failures silently;
+    genuine content drift still fails the checksum check below and is
+    reported with an actionable error instead of a bare firmware trace.
+    """
+    if not path.exists():
+        return
+    normalize_yaml_line_endings(path)
+
+    models_dir = path / "MODELS"
+    radio_yaml = path / "RADIO" / "radio.yml"
+    has_models = models_dir.is_dir() and any(models_dir.glob("*.yml"))
+
+    if has_models and not radio_yaml.exists():
+        _provision_default_radio_yaml(radio_yaml, target)
+    elif radio_yaml.exists():
+        _check_radio_yaml_checksum(radio_yaml)
+
+
 class HarnessService:
     def __init__(self) -> None:
         self.session: SdlAutomationSession | None = None
@@ -2491,6 +2814,66 @@ class HarnessService:
 
     def set_usb(self, plugged: bool, mode: int = 1) -> dict[str, Any]:
         return self.require_session().set_usb(plugged, mode)
+
+    def battery_reset(self) -> dict[str, Any]:
+        return self.require_session().battery_reset()
+
+    def battery_pack(
+        self, slot: int, active: bool, battery_type: str, cells: int, capacity_mah: int
+    ) -> dict[str, Any]:
+        return self.require_session().battery_pack(slot, active, battery_type, cells, capacity_mah)
+
+    def battery_monitor(
+        self,
+        monitor: int,
+        battery_type: str,
+        cells: int,
+        capacity_mah: int,
+        compatible_mask: int = 0,
+        cap_alert: bool = True,
+        volt_alert: bool = True,
+    ) -> dict[str, Any]:
+        return self.require_session().battery_monitor(
+            monitor, battery_type, cells, capacity_mah, compatible_mask, cap_alert, volt_alert
+        )
+
+    def battery_monitor_enable(self, monitor: int, enabled: bool = True) -> dict[str, Any]:
+        return self.require_session().battery_monitor_enable(monitor, enabled)
+
+    def battery_set_telemetry(
+        self, sensor_name: str, value: int, update_seconds: int | None = None
+    ) -> dict[str, Any]:
+        return self.require_session().battery_set_telemetry(sensor_name, value, update_seconds)
+
+    def battery_telemetry_lost(self, seconds: int | None = None) -> dict[str, Any]:
+        return self.require_session().battery_telemetry_lost(seconds)
+
+    def battery_tick(self, seconds: int = 1) -> dict[str, Any]:
+        return self.require_session().battery_tick(seconds)
+
+    def battery_check_alerts(self, count: int = 1) -> dict[str, Any]:
+        return self.require_session().battery_check_alerts(count)
+
+    def battery_confirm(self, monitor: int, selected_pack_slot: int) -> dict[str, Any]:
+        return self.require_session().battery_confirm(monitor, selected_pack_slot)
+
+    def battery_state(self, monitor: int = 0) -> dict[str, Any]:
+        return self.require_session().battery_state(monitor)
+
+    def set_timer(
+        self,
+        idx: int,
+        start_s: int,
+        value_s: int,
+        countdown_beep: int = 1,
+        countdown_start: int = 0,
+    ) -> dict[str, Any]:
+        return self.require_session().set_timer(idx, start_s, value_s, countdown_beep, countdown_start)
+
+    def add_telemetry_sensor(
+        self, slot: int, label: str, unit: str, prec: int | None = None
+    ) -> dict[str, Any]:
+        return self.require_session().add_telemetry_sensor(slot, label, unit, prec)
 
     def set_switch(self, index: int, position: int) -> dict[str, Any]:
         return self.require_session().set_switch(index, position)
@@ -2736,6 +3119,104 @@ class HarnessService:
             value = step["audio_history"]
             max_lines = int(value.get("max_lines", 200)) if isinstance(value, dict) else 200
             screenshots.append({"audio_history": self.audio_history(max_lines)})
+        elif "set_telemetry" in step:
+            value = step["set_telemetry"]
+            screenshots.append({"set_telemetry": self.set_telemetry(str(value["name"]), float(value["value"]))})
+        elif "set_telemetry_streaming" in step:
+            value = step["set_telemetry_streaming"]
+            enabled = bool(value) if not isinstance(value, dict) else bool(value.get("enabled", True))
+            self.set_telemetry_streaming(enabled)
+        elif "set_batt_voltage" in step:
+            value = step["set_batt_voltage"]
+            dv = int(value) if not isinstance(value, dict) else int(value["dv"])
+            screenshots.append({"set_batt_voltage": self.set_batt_voltage(dv)})
+        elif "set_usb" in step:
+            value = step["set_usb"]
+            if isinstance(value, dict):
+                plugged, mode = bool(value.get("plugged", True)), int(value.get("mode", 1))
+            else:
+                plugged, mode = bool(value), 1
+            self.set_usb(plugged, mode)
+        # -- Battery/telemetry/timer preconditions (P1): let flows set up
+        # test state (a bound pack, a configured monitor, an injected
+        # sensor, a running timer) directly instead of dozens of UI taps.
+        # Step names mirror the raw simulator automation commands 1:1.
+        elif "battery_reset" in step:
+            screenshots.append({"battery_reset": self.battery_reset()})
+        elif "battery_pack" in step:
+            value = step["battery_pack"]
+            screenshots.append({"battery_pack": self.battery_pack(
+                int(value["slot"]),
+                bool(value.get("active", True)),
+                str(value["battery_type"]),
+                int(value["cells"]),
+                int(value["capacity_mah"]),
+            )})
+        elif "battery_monitor" in step:
+            value = step["battery_monitor"]
+            screenshots.append({"battery_monitor": self.battery_monitor(
+                int(value["monitor"]),
+                str(value["battery_type"]),
+                int(value["cells"]),
+                int(value["capacity_mah"]),
+                int(value.get("compatible_mask", 0)),
+                bool(value.get("cap_alert", True)),
+                bool(value.get("volt_alert", True)),
+            )})
+        elif "battery_monitor_enable" in step:
+            value = step["battery_monitor_enable"]
+            screenshots.append({"battery_monitor_enable": self.battery_monitor_enable(
+                int(value["monitor"]), bool(value.get("enabled", True))
+            )})
+        elif "battery_set_telemetry" in step:
+            value = step["battery_set_telemetry"]
+            update_seconds = value.get("update_seconds")
+            screenshots.append({"battery_set_telemetry": self.battery_set_telemetry(
+                str(value["sensor_name"]),
+                int(value["value"]),
+                int(update_seconds) if update_seconds is not None else None,
+            )})
+        elif "battery_telemetry_lost" in step:
+            value = step["battery_telemetry_lost"]
+            seconds = value.get("seconds") if isinstance(value, dict) else value
+            screenshots.append({"battery_telemetry_lost": self.battery_telemetry_lost(
+                int(seconds) if seconds is not None else None
+            )})
+        elif "battery_tick" in step:
+            value = step["battery_tick"]
+            seconds = int(value.get("seconds", 1)) if isinstance(value, dict) else int(value)
+            screenshots.append({"battery_tick": self.battery_tick(seconds)})
+        elif "battery_check_alerts" in step:
+            value = step["battery_check_alerts"]
+            count = int(value.get("count", 1)) if isinstance(value, dict) else int(value)
+            screenshots.append({"battery_check_alerts": self.battery_check_alerts(count)})
+        elif "battery_confirm" in step:
+            value = step["battery_confirm"]
+            screenshots.append({"battery_confirm": self.battery_confirm(
+                int(value["monitor"]), int(value["selected_pack_slot"])
+            )})
+        elif "battery_state" in step:
+            value = step["battery_state"]
+            monitor = int(value.get("monitor", 0)) if isinstance(value, dict) else int(value)
+            screenshots.append({"battery_state": self.battery_state(monitor)})
+        elif "set_timer" in step:
+            value = step["set_timer"]
+            screenshots.append({"set_timer": self.set_timer(
+                int(value["idx"]),
+                int(value["start_s"]),
+                int(value["value_s"]),
+                int(value.get("countdown_beep", 1)),
+                int(value.get("countdown_start", 0)),
+            )})
+        elif "add_telemetry_sensor" in step:
+            value = step["add_telemetry_sensor"]
+            prec = value.get("prec")
+            screenshots.append({"add_telemetry_sensor": self.add_telemetry_sensor(
+                int(value["slot"]),
+                str(value["label"]),
+                str(value["unit"]),
+                int(prec) if prec is not None else None,
+            )})
         elif "screenshot" in step:
             screenshots.append(self.screenshot(str(step["screenshot"]), str(output_dir)))
         else:

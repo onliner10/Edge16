@@ -39,6 +39,7 @@
           default = pkgs.mkShell {
             packages = [
               pkgs.arduino-cli
+              pkgs.ccache
               pkgs.cmake
               pkgs.gdb
               armPkgs.gcc-arm-embedded

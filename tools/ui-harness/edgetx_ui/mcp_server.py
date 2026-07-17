@@ -351,6 +351,120 @@ TOOLS: dict[str, dict[str, Any]] = {
             "required": ["plugged"],
         },
     },
+    "edgetx_battery_reset": {
+        "description": "Clear all battery packs and battery monitors back to defaults.",
+        "inputSchema": {"type": "object"},
+    },
+    "edgetx_battery_pack": {
+        "description": "Configure a global battery-pack library slot (1-16) as a test precondition, without any UI navigation.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "slot": {"type": "integer", "description": "Pack library slot, 1-16"},
+                "active": {"type": "boolean", "default": True},
+                "battery_type": {"type": "string", "description": "lipo|liion|life|nimh|pb (or numeric BATTERY_TYPE_* code)"},
+                "cells": {"type": "integer", "description": "Cell count, 0-15"},
+                "capacity_mah": {"type": "integer"},
+            },
+            "required": ["slot", "battery_type", "cells", "capacity_mah"],
+        },
+    },
+    "edgetx_battery_monitor": {
+        "description": "Configure a model battery-monitor slot (0-3) and bind VFAS/Capa telemetry sensors, matching what the model Battery page's inline pack-creation flow does. Test precondition helper — no UI navigation.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "monitor": {"type": "integer", "description": "Battery monitor slot, 0-3"},
+                "battery_type": {"type": "string", "description": "lipo|liion|life|nimh|pb (or numeric BATTERY_TYPE_* code)"},
+                "cells": {"type": "integer", "description": "Cell count, 0-15"},
+                "capacity_mah": {"type": "integer"},
+                "compatible_mask": {"type": "integer", "default": 0},
+                "cap_alert": {"type": "boolean", "default": True},
+                "volt_alert": {"type": "boolean", "default": True},
+            },
+            "required": ["monitor", "battery_type", "cells", "capacity_mah"],
+        },
+    },
+    "edgetx_battery_monitor_enable": {
+        "description": "Enable or disable a model battery-monitor slot (0-3).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "monitor": {"type": "integer"},
+                "enabled": {"type": "boolean", "default": True},
+            },
+            "required": ["monitor"],
+        },
+    },
+    "edgetx_battery_set_telemetry": {
+        "description": "Inject a value for the VFAS or Capa sensor and advance the flight battery session state machine (defaults to the firmware's present-debounce window) so state-aware UI reflects it immediately.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sensor_name": {"type": "string", "description": "'VFAS' or 'Capa'"},
+                "value": {"type": "integer", "description": "Raw integer value (VFAS: volts*100, Capa: mAh)"},
+                "update_seconds": {"type": "integer", "description": "Session ticks to advance; defaults to the firmware present-debounce window"},
+            },
+            "required": ["sensor_name", "value"],
+        },
+    },
+    "edgetx_battery_telemetry_lost": {
+        "description": "Simulate flight battery telemetry loss and advance the session state machine (defaults to the firmware's loss-swap window).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"seconds": {"type": "integer", "description": "Session ticks to advance; defaults to the firmware loss-swap window"}},
+        },
+    },
+    "edgetx_battery_tick": {
+        "description": "Advance the flight battery session state machine by N seconds.",
+        "inputSchema": {"type": "object", "properties": {"seconds": {"type": "integer", "default": 1}}},
+    },
+    "edgetx_battery_check_alerts": {
+        "description": "Run the flight battery alert check N times; reports alerts_fired.",
+        "inputSchema": {"type": "object", "properties": {"count": {"type": "integer", "default": 1}}},
+    },
+    "edgetx_battery_confirm": {
+        "description": "Confirm a flight battery pack selection for a monitor, as if the operator had answered the pack-selection prompt.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "monitor": {"type": "integer"},
+                "selected_pack_slot": {"type": "integer"},
+            },
+            "required": ["monitor", "selected_pack_slot"],
+        },
+    },
+    "edgetx_battery_state": {
+        "description": "Read-only: current flight battery runtime state for a monitor (0-3).",
+        "inputSchema": {"type": "object", "properties": {"monitor": {"type": "integer", "default": 0}}},
+    },
+    "edgetx_set_timer": {
+        "description": "Configure and set model timer idx (0-2) directly, e.g. to a running/countdown state, without navigating the timer setup UI. Test precondition helper.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "idx": {"type": "integer", "description": "Timer index, 0-2"},
+                "start_s": {"type": "integer"},
+                "value_s": {"type": "integer"},
+                "countdown_beep": {"type": "integer", "default": 1},
+                "countdown_start": {"type": "integer", "default": 0},
+            },
+            "required": ["idx", "start_s", "value_s"],
+        },
+    },
+    "edgetx_add_telemetry_sensor": {
+        "description": "Register a telemetry sensor of a given unit in slot (1-N) without touching any battery-monitor binding, so flows can set up exactly-one / two / zero sensor cases directly. label must not contain spaces.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "slot": {"type": "integer", "description": "Telemetry sensor slot, 1-N"},
+                "label": {"type": "string", "description": "Sensor label, e.g. 'RxBt'; no spaces"},
+                "unit": {"type": "string", "description": "volts|mah|cells|amps|raw|num (or numeric UNIT_* code)"},
+                "prec": {"type": "integer", "description": "Decimal precision; defaults to 2 for volts, else 0"},
+            },
+            "required": ["slot", "label", "unit"],
+        },
+    },
     "edgetx_set_switch": {
         "description": "Set a radio switch position by index. index is the 0-based switch index (SA=0, SB=1, ..., SF=5, SH=7). position is -1 (down), 0 (middle), or +1 (up).",
         "inputSchema": {
@@ -603,6 +717,62 @@ class McpServer:
             return self.service.set_batt_voltage(int(args["dv"]))
         if name == "edgetx_set_usb":
             return self.service.set_usb(bool(args["plugged"]), int(args.get("mode", 1)))
+        if name == "edgetx_battery_reset":
+            return self.service.battery_reset()
+        if name == "edgetx_battery_pack":
+            return self.service.battery_pack(
+                int(args["slot"]),
+                bool(args.get("active", True)),
+                str(args["battery_type"]),
+                int(args["cells"]),
+                int(args["capacity_mah"]),
+            )
+        if name == "edgetx_battery_monitor":
+            return self.service.battery_monitor(
+                int(args["monitor"]),
+                str(args["battery_type"]),
+                int(args["cells"]),
+                int(args["capacity_mah"]),
+                int(args.get("compatible_mask", 0)),
+                bool(args.get("cap_alert", True)),
+                bool(args.get("volt_alert", True)),
+            )
+        if name == "edgetx_battery_monitor_enable":
+            return self.service.battery_monitor_enable(int(args["monitor"]), bool(args.get("enabled", True)))
+        if name == "edgetx_battery_set_telemetry":
+            update_seconds = args.get("update_seconds")
+            return self.service.battery_set_telemetry(
+                str(args["sensor_name"]),
+                int(args["value"]),
+                int(update_seconds) if update_seconds is not None else None,
+            )
+        if name == "edgetx_battery_telemetry_lost":
+            seconds = args.get("seconds")
+            return self.service.battery_telemetry_lost(int(seconds) if seconds is not None else None)
+        if name == "edgetx_battery_tick":
+            return self.service.battery_tick(int(args.get("seconds", 1)))
+        if name == "edgetx_battery_check_alerts":
+            return self.service.battery_check_alerts(int(args.get("count", 1)))
+        if name == "edgetx_battery_confirm":
+            return self.service.battery_confirm(int(args["monitor"]), int(args["selected_pack_slot"]))
+        if name == "edgetx_battery_state":
+            return self.service.battery_state(int(args.get("monitor", 0)))
+        if name == "edgetx_set_timer":
+            return self.service.set_timer(
+                int(args["idx"]),
+                int(args["start_s"]),
+                int(args["value_s"]),
+                int(args.get("countdown_beep", 1)),
+                int(args.get("countdown_start", 0)),
+            )
+        if name == "edgetx_add_telemetry_sensor":
+            prec = args.get("prec")
+            return self.service.add_telemetry_sensor(
+                int(args["slot"]),
+                str(args["label"]),
+                str(args["unit"]),
+                int(prec) if prec is not None else None,
+            )
         if name == "edgetx_set_switch":
             return self.service.set_switch(int(args["index"]), int(args["position"]))
         if name == "edgetx_switch_sequence":

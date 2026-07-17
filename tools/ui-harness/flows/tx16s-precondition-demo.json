@@ -1,0 +1,31 @@
+{
+  "target": "tx16s",
+  "output": "proof/p1-precondition-steps",
+  "steps": [
+    { "wait": { "ms": 2000 } },
+    { "skip_storage_warning_if_present": true },
+    { "wait": { "ms": 500 } },
+
+    { "battery_reset": true },
+    { "battery_pack": { "slot": 1, "active": true, "battery_type": "lipo", "cells": 4, "capacity_mah": 3000 } },
+    { "battery_monitor": { "monitor": 0, "battery_type": "lipo", "cells": 4, "capacity_mah": 3000 } },
+    { "battery_monitor_enable": { "monitor": 0, "enabled": true } },
+    { "battery_set_telemetry": { "sensor_name": "VFAS", "value": 1580 } },
+    { "add_telemetry_sensor": { "slot": 3, "label": "RSSI", "unit": "raw" } },
+    { "set_timer": { "idx": 0, "start_s": 600, "value_s": 542, "countdown_beep": 1, "countdown_start": 30 } },
+    { "battery_state": { "monitor": 0 } },
+    { "wait": { "ms": 200 } },
+
+    { "press": { "key": "SYS" } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "Model Setup" } },
+    { "wait": { "ms": 300 } },
+    { "click": { "text": "Model Settings" } },
+    { "wait": { "ms": 500 } },
+    { "scroll_to": { "automation_id": "model.setup.battery", "amount": "half_page" } },
+    { "wait": { "ms": 200 } },
+    { "click": { "automation_id": "model.setup.battery", "ensure_visible": true } },
+    { "wait": { "ms": 500 } },
+    { "screenshot": "provisioned-battery-state" }
+  ]
+}
