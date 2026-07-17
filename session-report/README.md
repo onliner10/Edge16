@@ -88,6 +88,14 @@ The spacing free-for-all (rows down to 6.3mm, per-screen pixel constants) is now
 |---|---|
 | ![picker before](img/01-role-picker-before.png) | ![picker after](img/01-role-picker-after.png) |
 
+## 9. Section headers may never waste a row
+
+Spotted by the owner: a dialog titled "Select role" rendered a "ROLES" header over its only section — pure duplication, half a row lost on a 272px screen. Fixed structurally in the design system: a header is only materialized once a *second* section proves there's something to differentiate, and any header echoing the title (case/plural-insensitive) is suppressed even in multi-section lists. A production-wide sweep confirmed the pattern existed **only** in the DS layer — zero production screens affected — with every kept header documented as genuinely informative.
+
+| One section: headerless | Two sections: headers return | Title echo suppressed |
+|---|---|---|
+| ![headerless](img/ds-picker-one-section-headerless.png) | ![two sections](img/ds-picker-two-sections-both-headers.png) | ![echo](img/ds-picker-title-echo-suppressed.png) |
+
 ---
 
 ## Also from this session
