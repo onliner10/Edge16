@@ -88,6 +88,20 @@ void markFlightBatteryPromptShown(uint8_t monitor);
 bool confirmFlightBatteryPack(uint8_t monitor, uint8_t selectedPackSlot);
 void invalidateFlightBatteryMonitor(uint8_t monitor);
 void invalidateFlightBatteryPackSlot(uint8_t slot);
+
+// Wiring-convenience auto-bind (NEVER chemistry guessing): for an ENABLED
+// monitor, fills an UNSET voltage/capacity source when EXACTLY ONE telemetry
+// sensor of the matching unit exists on the model. Strict safety rules of this
+// fork:
+//   - only ever fills a source that is currently unset (index <= 0); never
+//     overwrites an existing binding,
+//   - binds only on exactly one candidate; zero or 2+ candidates leave the
+//     source unset (the normal picker stays in charge),
+//   - because it only fills an unset slot, later sensor discovery can never
+//     rebind once a binding is present.
+// Returns a bitmask of what changed: bit0 = voltage bound, bit1 = capacity
+// bound. Idempotent; safe to call repeatedly.
+uint8_t autoBindFlightBatterySensors(uint8_t monitor);
 bool checkFlightBatteryCapacityAlert(uint8_t monitorIndex,
                                      const BatteryMonitorData& config,
                                      int32_t consumed);

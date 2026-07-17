@@ -1122,6 +1122,68 @@ void invalidateFlightBatteryPackSlot(uint8_t slot)
   }
 }
 
+static bool isAutoBindVoltageSensorSlot(uint8_t index)
+{
+  if (index >= MAX_TELEMETRY_SENSORS) return false;
+  const TelemetrySensor& sensor = g_model.telemetrySensors[index];
+  return sensor.isAvailable() && isFlightBatteryVoltageUnit(sensor.unit);
+}
+
+static bool isAutoBindCapacitySensorSlot(uint8_t index)
+{
+  if (index >= MAX_TELEMETRY_SENSORS) return false;
+  const TelemetrySensor& sensor = g_model.telemetrySensors[index];
+  return sensor.isAvailable() && sensor.unit == UNIT_MAH;
+}
+
+// Returns the 1-based source index of the single matching sensor, or 0 when the
+// candidate count is not exactly one (zero, or two-or-more -> leave unset).
+static int8_t singleMatchingSensorSource(bool (*match)(uint8_t))
+{
+  int found = -1;
+  uint8_t count = 0;
+  for (uint8_t i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
+    if (match(i)) {
+      if (++count > 1) return 0;
+      found = i;
+    }
+  }
+  return count == 1 ? int8_t(found + 1) : int8_t(0);
+}
+
+uint8_t autoBindFlightBatterySensors(uint8_t monitor)
+{
+  if (monitor >= MAX_BATTERY_MONITORS) return 0;
+
+  BatteryMonitorData& config = g_model.batteryMonitors[monitor];
+  if (!config.enabled) return 0;
+
+  uint8_t bound = 0;
+
+  // Only ever fill an unset source; an existing binding is never overwritten.
+  if (config.sourceIndex <= 0) {
+    int8_t src = singleMatchingSensorSource(isAutoBindVoltageSensorSlot);
+    if (src > 0) {
+      config.sourceIndex = src;
+      bound |= 0x01;
+    }
+  }
+
+  if (config.currentIndex <= 0) {
+    int8_t src = singleMatchingSensorSource(isAutoBindCapacitySensorSlot);
+    if (src > 0) {
+      config.currentIndex = src;
+      bound |= 0x02;
+    }
+  }
+
+  if (bound) {
+    invalidateFlightBatteryMonitor(monitor);
+    storageDirty(EE_MODEL);
+  }
+  return bound;
+}
+
 static void confirmFlightBatteryPackImpl(uint8_t monitor, uint8_t selectedPackSlot);
 
 static void resetFlightBatterySessionToNoBatteryObserved(uint8_t monitor)

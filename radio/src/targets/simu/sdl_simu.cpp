@@ -328,6 +328,33 @@ static bool automation_parse_battery_type(const std::string& value,
   return true;
 }
 
+static bool automation_parse_telemetry_unit(const std::string& value,
+                                            uint8_t& unit)
+{
+  std::string lower = value;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) {
+    return char(std::tolower(ch));
+  });
+
+  if (lower == "volts" || lower == "v") {
+    unit = UNIT_VOLTS;
+  } else if (lower == "mah") {
+    unit = UNIT_MAH;
+  } else if (lower == "cells" || lower == "cell") {
+    unit = UNIT_CELLS;
+  } else if (lower == "amps" || lower == "a") {
+    unit = UNIT_AMPS;
+  } else if (lower == "raw") {
+    unit = UNIT_RAW;
+  } else {
+    char* end = nullptr;
+    long n = strtol(value.c_str(), &end, 10);
+    if (end == value.c_str() || *end != '\0' || n < 0 || n > 255) return false;
+    unit = uint8_t(n);
+  }
+  return true;
+}
+
 static std::string automation_battery_state_json(uint8_t monitor)
 {
   std::ostringstream extra;
@@ -343,6 +370,8 @@ static std::string automation_battery_state_json(uint8_t monitor)
         << ",\"battery_type\":" << int(config.batteryType)
         << ",\"cell_count\":" << int(config.cellCount)
         << ",\"capacity\":" << int(config.capacity)
+        << ",\"source_index\":" << int(config.sourceIndex)
+        << ",\"current_index\":" << int(config.currentIndex)
         << ",\"compatible_pack_mask\":" << int(config.compatiblePackMask)
         << ",\"selected_pack_slot\":" << int(config.selectedPackSlot)
         << ",\"confirmed_pack_slot\":" << int(runtime.confirmedPackSlot)
@@ -870,6 +899,35 @@ static void automation_handle_command(const std::string& line)
     std::ostringstream extra;
     extra << "\"idx\":" << idx << ",\"start\":" << start
           << ",\"value\":" << value;
+    automation_reply_ok(extra.str());
+  } else if (command == "add_telemetry_sensor") {
+    // Test-precondition helper: register a telemetry sensor of a given unit in
+    // a slot, without touching any battery-monitor binding. Lets flows set up
+    // exactly-one / two / zero sensor cases for the auto-bind proofs.
+    int slot = 0;
+    std::string label;
+    std::string unit_token;
+    in >> slot >> label >> unit_token;
+    if (!in || slot < 1 || slot > MAX_TELEMETRY_SENSORS || label.empty()) {
+      automation_reply_error(
+          "usage: add_telemetry_sensor <slot 1-N> <label> <unit volts|mah|cells|amps|raw|num> [prec]");
+      return;
+    }
+    uint8_t unit = UNIT_RAW;
+    if (!automation_parse_telemetry_unit(unit_token, unit)) {
+      automation_reply_error("unknown telemetry unit: " + unit_token);
+      return;
+    }
+    int prec = 0;
+    const bool hasPrec = bool(in >> prec);
+    if (!hasPrec) prec = unit == UNIT_VOLTS ? 2 : 0;
+
+    const int index = slot - 1;
+    g_model.telemetrySensors[index].init(label.c_str(), unit, uint8_t(prec));
+    telemetryItems[index].setOld();
+    std::ostringstream extra;
+    extra << "\"index\":" << index << ",\"label\":\"" << json_escape(label)
+          << "\",\"unit\":" << int(unit) << ",\"prec\":" << prec;
     automation_reply_ok(extra.str());
   } else if (command == "battery_monitor_enable") {
     int monitor = 0, enabled = 1;

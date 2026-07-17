@@ -21,4 +21,11 @@ class BatteryMonitorPage : public SubPage
 {
  public:
   explicit BatteryMonitorPage(uint8_t monitor, Route route);
+
+ protected:
+  uint8_t monitor;
+
+  void build();
+  void rebuild();
+  void createBattery();
 };

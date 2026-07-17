@@ -15,6 +15,8 @@
 
 #include "battery_monitor_setup.h"
 
+#include "battery_packs.h"
+#include "button.h"
 #include "choice.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
@@ -212,20 +214,75 @@ class CompatiblePackLine : public ListLineButton
 
 BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
     : SubPage(ICON_MODEL_TELEMETRY, route, STR_MAIN_MENU_MODEL_SETTINGS,
-              (std::string("Battery ") + std::to_string(monitor + 1)).c_str())
+              (std::string("Battery ") + std::to_string(monitor + 1)).c_str()),
+      monitor(monitor)
 {
   body->setFlexLayout();
+  build();
+}
 
+void BatteryMonitorPage::rebuild()
+{
+  body->clear();
+  y = 0;
+  build();
+}
+
+// Reuses the exact Radio Settings > Battery Library pack editor. Seeds a fresh
+// pack slot with sane defaults (matching the library's "+" action), then on
+// return auto-selects it as a compatible pack for this monitor.
+void BatteryMonitorPage::createBattery()
+{
+  uint8_t slot = MAX_BATTERY_PACKS;
+  for (uint8_t i = 0; i < MAX_BATTERY_PACKS; i++) {
+    if (!g_eeGeneral.batteryPacks[i].active) {
+      slot = i;
+      break;
+    }
+  }
+  if (slot >= MAX_BATTERY_PACKS) return;  // library full
+
+  BatteryPackData* pack = &g_eeGeneral.batteryPacks[slot];
+  pack->active = 1;
+  pack->batteryType = BATTERY_TYPE_LIPO;
+  pack->cellCount = 3;
+  pack->capacity = 2200;
+  storageDirty(EE_GENERAL);
+
+  auto editWindow = new BatteryPackEditWindow(
+      slot, route().appended(RP_BATTERY_PACK_EDIT, static_cast<int16_t>(slot)));
+  editWindow->setCloseHandler([this, slot]() {
+    // The editor's Delete button clears active; only auto-select a pack the
+    // user actually kept.
+    if (g_eeGeneral.batteryPacks[slot].active) {
+      g_model.batteryMonitors[monitor].compatiblePackMask |=
+          uint16_t(1u << slot);
+      invalidateFlightBatteryMonitor(monitor);
+      storageDirty(EE_MODEL);
+    }
+    rebuild();
+  });
+}
+
+void BatteryMonitorPage::build()
+{
   BatteryMonitorData* config = &g_model.batteryMonitors[monitor];
   if (!flightBatteryCapacityEstimateCurveIsValid(config->capacityEstimateCurve)) {
     config->capacityEstimateCurve = FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE;
     SET_DIRTY();
   }
 
+  // Wiring convenience: an already-enabled monitor with an unset source and a
+  // single matching sensor shows the binding as soon as the page opens.
+  if (config->enabled) autoBindFlightBatterySensors(monitor);
+
   setupLine("Enabled", [=](Window* parent, coord_t x, coord_t y) {
     new ToggleSwitch(parent, {x, y, 0, 0}, GET_DEFAULT(config->enabled),
                       [=](int32_t newValue) {
                         config->enabled = newValue;
+                        // Enabling wires up the source live; the SourceChoice
+                        // below re-reads config on its next refresh.
+                        if (newValue) autoBindFlightBatterySensors(monitor);
                         invalidateFlightBatteryMonitor(monitor);
                         SET_DIRTY();
                       });
@@ -281,6 +338,14 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
     }
   }
 
+  bool libraryFull = true;
+  for (uint8_t i = 0; i < MAX_BATTERY_PACKS; i++) {
+    if (!g_eeGeneral.batteryPacks[i].active) {
+      libraryFull = false;
+      break;
+    }
+  }
+
   if (hasActivePacks) {
     setupLine("Compatible Batteries", nullptr);
 
@@ -302,7 +367,21 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
       });
     }
   } else {
-    setupLine("No batteries configured in Radio Setup", nullptr);
+    // No packs exist yet: instead of a dead-end message, offer inline creation
+    // that reuses the radio-level pack library editor.
+    setupLine("No batteries configured yet", nullptr);
+  }
+
+  if (!libraryFull) {
+    setupLine(nullptr, [=](Window* parent, coord_t x, coord_t y) {
+      new TextButton(parent,
+                     {x, y, LCD_W - x - PAD_LARGE,
+                      EdgeTxStyles::UI_ELEMENT_HEIGHT},
+                     "Create battery", [this]() -> uint8_t {
+                       createBattery();
+                       return 0;
+                     });
+    });
   }
 
   setupLine("Advanced Telemetry", nullptr);
@@ -317,7 +396,7 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
     }
     if (!hasVoltageSensor) {
       new StaticText(parent, {x, y + PAD_LARGE, 0, 0},
-                      "No voltage telemetry sensor",
+                      "No voltage sensor - add one in Telemetry",
                       COLOR_THEME_WARNING_INDEX);
     } else {
       auto sc = new SourceChoice(
@@ -350,7 +429,7 @@ BatteryMonitorPage::BatteryMonitorPage(uint8_t monitor, Route route)
     }
     if (!hasCurrentSensor) {
       new StaticText(parent, {x, y + PAD_LARGE, 0, 0},
-                      "No capacity telemetry sensor",
+                      "No capacity sensor - add one in Telemetry",
                      COLOR_THEME_WARNING_INDEX);
     } else {
       auto sc = new SourceChoice(
