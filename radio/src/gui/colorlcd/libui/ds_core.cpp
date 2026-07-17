@@ -21,6 +21,7 @@
 
 #include "ds_core.h"
 
+#include <cstring>
 #include <new>
 
 #include "etx_lv_theme.h"
@@ -381,6 +382,7 @@ DSButton* Dialog::action(const char* text, ButtonRole role,
 
 PickerOverlay::PickerOverlay(const char* title) : BaseDialog(title, true)
 {
+  title_ = title;
   form.with([&](Window& f) {
     f.withLive([](Window::LiveWindow& live) {
       lv_obj_t* obj = live.lvobj();
@@ -390,9 +392,85 @@ PickerOverlay::PickerOverlay(const char* title) : BaseDialog(title, true)
   });
 }
 
+namespace {
+
+// Lower-cases into a fixed buffer and folds one trailing English plural
+// (naive — good enough for the short caption-style words section headers
+// and titles are made of): "...ies" -> "...y" (battery/batteries,
+// category/categories), else a bare trailing 's' is dropped
+// (role/roles). Not a general stemmer -- just enough to keep the DS
+// title-echo check from being defeated by pluralizing the header.
+void foldForCompare(const char* text, char* out, size_t outSize)
+{
+  size_t n = 0;
+  if (text) {
+    for (; text[n] && n + 1 < outSize; ++n) {
+      char c = text[n];
+      if (c >= 'A' && c <= 'Z') c = char(c - 'A' + 'a');
+      out[n] = c;
+    }
+  }
+  // Trim trailing whitespace.
+  while (n > 0 && (out[n - 1] == ' ' || out[n - 1] == '\t')) --n;
+  // Naive plural fold.
+  if (n > 3 && out[n - 3] == 'i' && out[n - 2] == 'e' && out[n - 1] == 's') {
+    out[n - 3] = 'y';  // "...ies" -> "...y"
+    n -= 2;
+  } else if (n > 1 && out[n - 1] == 's') {
+    --n;  // "...s" -> "..."
+  }
+  out[n] = '\0';
+}
+
+}  // namespace
+
+bool PickerOverlay::isTitleEcho(const char* label) const
+{
+  if (!label || !title_) return false;
+  char a[64];
+  char b[64];
+  foldForCompare(label, a, sizeof(a));
+  foldForCompare(title_, b, sizeof(b));
+  return a[0] != '\0' && strcmp(a, b) == 0;
+}
+
+void PickerOverlay::addSectionHeader(const char* label, bool moveToFront)
+{
+  if (isTitleEcho(label)) return;  // restates the title — adds nothing
+  form.with([&](Window& f) {
+    auto* header = new (std::nothrow) SectionHeader(&f, label);
+    if (!header) return;
+#if defined(SIMU)
+    ++materializedHeaderCount_;
+#endif
+    if (moveToFront) {
+      header->withLive([](Window::LiveWindow& live) {
+        lv_obj_move_to_index(live.lvobj(), 0);
+      });
+    }
+  });
+}
+
 void PickerOverlay::section(const char* label)
 {
-  form.with([&](Window& f) { new (std::nothrow) SectionHeader(&f, label); });
+  ++sectionCount_;
+  if (sectionCount_ == 1) {
+    // Defer: this may turn out to be the only section, in which case a
+    // header would just restate the overlay title above its one group.
+    // Own a copy -- materializing it is deferred past this call, so the
+    // caller's pointer (possibly a formatted stack buffer) is not required
+    // to stay valid that long.
+    strncpy(pendingSectionLabel_, label ? label : "",
+            sizeof(pendingSectionLabel_) - 1);
+    pendingSectionLabel_[sizeof(pendingSectionLabel_) - 1] = '\0';
+    return;
+  }
+  if (sectionCount_ == 2) {
+    // A second section proves section #1 needs differentiating after all —
+    // realize its header now, ahead of the rows it already collected.
+    addSectionHeader(pendingSectionLabel_, /*moveToFront=*/true);
+  }
+  addSectionHeader(label, /*moveToFront=*/false);
 }
 
 ListRow* PickerOverlay::option(const ListRow::Content& content,

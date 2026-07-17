@@ -142,6 +142,29 @@ Notes:
   inventing their own `LAYOUT_*_SCALED` constant for a control that only
   ever appears in a slot.
 
+**A lone section header never renders.** Section headers exist to
+*differentiate* sections from each other; a picker/list with exactly one
+section has nothing to differentiate, so a header on it only restates
+information the dialog/page title already gave (e.g. a "Select role" picker
+whose one group is headed "ROLES" — pure duplication, wasting a full caption
+row + `space-4` top gap on a 272 px screen for zero information). This is
+enforced structurally in `ds::PickerOverlay`, not by caller discipline:
+`.section(label)` never materializes a header widget on the first call — it
+defers, keeping only the label — and only realizes it (backdated, ahead of
+that section's rows) once a *second* `.section()` call proves there is more
+than one group. A picker that only ever calls `.section()` once therefore
+never allocates a header at all. Additionally, a section header whose text is
+just the overlay/page title, case- and plural/singular-insensitive (e.g. a
+"Battery" overlay with a section literally labeled "Battery"), is suppressed
+even when there are multiple sections — it still restates rather than
+differentiates. Suppression (not a debug assert) is the chosen mechanism: the
+information is genuinely redundant with the always-visible title bar, so
+silently omitting the header is strictly correct in every build, not just a
+signal to fix in development — asserting would need a release-mode fallback
+behavior anyway, and that fallback is exactly "don't render it". Any DS
+list/section machinery added later must follow the same rule: build headers
+lazily behind proof-of-need, never eagerly behind caller-supplied text alone.
+
 ## 6. Enforcement
 
 Three layers — API shape, mechanical clamp, CI guard:

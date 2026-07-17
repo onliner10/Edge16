@@ -205,9 +205,41 @@ class PickerOverlay : public BaseDialog
  public:
   explicit PickerOverlay(const char* title);
 
+  // Declares a new section. The header for a section is materialized lazily:
+  // a lone section (the common case — a picker with a single group of
+  // options) never gets a header at all, since there is nothing for it to
+  // differentiate from. The header is only created once a second section()
+  // call proves there is more than one group. A header whose text is just
+  // the overlay title (case/plural-insensitive) is always suppressed, even
+  // in multi-section lists, since it still restates rather than
+  // differentiates. See DESIGN_SYSTEM.md.
   void section(const char* label);
   ListRow* option(const ListRow::Content& content,
                   std::function<void()> onSelect = nullptr);
+
+#if defined(SIMU)
+  // Test-only introspection: how many section-header widgets were actually
+  // realized (as opposed to deferred-and-never-realized, or suppressed as a
+  // title echo). Lets a gtest assert the lone-header and title-echo rules
+  // structurally instead of by pixel-diffing.
+  int materializedHeaderCountForTest() const { return materializedHeaderCount_; }
+#endif
+
+ private:
+  const char* title_ = nullptr;
+  // Section #1's label, owned (not just referenced) since materializing it
+  // is deferred past the section() call that provided it -- a caller must
+  // not be required to keep a formatted-into-a-stack-buffer label alive
+  // across later section()/option() calls just because this one might turn
+  // out to be a lone section.
+  char pendingSectionLabel_[48] = {};
+  int sectionCount_ = 0;  // also doubles as "section #1 still pending" == 1
+#if defined(SIMU)
+  int materializedHeaderCount_ = 0;
+#endif
+
+  bool isTitleEcho(const char* label) const;
+  void addSectionHeader(const char* label, bool moveToFront);
 };
 
 }  // namespace ds
