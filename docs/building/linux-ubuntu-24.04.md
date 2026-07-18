@@ -6,7 +6,7 @@ The document here is meant to help you develop or test changes to Edge16 on your
 
 - [Setting up the build environment for Edge16](#setting-up-the-build-environment-for-edge16)
 - [Building Edge16 firmware for the radio](#building-edge16-firmware-for-the-radio)
-- [Building Companion, Simulator and radio simulator libraries](#building-companion-simulator-and-radio-simulator-libraries)
+- [Building the simulator and radio simulator module](#building-the-simulator-and-radio-simulator-module)
 
 ## Setting up the build environment for Edge16
 
@@ -88,16 +88,14 @@ mv build-output/arm-none-eabi/firmware.bin edge16_tx16s_mode2_debug.bin
 
 You will need to prepare a clean microSD card. Edge16 currently uses upstream EdgeTX SD card packs for 480x320 color radios; download them from [EdgeTX SD card releases](https://github.com/EdgeTX/edgetx-sdcard/releases/tag/latest).
 
-You can use [Edge16 release assets](https://github.com/onliner10/Edge16/releases), [Edge16 Companion](https://github.com/onliner10/Edge16/releases), or [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the binary to your radio. For further instructions, see:
+You can use [Edge16 release assets](https://github.com/onliner10/Edge16/releases) or [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the binary to your radio. For further instructions, see:
 [https://github.com/onliner10/Edge16/releases](https://github.com/onliner10/Edge16/releases)
 
-## Building Companion, Simulator and radio simulator libraries
+## Building the simulator and radio simulator module
 
-### After Edge16 v1.0
-
-You can build firmware, the radio simulator module, Companion and Simulator all in one step:
+You can build the firmware, the native SDL simulator (`simu`) and the radio simulator module (`wasi-module`) in one step:
 ```
-cmake --build build-output --parallel --target firmware --target wasi-module --target companion --target simulator
+cmake --build build-output --parallel --target firmware --target wasi-module --target simu
 ```
 
 This will configure and download extra dependencies as needed. Alternately, if you only want to build the simulator module at this point, you can run:
@@ -105,33 +103,22 @@ This will configure and download extra dependencies as needed. Alternately, if y
 cmake --build build-output --parallel --target wasi-module
 ```
 
-The wasm simulator module is built into `build-output/wasm/wasm-build/` but Companion looks for it in `build-output/native/`. Copy it across before launching Companion or Simulator:
-```
-cp build-output/wasm/wasm-build/*.wasm build-output/native/
-```
-
-If you want to build simulator modules for multiple radio targets (so they are all available in Companion), the helper script `tools/build-wasm-modules.sh` can build all supported targets in one go:
+The wasm simulator module is built into `build-output/wasm/wasm-build/`. If you want to build simulator modules for multiple radio targets, the helper script `tools/build-wasm-modules.sh` can build all supported targets in one go:
 ```
 tools/build-wasm-modules.sh . ./wasm-modules/
 ```
-The `.wasm` files are output to `./wasm-modules/`. Copy them to `build-output/native/` before building Companion.
+The `.wasm` files are output to `./wasm-modules/`.
 
-Change into the `native` directory, where `<ver>` is the Edge16 version as digits (e.g. `100` for 1.0):
+The native simulator is built as the `simu` target:
 ```
-cd build-output/native
-```
-
-To launch Companion:
-```
-./companion<ver>
+cmake --build build-output --parallel --target simu
 ```
 
-Before running the simulator, copy upstream EdgeTX SD card content for 480x320 color radios and extract it e.g. to `~/edge16/simu_sdcard/horus`. You should also create a radio profile first in Companion before running the simulator.
+Before running the simulator, copy upstream EdgeTX SD card content for 480x320 color radios and extract it e.g. to `~/edge16/simu_sdcard/horus`.
 
-To launch the simulator:
+To launch the simulator, point it at that SD card content with `--storage`:
 ```
-./simulator<ver>
+./build-output/native/simu --storage ~/edge16/simu_sdcard/horus
 ```
-In the dialog that pops up, select _SD Path_ as data source and under _SD Image Path:_ browse to `~/edgetx/simu_sdcard/horus`
 
 [![Edge16 simulator on Linux](../assets/images/build/linux/EdgeTX_simulator_Linux.png)](../assets/images/build/linux/EdgeTX_simulator_Linux.png)

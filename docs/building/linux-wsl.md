@@ -76,7 +76,7 @@ If you are not familiar with Ubuntu or other Linux systems, things might be scar
 
 ### VcXserver installation
 
-This will enable us to run an application with a graphical output, such as the simulator, or companion, on our fresh Ubuntu install.
+This will enable us to run an application with a graphical output, such as the simulator, on our fresh Ubuntu install.
 
 * First you need to download it [from here](https://sourceforge.net/projects/vcxsrv/) and install it as administrator.
 * Then we will create a shortcut on the desktop so we can start it like we want it. Rightclick anywhere on the screen, select new, shortcut and add the following text as destination: `"C:\Program Files\VcXsrv\vcxsrv.exe" :0 -ac -terminate -lesspointer -multiwindow -clipboard -wgl -dpi auto`
@@ -104,7 +104,7 @@ This finishes the install.
 We have created a SIMU application for the Taranis X9D+ by compiling it for you. If you want to test it, just type the following command to fetch it `wget -q https://raw.githubusercontent.com/EdgeTX/edgetx/refs/heads/main/docs/assets/simu_x9dplus_ubuntu`.
 
 then `chmod a+x simu_x9dplus_ubuntu` and run it with `./simu_x9dplus_ubuntu`.
-And your X9D+ simple simulator is running in an Ubuntu window on your windows computer. (the key shortcuts can be found in the windows companion help screen: PG-UP->MENU; PG-DN->PAGE; DEL/ESC/BKSP->EXIT; +->+; -->-; ENTER->ENT).
+And your X9D+ simple simulator is running in an Ubuntu window on your windows computer. (the key shortcuts are: PG-UP->MENU; PG-DN->PAGE; DEL/ESC/BKSP->EXIT; +->+; -->-; ENTER->ENT).
 
 ## Compiling
 
@@ -131,6 +131,6 @@ Make sure you know where you are in UBUNTU:
 
 ## Conclusion
 
-You can thus set up companion on UBUNTU to use your windows directories for the SDcard and the ETX files, working seamless together with windows from an UBUNTU X-window. The same goes for the simulator.
+You can thus set up the simulator on UBUNTU to use your windows directories for the SDcard and the ETX files, working seamless together with windows from an UBUNTU X-window.
 
-In essence, from a functional perspective, Companion24 and the full Simulator24 will be exact the same as if they where compiled and run under windows directly.
+In essence, from a functional perspective, the simulator will be exact the same as if it where compiled and run under windows directly.

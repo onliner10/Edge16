@@ -279,7 +279,6 @@ These options are for development and debugging. All default to `OFF`.
 | `SIMU_DISKIO` | OFF | Enable disk I/O simulation using a `sdcard.image` file |
 | `SIMU_LUA_COMPILER` | ON | Pre-compile and cache Lua scripts in the simulator |
 | `SIMU_TARGET` | ON | Build the simulator target |
-| `DISABLE_COMPANION` | OFF | Skip building Companion and simulators |
 
 ---
 

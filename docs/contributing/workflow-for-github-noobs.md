@@ -32,7 +32,7 @@ That's good!
 
 ## Compiling
 
-I will list all the steps to compile the code into the firmware for on the radio, the full simulator, and companion. The goal is that we test things first in the simulator, and then on the physical radio. Saves a lot of hassle.
+I will list all the steps to compile the code into the firmware for on the radio, and the simulator. The goal is that we test things first in the simulator, and then on the physical radio. Saves a lot of hassle.
 
 ### Preparation
 
@@ -76,23 +76,13 @@ make -j`nproc` firmware
 
 The firmware created to load on your radio is _firmware.bin_.
 
-### Compiling Companion
-
-```
-cd ~/edgetx/edgetx-main/build-output
-make -j`nproc` companion25
-```
-
-To launch Companion, issue: `./companion25`
-Do that first, to create at least ONE profile to be able to use the simulator.
-
 ### Compiling the simulator
 
 Remember it will use the settings as prepared in the cmake command.
 
 ```
 cd ~/edgetx/edgetx-main/build-output
-make -j`nproc` libsimulator && make -j`nproc` simulator25
+make -j`nproc` simu
 ```
 
 ### Compiling all in one go
@@ -109,13 +99,11 @@ Do the rest
 cd ~/edgetx/edgetx-main/build-output
 cmake -DPCB=X10 -DPCBREV=TX16S -DDEFAULT_MODE=2 -DGVARS=YES -DPPM_UNIT=US -DHELI=NO -DLUA=YES -DINTERNAL_GPS=YES -DCMAKE_BUILD_TYPE=Debug ../
 make -j`nproc` firmware
-make -j`nproc` companion25
-make -j`nproc` libsimulator
-make -j`nproc` simulator25
+make -j`nproc` simu
 
 ```
 
-## Running companion or the simulator
+## Running the simulator
 
 ### Preparation
 
@@ -135,32 +123,15 @@ rm *.zip
 
 ```
 
-### Running companion
-
-The companion is located in the build_output directory, so we run it with this command:
-
-```
-~/edgetx/edgetx-main/build-output/companion25
-```
-
-Now when companion started, you need to go to settings/radio profiles and create at least one profile, with the created radio type selected. Also, in settings, set the SDcard path to your just downloaded and unzipped SDCard content, in this tutorial the Horus content.
-
-````
-/home/yourUserName/SDCARD/horus
-````
-
-If you have an existing .otx file, you can now load is at well :).
-
 ### Running the simulator
 
-The simulator is located in the build_output directory as well, so we run it with this command:
+The simulator is located in the build-output directory, so we run it with this command, pointing it at your just downloaded and unzipped SDCard content, in this tutorial the Horus content:
 
 ````
-~/edgetx/edgetx-main/build-output/simulator25
+~/edgetx/edgetx-main/build-output/native/simu --storage /home/yourUserName/SDCARD/horus
 ````
 
-Now when companion started, you created at least one profile, with the created radio type.
-Select that profile, and start it up.
+If you have an existing model file, you can copy it into that SD card content before launching.
 
 ## Doing testwork
 
@@ -215,7 +186,7 @@ I am really a noob. That helps to prevent the obvious things from being forgotte
 
 In this workflow, we are NOT interested in keeping things up to date, correct, organized, from a coding perspective.
 
-It is meant to reload another branch or tag or version or whatever things there are on GitHub that need testing or documentation (new parts in the GUI for instance) with as little as possible actions. And without ruining any settings or references that are already created for the companion and or simulator that are probably stored when running in the build-output directory.
+It is meant to reload another branch or tag or version or whatever things there are on GitHub that need testing or documentation (new parts in the GUI for instance) with as little as possible actions. And without ruining any settings or references that are already created for the simulator that are probably stored when running in the build-output directory.
 
 What I am not understanding yet is how to test a certain pull request before it is part of the main branch.
 

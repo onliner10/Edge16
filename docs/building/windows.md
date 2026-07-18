@@ -9,10 +9,8 @@ Note: The instructions on this page apply only for building V3.0.0-dev and later
   2. [ARM GNU Toolchain](#arm-gnu-toolchain)
   3. [Folders for libraries of the project](#folders-for-libraries-of-the-project)
   4. [Build script](#build-script)
-  5. [NSIS Windows installer creator](#nsis-windows-installer-creator)
-  6. [Python package manager uv](#python-package-manager-uv)
-  7. [Python virtual environment](#python-virtual-environment)
-  8. [Qt development framework](#qt-development-framework)
+  5. [Python package manager uv](#python-package-manager-uv)
+  6. [Python virtual environment](#python-virtual-environment)
 * [Building](#building)
   1. [Fetch the EdgeTX project](#fetch-the-edgetx-project)
   2. [Target specific build script](#target-specific-build-script)
@@ -69,11 +67,8 @@ time /t
 set CC=clang.exe
 set CXX=clang++.exe
 
-set NSIS_EXE=c:\Program Files (x86)\NSIS\makensis.exe
 set SDL2=%EDGETX_BUILD_TOOLS%\SDL2\cmake
-set QT_DIR=%EDGETX_BUILD_TOOLS%\Qt\6.9.0\msvc2022_64
 set PATHS="-DSDL2_DIR=%SDL2%"
-set CMAKE_PREFIX_PATH="-DCMAKE_PREFIX_PATH=%QT_DIR%"
 set LANGUAGE="-DTRANSLATIONS=%BUILD_LANGUAGE%"
 
 echo ********************************************
@@ -81,8 +76,6 @@ echo Building radio: %BUILD_RADIO%
 echo Language:       %BUILD_LANGUAGE%
 echo Debug build:    %BUILD_DEBUG%
 echo Firmware:       %BUILD_FW%
-echo Companion:      %BUILD_CPN%
-echo Installer:      %BUILD_INSTALLER%
 echo ********************************************
 
 REM
@@ -106,36 +99,12 @@ call "%EDGETX_BUILD_TOOLS%\.venv\Scripts\activate.bat"
 REM
 REM start build
 REM
-cmake -G Ninja %BUILD_OPTIONS% %PATHS% %CMAKE_PREFIX_PATH% %LANGUAGE% %BUILD_TYPE% %EDGETX_REPO%
+cmake -G Ninja %BUILD_OPTIONS% %PATHS% %LANGUAGE% %BUILD_TYPE% %EDGETX_REPO%
 
 if %BUILD_FW%=="yes" (
   ninja arm-none-eabi-configure
   ninja -C arm-none-eabi firmware
 )
-
-REM If building installer is requested, need to build Companion
-if %BUILD_INSTALLER%=="yes" GOTO build_cpn
-if %BUILD_CPN%=="yes" GOTO build_cpn
-
-REM else
-GOTO exit_script
-
-:build_cpn
-ninja native-configure
-ninja -C native libsimulator
-ninja -C native simulator
-ninja -C native companion
-
-if %BUILD_INSTALLER%=="yes" (
-  ninja -C native install
-  %QT_DIR%\bin\windeployqt --libdir native\_install\bin --plugindir native\_install\plugins --no-compiler-runtime --no-translations --release native
-  robocopy %QT_DIR%\bin\ native\_install\bin qt.conf
-  "%NSIS_EXE%" native/companion/companion.nsi
-)
-
-REM The following is in order to be able to run companion and simulator binaries directly in build output folder
-%QT_DIR%\bin\windeployqt --libdir native --plugindir native\plugins --no-compiler-runtime --no-translations --release native
-copy %EDGETX_BUILD_TOOLS%\SDL2\lib\x64\SDL2.dll %EDGETX_MAIN_DIR%\%BUILD_FOLDER%\native\
 
 REM
 REM done
@@ -145,12 +114,6 @@ call "%EDGETX_BUILD_TOOLS%\.venv\Scripts\deactivate.bat"
 time /t
 pause
 ```
-
-### NSIS Windows installer creator
-
-Install the NSIS compiler from https://nsis.sourceforge.io/Download
-
-<img width="480" src="https://github.com/user-attachments/assets/bb8bf3ac-10a1-4bee-b65e-7f914acb79c0" />
 
 ### Python package manager uv
 
@@ -163,21 +126,8 @@ Install Python package manager uv according to the installation instructions at:
 Continue on the command prompt at `C:\edgetx\build-tools`:
 ```
 uv venv
-uv pip install clang lz4 jinja2 pillow pyelftools aqtinstall pydantic
+uv pip install clang lz4 jinja2 pillow pyelftools pydantic
 ```
-
-### Qt development framework
-
-Continue on the command prompt at `C:\edgetx\build-tools` to install Qt 6.9.0 into the Python virtual environment:
-```
-mkdir Qt
-cd Qt
-call "C:\edgetx\build-tools\.venv\Scripts\activate.bat"
-aqt install-qt windows desktop 6.9.0 win64_msvc2022_64 -m qtmultimedia qtserialport
-call "C:\edgetx\build-tools\.venv\Scripts\deactivate.bat"
-```
-Reboot your computer.
-
 
 ## Building
 
@@ -205,14 +155,12 @@ set BUILD_OPTIONS="-DPCB=X10;-DPCBREV=TX16S"
 set BUILD_LANGUAGE="EN"
 set BUILD_DEBUG="no"
 set BUILD_FW="yes"
-set BUILD_CPN="yes"
-set BUILD_INSTALLER="yes"
 
 call "%EDGETX_MAIN_DIR%\edgetx_build.cmd"
 ```
 and start it.
 
-After the build finishes, you can find the binaries under `C:\edgetx\build-output-<BUILD_RADIO>` (firmware binary under subfolder `arm-none-eabi`, Companion and Simulator binaries together with simulator library under folder `native` and Companion installer under subfolder `native\companion`).
+After the build finishes, you can find the firmware binary under `C:\edgetx\build-output-<BUILD_RADIO>\arm-none-eabi`.
 Note! Be sure to wipe the `C:\edgetx\build-output-<BUILD_RADIO>` content every time you change the build options.
 
 See https://github.com/EdgeTX/edgetx/blob/main/tools/build-common.sh for BUILD_OPTIONS to use for various EdgeTX supported radios. Note that whereas the shell script at GitHub has spaces as delimeters between the keys, then in the Windows batch file, you neet to use semicolon as a delimeter.

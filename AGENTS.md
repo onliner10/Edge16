@@ -189,7 +189,6 @@ Never connect TX16S module-bay battery/VMAIN/BATT to the Uno. See `tools/hil/CON
 - `radio/src/tests/` — native gtests, sanitizer coverage, and fuzzers.
 - `tools/ui-harness/` — simulator control and screenshot automation.
 - `tools/hil/` — hardware-in-the-loop harness.
-- `companion/` — Qt desktop companion. Do not change it unless the task is explicitly Companion-related.
 - `.semgrep/edge16-firmware.yml`, `.clang-tidy`, `.cppcheck-suppressions*`, `.github/workflows/build_fw.yml` — safety policy source of truth.
 
 ## Hard scope boundaries
