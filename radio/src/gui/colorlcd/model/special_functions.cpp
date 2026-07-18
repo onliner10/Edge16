@@ -873,6 +873,7 @@ void FunctionsPage::build(Window* window)
   if (!list) return;
 
   bool hasEmptyFunction = false;
+  bool hasAnyFunction = false;
 
   // Reset focusIndex after switching tabs
   if (!isRebuilding) focusIndex = prevFocusIndex;
@@ -883,6 +884,7 @@ void FunctionsPage::build(Window* window)
     bool isActive = (cfn->swtch != 0);
 
     if (isActive) {
+      hasAnyFunction = true;
       auto button = functionButton(
           list,
           rect_t{0, 0, LV_PCT(100), ds::rowHeight(ds::RowSize::TwoLine)}, i);
@@ -977,6 +979,20 @@ void FunctionsPage::build(Window* window)
     } else {
       hasEmptyFunction = true;
     }
+  }
+
+  if (!hasAnyFunction) {
+    // Nothing configured yet: replace the bare "+" row with a real empty state
+    // (icon + what-this-is + a primary "New" action) so the screen explains
+    // itself instead of showing a lone plus. See DESIGN_SYSTEM.md.
+    list->hide();
+    addButton = nullptr;
+    new ds::EmptyState(window, listIcon(), listTitle(), nullptr, STR_NEW,
+                       [=]() -> uint8_t {
+                         plusPopup(window);
+                         return 0;
+                       });
+    return;
   }
 
   if (hasEmptyFunction) {

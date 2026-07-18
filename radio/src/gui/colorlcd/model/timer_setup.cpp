@@ -22,6 +22,7 @@
 #include "timer_setup.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "numberedit.h"
@@ -54,68 +55,72 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
 
   TimerData* p_timer = &g_model.timers[timer];
 
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the settings are a stack of DS form
+  // rows (label 40% / control 60%, 40 px min) grouped in a Card. The ds::List
+  // owns page margins and gaps; the DS owns the label/control split — no
+  // per-screen coordinates.
+  Window* list = new ds::List(body);
+  auto* form = new ds::Card(list);
+
   // Timer name
-  setupLine(STR_NAME,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new ModelTextEdit(parent, {x, y, 0, 0}, p_timer->name, LEN_TIMER_NAME);
-    });
+  new ds::FormRow(form, STR_NAME, [=](Window* slot) {
+    new ModelTextEdit(slot, rect_t{}, p_timer->name, LEN_TIMER_NAME);
+  });
 
   // Timer mode
-  setupLine(STR_MODE,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new Choice(parent, {x, y, 0, 0}, STR_TIMER_MODES, 0, TMRMODE_MAX,
-                GET_DEFAULT(p_timer->mode), SET_TIMER_DEFAULT(p_timer->mode));
-    });
+  new ds::FormRow(form, STR_MODE, [=](Window* slot) {
+    new Choice(slot, rect_t{}, STR_TIMER_MODES, 0, TMRMODE_MAX,
+               GET_DEFAULT(p_timer->mode), SET_TIMER_DEFAULT(p_timer->mode));
+  });
 
   // Timer switch
-  setupLine(STR_SWITCH,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new SwitchChoice(parent, rect_t{x, y, 0, 0}, SWSRC_FIRST, SWSRC_LAST,
-                       GET_DEFAULT(p_timer->swtch), SET_TIMER_DEFAULT(p_timer->swtch));
-    });
+  new ds::FormRow(form, STR_SWITCH, [=](Window* slot) {
+    new SwitchChoice(slot, rect_t{}, SWSRC_FIRST, SWSRC_LAST,
+                     GET_DEFAULT(p_timer->swtch),
+                     SET_TIMER_DEFAULT(p_timer->swtch));
+  });
 
   // Timer start value
-  setupLine(STR_START,
-    [=](Window* parent, coord_t x, coord_t y) {
-      auto timerValue = new TimeEdit(parent, {x, y, 0, 0}, 0, TIMER_MAX,
-	                                GET_DEFAULT(p_timer->start), [=](int newValue) {
-	                                  {
-	                                    MixerTaskLockGuard lock;
-	                                    p_timer->start = newValue;
-	                                    timerSet(timer, newValue);
-	                                  }
-                                  timerDirLine->show(newValue > 0);
-                                  SET_DIRTY();
-                                });
-      timerValue->setAccelFactor(16);
-    });
+  new ds::FormRow(form, STR_START, [=](Window* slot) {
+    auto timerValue = new TimeEdit(
+        slot, rect_t{}, 0, TIMER_MAX, GET_DEFAULT(p_timer->start),
+        [=](int newValue) {
+          {
+            MixerTaskLockGuard lock;
+            p_timer->start = newValue;
+            timerSet(timer, newValue);
+          }
+          timerDirLine->show(newValue > 0);
+          SET_DIRTY();
+        });
+    timerValue->setAccelFactor(16);
+  });
 
   // Timer direction
-  timerDirLine = setupLine(STR_LIMITS_HEADERS_DIRECTION,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new Choice(parent, {x, y, 0, 0}, STR_TIMER_DIR, 0, 1,
+  timerDirLine = new ds::FormRow(form, STR_LIMITS_HEADERS_DIRECTION,
+    [=](Window* slot) {
+      new Choice(slot, rect_t{}, STR_TIMER_DIR, 0, 1,
                  GET_DEFAULT(p_timer->showElapsed),
                  SET_TIMER_DEFAULT(p_timer->showElapsed));
     });
-  timerDirLine->show(p_timer->start> 0);
+  timerDirLine->show(p_timer->start > 0);
 
   // Timer minute beep
-  setupLine(STR_MINUTEBEEP,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0}, GET_DEFAULT(p_timer->minuteBeep),
-                       [=](int newValue) {
-                         {
-                           MixerTaskLockGuard lock;
-                           p_timer->minuteBeep = newValue;
-                         }
-                         minuteBeepStartLine->show(newValue);
-                         SET_DIRTY();
-                       });
-    });
+  new ds::FormRow(form, STR_MINUTEBEEP, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(p_timer->minuteBeep),
+                     [=](int newValue) {
+                       {
+                         MixerTaskLockGuard lock;
+                         p_timer->minuteBeep = newValue;
+                       }
+                       minuteBeepStartLine->show(newValue);
+                       SET_DIRTY();
+                     });
+  });
 
-  minuteBeepStartLine = setupLine(STR_MINUTEBEEP_START,
-    [=](Window* parent, coord_t x, coord_t y) {
-      auto edit = new NumberEdit(parent, {x, y, 132, 0}, 0, 63,
+  minuteBeepStartLine = new ds::FormRow(form, STR_MINUTEBEEP_START,
+    [=](Window* slot) {
+      auto edit = new NumberEdit(slot, rect_t{}, 0, 63,
                                  GET_DEFAULT(p_timer->minuteBeepStart),
                                  SET_TIMER_DEFAULT(p_timer->minuteBeepStart));
       edit->setSuffix(" min");
@@ -125,44 +130,40 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
     });
   minuteBeepStartLine->show(p_timer->minuteBeep);
 
-  // Timer countdown
-  setupLine(STR_BEEPCOUNTDOWN,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new Choice(
-          parent, rect_t{x, y, COUNTDOWN_W, 0}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT, COUNTDOWN_COUNT - 1,
-          [=]() -> int {
-            int value = p_timer->countdownBeep;
-            if (p_timer->extraHaptic) {
-              value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
+  // Timer countdown — mode + value pair share the one control slot.
+  new ds::FormRow(form, STR_BEEPCOUNTDOWN, [=](Window* slot) {
+    auto* group = new Window(slot, rect_t{});
+    group->setFlexLayout(LV_FLEX_FLOW_ROW);
+    new Choice(
+        group, rect_t{}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT,
+        COUNTDOWN_COUNT - 1,
+        [=]() -> int {
+          int value = p_timer->countdownBeep;
+          if (p_timer->extraHaptic) value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
+          return value;
+        },
+        [=](int value) {
+          {
+            MixerTaskLockGuard lock;
+            if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
+              p_timer->extraHaptic = 1;
+              p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
+            } else {
+              p_timer->extraHaptic = 0;
+              p_timer->countdownBeep = value;
             }
-            return (value);
-          },
-	          [=](int value) {
-	            {
-	              MixerTaskLockGuard lock;
-	              if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
-                p_timer->extraHaptic = 1;
-                p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
-              } else {
-                p_timer->extraHaptic = 0;
-                p_timer->countdownBeep = value;
-              }
-            }
-            SET_DIRTY();
-            TRACE("value=%d\tcountdownBeep = %d\textraHaptic = %d", value,
-                  p_timer->countdownBeep, p_timer->extraHaptic);
-          });
-
-      new Choice(parent, {x + COUNTDOWN_VAL_XO, y + COUNTDOWN_VAL_YO, 0, 0}, STR_COUNTDOWNVALUES, 0, 3,
-                GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
-                SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
-    }, COUNTDOWN_LBL_YO);
+          }
+          SET_DIRTY();
+        });
+    new Choice(group, rect_t{}, STR_COUNTDOWNVALUES, 0, 3,
+               GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
+               SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
+  });
 
   // Timer persistent
-  setupLine(STR_PERSISTENT,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new Choice(parent, {x, y, 0, 0}, STR_VPERSISTENT, 0, 2,
-                GET_DEFAULT(p_timer->persistent),
-                SET_TIMER_DEFAULT(p_timer->persistent));
-    });
+  new ds::FormRow(form, STR_PERSISTENT, [=](Window* slot) {
+    new Choice(slot, rect_t{}, STR_VPERSISTENT, 0, 2,
+               GET_DEFAULT(p_timer->persistent),
+               SET_TIMER_DEFAULT(p_timer->persistent));
+  });
 }

@@ -26,6 +26,7 @@
 
 #include "etx_lv_theme.h"
 #include "static.h"
+#include "widget_palette.h"  // D2: validated button fills (leaf utility)
 
 namespace ds {
 
@@ -39,8 +40,10 @@ constexpr coord_t kSpace1 = LAYOUT_SCALE(4);   // micro
 constexpr coord_t kSpace2 = LAYOUT_SCALE(8);   // related
 constexpr coord_t kSpace3 = LAYOUT_SCALE(12);  // grouping / margins
 constexpr coord_t kSpace4 = LAYOUT_SCALE(16);  // separation / dialog frame
+constexpr coord_t kSpace5 = LAYOUT_SCALE(24);  // hero / empty-state breathing
 
 constexpr coord_t kTouchMin = LAYOUT_SCALE(40);   // 8 mm touch floor
+constexpr coord_t kEmptyMinHeight = LAYOUT_SCALE(180);  // empty-state hero band
 constexpr coord_t kRowOneLine = LAYOUT_SCALE(40);
 constexpr coord_t kRowPicker = LAYOUT_SCALE(48);
 constexpr coord_t kRowTwoLine = LAYOUT_SCALE(52);
@@ -81,8 +84,10 @@ coord_t rowHeight(RowSize size)
       return kRowPicker;
     case RowSize::TwoLine:
       return kRowTwoLine;
+    case RowSize::OneLine:
+    case RowSize::Compact:
     default:
-      return kRowOneLine;
+      return kRowOneLine;  // both one-line variants sit on the 40 px floor
   }
 }
 
@@ -92,8 +97,9 @@ coord_t embeddedControlSize() { return kSpace4; }
 // List
 // ---------------------------------------------------------------------------
 
-List::List(Window* parent) :
-    Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+List::List(Window* parent, Density density) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT}),
+    density_(density)
 {
   withLive([](LiveWindow& live) {
     lv_obj_t* obj = live.lvobj();
@@ -266,6 +272,25 @@ ListRow::ListRow(Window* parent, RowSize size, const Content& content,
 #endif
 }
 
+namespace {
+// D1: pick the row variant for a density. No subtitle -> a plain 40 px row;
+// with a subtitle, Comfortable is the 52 px two-line row and Compact is the
+// 40 px one-line row (subtitle dropped to the editor).
+RowSize sizeForDensity(Density density, const ListRow::Content& content)
+{
+  if (!content.subtitle) return RowSize::OneLine;
+  return density == Density::Compact ? RowSize::Compact : RowSize::TwoLine;
+}
+}  // namespace
+
+ListRow::ListRow(Window* parent, Density density, const Content& content,
+                 std::function<uint8_t()> onPress,
+                 std::function<uint8_t()> onLongPress) :
+    ListRow(parent, sizeForDensity(density, content), content,
+            std::move(onPress), std::move(onLongPress))
+{
+}
+
 void ListRow::setFlagged(bool flagged)
 {
   withLive([&](LiveWindow& live) {
@@ -278,6 +303,157 @@ void ListRow::setFlagged(bool flagged)
       etx_remove_border_color(obj, LV_PART_MAIN);
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// FormRow
+// ---------------------------------------------------------------------------
+
+namespace {
+// 40% label / 60% control, one content-height row, vertically centered.
+const lv_coord_t kFormCols[] = {LV_GRID_FR(2), LV_GRID_FR(3),
+                                LV_GRID_TEMPLATE_LAST};
+const lv_coord_t kFormRows[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
+}  // namespace
+
+FormRow::FormRow(Window* parent, const char* label,
+                 std::function<void(Window*)> buildControl) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
+{
+  setWindowFlag(NO_FOCUS);  // the control is the focus target, not the row
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_width(obj, LV_PCT(100));
+    lv_obj_set_height(obj, LV_SIZE_CONTENT);
+    lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(obj, kSpace3, LV_PART_MAIN);
+    lv_obj_set_layout(obj, LV_LAYOUT_GRID);
+    lv_obj_set_grid_dsc_array(obj, kFormCols, kFormRows);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    labelObj = etx_label_create(obj, FONT_STD_INDEX);
+    if (labelObj) {
+      lv_label_set_text(labelObj, label ? label : "");
+      lv_label_set_long_mode(labelObj, LV_LABEL_LONG_DOT);
+      etx_txt_color(labelObj, COLOR_THEME_PRIMARY1_INDEX);
+      lv_obj_set_grid_cell(labelObj, LV_GRID_ALIGN_START, 0, 1,
+                           LV_GRID_ALIGN_CENTER, 0, 1);
+    }
+  });
+
+  if (buildControl) buildControl(this);
+
+#if defined(SIMU)
+  setAutomationText(label ? label : "");
+#endif
+}
+
+bool FormRow::addChild(Window* child)
+{
+  if (!Window::addChild(child)) return false;
+  // The field widget the caller builds lands in the 60% control column,
+  // vertically centered. (The label is a raw lv label, not a Window child, so
+  // the first — and only — Window child is the control.)
+  child->withLive([](Window::LiveWindow& live) {
+    lv_obj_set_grid_cell(live.lvobj(), LV_GRID_ALIGN_START, 1, 1,
+                         LV_GRID_ALIGN_CENTER, 0, 1);
+  });
+  return true;
+}
+
+void FormRow::setLabel(const char* text)
+{
+  if (labelObj) lv_label_set_text(labelObj, text ? text : "");
+}
+
+// ---------------------------------------------------------------------------
+// Card
+// ---------------------------------------------------------------------------
+
+Card::Card(Window* parent, const char* title) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+{
+  setWindowFlag(NO_FOCUS);
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_width(obj, LV_PCT(100));
+    lv_obj_set_height(obj, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(obj, kSpace3, LV_PART_MAIN);   // grouping inset
+    lv_obj_set_style_pad_row(obj, kSpace2, LV_PART_MAIN);   // internal gap
+    lv_obj_set_style_radius(obj, kSpace1, LV_PART_MAIN);
+    lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN);
+    etx_border_color(obj, COLOR_THEME_SECONDARY2_INDEX, LV_PART_MAIN);
+    etx_solid_bg(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);  // surface
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    if (title) {
+      titleObj = etx_label_create(obj, FONT_BOLD_INDEX);
+      if (titleObj) {
+        lv_label_set_text(titleObj, title);
+        etx_txt_color(titleObj, COLOR_THEME_PRIMARY1_INDEX);
+      }
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// EmptyState
+// ---------------------------------------------------------------------------
+
+EmptyState::EmptyState(Window* parent, EdgeTxIcon icon, const char* headline,
+                       const char* hint, const char* actionLabel,
+                       std::function<uint8_t()> onAction) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+{
+  setWindowFlag(NO_FOCUS);
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_width(obj, LV_PCT(100));
+    lv_obj_set_flex_grow(obj, 1);  // fill remaining height when the body allows
+    // ...but a page body is often content-sized, so also claim a hero minimum
+    // height (below the 227 px content band) so the state is always visible and
+    // its content stays vertically centered even when there is nothing to grow
+    // into.
+    lv_obj_set_style_min_height(obj, kEmptyMinHeight, LV_PART_MAIN);
+    lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(obj, kSpace5, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(obj, kSpace2, LV_PART_MAIN);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  });
+
+  new (std::nothrow) StaticIcon(this, 0, 0, icon, COLOR_THEME_SECONDARY1_INDEX);
+
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_t* h = etx_label_create(obj, FONT_BOLD_INDEX);
+    if (h) {
+      lv_label_set_text(h, headline ? headline : "");
+      lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      etx_txt_color(h, COLOR_THEME_PRIMARY1_INDEX);
+    }
+    if (hint) {
+      lv_obj_t* sub = etx_label_create(obj, FONT_STD_INDEX);
+      if (sub) {
+        lv_label_set_text(sub, hint);
+        lv_obj_set_width(sub, LV_PCT(90));
+        lv_label_set_long_mode(sub, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        etx_txt_color(sub, COLOR_THEME_SECONDARY1_INDEX);
+      }
+    }
+  });
+
+  if (actionLabel && onAction)
+    new (std::nothrow)
+        DSButton(this, actionLabel, ButtonRole::Primary, std::move(onAction));
+
+#if defined(SIMU)
+  setAutomationText(headline ? headline : "");
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -296,25 +472,42 @@ DSButton::DSButton(Window* parent, const char* text, ButtonRole role,
     lv_obj_set_style_pad_left(obj, kSpace4, LV_PART_MAIN);
     lv_obj_set_style_pad_right(obj, kSpace4, LV_PART_MAIN);
 
+    // D2: filled roles draw a contrast-VALIDATED fill (widget_palette) so the
+    // fixed label ink stays legible on the fill in every theme, not the raw
+    // theme accent which fails AAA on some themes (e.g. red WARNING under a
+    // white label is only ~5:1). The label colour here is exactly the one the
+    // fill was validated against.
     switch (role) {
-      case ButtonRole::Primary:
-        etx_bg_color(obj, COLOR_THEME_ACTIVE_INDEX, LV_PART_MAIN);
-        etx_bg_color(obj, COLOR_THEME_ACTIVE_INDEX,
-                     LV_PART_MAIN | LV_STATE_FOCUSED);
+      case ButtonRole::Primary: {
+        lv_color_t fill = buttonFillLvColor(BTN_FILL_PRIMARY);
+        lv_obj_set_style_bg_color(obj, fill, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(obj, fill, LV_PART_MAIN | LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER,
+                                LV_PART_MAIN | LV_STATE_FOCUSED);
         etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX, LV_PART_MAIN);
         etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX,
                       LV_PART_MAIN | LV_STATE_FOCUSED);
         break;
-      case ButtonRole::Destructive:
-        etx_txt_color(obj, COLOR_THEME_WARNING_INDEX, LV_PART_MAIN);
-        etx_border_color(obj, COLOR_THEME_WARNING_INDEX, LV_PART_MAIN);
+      }
+      case ButtonRole::Destructive: {
+        lv_color_t fill = buttonFillLvColor(BTN_FILL_DESTRUCTIVE);
+        lv_obj_set_style_bg_color(obj, fill, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(obj, fill, LV_PART_MAIN | LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER,
+                                LV_PART_MAIN | LV_STATE_FOCUSED);
+        etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);
+        etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX,
+                      LV_PART_MAIN | LV_STATE_FOCUSED);
         break;
+      }
       default:
         break;
     }
   });
   label.with([&](lv_obj_t* obj) {
-    if (role == ButtonRole::Primary) etx_font(obj, FONT_BOLD_INDEX);
+    if (role != ButtonRole::Secondary) etx_font(obj, FONT_BOLD_INDEX);
     lv_obj_center(obj);
   });
 }

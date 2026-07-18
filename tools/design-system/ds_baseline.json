@@ -63,8 +63,6 @@
     "model/model_logical_switches.cpp": 25,
     "model/model_mixer_scripts.cpp": 13,
     "model/model_mixes.cpp": 14,
-    "model/model_outputs.cpp": 26,
-    "model/model_outputs.h": 12,
     "model/model_select.cpp": 25,
     "model/model_select.h": 12,
     "model/model_setup.cpp": 15,
@@ -77,7 +75,6 @@
     "model/output_edit.h": 1,
     "model/preflight_checks.cpp": 14,
     "model/special_functions.cpp": 3,
-    "model/timer_setup.h": 4,
     "model/trainer_bluetooth.cpp": 1,
     "model/trainer_setup.cpp": 2,
     "module/access_settings.cpp": 8,
@@ -141,5 +138,5 @@
     "widgets/value.cpp": 11
   },
   "suppressions": {},
-  "total": 1278
+  "total": 1236
 }

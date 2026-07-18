@@ -148,6 +148,10 @@ class FunctionsPage : public PageGroupItem
   virtual FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                          uint8_t index) const = 0;
   virtual void setDirty() const = 0;
+
+  // Icon/title for the empty-state shown when nothing is configured yet.
+  virtual EdgeTxIcon listIcon() const = 0;
+  virtual const char* listTitle() const = 0;
 };
 
 //-----------------------------------------------------------------------------
@@ -164,6 +168,8 @@ class SpecialFunctionsPage : public FunctionsPage
   FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                  uint8_t index) const override;
   void setDirty() const override;
+  EdgeTxIcon listIcon() const override { return ICON_MODEL_SPECIAL_FUNCTIONS; }
+  const char* listTitle() const override { return STR_MENUCUSTOMFUNC; }
 };
 
 //-----------------------------------------------------------------------------
@@ -180,4 +186,6 @@ class GlobalFunctionsPage : public FunctionsPage
   FunctionLineButton* functionButton(Window* parent, const rect_t& rect,
                                  uint8_t index) const override;
   void setDirty() const override;
+  EdgeTxIcon listIcon() const override { return ICON_RADIO_GLOBAL_FUNCTIONS; }
+  const char* listTitle() const override { return STR_MENUSPECIALFUNCS; }
 };

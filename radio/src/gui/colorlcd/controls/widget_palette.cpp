@@ -75,6 +75,20 @@ uint32_t correctForContrast(uint32_t color, uint32_t bg1, uint32_t bg2,
   return endpoint;
 }
 
+uint32_t correctFillForLabel(uint32_t fill, uint32_t label, double target)
+{
+  if (contrastRatio(fill, label) >= target) return fill;
+
+  // Move the fill AWAY from the label's luminance. The two endpoint contrasts
+  // are 1.05/(l+0.05) toward white and (l+0.05)/0.05 toward black; they are
+  // equal at l = sqrt(0.05*1.05) - 0.05 ~= 0.1791, so a label lighter than that
+  // is best cleared by darkening the fill, a darker label by lightening it.
+  // correctForContrast() then shades monotonically to that endpoint, treating
+  // the (single) label as both reference surfaces, and always converges.
+  const bool darken = relativeLuminance(label) >= 0.1791;
+  return correctForContrast(fill, label, label, target, darken);
+}
+
 // A pale, near-white surface tint that carries `seed`'s hue.
 static uint32_t paleTint(uint32_t seed, uint32_t textRole, uint32_t mutedRole)
 {
@@ -124,6 +138,20 @@ void derive(const uint32_t* themeColors, uint32_t cardBg, uint32_t mainBg,
   out.borders[WIDGET_STATE_NORMAL] = themeColors[COLOR_THEME_SECONDARY2_INDEX];
   out.borders[WIDGET_STATE_WARNING] = out.roles[PAL_WARNING];
   out.borders[WIDGET_STATE_CRITICAL] = out.roles[PAL_CRITICAL];
+
+  // Filled DS buttons: the label colour is fixed (PRIMARY1 ink on the primary
+  // action, PRIMARY2 surface on the destructive one, the theme's high-contrast
+  // ink/surface pair) and the FILL is auto-corrected so the label always clears
+  // AAA on it, in every theme -- the seed fills (amber ACTIVE, red WARNING) are
+  // exactly the ones that fail this on some themes.
+  out.buttonLabel[BTN_FILL_PRIMARY] = themeColors[COLOR_THEME_PRIMARY1_INDEX];
+  out.buttonLabel[BTN_FILL_DESTRUCTIVE] = themeColors[COLOR_THEME_PRIMARY2_INDEX];
+  out.buttonFill[BTN_FILL_PRIMARY] =
+      correctFillForLabel(themeColors[COLOR_THEME_ACTIVE_INDEX],
+                          out.buttonLabel[BTN_FILL_PRIMARY], kButtonContrast);
+  out.buttonFill[BTN_FILL_DESTRUCTIVE] =
+      correctFillForLabel(themeColors[COLOR_THEME_WARNING_INDEX],
+                          out.buttonLabel[BTN_FILL_DESTRUCTIVE], kButtonContrast);
 }
 
 // Expand an RGB565 table entry to RGB888.
@@ -212,4 +240,16 @@ lv_color_t paletteTopbarStateTextColor(uint8_t level)
     case WIDGET_STATE_WARNING: return paletteTopbarLvColor(PAL_WARNING);
     default: return paletteTopbarLvColor(PAL_DEFAULT);
   }
+}
+
+lv_color_t buttonFillLvColor(uint8_t role)
+{
+  if (role >= BTN_FILL_COUNT) role = BTN_FILL_PRIMARY;
+  return rgbToLv(widget_palette::active().buttonFill[role]);
+}
+
+lv_color_t buttonLabelLvColor(uint8_t role)
+{
+  if (role >= BTN_FILL_COUNT) role = BTN_FILL_PRIMARY;
+  return rgbToLv(widget_palette::active().buttonLabel[role]);
 }

@@ -49,6 +49,15 @@ enum WidgetStateLevel : uint8_t {
   WIDGET_STATE_CRITICAL = 2,
 };
 
+// Filled design-system buttons (ds::DSButton) whose FILL is contrast-validated
+// against a fixed label colour, the button-side counterpart of the text-role
+// validation above. A screen never picks these; the DS button reads them.
+enum ButtonFillRole : uint8_t {
+  BTN_FILL_PRIMARY = 0,    // the one main action; label = PRIMARY1 ink
+  BTN_FILL_DESTRUCTIVE,    // dangerous action; label = PRIMARY2 surface
+  BTN_FILL_COUNT
+};
+
 namespace widget_palette {
 
 // WCAG relative luminance of an RGB888 colour (0..1).
@@ -58,8 +67,9 @@ double relativeLuminance(uint32_t rgb);
 double contrastRatio(uint32_t a, uint32_t b);
 
 // Contrast floors.
-constexpr double kValueContrast = 7.0;  // value-capable roles
-constexpr double kMutedContrast = 4.5;  // Muted (labels only)
+constexpr double kValueContrast = 7.0;   // value-capable roles
+constexpr double kMutedContrast = 4.5;   // Muted (labels only)
+constexpr double kButtonContrast = 7.0;  // button label vs its fill (AAA)
 
 // Shade `color` toward black (darken=true, for light surfaces) or tint it
 // toward white (darken=false, for the dark top bar) until it clears `target`
@@ -70,11 +80,23 @@ constexpr double kMutedContrast = 4.5;  // Muted (labels only)
 uint32_t correctForContrast(uint32_t color, uint32_t bg1, uint32_t bg2,
                             double target, bool darken);
 
+// Correct a filled button's FILL colour so its (fixed) LABEL stays legible on
+// it at >= `target`. Text-role validation shades the INK against a fixed
+// surface; here it is the surface (the fill) that is corrected, and the shade
+// direction is chosen to move the fill AWAY from the label's luminance (a dark
+// label lightens the fill toward white, a light label darkens it toward black)
+// so the label-vs-fill contrast rises monotonically and always converges. The
+// endpoint chosen is the luminance extreme farther from the label, i.e. the one
+// that yields the maximum achievable contrast. Returns the corrected RGB888.
+uint32_t correctFillForLabel(uint32_t fill, uint32_t label, double target);
+
 struct PaletteSet {
   uint32_t roles[PAL_ROLE_COUNT];        // text roles for widget cards
   uint32_t topbarRoles[PAL_ROLE_COUNT];  // text roles validated for the top bar
   uint32_t tints[3];                     // card surface: normal/warning/critical
   uint32_t borders[3];                   // card border: normal/warning/critical
+  uint32_t buttonFill[BTN_FILL_COUNT];   // ds button fills, validated vs label
+  uint32_t buttonLabel[BTN_FILL_COUNT];  // the label each fill was validated for
   uint32_t cardBg;                       // reference backgrounds used
   uint32_t mainBg;
   uint32_t topbarBg;
@@ -104,3 +126,7 @@ lv_color_t paletteStateCardTint(uint8_t level);
 lv_color_t paletteStateBorderColor(uint8_t level);
 lv_color_t paletteTopbarLvColor(uint8_t role);
 lv_color_t paletteTopbarStateTextColor(uint8_t level);
+
+// ds::DSButton fills/labels, validated for the active theme (BTN_FILL_*).
+lv_color_t buttonFillLvColor(uint8_t role);
+lv_color_t buttonLabelLvColor(uint8_t role);

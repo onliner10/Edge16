@@ -26,6 +26,7 @@
 
 #include <functional>
 
+#include "bitmaps.h"  // EdgeTxIcon (EmptyState)
 #include "button.h"
 #include "dialog.h"
 #include "window.h"
@@ -54,8 +55,22 @@ enum class ButtonRole : uint8_t {
 
 enum class RowSize : uint8_t {
   OneLine,  // 40 px — title (+ trailing)
+  Compact,  // 40 px — DENSE one-line data row (title + trailing); D1 variant.
+            // Same floor and layout as OneLine, but a distinct, sanctioned
+            // choice for lists that would otherwise use TwoLine: the second
+            // line's detail is relegated to the row's editor so more rows fit.
   Picker,   // 48 px — comfortable single-line pick target
   TwoLine,  // 52 px — title + subtitle (+ trailing)
+};
+
+// List/row DENSITY (D1). Comfortable is the default two-line treatment for
+// rows that carry detail; Compact collapses that same content to a 40 px
+// one-line row (dropping the subtitle to the editor) for dense lists — e.g. a
+// 20-line mixer, where 52 px rows waste vertical space. Purely a density
+// selector over the SAME semantic row API; it is not a new raw-styled row.
+enum class Density : uint8_t {
+  Comfortable,
+  Compact,
 };
 
 // DS-owned row height for the given variant. Exposed so legacy list
@@ -77,7 +92,14 @@ coord_t embeddedControlSize();
 class List : public Window
 {
  public:
-  explicit List(Window* parent);
+  explicit List(Window* parent, Density density = Density::Comfortable);
+
+  // The density this list was built with; rows can size themselves from it so
+  // a screen declares density once (D1).
+  Density density() const { return density_; }
+
+ private:
+  Density density_ = Density::Comfortable;
 };
 
 // ---------------------------------------------------------------------------
@@ -148,6 +170,13 @@ class ListRow : public Button
   ListRow(Window* parent, RowSize size, const Content& content,
           std::function<uint8_t()> onPress = nullptr,
           std::function<uint8_t()> onLongPress = nullptr);
+  // Density-aware ctor (D1): the SAME Content renders as a 52 px two-line row
+  // under Comfortable density, or a 40 px one-line Compact row under Compact
+  // density (the subtitle is relegated to the row's editor). A row with no
+  // subtitle is a plain 40 px OneLine either way.
+  ListRow(Window* parent, Density density, const Content& content,
+          std::function<uint8_t()> onPress = nullptr,
+          std::function<uint8_t()> onLongPress = nullptr);
 
   void setTitle(const char* text) { content_.setTitle(text); }
   void setSubtitle(const char* text) { content_.setSubtitle(text); }
@@ -164,6 +193,69 @@ class ListRow : public Button
 
  private:
   RowContent content_;
+};
+
+// ---------------------------------------------------------------------------
+// FormRow — one settings-form line: [ label 40% ][ control 60% ].
+// The largest migration surface (every settings page). The caller builds ONE
+// field widget into the control slot; the DS owns the 40/60 split, vertical
+// centering and the 40 px touch floor. Absorbs the
+// `FlexGridLayout` + `newLine` + `StaticText`-label boilerplate.
+//
+//   new ds::FormRow(form, STR_MODE, [&](Window* slot) {
+//     new Choice(slot, rect_t{}, 0, n, GET_SET_DEFAULT(...));
+//   });
+//
+// The control (a Choice / NumberEdit / ToggleSwitch / TextEdit / etc.) is the
+// focus target; the row itself is inert. Its own field states apply as-is.
+// ---------------------------------------------------------------------------
+
+class FormRow : public Window
+{
+ public:
+  FormRow(Window* parent, const char* label,
+          std::function<void(Window* slot)> buildControl = nullptr);
+
+  void setLabel(const char* text);
+
+ protected:
+  bool addChild(Window* child) override;
+
+ private:
+  lv_obj_t* labelObj = nullptr;
+};
+
+// ---------------------------------------------------------------------------
+// Card — non-interactive grouping panel with an optional title. `space-3`
+// inset, `space-2` internal gap, subtle border + surface. Add the grouped
+// content as children of the card. Absorbs ad-hoc `Window` + `padAll` boxes.
+// ---------------------------------------------------------------------------
+
+class Card : public Window
+{
+ public:
+  Card(Window* parent, const char* title = nullptr);
+
+  // Children added to the card stack in its column, below the title.
+  Window* content() { return this; }
+
+ private:
+  lv_obj_t* titleObj = nullptr;
+};
+
+// ---------------------------------------------------------------------------
+// EmptyState — the "nothing here yet" pattern: a centered icon, a headline, an
+// optional hint line and an optional primary action button. Replaces bare
+// "+"-only screens with something that says what the screen is for and how to
+// begin. `space-5` hero breathing room; the action is a DSButton (Primary).
+// ---------------------------------------------------------------------------
+
+class EmptyState : public Window
+{
+ public:
+  EmptyState(Window* parent, EdgeTxIcon icon, const char* headline,
+             const char* hint = nullptr, const char* actionLabel = nullptr,
+             std::function<uint8_t()> onAction = nullptr);
 };
 
 // ---------------------------------------------------------------------------

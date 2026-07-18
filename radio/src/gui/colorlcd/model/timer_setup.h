@@ -28,12 +28,9 @@ class TimerWindow : public SubPage
  public:
   TimerWindow(uint8_t timer, Route route);
 
-  static LAYOUT_VAL_SCALED(COUNTDOWN_W, 144)
-  static LAYOUT_SIZE(COUNTDOWN_LBL_YO, 0, (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY) / 2)
-  static LAYOUT_SIZE(COUNTDOWN_VAL_XO, COUNTDOWN_W + PAD_SMALL, 0)
-  static LAYOUT_SIZE(COUNTDOWN_VAL_YO, 0, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY)
-
  protected:
+  // DESIGN SYSTEM: rows are ds::FormRow; the countdown mode/value pair now
+  // shares one DS control slot, so the old manual pixel offsets are gone.
   Window* timerDirLine = nullptr;
   Window* minuteBeepStartLine = nullptr;
 };
