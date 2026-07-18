@@ -144,19 +144,14 @@ void ProgressDialog::closeDialog()
 MessageDialog::MessageDialog(const char* title,
                              const char* message, const char* info,
                              LcdFlags messageFlags, LcdFlags infoFlags) :
-    BaseDialog(title, true)
+    ds::Dialog(title, /*closeIfClickedOutside=*/true)
 {
-  form.with([&](Window& formWindow) {
-    messageWidget = Window::makeLive<StaticText>(
-        &formWindow, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT}, message,
-        COLOR_THEME_PRIMARY1_INDEX, messageFlags);
-
-    if (info) {
-      infoWidget = Window::makeLive<StaticText>(
-          &formWindow, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT}, info,
-          COLOR_THEME_PRIMARY1_INDEX, infoFlags);
-    }
-  });
+  // Dismissible message popup (POPUP_INFORMATION / POPUP_WARNING). ds::Dialog
+  // owns the frame padding and inter-line gap; the legacy centered look is
+  // preserved via body()'s `centered` flag.
+  messageWidget = body(message, ds::TextRole::Body, (messageFlags & CENTERED) != 0);
+  if (info)
+    infoWidget = body(info, ds::TextRole::Body, (infoFlags & CENTERED) != 0);
 }
 
 void MessageDialog::onLiveClicked(LiveWindow&) { deleteLater(); }
@@ -166,13 +161,14 @@ void MessageDialog::onLiveClicked(LiveWindow&) { deleteLater(); }
 DynamicMessageDialog::DynamicMessageDialog(
     const char* title, std::function<std::string()> textHandler,
     const char* message, const int lineHeight, LcdColorIndex color, LcdFlags textFlags) :
-    BaseDialog(title, true)
+    ds::Dialog(title, /*closeIfClickedOutside=*/true)
 {
-  form.with([&](Window& formWindow) {
-    messageWidget = Window::makeLive<StaticText>(
-        &formWindow, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT}, message,
-        COLOR_THEME_PRIMARY1_INDEX, CENTERED);
+  messageWidget = body(message, ds::TextRole::Body, /*centered=*/true);
 
+  // The live-updating info line is a DynamicText, which has no ds::Dialog
+  // body() equivalent; build it straight into the DS-spaced form so it still
+  // sits in the DS-owned line stack.
+  form.with([&](Window& formWindow) {
     infoWidget = Window::makeLive<DynamicText>(
         &formWindow, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT}, textHandler,
         color, textFlags);
@@ -187,44 +183,24 @@ ConfirmDialog::ConfirmDialog(const char* title,
                              const char* message,
                              std::function<void(void)> confirmHandler,
                              std::function<void(void)> cancelHandler) :
-    BaseDialog(title, false),
+    ds::Dialog(title, /*closeIfClickedOutside=*/false),
     confirmHandler(std::move(confirmHandler)),
     cancelHandler(std::move(cancelHandler))
 {
-  form.with([&](Window& formWindow) {
-    if (message) {
-      Window::makeLive<StaticText>(
-          &formWindow, rect_t{0, 0, LV_PCT(100), 0}, message,
-          COLOR_THEME_PRIMARY1_INDEX, CENTERED);
-    }
+  // Blocking confirm: an out-of-bounds tap does nothing (closeIfClickedOutside
+  // is false, inherited unchanged from the original BaseDialog(title, false));
+  // the pilot must pick YES or NO, or press EXIT (-> onCancel -> cancel).
+  if (message) body(message, ds::TextRole::Body, /*centered=*/true);
 
-    buildRequiredWindow<Window>(
-        [&](Window& box) {
-          box.padAll(PAD_TINY);
-          box.setFlexLayout(LV_FLEX_FLOW_ROW, 40, LV_PCT(100),
-                            LV_SIZE_CONTENT);
-          box.withLive([](Window::LiveWindow& live) {
-            lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
-                                  LV_FLEX_ALIGN_CENTER,
-                                  LV_FLEX_ALIGN_SPACE_BETWEEN);
-          });
-
-          buildRequiredWindow<TextButton>(
-              [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_NO,
-              [=]() -> int8_t {
-                onCancel();
-                return 0;
-              });
-
-          buildRequiredWindow<TextButton>(
-              [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_YES,
-              [=]() -> int8_t {
-                this->deleteLater();
-                this->confirmHandler();
-                return 0;
-              });
-        },
-        &formWindow, rect_t{});
+  // DS action row: right-aligned, primary (confirm) rightmost. ds::Dialog owns
+  // the button spacing/sizing and auto-closes the dialog after the handler.
+  // Reference the members explicitly (the ctor params of the same name shadow
+  // them in this scope).
+  action(STR_NO, ds::ButtonRole::Secondary, [this]() {
+    if (this->cancelHandler) this->cancelHandler();
+  });
+  action(STR_YES, ds::ButtonRole::Primary, [this]() {
+    if (this->confirmHandler) this->confirmHandler();
   });
 }
 
@@ -531,5 +507,93 @@ bool modelNameDialogEmptyConfirmKeepsAutoNameForTest()
   MainWindow::instance()->runMainLoopTick();
 
   return !applied && result.empty();
+}
+
+//-----------------------------------------------------------------------------
+// Migration proof: ConfirmDialog / MessageDialog / DynamicMessageDialog now
+// build on ds::Dialog (DS-owned title/body/action spacing). These hooks assert
+// the behavior that MUST survive that change: a confirm dialog stays BLOCKING
+// (an out-of-bounds tap neither dismisses it nor fires a handler), its cancel
+// path runs the cancel handler exactly once, a message popup stays dismissible,
+// and a ds::Dialog action button actually invokes its handler (the substrate
+// the confirm YES/NO buttons ride on).
+
+namespace {
+class TestConfirmDialog : public ConfirmDialog
+{
+ public:
+  using ConfirmDialog::ConfirmDialog;
+  bool isBlockingForTest() const { return !closeWhenClickOutside; }
+  void outsideTapForTest()
+  {
+    withLive([&](LiveWindow& live) { onLiveClicked(live); });
+  }
+  void cancelForTest() { onCancel(); }
+};
+
+class TestMessageDialog : public MessageDialog
+{
+ public:
+  using MessageDialog::MessageDialog;
+  bool isDismissibleForTest() const { return closeWhenClickOutside; }
+};
+}  // namespace
+
+// A blocking confirm dialog ignores an out-of-bounds tap entirely (no dismiss,
+// no handler) -- the mis-tap-safety guarantee for a destructive confirm -- and
+// resolves only on an explicit choice / EXIT, running the cancel handler once.
+bool confirmDialogBlockingIgnoresOutsideTapForTest()
+{
+  bool confirmed = false;
+  int cancelCount = 0;
+
+  auto* dlg = new (std::nothrow) TestConfirmDialog(
+      "Delete?", "INPUT1", [&]() { confirmed = true; },
+      [&]() { cancelCount++; });
+  if (!dlg || !dlg->isAvailable()) return false;
+
+  bool blocking = dlg->isBlockingForTest();
+
+  dlg->outsideTapForTest();  // an out-of-bounds tap must be inert
+  MainWindow::instance()->runMainLoopTick();
+  bool inert = dlg->isAvailable() && !confirmed && cancelCount == 0;
+
+  dlg->cancelForTest();  // explicit EXIT/cancel resolves it
+  MainWindow::instance()->runMainLoopTick();
+  bool cancelledOnce = !confirmed && cancelCount == 1;
+
+  return blocking && inert && cancelledOnce;
+}
+
+// A message popup (POPUP_INFORMATION / POPUP_WARNING) stays dismissible.
+bool messageDialogIsDismissibleForTest()
+{
+  auto* dlg = new (std::nothrow) TestMessageDialog("Info", "Hello");
+  if (!dlg || !dlg->isAvailable()) return false;
+  bool dismissible = dlg->isDismissibleForTest();
+  dlg->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+  return dismissible;
+}
+
+// A ds::Dialog action button invokes its handler when clicked -- the path the
+// migrated confirm dialog's YES/NO buttons rely on.
+bool dsDialogActionInvokesHandlerForTest()
+{
+  bool ran = false;
+  auto* dlg = new (std::nothrow) ds::Dialog("Title");
+  if (!dlg || !dlg->isAvailable()) return false;
+  dlg->body("Body");
+  auto* btn =
+      dlg->action("OK", ds::ButtonRole::Primary, [&]() { ran = true; });
+  if (!btn) {
+    dlg->deleteLater();
+    MainWindow::instance()->runMainLoopTick();
+    return false;
+  }
+  MainWindow::instance()->runMainLoopTick();
+  btn->sendLvEvent(LV_EVENT_CLICKED);  // the click also deleteLater()s dlg
+  MainWindow::instance()->runMainLoopTick();
+  return ran;
 }
 #endif

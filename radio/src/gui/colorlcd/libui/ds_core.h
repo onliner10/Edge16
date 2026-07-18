@@ -28,8 +28,8 @@
 #include <vector>
 
 #include "bitmaps.h"  // EdgeTxIcon (EmptyState)
+#include "base_dialog.h"  // BaseDialog — the base of ds::Dialog / ds::PickerOverlay
 #include "button.h"
-#include "dialog.h"
 #include "window.h"
 
 class StaticText;
@@ -420,14 +420,22 @@ class DSButton : public TextButton
 // ---------------------------------------------------------------------------
 // Dialog — title / body lines / actions, all spacing DS-owned.
 // Actions are right-aligned; add the primary action LAST.
+//
+// `closeIfClickedOutside` (default true) chooses the dismissible-vs-blocking
+// semantics inherited from BaseDialog: a plain message dialog is dismissible
+// (tap-outside cancels), while a blocking confirm dialog passes `false` so an
+// out-of-bounds tap does nothing and the choice must be made explicitly.
 // ---------------------------------------------------------------------------
 
 class Dialog : public BaseDialog
 {
  public:
-  explicit Dialog(const char* title);
+  explicit Dialog(const char* title, bool closeIfClickedOutside = true);
 
-  StaticText* body(const char* text, TextRole role = TextRole::Body);
+  // A body line. `centered` keeps the legacy centered alert/confirm look; the
+  // DS default is left-aligned wrapped body text.
+  StaticText* body(const char* text, TextRole role = TextRole::Body,
+                   bool centered = false);
   DSButton* action(const char* label, ButtonRole role,
                    std::function<void()> onPress);
 

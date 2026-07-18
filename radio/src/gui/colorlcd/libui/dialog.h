@@ -18,36 +18,16 @@
 
 #pragma once
 
-#include "form.h"
-#include "modal_window.h"
+// base_dialog.h provides BaseDialog; ds_core.h provides ds::Dialog (built on
+// BaseDialog). The concrete message/confirm dialogs below are migrated onto
+// ds::Dialog so their title/body/action spacing is design-system owned.
+#include "base_dialog.h"
+#include "ds_core.h"
 
 class StaticText;
 class DynamicText;
 class Progress;
 class TextEdit;
-
-#define DIALOG_DEFAULT_WIDTH ((coord_t)(LCD_W * 0.8))
-#define DIALOG_DEFAULT_HEIGHT ((coord_t)(LCD_H * 0.8))
-
-//-----------------------------------------------------------------------------
-
-class BaseDialog : public ModalWindow
-{
- public:
-  BaseDialog(const char* title, bool closeIfClickedOutside,
-             lv_coord_t width = DIALOG_DEFAULT_WIDTH,
-             lv_coord_t maxHeight = DIALOG_DEFAULT_HEIGHT,
-             bool flexLayout = true);
-
-  void setTitle(const char* title);
-
-protected:
-  RequiredWindow<Window> form;
-  StaticText* header = nullptr;
-
-  void onCancel() override { deleteLater(); }
-  void onLiveEvent(LiveWindow& live, event_t event) override {}
-};
 
 //-----------------------------------------------------------------------------
 
@@ -72,7 +52,7 @@ class ProgressDialog : public BaseDialog
 
 //-----------------------------------------------------------------------------
 
-class MessageDialog : public BaseDialog
+class MessageDialog : public ds::Dialog
 {
  public:
   MessageDialog(const char* title, const char* message,
@@ -92,7 +72,7 @@ class MessageDialog : public BaseDialog
 
 //-----------------------------------------------------------------------------
 
-class DynamicMessageDialog : public BaseDialog
+class DynamicMessageDialog : public ds::Dialog
 {
  public:
   DynamicMessageDialog(const char* title,
@@ -115,7 +95,7 @@ class DynamicMessageDialog : public BaseDialog
 
 //-----------------------------------------------------------------------------
 
-class ConfirmDialog : public BaseDialog
+class ConfirmDialog : public ds::Dialog
 {
  public:
   ConfirmDialog(const char* title, const char* message,

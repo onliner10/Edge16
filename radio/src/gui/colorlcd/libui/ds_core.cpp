@@ -773,7 +773,8 @@ DSButton::DSButton(Window* parent, const char* text, ButtonRole role,
 // Dialog
 // ---------------------------------------------------------------------------
 
-Dialog::Dialog(const char* title) : BaseDialog(title, true)
+Dialog::Dialog(const char* title, bool closeIfClickedOutside) :
+    BaseDialog(title, closeIfClickedOutside)
 {
   form.with([&](Window& f) {
     f.withLive([](Window::LiveWindow& live) {
@@ -784,13 +785,14 @@ Dialog::Dialog(const char* title) : BaseDialog(title, true)
   });
 }
 
-StaticText* Dialog::body(const char* text, TextRole role)
+StaticText* Dialog::body(const char* text, TextRole role, bool centered)
 {
   StaticText* line = nullptr;
   form.with([&](Window& f) {
     line = new (std::nothrow)
         StaticText(&f, rect_t{0, 0, LV_PCT(100), 0}, text ? text : "",
-                   roleColor(role), roleTextFlags(role));
+                   roleColor(role),
+                   roleTextFlags(role) | (centered ? CENTERED : 0));
     if (line) line->setLongMode(LV_LABEL_LONG_WRAP);
   });
   return line;
