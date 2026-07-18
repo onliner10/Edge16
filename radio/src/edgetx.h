@@ -569,6 +569,7 @@ enum AUDIO_SOUNDS {
   AU_SWITCH_ALERT,
   AU_BAD_RADIODATA,
   AU_TX_BATTERY_LOW,
+  AU_TX_BATTERY_CRITICAL,
   AU_INACTIVITY,
   AU_RSSI_ORANGE,
   AU_RSSI_RED,
@@ -875,6 +876,34 @@ inline uint8_t GET_TXBATT_BARS(uint8_t barsMax)
 inline bool IS_TXBATT_WARNING()
 {
   return g_vbat100mV <= g_eeGeneral.vBatWarn;
+}
+
+// Critical TX-battery level: a distinct, more-urgent band below the warning
+// voltage, matching the state-aware Value/TX-battery widget which turns RED at
+// vBatCrit. No-op when the critical level is disabled (0) or no reading is yet
+// available (g_vbat100mV == 0), so red is never silent but a missing reading
+// never false-alarms.
+inline bool IS_TXBATT_CRITICAL()
+{
+  return g_eeGeneral.vBatCrit > 0 && g_vbat100mV != 0 &&
+         g_vbat100mV <= g_eeGeneral.vBatCrit;
+}
+
+enum TxBatteryAlarm {
+  TXBATT_ALARM_NONE = 0,
+  TXBATT_ALARM_WARNING,
+  TXBATT_ALARM_CRITICAL,
+};
+
+// Single source of truth for the TX-battery alarm decision. Critical takes
+// precedence over warning (they never sound together): below vBatCrit only the
+// critical alert fires, replacing the warning. Warning behaviour is otherwise
+// unchanged (still fires from a 0 reading exactly as before).
+inline uint8_t getTxBatteryAlarm()
+{
+  if (IS_TXBATT_CRITICAL()) return TXBATT_ALARM_CRITICAL;
+  if (IS_TXBATT_WARNING()) return TXBATT_ALARM_WARNING;
+  return TXBATT_ALARM_NONE;
 }
 
 enum TelemetryViews {

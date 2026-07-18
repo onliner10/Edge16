@@ -22,6 +22,10 @@
 #include "edgetx.h"
 #include "haptic.h"
 
+#if defined(SIMU)
+#include "simulib.h"
+#endif
+
 hapticQueue::hapticQueue()
 {
   buzzTimeLeft = 0;
@@ -96,6 +100,9 @@ void hapticQueue::play(uint8_t tLen, uint8_t tPause, uint8_t tFlags)
 void hapticQueue::event(uint8_t e)
 {
   if (g_eeGeneral.hapticMode >= e_mode_nokeys || (g_eeGeneral.hapticMode >= e_mode_alarms && e <= AU_ERROR)) {
+#if defined(SIMU)
+    simuLogAudioEvent("haptic event=%u", e);
+#endif
     if (e <= AU_ERROR)
       play(15, 3, PLAY_NOW);
     else if (e <= AU_MIX_WARNING_3)

@@ -121,6 +121,7 @@ const char * const audioFilenames[] = {
   "swalert",
   "baddata",
   "lowbatt",
+  "crtbatt",
   "inactiv",
   "rssi_org",
   "rssi_red",
@@ -948,6 +949,15 @@ void audioEvent(unsigned int index)
       case AU_TX_BATTERY_LOW:
         audioQueue.playTone(1950, 160, 20, PLAY_REPEAT(2), 1);
         audioQueue.playTone(2550, 160, 20, PLAY_REPEAT(2), -1);
+        break;
+      case AU_TX_BATTERY_CRITICAL:
+        // Distinct, more-insistent alert for the critical band: preempts the
+        // queue and sweeps a wider, faster three-burst pattern so it is clearly
+        // more urgent than the warning above. Degrades to this tone whenever the
+        // optional "crtbatt" voice clip is absent (handled by the file lookup).
+        audioQueue.playTone(2700, 120, 15, PLAY_NOW | PLAY_REPEAT(3), 3);
+        audioQueue.playTone(1400, 120, 15, PLAY_REPEAT(3), -3);
+        audioQueue.playTone(2700, 120, 15, PLAY_REPEAT(3), 3);
         break;
       case AU_THROTTLE_ALERT:
       case AU_SWITCH_ALERT:
