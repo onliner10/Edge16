@@ -56,21 +56,21 @@
     "model/model_curves.cpp": 8,
     "model/model_curves.h": 1,
     "model/model_flightmodes.cpp": 32,
-    "model/model_gvars.cpp": 19,
+    "model/model_gvars.cpp": 1,
     "model/model_heli.cpp": 4,
     "model/model_inputs.cpp": 3,
     "model/model_inputs_quicktune.cpp": 17,
-    "model/model_logical_switches.cpp": 25,
+    "model/model_logical_switches.cpp": 6,
     "model/model_mixer_scripts.cpp": 13,
     "model/model_mixes.cpp": 14,
     "model/model_select.cpp": 25,
     "model/model_select.h": 12,
     "model/model_setup.cpp": 15,
     "model/model_setup.h": 4,
-    "model/model_telemetry.cpp": 31,
+    "model/model_telemetry.cpp": 20,
     "model/model_telemetry.h": 1,
     "model/model_templates.cpp": 6,
-    "model/model_usbjoystick.cpp": 22,
+    "model/model_usbjoystick.cpp": 14,
     "model/output_edit.cpp": 2,
     "model/output_edit.h": 1,
     "model/preflight_checks.cpp": 14,
@@ -138,5 +138,5 @@
     "widgets/value.cpp": 11
   },
   "suppressions": {},
-  "total": 1236
+  "total": 1180
 }

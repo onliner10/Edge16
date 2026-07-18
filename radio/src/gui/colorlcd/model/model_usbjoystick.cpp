@@ -24,6 +24,7 @@
 #include "button_matrix.h"
 #include "channel_bar.h"
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
@@ -33,8 +34,6 @@
 #include "usb_joystick.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
-
-#define ETX_STATE_COLLISION_WARN LV_STATE_USER_1
 
 #if !NARROW_LAYOUT
 
@@ -46,13 +45,6 @@ static const lv_coord_t ch_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
                                         LV_GRID_FR(1), LV_GRID_FR(2),
                                         LV_GRID_TEMPLATE_LAST};
 
-static const lv_coord_t b_col_dsc[] = {LV_GRID_FR(10),       20,
-                                       LV_GRID_FR(10),       LV_GRID_FR(12),
-                                       LV_GRID_FR(9),        LV_GRID_FR(9),
-                                       LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t b_row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-
 #else
 
 static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
@@ -60,12 +52,6 @@ static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
 
 static const lv_coord_t ch_col_dsc[] = {LV_GRID_FR(2), LV_GRID_FR(3),
                                         LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t b_col_dsc[] = {LV_GRID_FR(1), 20, LV_GRID_FR(1),
-                                       LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t b_row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
-                                       LV_GRID_TEMPLATE_LAST};
 
 #endif
 
@@ -348,139 +334,84 @@ class USBChannelLineButton : public ListLineButton
   USBChannelLineButton(Window* parent, uint8_t index) :
       ListLineButton(parent, index, LineDependencies::LiveValues)
   {
-    setHeight(USBCH_LINE_HEIGHT);
-#if !NARROW_LAYOUT
-    padTop(PAD_SMALL);
-#endif
-
-    setLayout(LV_LAYOUT_GRID);
-    setGridDscArray(b_col_dsc, b_row_dsc);
-    setStylePadRow(0, 0);
-    setStylePadColumn(PAD_SMALL, 0);
+    // DESIGN SYSTEM: ds:: owns row height, padding and slot layout.
+    setWidth(LV_PCT(100));
+    setHeight(ds::rowHeight(ds::RowSize::TwoLine));
   }
 
   void onLineLoaded() override
   {
     if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          m_chn = etx_label_create(obj);
-          if (!requireLvObj(m_chn)) return false;
-          lv_obj_set_grid_cell(m_chn, LV_GRID_ALIGN_START, 0, 1,
-                               LV_GRID_ALIGN_CENTER, 0, USBCH_CHN_ROWS);
+          // DESIGN SYSTEM row content: leading slot = inversion marker,
+          // title = channel, subtitle = mode (+ switch/range detail in
+          // Button mode), trailing = mode-specific setting (Warning role
+          // when it collides with another channel's assignment).
+          dsRow = std::make_unique<ds::RowContent>(this, ds::RowSize::TwoLine);
+          Window* slot = dsRow->leadingSlot();
+          if (!slot) return false;
 
-          m_inverse =
-              new StaticIcon(this, 0, 0, ICON_CHAN_MONITOR_INVERTED,
-                             COLOR_THEME_SECONDARY1_INDEX);
+          m_inverse = new StaticIcon(slot, 0, 0, ICON_CHAN_MONITOR_INVERTED,
+                                     COLOR_THEME_SECONDARY1_INDEX);
           if (!m_inverse || !m_inverse->isAvailable()) {
             failClosed();
             return false;
           }
-          m_inverse->setGridCell(LV_GRID_ALIGN_START, 1, 1,
-                                 LV_GRID_ALIGN_CENTER, 0, 1);
 
-          m_mode = etx_label_create(obj);
-          if (!requireLvObj(m_mode)) return false;
-          lv_obj_set_grid_cell(m_mode, LV_GRID_ALIGN_START, 2, 1,
-                               LV_GRID_ALIGN_CENTER, 0, 1);
-
-          m_param = etx_label_create(obj);
-          if (!requireLvObj(m_param)) return false;
-          etx_txt_color(m_param, COLOR_THEME_WARNING_INDEX,
-                        ETX_STATE_COLLISION_WARN);
-          etx_font(m_param, FONT_BOLD_INDEX, ETX_STATE_COLLISION_WARN);
-          lv_obj_set_grid_cell(m_param, LV_GRID_ALIGN_START, 3, 1,
-                               LV_GRID_ALIGN_CENTER, 0, 1);
-
-          m_btn_mode = etx_label_create(obj);
-          if (!requireLvObj(m_btn_mode)) return false;
-          lv_obj_set_grid_cell(m_btn_mode, LV_GRID_ALIGN_START,
-                               USBCH_BTN_MODE_COL, 1, LV_GRID_ALIGN_CENTER,
-                               USBCH_BTN_MODE_ROW, 1);
-
-          m_btns = etx_label_create(obj);
-          if (!requireLvObj(m_btns)) return false;
-          lv_obj_set_grid_cell(m_btns, LV_GRID_ALIGN_START,
-                               USBCH_BTN_MODE_COL + 1, 1, LV_GRID_ALIGN_CENTER,
-                               USBCH_BTN_MODE_ROW, 1);
-
-          lv_label_set_text(m_chn, getSourceString(MIXSRC_FIRST_CH + index));
-          lv_label_set_text(m_mode, "");
-          lv_label_set_text(m_param, "");
-          lv_label_set_text(m_btn_mode, "");
-          lv_label_set_text(m_btns, "");
+          dsRow->setTitle(getSourceString(MIXSRC_FIRST_CH + index));
           return true;
         }))
       return;
 
+    onRefresh();
   }
 
   void onRefresh() override
   {
-    USBJoystickChData* cch = usbJChAddress(index);
+    if (!dsRow) return;
 
-    lv_label_set_text(m_mode, STR_VUSBJOYSTICK_CH_MODE[cch->mode]);
+    USBJoystickChData* cch = usbJChAddress(index);
 
     m_inverse->show(cch->inversion);
 
+    const char* mode = STR_VUSBJOYSTICK_CH_MODE[cch->mode];
     const char* param = "";
     bool hasCollision = false;
 
     if (cch->mode == USBJOYS_CH_BUTTON) {
       param = STR_VUSBJOYSTICK_CH_BTNMODE[cch->param];
-    } else if (cch->mode == USBJOYS_CH_AXIS) {
-      param = STR_VUSBJOYSTICK_CH_AXIS[cch->param];
-      if (isUSBAxisCollision(index)) {
-        hasCollision = true;
-      }
-    } else if (cch->mode == USBJOYS_CH_SIM) {
-      param = STR_VUSBJOYSTICK_CH_SIM[cch->param];
-      if (isUSBSimCollision(index)) {
-        hasCollision = true;
-      }
-    }
-
-    lv_label_set_text(m_param, param);
-    if (hasCollision)
-      lv_obj_add_state(m_param, ETX_STATE_COLLISION_WARN);
-    else
-      lv_obj_clear_state(m_param, ETX_STATE_COLLISION_WARN);
-
-    if (cch->mode == USBJOYS_CH_BUTTON) {
-      lv_label_set_text(m_btn_mode,
-                        STR_VUSBJOYSTICK_CH_SWPOS[cch->switch_npos]);
-
-      char str[20];
+      hasCollision = isUSBBtnNumCollision(index);
 
       uint8_t last = cch->lastBtnNum();
+      char range[20];
       if (last > cch->btn_num)
-        snprintf(str, 20, "%u..%u", cch->btn_num, last);
+        snprintf(range, sizeof(range), "%u..%u", cch->btn_num, last);
       else
-        snprintf(str, 20, "%u", cch->btn_num);
-      lv_label_set_text(m_btns, str);
-      if (isUSBBtnNumCollision(index))
-        lv_obj_add_state(m_param, ETX_STATE_COLLISION_WARN);
-      else
-        lv_obj_clear_state(m_param, ETX_STATE_COLLISION_WARN);
+        snprintf(range, sizeof(range), "%u", cch->btn_num);
+
+      snprintf(subtitleText, sizeof(subtitleText), "%s  %s  %s", mode,
+               STR_VUSBJOYSTICK_CH_SWPOS[cch->switch_npos], range);
     } else {
-      lv_label_set_text(m_btn_mode, "");
-      lv_label_set_text(m_btns, "");
+      if (cch->mode == USBJOYS_CH_AXIS) {
+        param = STR_VUSBJOYSTICK_CH_AXIS[cch->param];
+        hasCollision = isUSBAxisCollision(index);
+      } else if (cch->mode == USBJOYS_CH_SIM) {
+        param = STR_VUSBJOYSTICK_CH_SIM[cch->param];
+        hasCollision = isUSBSimCollision(index);
+      }
+      snprintf(subtitleText, sizeof(subtitleText), "%s", mode);
     }
+
+    dsRow->setSubtitle(subtitleText);
+    dsRow->setTrailing(param, hasCollision ? ds::TextRole::Warning
+                                           : ds::TextRole::Muted);
   }
 
   bool isActive() const override { return false; }
 
-  static LAYOUT_SIZE_SCALED(USBCH_LINE_HEIGHT, 32, 48)
-  static LAYOUT_SIZE(USBCH_CHN_ROWS, 1, 2)
-  static LAYOUT_SIZE(USBCH_BTN_MODE_COL, 4, 2)
-  static LAYOUT_SIZE(USBCH_BTN_MODE_ROW, 0, 1)
-
  protected:
-  lv_obj_t* m_chn;
-  lv_obj_t* m_mode;
-  lv_obj_t* m_param;
-  lv_obj_t* m_btn_mode;
-  lv_obj_t* m_btns;
-  StaticIcon* m_inverse;
+  StaticIcon* m_inverse = nullptr;
+  char subtitleText[48] = {};
+  std::unique_ptr<ds::RowContent> dsRow;
 };
 
 ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, route, PAD_BORDER)
@@ -527,10 +458,9 @@ ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, r
         return 0;
       });
 
-  auto btngrp = new Window(body, rect_t{});
-  btngrp->padAll(PAD_TINY);
+  // DESIGN SYSTEM: the list container owns margins and inter-row gaps.
+  auto btngrp = new ds::List(body);
   _ChannelsGroup = btngrp;
-  btngrp->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
   for (uint8_t ch = 0; ch < USBJ_MAX_JOYSTICK_CHANNELS; ch++) {
     // Channel settings
     auto btn = new USBChannelLineButton(btngrp, ch);

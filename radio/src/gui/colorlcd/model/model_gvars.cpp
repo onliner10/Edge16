@@ -22,10 +22,10 @@
 #include "model_gvars.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
-#include "list_line_button.h"
 #include "menu.h"
 #include "numberedit.h"
 #include "page.h"
@@ -39,8 +39,6 @@
     storageDirty(EE_MODEL);     \
     publishModelGVarsChanged(); \
   } while (0)
-
-#define ETX_STATE_VALUE_SMALL_FONT LV_STATE_USER_1
 
 static void publishModelGVarsChanged()
 {
@@ -60,127 +58,144 @@ void getFMExtName(char* dest, int8_t idx)
   }
 }
 
-class GVarButton : public ListLineButton
+// ---------------------------------------------------------------------------
+// GVars list — a ds::Grid: a frozen FM0..FM8 header row aligned above every
+// GV row's per-flight-mode value columns, with the GV-name column frozen on
+// the left. Both the header and the rows realize into the SAME shared column
+// template owned by ds::Grid, which is what guarantees the FM header always
+// sits directly above its value columns (the class of alignment bug this
+// component exists to make structurally impossible). The whole row is the
+// touch target: tap = edit (opens GVarEditWindow), long-press = menu.
+// ---------------------------------------------------------------------------
+
+static int gvarNumFlightModes()
+{
+  return modelFMEnabled() ? MAX_FLIGHT_MODES : 1;
+}
+
+// Column layout: a frozen GV-name label, then one value column per flight
+// mode. Value columns Fill the remaining width equally (never below the touch
+// floor), exactly the way the original hand-computed GVAR_VAL_W to fit.
+static std::vector<ds::Grid::Column> gvarColumns()
+{
+  std::vector<ds::Grid::Column> cols;
+  cols.push_back(ds::Grid::Column::Fixed(44, ds::CellAlign::Start,
+                                         /*frozen=*/true));
+  for (int fm = 0; fm < gvarNumFlightModes(); fm++)
+    cols.push_back(ds::Grid::Column::Fill(40, ds::CellAlign::Center));
+  return cols;
+}
+
+static constexpr int GVAR_NAME_COL = 0;
+static inline int gvarValueCol(int flightMode) { return flightMode + 1; }
+
+// The sticky FM0..FM8 caption row. Owns only the current-flight-mode
+// highlight, which follows getFlightMode() live.
+class GVarHeaderRow : public ds::Grid::Row
 {
  public:
-  GVarButton(Window* parent, uint8_t gvar) :
-      ListLineButton(parent, gvar, LineDependencies::LiveValues)
+  explicit GVarHeaderRow(ds::Grid* grid) : ds::Grid::Row(grid, /*header=*/true)
   {
-    padAll(PAD_ZERO);
-    setHeight(BTN_H);
-    if (!modelFMEnabled()) padLeft(PAD_LARGE);
+    char label[16];
+    for (int fm = 0; fm < MAX_FLIGHT_MODES; fm++) {
+      getFlightModeString(label, fm + 1);
+      setCell(gvarValueCol(fm), label);
+    }
+    currentFlightMode = getFlightMode();
+    highlightCell(gvarValueCol(currentFlightMode), true);
   }
 
-  static LAYOUT_VAL_SCALED(GVAR_NAME_SIZE, 44)
-  static constexpr coord_t GVAR_VAL_H = EdgeTxStyles::STD_FONT_HEIGHT + 2;
-  static constexpr coord_t GVAR_VAL_SPACE = LCD_W - GVAR_NAME_SIZE - PAD_SMALL * 2 - PAD_BORDER * 2 - PAD_TINY * 2;
-  #define GVAR_VAL_MIN_W LAYOUT_SCALE(46)
-#if GVAR_VAL_SPACE / GVAR_VAL_MIN_W <= MAX_FLIGHT_MODES
-  static constexpr coord_t GVAR_COLS = GVAR_VAL_SPACE / GVAR_VAL_MIN_W;
-#else
-  static constexpr coord_t GVAR_COLS = MAX_FLIGHT_MODES;
-#endif
-  static constexpr coord_t GVAR_VAL_W = GVAR_VAL_SPACE / GVAR_COLS;
-  static LAYOUT_SIZE_SCALED(BTN_H, 32, 50)
-  static LAYOUT_SIZE_SCALED(GVAR_NM_Y, 3, 13)
-  static LAYOUT_SIZE_SCALED(GVAR_YO, 3, 2)
-
-  static const lv_obj_class_t gv_label_class;
-  static const lv_obj_class_t gv_value_class;
+  void onLiveCheckEvents(LiveWindow& live) override
+  {
+    Button::onLiveCheckEvents(live);
+    uint8_t newFM = getFlightMode();
+    if (newFM != currentFlightMode) {
+      highlightCell(gvarValueCol(currentFlightMode), false);
+      highlightCell(gvarValueCol(newFM), true);
+      currentFlightMode = newFM;
+    }
+  }
 
  protected:
-  uint8_t currentFlightMode = 0;  // used for checking updates
-  gvar_t values[MAX_FLIGHT_MODES] = {};
-  char nameText[16] = {};
-  char valueTexts[MAX_FLIGHT_MODES][16] = {};
-  bool smallValueText[MAX_FLIGHT_MODES] = {};
+  uint8_t currentFlightMode = 0;
+};
 
-  int numFlightModes() const { return modelFMEnabled() ? MAX_FLIGHT_MODES : 1; }
-
-  void onLinePresentationSync(LiveWindow& live) override
+// One GV row: the frozen name cell + a value cell per flight mode. Refreshes
+// its value cells and the current-flight-mode highlight live (LiveValues).
+class GVarRow : public ds::Grid::Row
+{
+ public:
+  GVarRow(ds::Grid* grid, uint8_t gvar, std::function<uint8_t()> onPress,
+          std::function<uint8_t()> onLongPress) :
+      ds::Grid::Row(grid, /*header=*/false, std::move(onPress),
+                    std::move(onLongPress)),
+      index(gvar)
   {
+    nameText[0] = '\0';
+    strAppend(nameText, getGVarString(index), sizeof(nameText) - 1);
+    setCell(GVAR_NAME_COL, nameText);
+    for (int fm = 0; fm < gvarNumFlightModes(); fm++) updateValueCell(fm);
+    currentFlightMode = getFlightMode();
+    if (modelFMEnabled()) highlightCell(gvarValueCol(currentFlightMode), true);
+    updateAutomationText();
+  }
+
+  void onLiveCheckEvents(LiveWindow& live) override
+  {
+    Button::onLiveCheckEvents(live);
     bool changed = false;
     if (modelFMEnabled()) {
       uint8_t newFM = getFlightMode();
-      if (currentFlightMode != newFM) {
+      if (newFM != currentFlightMode) {
+        highlightCell(gvarValueCol(currentFlightMode), false);
+        highlightCell(gvarValueCol(newFM), true);
         currentFlightMode = newFM;
         changed = true;
       }
     }
-
-    for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
-      FlightModeData* fmData = &g_model.flightModeData[flightMode];
-      if (values[flightMode] != fmData->gvars[index]) {
-        updateValueText(flightMode);
+    for (int fm = 0; fm < gvarNumFlightModes(); fm++) {
+      if (values[fm] != g_model.flightModeData[fm].gvars[index]) {
+        updateValueCell(fm);
         changed = true;
       }
     }
-    if (changed) {
-      updateAutomationText();
-      lv_obj_invalidate(live.lvobj());
-    }
+    if (changed) updateAutomationText();
   }
 
-  void onLineLoaded() override
-  {
-    currentFlightMode = getFlightMode();
-    nameText[0] = '\0';
-    strAppend(nameText, getGVarString(index), sizeof(nameText) - 1);
-    setAutomationText(nameText);
-    for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
-      updateValueText(flightMode);
-    }
-    updateAutomationText();
-    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
-  }
+ protected:
+  uint8_t index;
+  uint8_t currentFlightMode = 0;
+  gvar_t values[MAX_FLIGHT_MODES] = {};
+  char nameText[16] = {};
+  char valueTexts[MAX_FLIGHT_MODES][16] = {};
 
-  void updateValueText(uint8_t flightMode)
+  void updateValueCell(int flightMode)
   {
     gvar_t value = g_model.flightModeData[flightMode].gvars[index];
     values[flightMode] = value;
-    valueTexts[flightMode][0] = '\0';
-    smallValueText[flightMode] = false;
+    char* text = valueTexts[flightMode];
+    text[0] = '\0';
+    bool small = false;
 
     if (value > GVAR_MAX) {
       uint8_t fm = value - GVAR_MAX - 1;
       if (fm >= flightMode) fm += 1;
-      getFlightModeString(valueTexts[flightMode], fm + 1);
+      getFlightModeString(text, fm + 1);
     } else {
       uint8_t unit = g_model.gvars[index].unit;
       const char* suffix = (unit == 1) ? "%" : "";
       uint8_t prec = g_model.gvars[index].prec;
       if (prec)
-        snprintf(valueTexts[flightMode], sizeof(valueTexts[flightMode]),
-                 "%d.%01u%s", value / 10,
+        snprintf(text, 16, "%d.%01u%s", value / 10,
                  (value < 0) ? (-value) % 10 : value % 10, suffix);
       else
-        snprintf(valueTexts[flightMode], sizeof(valueTexts[flightMode]),
-                 "%d%s", value, suffix);
-      if (unit) {
-        smallValueText[flightMode] =
-            value <= -1000 || value >= 1000 || (prec && (value <= -100));
-      }
+        snprintf(text, 16, "%d%s", value, suffix);
+      if (unit)
+        small = value <= -1000 || value >= 1000 || (prec && (value <= -100));
     }
-  }
-
-  void describeLine(LineView& view) const override
-  {
-    view.text(PAD_TINY, GVAR_NM_Y, GVAR_NAME_SIZE,
-              EdgeTxStyles::STD_FONT_HEIGHT, nameText);
-
-    for (int flightMode = 0; flightMode < numFlightModes(); flightMode++) {
-      coord_t x = (flightMode % GVAR_COLS) * GVAR_VAL_W +
-                  GVAR_NAME_SIZE + PAD_TINY * 2;
-      coord_t y = (flightMode / GVAR_COLS) * GVAR_VAL_H + GVAR_YO;
-      if (modelFMEnabled() && flightMode == currentFlightMode) {
-        view.fill(x, y, GVAR_VAL_W, EdgeTxStyles::STD_FONT_HEIGHT,
-                  LineView::Color::Active);
-      }
-      view.text(x, y, GVAR_VAL_W, EdgeTxStyles::STD_FONT_HEIGHT,
-                valueTexts[flightMode],
-                smallValueText[flightMode] ? FONT(XS) : 0,
-                LV_TEXT_ALIGN_CENTER);
-    }
+    setCellSmall(gvarValueCol(flightMode), text, small);
+    if (modelFMEnabled() && flightMode == currentFlightMode)
+      highlightCell(gvarValueCol(flightMode), true);
   }
 
   void updateAutomationText()
@@ -189,129 +204,14 @@ class GVarButton : public ListLineButton
     char text[192];
     int written = snprintf(text, sizeof(text), "%s | fm=%u", nameText,
                            unsigned(currentFlightMode + 1));
-    for (int flightMode = 0; flightMode < numFlightModes() &&
-                             written >= 0 && size_t(written) < sizeof(text);
-         flightMode++) {
+    for (int fm = 0; fm < gvarNumFlightModes() && written >= 0 &&
+                     size_t(written) < sizeof(text);
+         fm++) {
       written += snprintf(text + written, sizeof(text) - written, " | %u:%s",
-                          unsigned(flightMode + 1), valueTexts[flightMode]);
+                          unsigned(fm + 1), valueTexts[fm]);
     }
     setAutomationText(text);
 #endif
-  }
-
-  bool isActive() const override { return false; }
-  void onRefresh() override {}
-};
-
-static void gv_label_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_center, LV_PART_MAIN);
-  etx_font(obj, FONT_XS_INDEX);
-  etx_solid_bg(obj, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
-}
-
-const lv_obj_class_t GVarButton::gv_label_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = gv_label_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = GVarButton::GVAR_VAL_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT - PAD_MEDIUM,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-static void gv_value_constructor(const lv_obj_class_t* class_p, lv_obj_t* obj)
-{
-  etx_obj_add_style(obj, styles->text_align_center, LV_PART_MAIN);
-  etx_font(obj, FONT_XS_INDEX, LV_PART_MAIN | ETX_STATE_VALUE_SMALL_FONT);
-  etx_solid_bg(obj, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
-}
-
-const lv_obj_class_t GVarButton::gv_value_class = {
-    .base_class = &lv_label_class,
-    .constructor_cb = gv_value_constructor,
-    .destructor_cb = nullptr,
-    .event_cb = nullptr,
-    .user_data = nullptr,
-    .width_def = GVarButton::GVAR_VAL_W,
-    .height_def = EdgeTxStyles::STD_FONT_HEIGHT,
-    .editable = LV_OBJ_CLASS_EDITABLE_INHERIT,
-    .group_def = LV_OBJ_CLASS_GROUP_DEF_INHERIT,
-    .instance_size = sizeof(lv_label_t),
-};
-
-class GVarHeader : public Window
-{
- public:
-  GVarHeader(Window* parent) :
-      Window(parent, {0, 0, LCD_W, HDR_H})
-  {
-    padAll(PAD_ZERO);
-    solidBg(COLOR_THEME_SECONDARY3_INDEX);
-
-    delayLoad();
-  }
-
-  static LAYOUT_SIZE(HDR_H, EdgeTxStyles::STD_FONT_HEIGHT + PAD_TINY, EdgeTxStyles::STD_FONT_HEIGHT * 2)
-
- protected:
-  uint8_t currentFlightMode = 0;  // used for checking updates
-  lv_obj_t* labelTexts[MAX_FLIGHT_MODES] = {};
-
-  int numFlightModes() { return modelFMEnabled() ? MAX_FLIGHT_MODES : 1; }
-
-  void onLiveCheckEvents(LiveWindow& live) override
-  {
-    Window::onLiveCheckEvents(live);
-    runWhenLoaded([&]() {
-      uint8_t newFM = getFlightMode();
-      if (currentFlightMode != newFM) {
-        lv_obj_add_state(labelTexts[newFM], LV_STATE_CHECKED);
-        lv_obj_clear_state(labelTexts[currentFlightMode], LV_STATE_CHECKED);
-
-        currentFlightMode = newFM;
-      }
-    });
-  }
-
-  void delayedInit() override
-  {
-    if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          currentFlightMode = getFlightMode();
-
-          char label[16] = {};
-
-          for (int flightMode = 0; flightMode < MAX_FLIGHT_MODES;
-               flightMode++) {
-            getFlightModeString(label, flightMode + 1);
-
-            labelTexts[flightMode] =
-                etx_create(&GVarButton::gv_value_class, obj);
-            if (!requireLvObj(labelTexts[flightMode])) return false;
-            lv_label_set_text(labelTexts[flightMode], label);
-            lv_obj_set_pos(
-                labelTexts[flightMode],
-                (flightMode % GVarButton::GVAR_COLS) *
-                        GVarButton::GVAR_VAL_W +
-                    GVarButton::GVAR_NAME_SIZE + PAD_SMALL + PAD_BORDER +
-                    PAD_TINY * 2,
-                (flightMode / GVarButton::GVAR_COLS) *
-                        EdgeTxStyles::STD_FONT_HEIGHT +
-                    1);
-
-            if (flightMode == currentFlightMode) {
-              lv_obj_add_state(labelTexts[flightMode], LV_STATE_CHECKED);
-            }
-          }
-
-          lv_obj_update_layout(obj);
-          return true;
-        }))
-      return;
   }
 };
 
@@ -568,53 +468,42 @@ bool ModelGVarsPage::openRoute(const Route& r, uint8_t depth)
 
 void ModelGVarsPage::cleanup()
 {
-  if (hdr)
-    hdr->deleteLater();
+  // The sticky header now lives inside the ds::Grid (cleared with the body).
   hdr = nullptr;
 }
 
 void ModelGVarsPage::rebuild(Window* window)
 {
-  auto scroll_y = window->getScrollY();
   window->clear();
   cleanup();
   build(window);
-  window->scrollToY(scroll_y, LV_ANIM_OFF);
 }
 
 void ModelGVarsPage::build(Window* window)
 {
   pageWindow = window;
-  coord_t yo = 0;
-  if (modelFMEnabled()) {
-    window->padTop(PAD_OUTLINE);
-    hdr = new GVarHeader(window->getParent());
-    hdr->setPos(0, PageGroup::PAGE_GROUP_BODY_Y);
-    yo = GVarHeader::HDR_H;
-  }
+
+  // DESIGN SYSTEM: ds::Grid owns the columnar layout — the frozen FM0..FM8
+  // header, the frozen GV-name column, per-row value columns, 40 px touch
+  // floor and all spacing. The header and every row share one column
+  // template, so the header cannot drift out of alignment with the columns.
+  auto* grid = new ds::Grid(window, gvarColumns());
+
+  if (modelFMEnabled()) new GVarHeaderRow(grid);
 
   for (uint8_t index = 0; index < MAX_GVARS; index++) {
-    auto button = new GVarButton(window, index);
-    button->setPos(0, yo + index * (GVarButton::BTN_H + PAD_OUTLINE));
-    button->setPressHandler([=]() {
-      Window* editWindow = new GVarEditWindow(index,
-          route().appended(RP_GVAR_EDIT, static_cast<int16_t>(index)));
+    auto onEdit = [=]() -> uint8_t {
+      Window* editWindow = new GVarEditWindow(
+          index, route().appended(RP_GVAR_EDIT, static_cast<int16_t>(index)));
       editWindow->setCloseHandler([=]() {
         rebuild(window);
         publishModelGVarsChanged();
       });
       return 0;
-    });
-    button->setLongPressHandler([=]() -> uint8_t {
+    };
+    auto onMenu = [=]() -> uint8_t {
       Menu* menu = new Menu();
-      menu->addLine(STR_EDIT, [=]() {
-        Window* editWindow = new GVarEditWindow(index,
-            route().appended(RP_GVAR_EDIT, static_cast<int16_t>(index)));
-        editWindow->setCloseHandler([=]() {
-          rebuild(window);
-          publishModelGVarsChanged();
-        });
-      });
+      menu->addLine(STR_EDIT, [=]() { onEdit(); });
       menu->addLine(STR_CLEAR, [=]() {
         for (auto& flightMode : g_model.flightModeData) {
           flightMode.gvars[index] = 0;
@@ -623,6 +512,7 @@ void ModelGVarsPage::build(Window* window)
         publishModelGVarsChanged();
       });
       return 0;
-    });
+    };
+    new GVarRow(grid, index, onEdit, onMenu);
   }
 }

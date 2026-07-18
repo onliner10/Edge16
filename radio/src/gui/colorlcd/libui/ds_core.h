@@ -25,6 +25,7 @@
 #pragma once
 
 #include <functional>
+#include <vector>
 
 #include "bitmaps.h"  // EdgeTxIcon (EmptyState)
 #include "button.h"
@@ -256,6 +257,153 @@ class EmptyState : public Window
   EmptyState(Window* parent, EdgeTxIcon icon, const char* headline,
              const char* hint = nullptr, const char* actionLabel = nullptr,
              std::function<uint8_t()> onAction = nullptr);
+};
+
+// ---------------------------------------------------------------------------
+// Grid — the columnar/tabular screen component.
+//
+// The whole point of this component is COLUMN ALIGNMENT: header cell i is
+// ALWAYS x-aligned with every data row's cell i. It guarantees this
+// structurally, not by convention — the header row and every data row share
+// ONE immutable, fixed-pixel column template (an `lv_coord_t[]` built once and
+// handed by reference to every row's LVGL grid layout). Fixed-pixel columns
+// resolve to identical geometry regardless of a row's contents, so column i
+// starts at the same x in the header and in every row, forever. (This is the
+// class of bug the previous batch hit: collapsing a grid to a single-line list
+// row dropped the shared column structure, so the FM0..FM8 header no longer sat
+// above its value columns.)
+//
+// It also owns, from the DS scale only:
+//   * a sticky/frozen header row (LVGL "floating" child — stays put while the
+//     data rows scroll vertically underneath it);
+//   * a frozen leading label column that stays put during horizontal scroll,
+//     with the remaining value columns scrolling, when the columns overflow the
+//     viewport (GVars' 9 flight-mode columns + label). On a 480 px TX16S they
+//     fit, so no horizontal scroll is triggered — but a narrower target, or a
+//     wider column set, scrolls rather than clipping;
+//   * the 40 px touch floor: data rows are >= 40 px tall (the whole row is the
+//     tap target — tap = edit, long-press = menu), and a column declared
+//     `interactive` (per-cell tap) is clamped to a >= 40 px cell width too;
+//   * inter-column gaps, row gaps and side margins.
+//
+// Columns are declared once, before any header()/addRow():
+//   * Fixed(w)  — a fixed design-px column (DS-scaled); e.g. the GV name label.
+//   * Fill(min) — shares the remaining viewport width equally with the other
+//     Fill columns, never below `min`; if the Fill minimums don't fit, the grid
+//     overflows and scrolls horizontally instead of shrinking below the floor.
+//     GVars' 9 value columns are Fill(min) so they auto-fit the width the way
+//     the original hand-computed GVAR_VAL_W did.
+// ---------------------------------------------------------------------------
+
+enum class CellAlign : uint8_t { Start, Center, End };
+
+class Grid : public Window
+{
+ public:
+  struct Column {
+    enum class Kind : uint8_t { Fixed, Fill };
+    Kind kind = Kind::Fixed;
+    coord_t size = 0;                    // Fixed: design-px width; Fill: min px
+    CellAlign align = CellAlign::Start;
+    bool interactive = false;            // per-cell tap -> >= 40 px cell width
+    bool frozen = false;                 // leading label column (freeze on h-scroll)
+
+    static Column Fixed(coord_t widthPx, CellAlign a = CellAlign::Start,
+                        bool frozen = false)
+    {
+      return {Kind::Fixed, widthPx, a, false, frozen};
+    }
+    static Column Fill(coord_t minPx, CellAlign a = CellAlign::Center,
+                       bool interactive = false)
+    {
+      return {Kind::Fill, minPx, a, interactive, false};
+    }
+  };
+
+  // One line of the grid — the sticky header, or a scrolling data row. A data
+  // row is the interactive unit (tap = edit, long-press = menu, focusable); the
+  // header is inert. Both realize their cells into the SAME shared column
+  // template, which is what guarantees alignment. Screens may subclass Row and
+  // override onLiveCheckEvents() to refresh cell text/highlight live.
+  class Row : public Button
+  {
+   public:
+    Row(Grid* grid, bool header,
+        std::function<uint8_t()> onPress = nullptr,
+        std::function<uint8_t()> onLongPress = nullptr);
+
+    // Set (creating on first use) the text of the cell in column `col`.
+    void setCell(int col, const char* text, TextRole role = TextRole::Body);
+    // Small-font variant for a value that would otherwise overflow its cell.
+    void setCellSmall(int col, const char* text, bool small,
+                      TextRole role = TextRole::Body);
+    // Active-fill highlight on a cell (e.g. the current flight-mode column).
+    void highlightCell(int col, bool on);
+
+    // One label spanning ALL columns, centered — for a full-width action row
+    // (e.g. an inline "+") that still lives in the aligned grid body.
+    void setSpanningCell(const char* text, TextRole role = TextRole::Body);
+
+    lv_obj_t* cellObj(int col);  // realized cell label, for automation/tests
+
+   protected:
+    Grid* grid_ = nullptr;
+    bool isHeader_ = false;
+
+   private:
+    lv_obj_t* rowObj_ = nullptr;
+    std::vector<lv_obj_t*> cells_;  // one per column, realized lazily
+    lv_obj_t* ensureCell(int col, TextRole role);
+  };
+
+  Grid(Window* parent, const std::vector<Column>& columns);
+  Grid(Window* parent, std::initializer_list<Column> columns) :
+      Grid(parent, std::vector<Column>(columns))
+  {
+  }
+
+  int columnCount() const { return (int)aligns_.size(); }
+
+  // The sticky header row (created once). Its cells align with every data row.
+  Row* header();
+  // A scrolling data row. `onPress`/`onLongPress` make the whole row the touch
+  // target (>= 40 px). Returns a plain Row; screens needing live refresh pass
+  // their own Row subclass via addRow(Row*).
+  Row* addRow(std::function<uint8_t()> onPress = nullptr,
+              std::function<uint8_t()> onLongPress = nullptr);
+  // Adopt a caller-constructed Row subclass (already `new`ed with this Grid).
+  Row* addRow(Row* row);
+
+  // --- geometry shared with Row (DS-owned; not for screens) ---
+  const lv_coord_t* colDsc() const { return colDsc_.data(); }
+  coord_t totalWidth() const { return totalW_; }
+  coord_t colGap() const { return colGap_; }
+  coord_t sideMargin() const { return sideMargin_; }
+  coord_t headerHeight() const { return headerH_; }
+  coord_t dataRowHeight() const { return rowH_; }
+  CellAlign columnAlign(int col) const { return aligns_[col]; }
+  bool columnFrozen(int col) const { return col < (int)frozen_.size() && frozen_[col]; }
+  coord_t columnWidth(int col) const;
+
+#if defined(SIMU)
+  // Test hooks: reach the vertical-scroll body (to drive a scroll) and the
+  // sticky header row, so a gtest can prove alignment and stickiness against
+  // real LVGL geometry rather than by eyeballing.
+  Window* bodyForTest() const { return body_; }
+  Row* headerForTest() const { return headerRow_; }
+#endif
+
+ private:
+  std::vector<CellAlign> aligns_;
+  std::vector<bool> frozen_;
+  std::vector<lv_coord_t> colDsc_;  // stable address; LVGL keeps the pointer
+  coord_t colGap_ = 0;
+  coord_t sideMargin_ = 0;
+  coord_t totalW_ = 0;
+  coord_t headerH_ = 0;
+  coord_t rowH_ = 0;
+  Row* headerRow_ = nullptr;
+  Window* body_ = nullptr;  // vertical-scroll container for the data rows
 };
 
 // ---------------------------------------------------------------------------

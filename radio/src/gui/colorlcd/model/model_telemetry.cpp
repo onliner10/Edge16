@@ -21,6 +21,9 @@
 
 #include "model_telemetry.h"
 
+#include <memory>
+
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "fullscreen_dialog.h"
@@ -235,8 +238,9 @@ class SensorButton : public ListLineButton
   SensorButton(Window* parent, const rect_t& rect, uint8_t index) :
       ListLineButton(parent, index, LineDependencies::LiveValues)
   {
-    padAll(PAD_ZERO);
-    setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL);
+    // DESIGN SYSTEM: ds:: owns row height, padding and slot layout.
+    setWidth(LV_PCT(100));
+    setHeight(ds::rowHeight(ds::RowSize::TwoLine));
 
     check(isActive());
   }
@@ -244,6 +248,7 @@ class SensorButton : public ListLineButton
  protected:
   bool showId = false;
   OptionalLvObj fresh;
+  lv_obj_t* numLabel = nullptr;
   uint32_t lastRefresh = 0;
   std::string valString;
   char numText[8] = {};
@@ -252,6 +257,7 @@ class SensorButton : public ListLineButton
   bool valueOld = false;
   bool freshVisible = false;
   bool lastActive = false;
+  std::unique_ptr<ds::RowContent> dsRow;
 
   bool isActive() const override { return telemetryItems[index].isAvailable(); }
 
@@ -260,6 +266,7 @@ class SensorButton : public ListLineButton
     const bool nextShowId = g_model.showInstanceIds;
     if (showId == nextShowId) return;
     showId = nextShowId;
+    if (dsRow) dsRow->setSubtitle(showId ? idText : "");
     updateAutomationText();
     withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
@@ -304,6 +311,9 @@ class SensorButton : public ListLineButton
       valueOld = isOld;
       lastActive = active;
       check(active);
+      if (dsRow)
+        dsRow->setTrailing(valString.c_str(), valueOld ? ds::TextRole::Warning
+                                                        : ds::TextRole::Body);
       updateAutomationText();
       withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
     }
@@ -326,43 +336,42 @@ class SensorButton : public ListLineButton
     nameText[0] = '\0';
     strAppend(nameText, sensor->label, TELEM_LABEL_LEN);
     showId = !g_model.showInstanceIds;
-    setNumIdState();
 
     if (!withLive([&](LiveWindow& live) {
-          auto obj = live.lvobj();
-          auto mask = getBuiltinIcon(ICON_DOT);
-          lv_obj_t* freshMarker = createFreshCanvas(obj);
-          fresh.reset(freshMarker);
-          if (freshMarker) {
-            lv_obj_set_pos(freshMarker, TSStyle::NUM_W + TSStyle::NAME_W + PAD_MEDIUM,
-                           PAD_LARGE);
-            lv_canvas_set_buffer(freshMarker, (void*)mask->data, mask->width,
-                                 mask->height, LV_COLOR_FORMAT_A8);
-            lv_obj_add_flag(freshMarker, LV_OBJ_FLAG_HIDDEN);
-          }
+          // DESIGN SYSTEM row content: leading slot = row number + live
+          // "fresh data" marker, title = sensor name, subtitle = instance
+          // id (blank when instance ids are hidden), trailing = value
+          // (Warning role when stale).
+          dsRow = std::make_unique<ds::RowContent>(this, ds::RowSize::TwoLine);
+          Window* slot = dsRow->leadingSlot();
+          if (!slot) return false;
+
+          if (!slot->withLive([&](Window::LiveWindow& slotLive) -> bool {
+                auto obj = slotLive.lvobj();
+                numLabel = etx_label_create(obj, FONT_XS_INDEX);
+                if (!numLabel) return false;
+                lv_label_set_text(numLabel, numText);
+
+                auto mask = getBuiltinIcon(ICON_DOT);
+                lv_obj_t* freshMarker = createFreshCanvas(obj);
+                fresh.reset(freshMarker);
+                if (freshMarker) {
+                  lv_canvas_set_buffer(freshMarker, (void*)mask->data,
+                                       mask->width, mask->height,
+                                       LV_COLOR_FORMAT_A8);
+                  lv_obj_add_flag(freshMarker, LV_OBJ_FLAG_HIDDEN);
+                }
+                return true;
+              }))
+            return false;
+
+          dsRow->setTitle(nameText);
+          dsRow->setSubtitle(showId ? idText : "");
           return true;
         }))
       return;
 
     updateSensorLiveState();
-  }
-
-  void describeLine(LineView& view) const override
-  {
-    view.text(PAD_TINY, PAD_TINY, TSStyle::NUM_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, numText,
-              showId ? FONT(XS) : 0, LV_TEXT_ALIGN_CENTER);
-    if (showId) {
-      view.text(PAD_TINY, TSStyle::ID_Y, TSStyle::NUM_W, TSStyle::ID_H,
-                idText, FONT(XXS), LV_TEXT_ALIGN_CENTER);
-    }
-
-    view.text(TSStyle::NUM_W + PAD_SMALL, PAD_MEDIUM / 2, TSStyle::NAME_W,
-              EdgeTxStyles::STD_FONT_HEIGHT, nameText);
-    view.text(TSStyle::NUM_W + TSStyle::NAME_W + PAD_LARGE * 3,
-              PAD_MEDIUM / 2, LCD_W, EdgeTxStyles::STD_FONT_HEIGHT,
-              valString.c_str(), 0, LV_TEXT_ALIGN_LEFT,
-              valueOld ? LineView::Color::Warning : LineView::Color::Default);
   }
 
   void updateAutomationText()
@@ -1008,9 +1017,8 @@ void ModelTelemetryPage::build(Window* window)
   // Sensors
   new Subtitle(window, STR_TELEMETRY_SENSORS);
 
-  sensorWindow = new Window(window, rect_t{});
-  sensorWindow->padAll(PAD_TINY);
-  sensorWindow->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  // DESIGN SYSTEM: the list container owns margins and inter-row gaps.
+  sensorWindow = new ds::List(window);
 
   FlexGridLayout grid4(col_dsc4, row_dsc);
 

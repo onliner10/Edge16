@@ -21,10 +21,10 @@
 
 #include "model_logical_switches.h"
 
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
-#include "list_line_button.h"
 #include "menu.h"
 #include "numberedit.h"
 #include "page.h"
@@ -37,7 +37,6 @@
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
 #define ETX_STATE_LS_ACTIVE LV_STATE_USER_1
-#define ETX_STATE_V1_SMALL_FONT LV_STATE_USER_2
 
 static const lv_coord_t col_dsc[] = {LV_GRID_FR(2), LV_GRID_FR(3),
                                      LV_GRID_TEMPLATE_LAST};
@@ -296,179 +295,204 @@ void getsEdgeDelayParam(char* s, LogicalSwitchData* ls)
                                 .c_str());
 }
 
-class LogicalSwitchButton : public ListLineButton
+// ---------------------------------------------------------------------------
+// Logical-switch list — a ds::Grid restoring the 7-column tabular scan:
+//   name | func | v1 | v2 | AND | duration | delay
+// Every row realizes into the same shared column template, so the columns
+// stay aligned down the list. The whole row is the touch target: tap = edit,
+// long-press = menu. Active operands render bold and the active row is
+// checked, both live -- exactly the original per-field feedback, kept because
+// the columnar scan of every switch's condition IS the feature here.
+// ---------------------------------------------------------------------------
+
+enum {
+  LSCOL_NAME = 0,
+  LSCOL_FUNC,
+  LSCOL_V1,
+  LSCOL_V2,
+  LSCOL_AND,
+  LSCOL_DUR,
+  LSCOL_DEL,
+  LSCOL_COUNT
+};
+
+static std::vector<ds::Grid::Column> logicalSwitchColumns()
+{
+  return {
+      ds::Grid::Column::Fixed(34, ds::CellAlign::Start),   // name  (L01)
+      ds::Grid::Column::Fixed(54, ds::CellAlign::Start),   // func  (AND/a<x)
+      ds::Grid::Column::Fixed(84, ds::CellAlign::Center),  // v1
+      ds::Grid::Column::Fill(56, ds::CellAlign::Center),   // v2 (fills)
+      ds::Grid::Column::Fixed(84, ds::CellAlign::Center),  // AND switch
+      ds::Grid::Column::Fixed(50, ds::CellAlign::Center),  // duration
+      ds::Grid::Column::Fixed(50, ds::CellAlign::Center),  // delay
+  };
+}
+
+class LogicalSwitchRow : public ds::Grid::Row
 {
  public:
-  LogicalSwitchButton(Window* parent, int lsIndex) :
-      ListLineButton(parent, lsIndex, LineDependencies::LiveValues)
+  LogicalSwitchRow(ds::Grid* grid, int lsIndex,
+                   std::function<uint8_t()> onPress,
+                   std::function<uint8_t()> onLongPress) :
+      ds::Grid::Row(grid, /*header=*/false, std::move(onPress),
+                    std::move(onLongPress)),
+      index(lsIndex)
   {
-    setHeight(LS_BUTTON_H);
-    padAll(PAD_ZERO);
-
-    check(isActive());
+    computeFlags();
+    refreshCells();
+    check(lastActive);
+    updateAutomationText();
   }
 
-  void onLineLoaded() override
-  {
-    onRefresh();
-    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
-  }
-
-  void describeLine(LineView& view) const override
-  {
-    view.text(NM_X, NM_Y, NM_W, EdgeTxStyles::STD_FONT_HEIGHT, lsNameText);
-    view.text(FN_X, FN_Y, FN_W, EdgeTxStyles::STD_FONT_HEIGHT, lsFuncText,
-              funcBold ? FONT(BOLD) : 0);
-    view.text(V1_X, V1_Y, V1_W, EdgeTxStyles::STD_FONT_HEIGHT, lsV1Text,
-              v1Bold ? FONT(BOLD) : (v1Small ? FONT(XS) : 0),
-              LV_TEXT_ALIGN_CENTER);
-    view.text(V2_X, V2_Y, V2_W, EdgeTxStyles::STD_FONT_HEIGHT, lsV2Text,
-              v2Bold ? FONT(BOLD) : 0, LV_TEXT_ALIGN_CENTER);
-    view.text(AND_X, AND_Y, AND_W, EdgeTxStyles::STD_FONT_HEIGHT, lsAndText,
-              andBold ? FONT(BOLD) : 0, LV_TEXT_ALIGN_CENTER);
-    view.text(DUR_X, DUR_Y, DUR_W, EdgeTxStyles::STD_FONT_HEIGHT,
-              lsDurationText, 0, LV_TEXT_ALIGN_CENTER);
-    view.text(DEL_X, DEL_Y, DEL_W, EdgeTxStyles::STD_FONT_HEIGHT,
-              lsDelayText, 0, LV_TEXT_ALIGN_CENTER);
-  }
-
-  bool isActive() const override
+  bool isActive() const
   {
     return getSwitch(SWSRC_FIRST_LOGICAL_SWITCH + index);
   }
 
-  void onLinePresentationSync(LiveWindow& live) override
+  void onLiveCheckEvents(LiveWindow& live) override
   {
-    LogicalSwitchData* ls = lswAddress(index);
-    uint8_t lsFamily = lswFamily(ls->func);
-
-    bool newFuncBold = (lsFamily == LS_FAMILY_STICKY && getLSStickyState(index));
-    bool newV1Bold = ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_EDGE || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v1));
-    bool newV2Bold = ((lsFamily == LS_FAMILY_BOOL || lsFamily == LS_FAMILY_STICKY) && getSwitch(ls->v2));
-    bool newAndBold = getSwitch(ls->andsw);
-    bool active = isActive();
-
-    if (newFuncBold != funcBold || newV1Bold != v1Bold ||
-        newV2Bold != v2Bold || newAndBold != andBold || active != lastActive) {
-      funcBold = newFuncBold;
-      v1Bold = newV1Bold;
-      v2Bold = newV2Bold;
-      andBold = newAndBold;
-      lastActive = active;
-      check(active);
+    Button::onLiveCheckEvents(live);
+    if (computeFlags()) {
+      check(lastActive);
+      refreshCells();
       updateAutomationText();
-      lv_obj_invalidate(live.lvobj());
     }
   }
 
-  void onRefresh() override
+ protected:
+  int index;
+  bool lastActive = false;
+  bool funcBold = false;
+  bool v1Bold = false;
+  bool v2Bold = false;
+  bool andBold = false;
+  bool v1Small = false;
+  char lsNameText[16] = {};
+  char lsFuncText[32] = {};
+  char lsV1Text[32] = {};
+  char lsV2Text[32] = {};
+  char lsAndText[32] = {};
+  char lsDurationText[16] = {};
+  char lsDelayText[16] = {};
+
+  template <size_t N>
+  static void setStr(char (&dest)[N], const char* text)
+  {
+    dest[0] = '\0';
+    strAppend(dest, text ? text : "", N - 1);
+  }
+
+  // Recompute the live "bold"/active flags. Returns true if anything changed.
+  bool computeFlags()
+  {
+    LogicalSwitchData* ls = lswAddress(index);
+    uint8_t fam = lswFamily(ls->func);
+    bool nFuncBold = (fam == LS_FAMILY_STICKY && getLSStickyState(index));
+    bool nV1Bold = ((fam == LS_FAMILY_BOOL || fam == LS_FAMILY_EDGE ||
+                     fam == LS_FAMILY_STICKY) &&
+                    getSwitch(ls->v1));
+    bool nV2Bold =
+        ((fam == LS_FAMILY_BOOL || fam == LS_FAMILY_STICKY) && getSwitch(ls->v2));
+    bool nAndBold = getSwitch(ls->andsw);
+    bool active = isActive();
+    if (nFuncBold == funcBold && nV1Bold == v1Bold && nV2Bold == v2Bold &&
+        nAndBold == andBold && active == lastActive)
+      return false;
+    funcBold = nFuncBold;
+    v1Bold = nV1Bold;
+    v2Bold = nV2Bold;
+    andBold = nAndBold;
+    lastActive = active;
+    return true;
+  }
+
+  void refreshCells()
   {
     char s[20] = "";
-
     LogicalSwitchData* ls = lswAddress(index);
-    uint8_t lsFamily = lswFamily(ls->func);
+    uint8_t fam = lswFamily(ls->func);
 
-    setText(lsNameText, getSwitchPositionName(SWSRC_FIRST_LOGICAL_SWITCH + index));
-    setText(lsFuncText, STR_VCSWFUNC[ls->func]);
+    setStr(lsNameText, getSwitchPositionName(SWSRC_FIRST_LOGICAL_SWITCH + index));
+    setStr(lsFuncText, STR_VCSWFUNC[ls->func]);
 
-    // CSW params - V1
-    switch (lsFamily) {
+    // V1
+    switch (fam) {
       case LS_FAMILY_BOOL:
       case LS_FAMILY_STICKY:
       case LS_FAMILY_EDGE:
-        setText(lsV1Text, getSwitchPositionName(ls->v1));
+        setStr(lsV1Text, getSwitchPositionName(ls->v1));
         v1Small = false;
         break;
       case LS_FAMILY_TIMER:
-        setText(lsV1Text, formatNumberAsString(lswTimerValue(ls->v1), PREC1,
-                                               0, nullptr, "s").c_str());
+        setStr(lsV1Text, formatNumberAsString(lswTimerValue(ls->v1), PREC1, 0,
+                                              nullptr, "s")
+                             .c_str());
         v1Small = false;
         break;
       default: {
         char* text = getSourceString(ls->v1);
         v1Small = getTextWidth(text, 0, FONT(STD)) > 88;
-        setText(lsV1Text, text);
+        setStr(lsV1Text, text);
       } break;
     }
 
-    // CSW params - V2
-    switch (lsFamily) {
+    // V2
+    switch (fam) {
       case LS_FAMILY_BOOL:
       case LS_FAMILY_STICKY:
-        setText(lsV2Text, getSwitchPositionName(ls->v2));
+        setStr(lsV2Text, getSwitchPositionName(ls->v2));
         break;
       case LS_FAMILY_EDGE:
         getsEdgeDelayParam(s, ls);
-        setText(lsV2Text, s);
+        setStr(lsV2Text, s);
         break;
       case LS_FAMILY_TIMER:
-        setText(lsV2Text, formatNumberAsString(lswTimerValue(ls->v2), PREC1,
-                                               0, nullptr, "s").c_str());
+        setStr(lsV2Text, formatNumberAsString(lswTimerValue(ls->v2), PREC1, 0,
+                                              nullptr, "s")
+                             .c_str());
         break;
       case LS_FAMILY_COMP:
-        setText(lsV2Text, getSourceString(ls->v2));
+        setStr(lsV2Text, getSourceString(ls->v2));
         break;
       default:
-        setText(lsV2Text,
-                getSourceCustomValueString(
-                    ls->v1,
-                    (ls->v1 <= MIXSRC_LAST_CH ? calc100toRESX(ls->v2) : ls->v2),
-                    0));
+        setStr(lsV2Text,
+               getSourceCustomValueString(
+                   ls->v1,
+                   (ls->v1 <= MIXSRC_LAST_CH ? calc100toRESX(ls->v2) : ls->v2),
+                   0));
         break;
     }
 
     // AND switch
-    setText(lsAndText, getSwitchPositionName(ls->andsw));
+    setStr(lsAndText, getSwitchPositionName(ls->andsw));
 
-    // CSW duration
-    if (ls->duration > 0) {
-      setText(lsDurationText,
-              formatNumberAsString(ls->duration, PREC1, 0, nullptr, "s").c_str());
-    } else {
+    // Duration
+    if (ls->duration > 0)
+      setStr(lsDurationText, formatNumberAsString(ls->duration, PREC1, 0,
+                                                  nullptr, "s")
+                                 .c_str());
+    else
       lsDurationText[0] = '\0';
-    }
 
-    // CSW delay
-    if (lsFamily != LS_FAMILY_EDGE && ls->delay > 0) {
-      setText(lsDelayText,
-              formatNumberAsString(ls->delay, PREC1, 0, nullptr, "s").c_str());
-    } else {
+    // Delay
+    if (fam != LS_FAMILY_EDGE && ls->delay > 0)
+      setStr(lsDelayText,
+             formatNumberAsString(ls->delay, PREC1, 0, nullptr, "s").c_str());
+    else
       lsDelayText[0] = '\0';
-    }
-    updateAutomationText();
-    withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
-  }
 
-  static LAYOUT_SIZE_SCALED(LS_BUTTON_H, 32, 44)
-
-  static constexpr coord_t NM_X = PAD_TINY;
-  static LAYOUT_SIZE_SCALED(NM_Y, 4, 10)
-  static LAYOUT_SIZE_SCALED(NM_W, 30, 36)
-  static constexpr coord_t FN_X = NM_X + NM_W + PAD_TINY;
-  static constexpr coord_t FN_Y = NM_Y;
-  static LAYOUT_SIZE_SCALED(FN_W, 50, 58)
-  static constexpr coord_t V1_X = FN_X + FN_W + PAD_TINY;
-  static LAYOUT_SIZE(V1_Y, NM_Y, 0)
-  static LAYOUT_VAL_SCALED(V1_W, 88)
-  static constexpr coord_t V2_X = V1_X + V1_W + PAD_TINY;
-  static constexpr coord_t V2_Y = V1_Y;
-  static constexpr coord_t AND_W = V1_W;
-  static LAYOUT_SIZE_SCALED(DUR_W, 40, 54)
-  static constexpr coord_t DEL_W = DUR_W;
-  static constexpr coord_t AND_X = ListLineButton::GRP_W - PAD_BORDER * 2 - AND_W - DUR_W - DEL_W - PAD_TINY * 3;
-  static LAYOUT_SIZE_SCALED(AND_Y, 4, 20)
-  static constexpr coord_t V2_W = AND_X - V2_X - PAD_TINY;
-  static constexpr coord_t DUR_X = ListLineButton::GRP_W - PAD_BORDER * 2 - DUR_W - DEL_W - PAD_TINY * 2;
-  static constexpr coord_t DUR_Y = AND_Y;
-  static constexpr coord_t DEL_X = ListLineButton::GRP_W - PAD_BORDER * 2 - DEL_W - PAD_TINY;
-  static constexpr coord_t DEL_Y = AND_Y;
-
- protected:
-  template <size_t N>
-  void setText(char (&dest)[N], const char* text)
-  {
-    dest[0] = '\0';
-    strAppend(dest, text ? text : "", N - 1);
+    setCell(LSCOL_NAME, lsNameText);
+    setCell(LSCOL_FUNC, lsFuncText, funcBold ? ds::TextRole::Strong
+                                             : ds::TextRole::Body);
+    setCellSmall(LSCOL_V1, lsV1Text, v1Small,
+                 v1Bold ? ds::TextRole::Strong : ds::TextRole::Body);
+    setCell(LSCOL_V2, lsV2Text,
+            v2Bold ? ds::TextRole::Strong : ds::TextRole::Body);
+    setCell(LSCOL_AND, lsAndText,
+            andBold ? ds::TextRole::Strong : ds::TextRole::Body);
+    setCell(LSCOL_DUR, lsDurationText);
+    setCell(LSCOL_DEL, lsDelayText);
   }
 
   void updateAutomationText()
@@ -482,20 +506,6 @@ class LogicalSwitchButton : public ListLineButton
     setAutomationText(text);
 #endif
   }
-
-  char lsNameText[16] = {};
-  char lsFuncText[32] = {};
-  char lsV1Text[32] = {};
-  char lsV2Text[32] = {};
-  char lsAndText[32] = {};
-  char lsDurationText[16] = {};
-  char lsDelayText[16] = {};
-  bool lastActive = false;
-  bool funcBold = false;
-  bool v1Bold = false;
-  bool v2Bold = false;
-  bool andBold = false;
-  bool v1Small = false;
 };
 
 ModelLogicalSwitchesPage::ModelLogicalSwitchesPage(const PageDef& pageDef) :
@@ -577,7 +587,11 @@ void ModelLogicalSwitchesPage::plusPopup(Window* window)
 void ModelLogicalSwitchesPage::build(Window* window)
 {
   pageWindow = window;
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_OUTLINE);
+
+  // DESIGN SYSTEM: ds::Grid restores the 7-column tabular scan (name / func /
+  // v1 / v2 / AND / duration / delay) with all columns aligned down the list,
+  // the 40 px touch floor and all spacing. tap = edit, long-press = menu.
+  auto* grid = new ds::Grid(window, logicalSwitchColumns());
 
   bool hasEmptySwitch = false;
 
@@ -587,35 +601,18 @@ void ModelLogicalSwitchesPage::build(Window* window)
   for (uint8_t i = 0; i < MAX_LOGICAL_SWITCHES; i++) {
     LogicalSwitchData* ls = lswAddress(i);
 
-    bool isActive = (ls->func != LS_FUNC_NONE);
-
-    if (isActive) {
-      auto button = new LogicalSwitchButton(window, i);
-
-      button->setPressHandler([=]() {
-        Window* lsWindow = new LogicalSwitchEditPage(i,
-            route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
+    if (ls->func != LS_FUNC_NONE) {
+      auto onEdit = [=]() -> uint8_t {
+        Window* lsWindow = new LogicalSwitchEditPage(
+            i, route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
         lsWindow->setCloseHandler([=]() {
-          if (ls->func == LS_FUNC_NONE)
-            rebuild(window);
-          else
-            button->requestLineUpdate();
+          if (ls->func == LS_FUNC_NONE) rebuild(window);
         });
         return 0;
-      });
-
-      button->setLongPressHandler([=]() -> uint8_t {
+      };
+      auto onMenu = [=]() -> uint8_t {
         Menu* menu = new Menu();
-        menu->addLine(STR_EDIT, [=]() {
-          Window* lsWindow = new LogicalSwitchEditPage(i,
-              route().appended(RP_LOGICAL_SWITCH_EDIT, static_cast<int16_t>(i)));
-          lsWindow->setCloseHandler([=]() {
-            if (ls->func == LS_FUNC_NONE)
-              rebuild(window);
-            else
-              button->requestLineUpdate();
-          });
-        });
+        menu->addLine(STR_EDIT, [=]() { onEdit(); });
         menu->addLine(STR_COPY, [=]() {
           clipboard.type = CLIPBOARD_TYPE_CUSTOM_SWITCH;
           clipboard.data.csw = *ls;
@@ -632,13 +629,13 @@ void ModelLogicalSwitchesPage::build(Window* window)
           rebuild(window);
         });
         return 0;
-      });
+      };
 
-      if (focusIndex == i) {
-        button->focus();
-      }
+      auto* row = new LogicalSwitchRow(grid, i, onEdit, onMenu);
 
-      button->setFocusHandler([=](bool hasFocus) {
+      if (focusIndex == i) row->focus();
+
+      row->setFocusHandler([=](bool hasFocus) {
         if (hasFocus && !isRebuilding) {
           prevFocusIndex = focusIndex;
           focusIndex = i;
@@ -650,23 +647,22 @@ void ModelLogicalSwitchesPage::build(Window* window)
   }
 
   if (hasEmptySwitch) {
-    addButton =
-        new TextButton(window, rect_t{0, 0, window->width() - PAD_SMALL * 2, LogicalSwitchButton::LS_BUTTON_H},
-                       LV_SYMBOL_PLUS, [=]() {
-                         plusPopup(window);
-                         return 0;
-                       });
-
-    addButton->setLongPressHandler([=]() -> uint8_t {
-      plusPopup(window);
-      return 0;
-    });
-
-    addButton->setFocusHandler([=](bool hasFocus) {
-      if (hasFocus && !isRebuilding) {
-        prevFocusIndex = focusIndex;
-      }
-    });
+    auto* add = grid->addRow(
+        [=]() -> uint8_t {
+          plusPopup(window);
+          return 0;
+        },
+        [=]() -> uint8_t {
+          plusPopup(window);
+          return 0;
+        });
+    if (add) {
+      add->setSpanningCell(LV_SYMBOL_PLUS, ds::TextRole::Active);
+      add->setFocusHandler([=](bool hasFocus) {
+        if (hasFocus && !isRebuilding) prevFocusIndex = focusIndex;
+      });
+    }
+    addButton = add;
   } else {
     addButton = nullptr;
   }

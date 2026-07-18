@@ -457,6 +457,263 @@ EmptyState::EmptyState(Window* parent, EdgeTxIcon icon, const char* headline,
 }
 
 // ---------------------------------------------------------------------------
+// Grid
+// ---------------------------------------------------------------------------
+
+namespace {
+
+constexpr coord_t kGridSideMargin = kSpace2;   // list side margin
+constexpr coord_t kGridColGap = kSpace1;       // between columns
+constexpr coord_t kGridRowGap = kSpace1;       // between data rows
+constexpr coord_t kGridHeaderH = LAYOUT_SCALE(28);  // caption band
+constexpr coord_t kGridContentW = LCD_W;       // width budget for auto-fit
+
+// One filling row so cells vertically center in the fixed row height.
+const lv_coord_t kGridRowDsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+
+}  // namespace
+
+Grid::Grid(Window* parent, const std::vector<Column>& columns) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), LV_PCT(100)})
+{
+  colGap_ = kGridColGap;
+  sideMargin_ = kGridSideMargin;
+  headerH_ = kGridHeaderH;
+  rowH_ = kTouchMin;  // data rows sit on the 40 px touch floor
+
+  const int n = (int)columns.size();
+
+  // Pass 1: fixed widths, count fill columns.
+  coord_t fixedSum = 0;
+  int nFill = 0;
+  for (const auto& c : columns) {
+    if (c.kind == Column::Kind::Fill) {
+      ++nFill;
+    } else {
+      coord_t w = LAYOUT_SCALE(c.size);
+      if (c.interactive && w < kTouchMin) w = kTouchMin;
+      fixedSum += w;
+    }
+  }
+
+  const coord_t gapsTotal = n > 1 ? (n - 1) * colGap_ : 0;
+  const coord_t inner = kGridContentW - 2 * sideMargin_;
+  coord_t fillAvail = inner - fixedSum - gapsTotal;
+  if (fillAvail < 0) fillAvail = 0;
+  const coord_t fillShare = nFill > 0 ? fillAvail / nFill : 0;
+
+  // Pass 2: materialize the immutable column template (fixed px throughout —
+  // this is what makes column i land at the same x in the header and in every
+  // row, independent of any row's contents).
+  colDsc_.reserve(n + 1);
+  aligns_.reserve(n);
+  frozen_.reserve(n);
+  coord_t colsW = 0;
+  for (const auto& c : columns) {
+    coord_t w;
+    if (c.kind == Column::Kind::Fill) {
+      coord_t minW = LAYOUT_SCALE(c.size);
+      if (c.interactive && minW < kTouchMin) minW = kTouchMin;
+      w = fillShare > minW ? fillShare : minW;
+    } else {
+      w = LAYOUT_SCALE(c.size);
+      if (c.interactive && w < kTouchMin) w = kTouchMin;
+    }
+    colDsc_.push_back(w);
+    aligns_.push_back(c.align);
+    frozen_.push_back(c.frozen);
+    colsW += w;
+  }
+  colDsc_.push_back(LV_GRID_TEMPLATE_LAST);
+  totalW_ = colsW + gapsTotal + 2 * sideMargin_;
+
+  // Grid = a fixed vertical stack: the sticky header row, then a scrolling body
+  // holding the data rows. The header is a separate flex slot ABOVE the body,
+  // so it simply never scrolls vertically -- a genuine sticky/frozen header.
+  // Both the header and every data row realize into the SAME shared column
+  // template (colDsc_), which is what aligns column i across all of them.
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  });
+
+  body_ = new (std::nothrow) Window(this, rect_t{0, 0, LV_PCT(100), 0});
+  if (body_) {
+    body_->setWindowFlag(NO_FOCUS);
+    body_->withLive([&](LiveWindow& live) {
+      lv_obj_t* b = live.lvobj();
+      lv_obj_set_width(b, LV_PCT(100));
+      lv_obj_set_flex_grow(b, 1);
+      lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);
+      lv_obj_set_style_pad_left(b, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_right(b, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_top(b, kGridRowGap, LV_PART_MAIN);
+      lv_obj_set_style_pad_bottom(b, kSpace2, LV_PART_MAIN);
+      lv_obj_set_style_pad_row(b, kGridRowGap, LV_PART_MAIN);
+      lv_obj_set_style_border_width(b, 0, LV_PART_MAIN);
+      lv_obj_set_scroll_dir(b, LV_DIR_VER);  // columns fit width on TX16S
+      lv_obj_add_flag(b, LV_OBJ_FLAG_SCROLLABLE);
+    });
+  }
+}
+
+coord_t Grid::columnWidth(int col) const
+{
+  if (col < 0 || col >= (int)aligns_.size()) return 0;
+  return colDsc_[col];
+}
+
+Grid::Row* Grid::header()
+{
+  if (headerRow_) return headerRow_;
+  headerRow_ = new (std::nothrow) Row(this, /*header=*/true);
+  return headerRow_;
+}
+
+Grid::Row* Grid::addRow(std::function<uint8_t()> onPress,
+                        std::function<uint8_t()> onLongPress)
+{
+  return new (std::nothrow)
+      Row(this, /*header=*/false, std::move(onPress), std::move(onLongPress));
+}
+
+Grid::Row* Grid::addRow(Row* row) { return row; }
+
+// ---- Grid::Row ----
+
+Grid::Row::Row(Grid* grid, bool header, std::function<uint8_t()> onPress,
+               std::function<uint8_t()> onLongPress) :
+    Button(header ? (Window*)grid : grid->body_,
+           rect_t{0, 0, grid->totalW_,
+                  header ? grid->headerH_ : grid->dataRowHeight()}),
+    grid_(grid),
+    isHeader_(header)
+{
+  cells_.assign(grid->columnCount(), nullptr);
+
+  setWidth(grid->totalW_);
+  setHeight(header ? grid->headerH_ : grid->dataRowHeight());
+
+  withLive([&](LiveWindow& live) {
+    rowObj_ = live.lvobj();
+    lv_obj_set_layout(rowObj_, LV_LAYOUT_GRID);
+    lv_obj_set_grid_dsc_array(rowObj_, grid->colDsc_.data(), kGridRowDsc);
+    lv_obj_set_style_pad_top(rowObj_, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(rowObj_, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(rowObj_, grid->sideMargin_, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(rowObj_, grid->sideMargin_, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(rowObj_, grid->colGap_, LV_PART_MAIN);
+    lv_obj_set_style_min_height(rowObj_, isHeader_ ? grid->headerH_ : kTouchMin,
+                                LV_PART_MAIN);
+    lv_obj_set_style_border_width(rowObj_, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(rowObj_, LV_OBJ_FLAG_SCROLLABLE);
+
+    if (isHeader_) {
+      etx_solid_bg(rowObj_, COLOR_THEME_SECONDARY3_INDEX, LV_PART_MAIN);
+      lv_obj_move_to_index(rowObj_, 0);  // flex slot above the scrolling body
+    }
+  });
+
+  if (isHeader_) {
+    grid->headerRow_ = this;  // register the sticky header
+    setWindowFlag(NO_FOCUS);
+    withLive([&](LiveWindow& live) {
+      lv_obj_clear_flag(live.lvobj(), LV_OBJ_FLAG_CLICKABLE);
+    });
+  } else {
+    if (onPress) setPressHandler(std::move(onPress));
+    if (onLongPress) setLongPressHandler(std::move(onLongPress));
+  }
+}
+
+lv_obj_t* Grid::Row::ensureCell(int col, TextRole role)
+{
+  if (col < 0 || col >= (int)cells_.size() || !rowObj_) return nullptr;
+  if (cells_[col]) return cells_[col];
+  lv_obj_t* label =
+      etx_label_create(rowObj_, isHeader_ ? FONT_STD_INDEX : roleFont(role));
+  if (!label) return nullptr;
+  // The cell STRETCHES to fill its whole column track (vertically centered).
+  // This is what makes column i land at the same x — and span the same width —
+  // in the header and in every row, independent of each cell's text: cell.x1 ==
+  // track left for all, so alignment is structural, not content-luck. It also
+  // means an `interactive` column's cell is as wide as its (>= 40 px) track, so
+  // a per-cell tap target clears the touch floor. Text is positioned WITHIN the
+  // filled cell by the column's alignment.
+  lv_obj_set_grid_cell(label, LV_GRID_ALIGN_STRETCH, col, 1,
+                       LV_GRID_ALIGN_CENTER, 0, 1);
+  lv_obj_set_style_text_align(
+      label,
+      grid_->columnAlign(col) == CellAlign::End
+          ? LV_TEXT_ALIGN_RIGHT
+          : (grid_->columnAlign(col) == CellAlign::Center ? LV_TEXT_ALIGN_CENTER
+                                                          : LV_TEXT_ALIGN_LEFT),
+      LV_PART_MAIN);
+  lv_label_set_text(label, "");
+  lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+  etx_txt_color(label, roleColor(role));
+  // Active-fill highlight (used for the current flight-mode column): a pure
+  // background change on the CHECKED state, exactly as the original did — the
+  // ink stays put so the highlighted cell reads as the same value, boxed.
+  etx_solid_bg(label, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
+  cells_[col] = label;
+  return label;
+}
+
+void Grid::Row::setCell(int col, const char* text, TextRole role)
+{
+  lv_obj_t* label = ensureCell(col, role);
+  if (label) {
+    lv_label_set_text(label, text ? text : "");
+    etx_txt_color(label, roleColor(role));
+  }
+}
+
+void Grid::Row::setCellSmall(int col, const char* text, bool small,
+                             TextRole role)
+{
+  lv_obj_t* label = ensureCell(col, role);
+  if (label) {
+    lv_label_set_text(label, text ? text : "");
+    etx_font(label, small ? FONT_XS_INDEX : FONT_STD_INDEX, LV_PART_MAIN);
+    etx_txt_color(label, roleColor(role));
+  }
+}
+
+void Grid::Row::highlightCell(int col, bool on)
+{
+  lv_obj_t* label = ensureCell(col, TextRole::Body);
+  if (!label) return;
+  if (on)
+    lv_obj_add_state(label, LV_STATE_CHECKED);
+  else
+    lv_obj_clear_state(label, LV_STATE_CHECKED);
+}
+
+void Grid::Row::setSpanningCell(const char* text, TextRole role)
+{
+  if (!rowObj_ || cells_.empty()) return;
+  if (!cells_[0]) {
+    lv_obj_t* label = etx_label_create(rowObj_, roleFont(role));
+    if (!label) return;
+    lv_obj_set_grid_cell(label, LV_GRID_ALIGN_CENTER, 0, grid_->columnCount(),
+                         LV_GRID_ALIGN_CENTER, 0, 1);
+    etx_txt_color(label, roleColor(role));
+    cells_[0] = label;
+  }
+  lv_label_set_text(cells_[0], text ? text : "");
+}
+
+lv_obj_t* Grid::Row::cellObj(int col)
+{
+  if (col < 0 || col >= (int)cells_.size()) return nullptr;
+  return cells_[col];
+}
+
+// ---------------------------------------------------------------------------
 // DSButton
 // ---------------------------------------------------------------------------
 
