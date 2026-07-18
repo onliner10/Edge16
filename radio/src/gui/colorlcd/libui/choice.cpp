@@ -225,6 +225,7 @@ void Choice::setValues(const char* const values[])
 void Choice::setValue(int val)
 {
   if (_setValue) {
+    if (recentList) recentList->touch(val);
     _setValue(val);
     update();
   }
@@ -244,6 +245,37 @@ void Choice::fillMenu(Menu* menu, const FilterFct& filter)
   int count = 0;
   int selectedIx = -1;
   selectedIx0 = -1;
+
+  // Most-recently-used boost (opt-in): pin recent choices at the top, visually
+  // separated by a divider. The full list below is emitted unchanged; each
+  // pinned line selects the very same value, so selection stays correct
+  // regardless of the extra rows.
+  if (recentList) {
+    int recentsAdded = 0;
+    for (uint8_t r = 0; r < recentList->size(); ++r) {
+      int i = (*recentList)[r];
+      if (i < vmin || i > vmax) continue;
+      if (filter && !filter(i)) continue;
+      if (isValueAvailable && !isValueAvailable(inverted ? -i : i)) continue;
+      if (textHandler) {
+        menu->addLineBuffered(textHandler(i), [=]() { setValue(i); });
+      } else if (unsigned(i - vmin) < values.size()) {
+        menu->addLineBuffered(values[i - vmin], [=]() { setValue(i); });
+      } else {
+        menu->addLineBuffered(std::to_string(i), [=]() { setValue(i); });
+      }
+      // Highlight the pinned copy of the current value so the menu opens showing
+      // the recents at the top rather than scrolled to the full-list copy.
+      if (value == i && selectedIx < 0) selectedIx = count;
+      ++recentsAdded;
+      ++count;
+    }
+    if (recentsAdded > 0) {
+      menu->addLineBuffered(MRU_DIVIDER_TEXT, nullptr);
+      ++count;
+    }
+  }
+
   for (int i = vmin; i <= vmax; ++i) {
     if (filter && !filter(i)) continue;
     if (isValueAvailable && !isValueAvailable(inverted ? -i : i)) continue;
@@ -254,10 +286,10 @@ void Choice::fillMenu(Menu* menu, const FilterFct& filter)
     } else {
       menu->addLineBuffered(std::to_string(i), [=]() { setValue(i); });
     }
-    if (value == i) {
+    if (value == i && selectedIx < 0) {
       selectedIx = count;
     }
-    if (i == 0) {
+    if (i == 0 && selectedIx0 < 0) {
       selectedIx0 = count;
     }
     ++count;

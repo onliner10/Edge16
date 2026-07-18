@@ -21,6 +21,7 @@
 
 #include "widgets_setup.h"
 
+#include "libui/mru_list.h"
 #include "menu.h"
 #include "myeeprom.h"
 #include "storage/storage.h"
@@ -172,6 +173,11 @@ void SetupWidgetsPageSlot::setFocusState()
   });
 }
 
+// Boost the last few chosen widget types to the top of this long (~17-entry)
+// catalog. Radio-global, session-only (see MRUList). Keyed by the widget's
+// index in the registered-widgets vector, which is stable for a power cycle.
+static MRUList widgetTypeRecent;
+
 void SetupWidgetsPageSlot::addNewWidget()
 {
   auto container = currentContainer();
@@ -183,13 +189,17 @@ void SetupWidgetsPageSlot::addNewWidget()
 
   Menu::open([&](Menu& menu) {
     menu.setTitle(STR_SELECT_WIDGET);
-    int selected = -1;
-    int index = 0;
-    for (const auto& registered : WidgetFactory::getRegisteredWidgets()) {
-      auto factory = &registered.get();
-      if (strcmp(factory->getName(), "Radio Info") == 0) continue;
-      auto selectedSlot = slot;
+
+    const auto& registered = WidgetFactory::getRegisteredWidgets();
+    auto selectedSlot = slot;
+
+    auto isPickable = [](const WidgetFactory* factory) {
+      return strcmp(factory->getName(), "Radio Info") != 0;
+    };
+
+    auto addWidgetLine = [&](const WidgetFactory* factory, int rawIndex) {
       menu.addLine(factory->getDisplayName(), [=]() {
+        widgetTypeRecent.touch(rawIndex);
         auto selectedContainer = currentContainer();
         if (!selectedContainer) return;
 
@@ -201,9 +211,40 @@ void SetupWidgetsPageSlot::addNewWidget()
         if (widget && widget->hasOptions())
           new (std::nothrow) WidgetSettings(widget);
       });
-      if (cur && strcmp(cur, factory->getDisplayName()) == 0)
-        selected = index;
-      index += 1;
+    };
+
+    int selected = -1;
+    int row = 0;
+
+    // Recently chosen widget types pinned at the top, visually separated.
+    int recentsAdded = 0;
+    for (uint8_t i = 0; i < widgetTypeRecent.size(); ++i) {
+      int rawIndex = widgetTypeRecent[i];
+      if (rawIndex < 0 || rawIndex >= (int)registered.size()) continue;
+      auto factory = &registered[rawIndex].get();
+      if (!isPickable(factory)) continue;
+      addWidgetLine(factory, rawIndex);
+      if (cur && strcmp(cur, factory->getDisplayName()) == 0 && selected < 0)
+        selected = row;
+      ++recentsAdded;
+      ++row;
+    }
+    if (recentsAdded > 0) {
+      menu.addLine(MRU_DIVIDER_TEXT, nullptr);
+      ++row;
+    }
+
+    // Full catalog, unchanged registration order.
+    int rawIndex = 0;
+    for (const auto& reg : registered) {
+      auto factory = &reg.get();
+      if (isPickable(factory)) {
+        addWidgetLine(factory, rawIndex);
+        if (cur && strcmp(cur, factory->getDisplayName()) == 0 && selected < 0)
+          selected = row;
+        ++row;
+      }
+      ++rawIndex;
     }
 
     if (selected >= 0) menu.select(selected);

@@ -90,6 +90,39 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
       timerValue->setAccelFactor(16);
     });
 
+  // Timer countdown
+  setupLine(STR_BEEPCOUNTDOWN,
+    [=](Window* parent, coord_t x, coord_t y) {
+      new Choice(
+          parent, rect_t{x, y, COUNTDOWN_W, 0}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT, COUNTDOWN_COUNT - 1,
+          [=]() -> int {
+            int value = p_timer->countdownBeep;
+            if (p_timer->extraHaptic) {
+              value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
+            }
+            return (value);
+          },
+	          [=](int value) {
+	            {
+	              MixerTaskLockGuard lock;
+	              if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
+                p_timer->extraHaptic = 1;
+                p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
+              } else {
+                p_timer->extraHaptic = 0;
+                p_timer->countdownBeep = value;
+              }
+            }
+            SET_DIRTY();
+            TRACE("value=%d\tcountdownBeep = %d\textraHaptic = %d", value,
+                  p_timer->countdownBeep, p_timer->extraHaptic);
+          });
+
+      new Choice(parent, {x + COUNTDOWN_VAL_XO, y + COUNTDOWN_VAL_YO, 0, 0}, STR_COUNTDOWNVALUES, 0, 3,
+                GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
+                SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
+    }, COUNTDOWN_LBL_YO);
+
   // Timer direction
   timerDirLine = setupLine(STR_LIMITS_HEADERS_DIRECTION,
     [=](Window* parent, coord_t x, coord_t y) {
@@ -124,39 +157,6 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
       edit->setEditTitle(STR_ROLLER_MINUTE_BEEP_START);
     });
   minuteBeepStartLine->show(p_timer->minuteBeep);
-
-  // Timer countdown
-  setupLine(STR_BEEPCOUNTDOWN,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new Choice(
-          parent, rect_t{x, y, COUNTDOWN_W, 0}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT, COUNTDOWN_COUNT - 1,
-          [=]() -> int {
-            int value = p_timer->countdownBeep;
-            if (p_timer->extraHaptic) {
-              value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
-            }
-            return (value);
-          },
-	          [=](int value) {
-	            {
-	              MixerTaskLockGuard lock;
-	              if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
-                p_timer->extraHaptic = 1;
-                p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
-              } else {
-                p_timer->extraHaptic = 0;
-                p_timer->countdownBeep = value;
-              }
-            }
-            SET_DIRTY();
-            TRACE("value=%d\tcountdownBeep = %d\textraHaptic = %d", value,
-                  p_timer->countdownBeep, p_timer->extraHaptic);
-          });
-
-      new Choice(parent, {x + COUNTDOWN_VAL_XO, y + COUNTDOWN_VAL_YO, 0, 0}, STR_COUNTDOWNVALUES, 0, 3,
-                GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
-                SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
-    }, COUNTDOWN_LBL_YO);
 
   // Timer persistent
   setupLine(STR_PERSISTENT,
