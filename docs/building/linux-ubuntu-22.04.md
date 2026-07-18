@@ -6,7 +6,7 @@ The document here is meant to help you develop or test changes to EdgeTX on your
 
 - [Setting up the build environment for EdgeTX](#setting-up-the-build-environment-for-edgetx)
 - [Building EdgeTX firmware for the radio](#building-edgetx-firmware-for-the-radio)
-- [Building Companion, Simulator and radio simulator libraries](#building-companion-simulator-and-radio-simulator-libraries)
+- [Building the simulator and radio simulator module](#building-the-simulator-and-radio-simulator-module)
 
 ## Setting up the build environment for EdgeTX
 
@@ -90,16 +90,14 @@ You will need to prepare a clean microSD card and fill it with the content accor
 
 The following page lists which zip file you need: [https://github.com/EdgeTX/edgetx-sdcard](https://github.com/EdgeTX/edgetx-sdcard)
 
-You can use [EdgeTX Buddy](https://buddy.edgetx.org/), [EdgeTX Companion](https://edgetx.org/getedgetx/), or [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the binary to your radio. For further instructions, see:
+You can use [EdgeTX Buddy](https://buddy.edgetx.org/) or [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the binary to your radio. For further instructions, see:
 [https://manual.edgetx.org/installing-and-updating-edgetx/update-from-opentx-to-edgetx-1](https://manual.edgetx.org/installing-and-updating-edgetx/update-from-opentx-to-edgetx-1)
 
-## Building Companion, Simulator and radio simulator libraries
+## Building the simulator and radio simulator module
 
-### After EdgeTX 2.12
-
-You can build firmware, the radio simulator module, Companion and Simulator all in one step:
+You can build the firmware, the native SDL simulator (`simu`) and the radio simulator module (`wasi-module`) in one step:
 ```
-cmake --build build-output --parallel --target firmware --target wasi-module --target companion --target simulator
+cmake --build build-output --parallel --target firmware --target wasi-module --target simu
 ```
 
 This will configure and download extra dependencies as needed. Alternately, if you only want to build the simulator module at this point, you can run
@@ -108,44 +106,22 @@ This will configure and download extra dependencies as needed. Alternately, if y
 cmake --build build-output --parallel --target wasi-module
 ```
 
-The wasm simulator module is built into `build-output/wasm/wasm-build/` but Companion looks for it in `build-output/native/`. Copy it across before launching Companion or Simulator:
-```
-cp build-output/wasm/wasm-build/*.wasm build-output/native/
-```
-
-If you want to build simulator modules for multiple radio targets (so they are all available in Companion), the helper script `tools/build-wasm-modules.sh` can build all supported targets in one go:
+The wasm simulator module is built into `build-output/wasm/wasm-build/`. If you want to build simulator modules for multiple radio targets, the helper script `tools/build-wasm-modules.sh` can build all supported targets in one go:
 ```
 tools/build-wasm-modules.sh . ./wasm-modules/
 ```
-The `.wasm` files are output to `./wasm-modules/`. Copy them to `build-output/native/` before building Companion.
+The `.wasm` files are output to `./wasm-modules/`.
 
-Change into the `native` directory, where `<ver>` is the EdgeTX version as digits (e.g. `212` for 2.12):
+The native simulator is built as the `simu` target:
 ```
-cd build-output/native
-```
-
-To launch Companion:
-```
-./companion<ver>
+cmake --build build-output --parallel --target simu
 ```
 
-Before running the simulator, copy the SD card content for your radio target from [https://github.com/EdgeTX/edgetx-sdcard/releases/tag/latest](https://github.com/EdgeTX/edgetx-sdcard/releases/tag/latest) and extract it e.g. to `~/edgetx/simu_sdcard/horus`. You should also create a radio profile first in Companion before running the simulator.
+Before running the simulator, copy the SD card content for your radio target from [https://github.com/EdgeTX/edgetx-sdcard/releases/tag/latest](https://github.com/EdgeTX/edgetx-sdcard/releases/tag/latest) and extract it e.g. to `~/edgetx/simu_sdcard/horus`.
 
-To launch the simulator:
+To launch the simulator, point it at that SD card content with `--storage`:
 ```
-./simulator<ver>
+./build-output/native/simu --storage ~/edgetx/simu_sdcard/horus
 ```
-In the dialog that pops up, select _SD Path_ as data source and under _SD Image Path:_ browse to `~/edgetx/simu_sdcard/horus`
 
 [![EdgeTX simulator on Linux](../assets/images/build/linux/EdgeTX_simulator_Linux.png)](../assets/images/build/linux/EdgeTX_simulator_Linux.png)
-
-### Legacy: EdgeTX 2.10 to 2.12
-
-From 2.10 onwards, Companion and Simulator only incorporate hardware definitions for radio simulator libraries built before they themselves are built. You need to build a `libsimulator` for each radio target you want to include.
-
-To include additional radio targets, re-run the `cmake --fresh` configure command from above with different `PCB` and `PCBREV` values, then build `libsimulator` again for each **before** building Companion.
-
-Build the radio simulator library for your target, then Companion and Simulator:
-```
-cmake --build build-output --parallel --target libsimulator --target companion --target simulator
-```

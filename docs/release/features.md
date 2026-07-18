@@ -72,5 +72,4 @@ Release assets are intentionally narrow:
 
 - TX16S MK2 firmware only;
 - TX16S MK3 firmware only;
-- Companion artifacts with TX16S MK2/MK3 simulator/WASM support;
 - no unsupported upstream radio firmware artifacts.

@@ -166,7 +166,9 @@ class OutputLineButton : public ListLineButton
   std::array<char, 32> maxText = {};
   std::array<char, 32> offsetText = {};
   std::array<char, 16> centerText = {};
-  char trailingText[40] = {};
+  // Sized to the worst case ("<min>  <max>") so the snprintf that fills it can
+  // never truncate: both operands plus the two-space separator and the NUL.
+  char trailingText[sizeof(minText) + sizeof(maxText) + 3] = {};
   std::unique_ptr<ds::RowContent> dsRow;
   Messaging refreshMsg;
 };

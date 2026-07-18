@@ -76,11 +76,6 @@ if(EdgeTX_SUPERBUILD)
   add_custom_target(configure
     DEPENDS native-configure arm-none-eabi-configure)
 
-  add_custom_target(simulator
-    COMMAND ${CMAKE_COMMAND} --build native --target simulator
-    DEPENDS native-configure
-  )
-
   add_custom_target(simu
     COMMAND ${CMAKE_COMMAND} --build native --target simu
     DEPENDS native-configure
@@ -94,11 +89,6 @@ if(EdgeTX_SUPERBUILD)
       -DEDGETX_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       ${CMAKE_ARGS}
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/wasm
-  )
-
-  add_custom_target(companion
-    COMMAND ${CMAKE_COMMAND} --build native --target companion
-    DEPENDS native-configure
   )
 
   add_custom_target(gtests-radio

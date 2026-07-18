@@ -95,11 +95,6 @@ This is one of the biggest Edge16 differences. EdgeTX already runs on color radi
 - Pi/Serena/compile-check/check presets and safety-review tooling for repeatable firmware verification.
 - Additional static checks for UI escape hatches, repeated-if invariants, safe division, and firmware safety policies.
 
-## Companion and packaging presentation
-
-- Edge16 visible Companion/Simulator names, project links, issue links, and Linux desktop/AppImage labels.
-- Companion support is release-scoped to TX16S MK2/MK3 simulator/WASM modules.
-
 ## Compatibility note
 
-Edge16 v1.0.0-alpha.1 is the public alpha release label. Internal firmware/storage compatibility versioning remains upstream-compatible where it affects settings conversion, Companion capabilities, or YAML storage semantics. Do not change storage semver solely to match the public Edge16 tag without auditing conversion paths.
+Edge16 v1.0.0-alpha.1 is the public alpha release label. Internal firmware/storage compatibility versioning remains upstream-compatible where it affects settings conversion or YAML storage semantics. Do not change storage semver solely to match the public Edge16 tag without auditing conversion paths.

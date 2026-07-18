@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "form.h"
+#include "mru_list.h"
 
 class Menu;
 
@@ -129,6 +130,12 @@ class Choice : public ChoiceBase
     isValueAvailable = std::move(handler);
   }
 
+  // Opt-in most-recently-used boost: when set, the chosen values held in the
+  // list are pinned (visually separated) at the top of the dropdown, and every
+  // user selection is recorded into it. Off by default, so ordering of all
+  // other Choices is unchanged.
+  void setRecentList(MRUList* list) { recentList = list; }
+
   unsigned getIndexFromValue(int value) const
   {
     if (!isValueAvailable) {
@@ -179,6 +186,7 @@ class Choice : public ChoiceBase
   std::vector<std::string> values;
 	  std::function<bool(int)> isValueAvailable;
 	  std::function<void(Menu *, int, int &)> fillMenuHandler;
+	  MRUList* recentList = nullptr;
 	  Menu* activeMenu = nullptr;
 	  std::shared_ptr<bool> lifetimeToken = std::make_shared<bool>(true);
 

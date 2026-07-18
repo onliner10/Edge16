@@ -21,6 +21,7 @@
 
 #include "special_functions.h"
 
+#include "choice.h"
 #include "filechoice.h"
 #include "getset_helpers.h"
 #include "hal/adc_driver.h"
@@ -740,6 +741,10 @@ void FunctionEditPage::buildBody(Window* form)
   functionChoice->setAvailableHandler([=](int value) {
     return isAssignableFunctionAvailable(cfn_sorted[value]);
   });
+  // Boost the last few chosen functions to the top of this long (~30-entry)
+  // alphabetical dropdown. Radio-global, session-only (see MRUList).
+  static MRUList sfFunctionRecent;
+  functionChoice->setRecentList(&sfFunctionRecent);
 
   specialFunctionOneWindow = new Window(form, rect_t{});
   updateSpecialFunctionOneWindow();

@@ -16,7 +16,7 @@ This page discusses how to setup and use [Qt Creator](https://wiki.qt.io/QtCreat
 
 [![Qt Creator code completion](../assets/images/build/qtcreator/QtCodeCompletion.png)](../assets/images/build/qtcreator/QtCodeCompletion.png)
 
-With [Qt Creator](https://wiki.qt.io/QtCreatorWhitepaper), you not only have a graphical option to build EdgeTX radio firmware, Companion and Simulator software, but also very comfortable way to edit the code and even more importantly to debug it. If you hook up to your radio's [Serial-Wire-Debug (SWD)](https://stm32-base.org/guides/connecting-your-debugger.html) header of the mainboard a hardware debugger, it is possible to perform in-circuit-debugging of code running on the radios STM32 microcontroller. Some examples of hardware debuggers that can be used are, e.g. [Segger J-Link](https://www.segger.com/products/debug-probes/j-link/) (incl. the [Mini EDU](https://www.segger.com/products/debug-probes/j-link/models/j-link-edu-mini/)) and [ST-Link/V2](https://www.st.com/en/development-tools/st-link-v2.html). With in-circuit-debugging, you are able to step through the code and do live variable inspection, which makes validating low level code much easier. For debugging high-level code, it is easier to use the radio firmware simulation library, running on your PC, not requiring a physical radio hardware hookup. Even if you might not be driven by the desire to change the existing EdgeTX codebase, running code in a debug session will provide you an in-depth insight into variables passed between the functions and can in general give a clearer view of how the EdgeTX runs under the hood.
+With [Qt Creator](https://wiki.qt.io/QtCreatorWhitepaper), you not only have a graphical option to build EdgeTX radio firmware, but also very comfortable way to edit the code and even more importantly to debug it. If you hook up to your radio's [Serial-Wire-Debug (SWD)](https://stm32-base.org/guides/connecting-your-debugger.html) header of the mainboard a hardware debugger, it is possible to perform in-circuit-debugging of code running on the radios STM32 microcontroller. Some examples of hardware debuggers that can be used are, e.g. [Segger J-Link](https://www.segger.com/products/debug-probes/j-link/) (incl. the [Mini EDU](https://www.segger.com/products/debug-probes/j-link/models/j-link-edu-mini/)) and [ST-Link/V2](https://www.st.com/en/development-tools/st-link-v2.html). With in-circuit-debugging, you are able to step through the code and do live variable inspection, which makes validating low level code much easier. For debugging high-level code, it is easier to use the radio firmware simulation library, running on your PC, not requiring a physical radio hardware hookup. Even if you might not be driven by the desire to change the existing EdgeTX codebase, running code in a debug session will provide you an in-depth insight into variables passed between the functions and can in general give a clearer view of how the EdgeTX runs under the hood.
 
 If you followed the previous build instruction guides (irrespective if for Windows 10 or Ubuntu Linux 20.04), Qt Creator IDE is already installed on your system.
 The guide below uses screenshots from Windows, but provides info for correct paths in text for Ubuntu Linux as well.
@@ -110,24 +110,22 @@ This concludes setting up Qt Creator for EdgeTX.
 
 In the following, we assume that you followed the instructions setting up the build environment and building EdgeTX firmware (for Windows 10 or for Ubuntu 20.04) and have created a dedicated EdgeTX folder (`C:\edgetx` for Windows or `~/edgetx` for Linux) and downloaded or git cloned EdgeTX source under this dedicated folder.
 
-For the sake of clarity, we will create two new folders to put the output of our Qt build. Create two new empty folders:
+For the sake of clarity, we will create a new folder to put the output of our Qt build. Create a new empty folder:
 
- * Windows: `C:\edgetx\build-edgetx-qt-fw` and `C:\edgetx\build-edgetx-qt-comp_sim_libsim`
- * Linux: `~/edgetx/edgetx-v2.4/build-qt-fw` and `~/edgetx/edgetx-v2.4/build-qt-comp_sim_libsim`
+ * Windows: `C:\edgetx\build-edgetx-qt-fw`
+ * Linux: `~/edgetx/edgetx-v2.4/build-qt-fw`
 
 Back in Qt Creator, let's import next the EdgeTX source files into a project. From Qt Creator menu, choose _File_ -> _Open File or Project..._. Open:
 
  * Windows: `C:\edgetx\edgetx24\CMakeLists.txt`
  * Linux: `~/edgetx/edgetx-v2.4/CMakeLists.txt`
 
-Next we need to pick the kits for building. If not already automatically selected, pick _STM32_ that is required for building firmware for ARM architecture. Presently, only under Ubuntu, you can also select _Desktop_ to build Companion, Simulator and radio firmware simulator libraries. If there show up any _Imported Kits_, deselect them (typically only happens if you do not open the project for the first time).
+Next we need to pick the kits for building. If not already automatically selected, pick _STM32_ that is required for building firmware for ARM architecture. If there show up any _Imported Kits_, deselect them (typically only happens if you do not open the project for the first time).
 
 Click _Details_ behind _STM32_ to unfold a build type selection dialog. As we are presently only interested in debugging, leave it selected, but you can deselect all other three options (_Release_, _Release with Debug Information_ and _Minimum Size Release_). Click _Browse..._ behind _Debug_ and open the following folder as build output location:
 
  * Windows: `C:\edgetx\build-edgetx-qt-fw`
  * Linux: `~/edgetx/edgetx-v2.4/build-qt-fw`
-
-If you opted for building also Companion, Simulator and radio firmware simulator libraries under Ubuntu, click _Details_ behind _Desktop_ and also here, leave only _Debug_ selected. Click _Browse..._ and provide `~/edgetx/edgetx-v2.4/build-qt-comp_sim_libsim` as build target location.
 
 [![Qt Creator Project Kit Selection](../assets/images/build/qtcreator/QtCreatorProjectKitSelection.png)](../assets/images/build/qtcreator/QtCreatorProjectKitSelection.png)
 
@@ -182,8 +180,4 @@ To edit the source of EdgeTX, click in Mode Selector _Edit_. Unfold _OpenTX [2.4
 
 For deeper instructions into Qt Creator, please see [Qt Creator Manual](https://doc.qt.io/qtcreator/).
 
- * You can find the code for radio firmware and libsimulator under `radio/src/firmware/Source Files` (main entry point is in `opentx.cpp`).
- * Companion software is under `companion/src/companion/Source Files` (main entry point is in `companion.cpp`)
- * Simulator source code you find under `companion/src/simulator/Source Files` (main entry point is in `simulator.cpp`)
-
-Please note that Companion, Simulator and libsimulator should be built using the _Desktop kit_ and not _STM32 kit_, as these will run on x86/x64 and not on ARM! Currently building radio simulator library does not yet work under Windows!
+ * You can find the code for radio firmware under `radio/src/firmware/Source Files` (main entry point is in `opentx.cpp`).

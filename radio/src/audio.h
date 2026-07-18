@@ -516,6 +516,7 @@ void audioTimerCountdown(uint8_t timer, int value);
 #define AUDIO_WARNING1()         audioEvent(AU_WARNING1)
 #define AUDIO_WARNING2()         audioEvent(AU_WARNING2)
 #define AUDIO_TX_BATTERY_LOW()   audioEvent(AU_TX_BATTERY_LOW)
+#define AUDIO_TX_BATTERY_CRITICAL() audioEvent(AU_TX_BATTERY_CRITICAL)
 #define AUDIO_ERROR()            audioEvent(AU_ERROR)
 #define AUDIO_TIMER_COUNTDOWN(idx, val) audioTimerCountdown(idx, val)
 #define AUDIO_TIMER_ELAPSED(idx) audioEvent(AU_TIMER1_ELAPSED+idx)

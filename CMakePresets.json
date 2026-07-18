@@ -15,19 +15,6 @@
       }
     },
     {
-      "name": "companion",
-      "displayName": "Companion",
-      "binaryDir": "build/companion",
-      "toolchainFile": "cmake/toolchain/native.cmake",
-      "cacheVariables": {
-        "EdgeTX_SUPERBUILD": false,
-        "NATIVE_BUILD": true
-      },
-      "warnings": {
-        "dev": false
-      }
-    },
-    {
       "name": "simu",
       "displayName": "SDL Simu",
       "binaryDir": "build/simu",
@@ -48,7 +35,7 @@
       "cacheVariables": {
         "EdgeTX_SUPERBUILD": false,
         "NATIVE_BUILD": true,
-        "DISABLE_COMPANION": true,
+        "SIMU_EXECUTABLE": false,
         "PCB": "X10",
         "PCBREV": "TX16S",
         "CMAKE_BUILD_TYPE": "Debug",
@@ -67,7 +54,7 @@
       "cacheVariables": {
         "EdgeTX_SUPERBUILD": false,
         "NATIVE_BUILD": true,
-        "DISABLE_COMPANION": true,
+        "SIMU_EXECUTABLE": false,
         "PCB": "X10",
         "PCBREV": "TX16S",
         "CMAKE_BUILD_TYPE": "Debug",
@@ -86,7 +73,7 @@
       "cacheVariables": {
         "EdgeTX_SUPERBUILD": false,
         "NATIVE_BUILD": true,
-        "DISABLE_COMPANION": true,
+        "SIMU_EXECUTABLE": false,
         "PCB": "X10",
         "PCBREV": "TX16S",
         "CMAKE_BUILD_TYPE": "Debug",
@@ -107,7 +94,7 @@
       "cacheVariables": {
         "EdgeTX_SUPERBUILD": false,
         "NATIVE_BUILD": true,
-        "DISABLE_COMPANION": true,
+        "SIMU_EXECUTABLE": false,
         "PCB": "X10",
         "PCBREV": "TX16S",
         "CMAKE_BUILD_TYPE": "Debug",
@@ -127,14 +114,6 @@
       "configurePreset": "firmware",
       "targets": [
         "firmware"
-      ]
-    },
-    {
-      "name": "companion",
-      "displayName": "Companion",
-      "configurePreset": "companion",
-      "targets": [
-        "companion"
       ]
     },
     {

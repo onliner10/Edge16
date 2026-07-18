@@ -20,10 +20,9 @@ body:
     id: component-affected
     attributes:
       label: What part of Edge16 is the focus of this bug?
-      description: Is it the radio firmware, companion software or something else?
+      description: Is it the radio firmware, the simulator or something else?
       options:
         - Transmitter firmware
-        - Companion
         - Simulator
         - Build system
         - Other (Please specify below)
@@ -81,7 +80,7 @@ body:
     id: os-type
     attributes:
       label: "Operating System (OS)"
-      description: "If this relates to Companion or Simulator, what OSes are you are experiencing issues on?"
+      description: "If this relates to the Simulator, what OSes are you are experiencing issues on?"
       multiple: true
       options:
         - Linux
@@ -93,7 +92,7 @@ body:
     id: os-version
     attributes:
       label: "OS Version"
-      description: "If this relates to Companion or Simulator, what OS version does this relate to?"
+      description: "If this relates to the Simulator, what OS version does this relate to?"
       placeholder: "i.e. 10, Ubuntu 20.04, Big Sur"
     validations:
       required: false

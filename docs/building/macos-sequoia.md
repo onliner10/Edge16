@@ -9,22 +9,6 @@
 !!! tip
     Installing Brew via the command above will automatically install the [Xcode Command Line Tools](https://mac.install.guide/commandlinetools/). If for some reason you need to do this manually, run `xcode-select —install` via the Terminal app.
 
-# Install Qt 6
-!!! note
-    If you only intend on building the firmware, and not `simu`, `companion` or `simulator`, this is not necessary, and you can skip to the next step.
-
-```
-brew install qt@6
-```
-
-Once Qt has been installed, you should set a couple environment variables (please modify according to the real installation paths):
-```
-export QTDIR=$(brew --prefix)/opt/qt@6
-export QT_PLUGIN_PATH=$QTDIR/plugins
-```
-
-Please note that `QT_PLUGIN_PATH` is required to be able to run Companion from your build directory without having to build a `DMG` package first.
-
 # Install ARM toolchain
 
 Download and install the ARM GCC toolchain [from here](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) (installs in `/Applications/ArmGNUToolchain/`):
@@ -88,14 +72,12 @@ mkdir -p build && cd build
 Configure build flags using `cmake` (in this case, for RadioMaster TX16S, [see here](https://github.com/EdgeTX/edgetx/blob/main/tools/build-common.sh) for other possible handset specific flags).
 ```
 uv run cmake -DPCB=X10 -DPCBREV=TX16S \
-   -DCMAKE_PREFIX_PATH=$QTDIR \
    -DARM_TOOLCHAIN_DIR=/Applications/ArmGNUToolchain/14.2.Rel1/arm-none-eabi/bin/ ..
 ```
 
 !!! note
-    Please note that the variables `CMAKE_PREFIX_PATH`, `ARM_TOOLCHAIN_DIR` must be specified additionally to what is described in the other compilation HowTos:
+    Please note that the variable `ARM_TOOLCHAIN_DIR` must be specified additionally to what is described in the other compilation HowTos:
 
-    - `CMAKE_PREFIX_PATH`: this must point to your Qt installation path.
     - `ARM_TOOLCHAIN_DIR`: this must point to where ARM GCC has been installed (and MUST contain `/` at the end).
 
 Configure the compiler for firmware building (parallel limits the number of CPU cores used - you can increase this if your machine can handle more):
@@ -107,55 +89,3 @@ Build the firmware!
 ```
 uv run cmake --build . --target firmware
 ```
-
-# Troubleshooting
-
-## Notes on compiling simulator plug-ins
-
-When compiling simulator plug-ins (using `cmake --build . --target libsimulator` with the target properly configured), the product of this compilation will be a `.dylib` stored in your build directory. If you want the Companion or Simulator apps to be able to use it, you will need to copy it manually into the respective directories. Here is how it should look with a couple of plug-ins copied:
-
-```
-% ls -l companion.app/Contents/MacOS/
-total 411976
--rwxr-xr-x  1 etx  staff  27908864 Jan  7 11:48 companion
--rwxr-xr-x  1 etx  staff  57089384 Jan  7 11:22 libedgetx-nv14-simulator.dylib
--rwxr-xr-x  1 etx  staff  61167768 Jan  7 08:44 libedgetx-tx16s-simulator.dylib
--rwxr-xr-x  1 etx  staff  60327272 Jan  5 12:48 libedgetx-x10express-simulator.dylib
--rwxr-xr-x  1 etx  staff   1849768 Dec 26 08:56 libedgetx-x9d+-simulator.dylib
--rwxr-xr-x  1 etx  staff   1881224 Dec 31 16:44 libedgetx-zorro-simulator.dylib
-
-% ls -l simulator.app/Contents/MacOS/
-total 392616
--rwxr-xr-x  1 etx  staff  57089384 Jan  7 11:22 libedgetx-nv14-simulator.dylib
--rwxr-xr-x  1 etx  staff  61168056 Jan  5 11:52 libedgetx-tx16s-simulator.dylib
--rwxr-xr-x  1 etx  staff  60327272 Jan  5 12:34 libedgetx-x10express-simulator.dylib
--rwxr-xr-x  1 etx  staff  21732144 Jan  7 11:48 simulator
-```
-
-## Notes on possible error while trying to run build-companion.sh
-
-If you encounter this error:
-```
-CPack: - Install project: EdgeTX []
-CMake Error at /opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Modules/BundleUtilities.cmake:458 (message):
-  otool -l failed: 1
-
-  error:
-  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/otool-classic:
-  can't open file: @rpath/libsharpyuv.0.dylib (No such file or directory)
-
-Call Stack (most recent call first):
-  /opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Modules/BundleUtilities.cmake:527 (get_item_rpaths)
-  /opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Modules/BundleUtilities.cmake:614 (set_bundle_key_values)
-  /opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Modules/BundleUtilities.cmake:933 (get_bundle_keys)
-  /Users/jean-christophedreyfus/Documents/edgetx/build/native/companion/src/cmake_install.cmake:180 (fixup_bundle)
-  /Users/jean-christophedreyfus/Documents/edgetx/build/native/cmake_install.cmake:43 (include)
-
-
-CPack Error: Error when generating package: companion
-make: *** [package] Error 1
-```
-
-It can be fixed by entering the following command at terminal:
-
-`install_name_tool -change "@rpath/libsharpyuv.0.dylib" "$(brew --prefix)/lib/libsharpyuv.0.dylib" "$(brew --prefix)/lib/libwebp.7.dylib" && codesign --force -s - "$(brew --prefix)/lib/libwebp.7.dylib"`

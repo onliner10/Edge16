@@ -114,7 +114,6 @@ jobs:
           WORKFLOW_RUNS=$(gh run list --commit "$COMMIT_SHA" --status success --limit 100 --json workflowName,databaseId,createdAt --jq '
             map(select(
               .workflowName == "TX16S MK2/MK3 Firmware CI" or
-              .workflowName == "TX16S MK2/MK3 Companion" or
               .workflowName == "Publish TX16S MK2/MK3 Firmware Release"
             ))
             | group_by(.workflowName)
@@ -181,7 +180,7 @@ jobs:
           prerelease: ${{ contains(inputs.tag, '-rc') || contains(inputs.tag, '-beta') || contains(inputs.tag, '-alpha') }}
           name: Edge16 "${{ steps.version.outputs.codename }}" ${{ steps.version.outputs.version }}
           body: |
-            Edge16 "${{ steps.version.outputs.codename }}" ${{ steps.version.outputs.version }} is firmware and Companion support for RadioMaster TX16S MK2 and RadioMaster TX16S MK3 only.
+            Edge16 "${{ steps.version.outputs.codename }}" ${{ steps.version.outputs.version }} is firmware for RadioMaster TX16S MK2 and RadioMaster TX16S MK3 only.
 
             Docs: https://onliner10.github.io/Edge16/
             See the docs for the full Edge16-vs-EdgeTX delta.
@@ -196,9 +195,6 @@ jobs:
 
             > [!WARNING]
             > TX16S MK3 is an STM32H7 radio and updates differently from TX16S MK2. Use the firmware file that matches your exact radio.
-
-            > [!NOTE]
-            > Companion artifacts are built only with TX16S MK2/MK3 WASM modules.
 
             ## Changes
 

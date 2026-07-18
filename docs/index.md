@@ -19,7 +19,7 @@ Read [Edge16 v1.0.0-alpha.1 features](release/features.md) before testing or ann
 ## What's in this documentation
 
 - **Release** — public feature summary, Edge16-vs-EdgeTX differences, and pilot safety notes.
-- **Building Edge16** — build instructions and CMake options for TX16S MK2/MK3 firmware and Companion.
+- **Building Edge16** — build instructions and CMake options for TX16S MK2/MK3 firmware and the simulator.
 - **Hardware Reference** — TX16S-focused hardware and IRQ/DMA reference.
 - **Troubleshooting** — recovery notes for failed flashes.
 

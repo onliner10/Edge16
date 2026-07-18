@@ -306,9 +306,21 @@ void checkStorageUpdate()
 void checkBatteryAlarms()
 {
   // TRACE("checkBatteryAlarms()");
-  if (IS_TXBATT_WARNING()) {
-    AUDIO_TX_BATTERY_LOW();
-    // TRACE("checkBatteryAlarms(): battery low");
+  // Critical takes precedence over warning so the two never sound together and
+  // the RED widget state is never silent. Both alerts also drive haptic via the
+  // shared audioEvent()/haptic.event() path (events <= AU_ERROR) on radios that
+  // have a vibrator. Runs on the existing 10s cadence, so it cannot spam.
+  switch (getTxBatteryAlarm()) {
+    case TXBATT_ALARM_CRITICAL:
+      AUDIO_TX_BATTERY_CRITICAL();
+      // TRACE("checkBatteryAlarms(): battery critical");
+      break;
+    case TXBATT_ALARM_WARNING:
+      AUDIO_TX_BATTERY_LOW();
+      // TRACE("checkBatteryAlarms(): battery low");
+      break;
+    default:
+      break;
   }
 }
 

@@ -96,6 +96,37 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
     timerValue->setAccelFactor(16);
   });
 
+  // Timer countdown — mode + value pair share the one control slot.
+  // Placed directly under Start so Mode/Start/Countdown are visible together.
+  new ds::FormRow(form, STR_BEEPCOUNTDOWN, [=](Window* slot) {
+    auto* group = new Window(slot, rect_t{});
+    group->setFlexLayout(LV_FLEX_FLOW_ROW);
+    new Choice(
+        group, rect_t{}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT,
+        COUNTDOWN_COUNT - 1,
+        [=]() -> int {
+          int value = p_timer->countdownBeep;
+          if (p_timer->extraHaptic) value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
+          return value;
+        },
+        [=](int value) {
+          {
+            MixerTaskLockGuard lock;
+            if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
+              p_timer->extraHaptic = 1;
+              p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
+            } else {
+              p_timer->extraHaptic = 0;
+              p_timer->countdownBeep = value;
+            }
+          }
+          SET_DIRTY();
+        });
+    new Choice(group, rect_t{}, STR_COUNTDOWNVALUES, 0, 3,
+               GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
+               SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
+  });
+
   // Timer direction
   timerDirLine = new ds::FormRow(form, STR_LIMITS_HEADERS_DIRECTION,
     [=](Window* slot) {
@@ -129,36 +160,6 @@ TimerWindow::TimerWindow(uint8_t timer, Route route) :
       edit->setEditTitle(STR_ROLLER_MINUTE_BEEP_START);
     });
   minuteBeepStartLine->show(p_timer->minuteBeep);
-
-  // Timer countdown — mode + value pair share the one control slot.
-  new ds::FormRow(form, STR_BEEPCOUNTDOWN, [=](Window* slot) {
-    auto* group = new Window(slot, rect_t{});
-    group->setFlexLayout(LV_FLEX_FLOW_ROW);
-    new Choice(
-        group, rect_t{}, STR_VBEEPCOUNTDOWN, COUNTDOWN_SILENT,
-        COUNTDOWN_COUNT - 1,
-        [=]() -> int {
-          int value = p_timer->countdownBeep;
-          if (p_timer->extraHaptic) value += (COUNTDOWN_NON_HAPTIC_LAST + 1);
-          return value;
-        },
-        [=](int value) {
-          {
-            MixerTaskLockGuard lock;
-            if (value > COUNTDOWN_NON_HAPTIC_LAST + 1) {
-              p_timer->extraHaptic = 1;
-              p_timer->countdownBeep = value - (COUNTDOWN_NON_HAPTIC_LAST + 1);
-            } else {
-              p_timer->extraHaptic = 0;
-              p_timer->countdownBeep = value;
-            }
-          }
-          SET_DIRTY();
-        });
-    new Choice(group, rect_t{}, STR_COUNTDOWNVALUES, 0, 3,
-               GET_VALUE_WITH_OFFSET(p_timer->countdownStart, 2),
-               SET_TIMER_WITH_OFFSET(p_timer->countdownStart, 2));
-  });
 
   // Timer persistent
   new ds::FormRow(form, STR_PERSISTENT, [=](Window* slot) {

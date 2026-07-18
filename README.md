@@ -22,7 +22,7 @@ Edge16 is a RadioMaster TX16S MK2/MK3-only fork of EdgeTX. Goal: polished color-
 - **Battery monitor and guard** — define LiPo packs, match packs by telemetry voltage/cell count, confirm pack choice at startup/replug, track consumed capacity, alert on runtime limits, and block arming until battery state is confirmed when configured.
 - **TX16S-focused UI refresh** — dashboard-style home screen, larger touch targets, clearer state indicators, settings search/filter, single-tier quick navigation, swipe gestures, and cleaner model cards.
 - **Smoother, more modern screen feel** — Edge16 upgrades the color-screen engine to LVGL 9.5 and changes how drawing work is scheduled, so menus, widgets, and touch interaction feel more fluid on TX16S.
-- **TX16S-only release assets** — release zips contain firmware for TX16S MK2/MK3 only plus matching Companion support.
+- **TX16S-only release assets** — release zips contain firmware for TX16S MK2/MK3 only.
 
 See [Edge16 v1.0.0-alpha.1 features](docs/release/features.md) for details and safety notes, and [How Edge16 differs from EdgeTX](docs/release/edge16-vs-edgetx.md) for the broader delta.
 
@@ -52,6 +52,6 @@ Supported flavors:
 
 ## Upstream and acknowledgements
 
-Edge16 is forked from [EdgeTX](https://github.com/EdgeTX/edgetx). Many firmware, Companion, Lua, SD-card, and documentation components originate from EdgeTX and OpenTX contributors.
+Edge16 is forked from [EdgeTX](https://github.com/EdgeTX/edgetx). Many firmware, Lua, SD-card, and documentation components originate from EdgeTX and OpenTX contributors.
 
 Some icon assets provided by [ICONS8](https://icons8.com). Lua documentation site powered with support from [GitBook](https://www.gitbook.com).
