@@ -193,7 +193,6 @@ def configure_command(target: str) -> list[str]:
         "-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/native.cmake",
         "-DEdgeTX_SUPERBUILD=OFF",
         "-DNATIVE_BUILD=ON",
-        "-DDISABLE_COMPANION=ON",
         "-DSIMU_EXECUTABLE=ON",
         "-DEDGE_TX_BUILD_TESTS=OFF",
         f"-DPython3_EXECUTABLE={python_exec}",
