@@ -25,6 +25,7 @@
 
 #include "choice.h"
 #include "dialog.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "hal/adc_driver.h"
@@ -393,34 +394,37 @@ const static SetupLineDef hapticPageSetupLines[] = {
 };
 #endif
 
-const static SetupLineDef alarmsPageSetupLines[] = {
+class RadioAlarmsPage : public SubPage
+{
+ public:
+  RadioAlarmsPage(Route route) :
+      SubPage(ICON_RADIO_SETUP, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_ALARMS_LABEL)
   {
+    body->setFlexLayout();
+    auto* list = new ds::List(body);
+    auto* form = new ds::Card(list);
+
     // Battery warning
-    STR_DEF(STR_BATTERYWARNING),
-    [](Window* parent, coord_t x, coord_t y) {
-      auto edit = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
+    new ds::FormRow(form, STR_BATTERYWARNING, [](Window* slot) {
+      auto edit = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
                                 GET_SET_DEFAULT(g_eeGeneral.vBatWarn), PREC1);
       edit->setSuffix("V");
       edit->setDirectKeyboard(false);
       edit->setEditTitle(STR_ROLLER_BATTERY_WARNING);
-    }
-  },
-  {
+    });
+
     // Battery critical (state-aware TX battery widget escalates to Critical here)
-    STR_DEF(STR_BATTERYCRITICAL),
-    [](Window* parent, coord_t x, coord_t y) {
-      auto edit = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
+    new ds::FormRow(form, STR_BATTERYCRITICAL, [](Window* slot) {
+      auto edit = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
                                 GET_SET_DEFAULT(g_eeGeneral.vBatCrit), PREC1);
       edit->setSuffix("V");
       edit->setDirectKeyboard(false);
       edit->setEditTitle(STR_ROLLER_BATTERY_CRITICAL);
-    }
-  },
-  {
+    });
+
     // Inactivity alarm
-    STR_DEF(STR_INACTIVITYALARM),
-    [](Window* parent, coord_t x, coord_t y) {
-      auto edit = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW * 3 / 2, 0}, 0, 250,
+    new ds::FormRow(form, STR_INACTIVITYALARM, [](Window* slot) {
+      auto edit = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW * 3 / 2, 0}, 0, 250,
                                  GET_SET_DEFAULT(g_eeGeneral.inactivityTimer));
 
       edit->setDisplayHandler([=](int value) -> std::string {
@@ -446,33 +450,26 @@ const static SetupLineDef alarmsPageSetupLines[] = {
         return formatNumberAsString(value, 0, 0, nullptr, suffix.c_str());
       });
       edit->setEditTitle(STR_ROLLER_INACTIVITY_TIMER);
-    }
-  },
-  {
+    });
+
     // Alarms warning
-    STR_DEF(STR_ALARMWARNING),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
+    new ds::FormRow(form, STR_ALARMWARNING, [](Window* slot) {
+      new ToggleSwitch(slot, rect_t{},
                        GET_SET_INVERTED(g_eeGeneral.disableAlarmWarning));
-    }
-  },
-  {
+    });
+
     // RSSI shutdown alarm
-    STR_DEF(STR_RSSI_SHUTDOWN_ALARM),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
+    new ds::FormRow(form, STR_RSSI_SHUTDOWN_ALARM, [](Window* slot) {
+      new ToggleSwitch(slot, rect_t{},
                        GET_SET_INVERTED(g_eeGeneral.disableRssiPoweroffAlarm));
-    }
-  },
-  {
+    });
+
     // Trainer shutdown alarm
-    STR_DEF(STR_TRAINER_SHUTDOWN_ALARM),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
+    new ds::FormRow(form, STR_TRAINER_SHUTDOWN_ALARM, [](Window* slot) {
+      new ToggleSwitch(slot, rect_t{},
                        GET_SET_INVERTED(g_eeGeneral.disableTrainerPoweroffAlarm));
-    }
-  },
-  {nullptr, nullptr},
+    });
+  }
 };
 
 class BacklightSlider : public Slider
@@ -600,12 +597,23 @@ const static SetupLineDef backlightSetupLines[] = {
   {nullptr, nullptr},
 };
 
-const static SetupLineDef gpsPageSetupLines[] = {
+// DESIGN SYSTEM (see DESIGN_SYSTEM.md): the pure label/control settings
+// sub-pages are stacks of ds::FormRow (label 40% / control 60%, 40 px min,
+// vertically centered) grouped in a ds::Card. The DS owns the split and
+// spacing; the caller only builds the control into the slot.
+class RadioGpsPage : public SubPage
+{
+ public:
+  RadioGpsPage(Route route) :
+      SubPage(ICON_RADIO_SETUP, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_GPS)
   {
+    body->setFlexLayout();
+    auto* list = new ds::List(body);
+    auto* form = new ds::Card(list);
+
     // Timezone
-    STR_DEF(STR_TIMEZONE),
-    [](Window* parent, coord_t x, coord_t y) {
-      auto tz = new NumberEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, minTimezone(), maxTimezone(),
+    new ds::FormRow(form, STR_TIMEZONE, [](Window* slot) {
+      auto tz = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, minTimezone(), maxTimezone(),
                               []() {
                                 return timezoneIndex(g_eeGeneral.timezone, g_eeGeneral.timezoneMinutes);
                               },
@@ -618,24 +626,19 @@ const static SetupLineDef gpsPageSetupLines[] = {
       tz->setDisplayHandler([](int32_t tz) { return timezoneDisplay(tz); });
       tz->setDirectKeyboard(false);
       tz->setEditTitle(STR_ROLLER_TIMEZONE);
-    }
-  },
-  {
+    });
+
     // Adjust RTC (from telemetry)
-    STR_DEF(STR_ADJUST_RTC),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0}, GET_SET_DEFAULT(g_eeGeneral.adjustRTC));
-    }
-  },
-  {
+    new ds::FormRow(form, STR_ADJUST_RTC, [](Window* slot) {
+      new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(g_eeGeneral.adjustRTC));
+    });
+
     // GPS format
-    STR_DEF(STR_GPS_COORDS_FORMAT),
-    [](Window* parent, coord_t x, coord_t y) {
-      new Choice(parent, {x, y, 0, 0}, STR_GPSFORMAT, 0, 1,
+    new ds::FormRow(form, STR_GPS_COORDS_FORMAT, [](Window* slot) {
+      new Choice(slot, rect_t{}, STR_GPSFORMAT, 0, 1,
                  GET_SET_DEFAULT(g_eeGeneral.gpsFormat));
-    }
-  },
-  {nullptr, nullptr},
+    });
+  }
 };
 
 static void viewOption(Window* parent, coord_t x, coord_t y,
@@ -757,51 +760,64 @@ const static SetupLineDef viewOptionsPageSetupLines[] = {
   {nullptr, nullptr},
 };
 
-const static SetupLineDef manageModelsSetupLines[] = {
+// Conditional-visibility rows (Label matching / Favorites matching) are driven
+// directly from the controlling Choice's setter via member FormRow pointers
+// (as timer_setup does with its dependent line), preserving the exact
+// show/hide behaviour without per-row Messaging plumbing. The pointers are
+// members so the setters (invoked long after construction) never dangle.
+class RadioManageModelsPage : public SubPage
+{
+ public:
+  RadioManageModelsPage(Route route) :
+      SubPage(ICON_RADIO_SETUP, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_MAIN_MENU_MANAGE_MODELS)
   {
+    body->setFlexLayout();
+    auto* list = new ds::List(body);
+    auto* form = new ds::Card(list);
+
     // Label single/multi select
-    STR_DEF(STR_LABELS_SELECT),
-    [](Window* parent, coord_t x, coord_t y) {
-      new Choice(parent, {x, y, 0, 0}, STR_LABELS_SELECT_MODE, 0, 1,
+    new ds::FormRow(form, STR_LABELS_SELECT, [this](Window* slot) {
+      new Choice(slot, rect_t{}, STR_LABELS_SELECT_MODE, 0, 1,
                 GET_DEFAULT(g_eeGeneral.labelSingleSelect),
-                [=](int newValue) {
+                [this](int newValue) {
                   g_eeGeneral.labelSingleSelect = newValue;
                   modelslabels.clearFilter();
-                  Messaging::send(Messaging::REFRESH);
+                  updateDependentRows();
                   SET_DIRTY();
                 });
-    }
-  },
-  {
+    });
+
     // Label multi select matching mode
-    STR_DEF(STR_LABELS_MATCH),
-    [](SetupLine* parent, coord_t x, coord_t y) {
-      parent->setupMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) {
-        parent->show(!g_eeGeneral.labelSingleSelect);
-      });
-      new Choice(parent, {x, y, 0, 0}, STR_LABELS_MATCH_MODE, 0, 1,
+    labelMatchRow = new ds::FormRow(form, STR_LABELS_MATCH, [this](Window* slot) {
+      new Choice(slot, rect_t{}, STR_LABELS_MATCH_MODE, 0, 1,
                 GET_DEFAULT(g_eeGeneral.labelMultiMode),
-                [=](int newValue) {
+                [this](int newValue) {
                   g_eeGeneral.labelMultiMode = newValue;
-                  Messaging::send(Messaging::REFRESH);
+                  updateDependentRows();
                   SET_DIRTY();
                 });
-      parent->show(!g_eeGeneral.labelSingleSelect);
-    }
-  },
-  {
+    });
+
     // Favorites multi select matching mode
-    STR_DEF(STR_FAV_MATCH),
-    [](SetupLine* parent, coord_t x, coord_t y) {
-      parent->setupMsg.subscribe(Messaging::REFRESH, [=](uint32_t param) {
-        parent->show(!g_eeGeneral.labelSingleSelect && (g_eeGeneral.labelMultiMode != 0));
-      });
-      new Choice(parent, {x, y, 0, 0}, STR_FAV_MATCH_MODE, 0, 1,
+    favMatchRow = new ds::FormRow(form, STR_FAV_MATCH, [](Window* slot) {
+      new Choice(slot, rect_t{}, STR_FAV_MATCH_MODE, 0, 1,
                 GET_SET_DEFAULT(g_eeGeneral.favMultiMode));
-      parent->show(!g_eeGeneral.labelSingleSelect && (g_eeGeneral.labelMultiMode != 0));
-    }
-  },
-  {nullptr, nullptr},
+    });
+
+    updateDependentRows();
+  }
+
+ private:
+  ds::FormRow* labelMatchRow = nullptr;
+  ds::FormRow* favMatchRow = nullptr;
+
+  void updateDependentRows()
+  {
+    if (labelMatchRow) labelMatchRow->show(!g_eeGeneral.labelSingleSelect);
+    if (favMatchRow)
+      favMatchRow->show(!g_eeGeneral.labelSingleSelect &&
+                        (g_eeGeneral.labelMultiMode != 0));
+  }
 };
 
 const static SetupLineDef setupLines[] = {
@@ -1079,11 +1095,11 @@ const static PageButtonDef radioSetupButtons[] = {
 #if defined(HAPTIC)
   {STR_DEF(STR_HAPTIC_LABEL), [](Route r) { new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_HAPTIC_LABEL, hapticPageSetupLines); }, nullptr, nullptr, "radio.settings.haptic"},
 #endif
-  {STR_DEF(STR_ALARMS_LABEL), [](Route r) { new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_ALARMS_LABEL, alarmsPageSetupLines); }, nullptr, nullptr, "radio.settings.alarms"},
+  {STR_DEF(STR_ALARMS_LABEL), [](Route r) { new RadioAlarmsPage(r); }, nullptr, nullptr, "radio.settings.alarms"},
   {STR_DEF(STR_BACKLIGHT_LABEL), [](Route r) { (new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_BACKLIGHT_LABEL, backlightSetupLines))->useFlexLayout(); }, nullptr, nullptr, "radio.settings.backlight"},
-  {STR_DEF(STR_GPS), [](Route r) { new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_GPS, gpsPageSetupLines); }, nullptr, nullptr, "radio.settings.gps"},
+  {STR_DEF(STR_GPS), [](Route r) { new RadioGpsPage(r); }, nullptr, nullptr, "radio.settings.gps"},
   {STR_DEF(STR_ENABLED_FEATURES), [](Route r) { new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_ENABLED_FEATURES, viewOptionsPageSetupLines); }, nullptr, nullptr, "radio.settings.enabled_features"},
-  {STR_DEF(STR_MAIN_MENU_MANAGE_MODELS), [](Route r) { new SubPage(ICON_RADIO_SETUP, r, STR_MAIN_MENU_RADIO_SETTINGS, STR_MAIN_MENU_MANAGE_MODELS, manageModelsSetupLines); }, nullptr, nullptr, "radio.settings.manage_models"},
+  {STR_DEF(STR_MAIN_MENU_MANAGE_MODELS), [](Route r) { new RadioManageModelsPage(r); }, nullptr, nullptr, "radio.settings.manage_models"},
   {STR_DEF(STR_BATTERY_PACKS), [](Route r) { new BatteryPacksPage(r); }, nullptr, nullptr, "radio.settings.battery_library"},
 #if VERSION_MAJOR > 2
   {STR_DEF(STR_KEY_SHORTCUTS), [](Route r) { new QMKeyShortcutsPage(r); }, nullptr, []() { return hasShortcutKeys(); }},

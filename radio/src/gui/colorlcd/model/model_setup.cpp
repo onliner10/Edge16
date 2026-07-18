@@ -26,6 +26,7 @@
 #include "battery_monitor_setup.h"
 #include "button_matrix.h"
 #include "dialog.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "filechoice.h"
@@ -403,28 +404,30 @@ const static SetupLineDef trimsSetupLines[] = {
   {nullptr, nullptr},
 };
 
-const static SetupLineDef setupLines[] = {
-  {
-    // Model name
-    STR_DEF(STR_MODELNAME),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ModelTextEdit(parent, {x, y, ModelSetupPage::NAM_W, 0},
-                        g_model.header.name, sizeof(g_model.header.name),
-                        [=]() {
-                          auto model = modelslist.getCurrentModel();
-                          if (model) {
-                            model->setModelName(g_model.header.name);
-                          }
-                          SET_DIRTY();
-                        });
-    }
-  },
-  {
-    // Model labels
-    STR_DEF(STR_LABELS),
-    [](Window* parent, coord_t x, coord_t y) {
+// DESIGN SYSTEM (see DESIGN_SYSTEM.md): the Model Settings top page shows a
+// short stack of label/control form rows (Model name / Labels / Model image)
+// followed by the sub-page button grid. The three form rows are routed through
+// ds::FormRow (label 40% / control 60%, 40 px min, vertically centered); the DS
+// owns the split and spacing, so there are no per-screen coordinates. The
+// non-form button grid (SetupButtonGroup) is unchanged.
+static void buildModelSetupForm(Window* form)
+{
+  // Model name
+  new ds::FormRow(form, STR_MODELNAME, [](Window* slot) {
+    new ModelTextEdit(slot, rect_t{}, g_model.header.name,
+                      sizeof(g_model.header.name), []() {
+                        auto model = modelslist.getCurrentModel();
+                        if (model) {
+                          model->setModelName(g_model.header.name);
+                        }
+                        SET_DIRTY();
+                      });
+  });
+
+  // Model labels
+  new ds::FormRow(form, STR_LABELS, [](Window* slot) {
       auto curmod = modelslist.getCurrentModel();
-      TextButton* btn = new TextButton(parent, {x, y, 0, 0}, modelslabels.getBulletLabelString(curmod, STR_UNLABELEDMODEL));
+      TextButton* btn = new TextButton(slot, rect_t{}, modelslabels.getBulletLabelString(curmod, STR_UNLABELEDMODEL));
       btn->setPressHandler([=]() {
             Menu *menu = new Menu(true);
             menu->setTitle(STR_LABELS);
@@ -450,13 +453,11 @@ const static SetupLineDef setupLines[] = {
             menu->updateLines();
             return 0;
           });
-    }
-  },
-  {
-    // Model bitmap
-    STR_DEF(STR_BITMAP),
-    [](Window* parent, coord_t x, coord_t y) {
-      new FileChoice(parent, {x, y, 0, 0}, BITMAPS_PATH, BITMAPS_EXT, LEN_BITMAP_NAME,
+  });
+
+  // Model bitmap
+  new ds::FormRow(form, STR_BITMAP, [](Window* slot) {
+      new FileChoice(slot, rect_t{}, BITMAPS_PATH, BITMAPS_EXT, LEN_BITMAP_NAME,
                      [=]() {
                        return std::string(g_model.header.bitmap, LEN_BITMAP_NAME);
                      },
@@ -469,10 +470,8 @@ const static SetupLineDef setupLines[] = {
                        }
                        SET_DIRTY();
                      }, false, STR_BITMAP);
-    }
-  },
-  {nullptr, nullptr},
-};
+  });
+}
 
 const static PageButtonDef modelSetupButtons[] = {
   // Modules
@@ -504,7 +503,13 @@ const static PageButtonDef modelSetupButtons[] = {
 
 void ModelSetupPage::build(Window * window)
 {
-  coord_t y = SetupLine::showLines(window, 0, SubPage::EDT_X, padding, setupLines);
+  window->setFlexLayout();
 
-  new SetupButtonGroup(window, {0, y, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, route(), BTN_H);
+  // Form rows grouped in a DS card; the DS List owns page margins + row gaps.
+  auto* list = new ds::List(window);
+  auto* form = new ds::Card(list);
+  buildModelSetupForm(form);
+
+  // Sub-page navigation grid (non-form) — unchanged.
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, route(), BTN_H);
 }

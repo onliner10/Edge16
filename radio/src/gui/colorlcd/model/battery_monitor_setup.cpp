@@ -18,6 +18,7 @@
 #include "battery_packs.h"
 #include "button.h"
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "sourcechoice.h"
@@ -276,8 +277,13 @@ void BatteryMonitorPage::build()
   // single matching sensor shows the binding as soon as the page opens.
   if (config->enabled) autoBindFlightBatterySensors(monitor);
 
-  setupLine("Enabled", [=](Window* parent, coord_t x, coord_t y) {
-    new ToggleSwitch(parent, {x, y, 0, 0}, GET_DEFAULT(config->enabled),
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): each label/control settings line is a
+  // ds::FormRow (label 40% / control 60%, 40 px min, vertically centered). The
+  // DS owns the split and spacing; the caller only builds the control into the
+  // slot. Section headers, the compatible-pack list and the create button stay
+  // as-is (they are not label/control form lines).
+  new ds::FormRow(body, "Enabled", [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(config->enabled),
                       [=](int32_t newValue) {
                         config->enabled = newValue;
                         // Enabling wires up the source live; the SourceChoice
@@ -288,8 +294,8 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  setupLine("Voltage Alert", [=](Window* parent, coord_t x, coord_t y) {
-    new ToggleSwitch(parent, {x, y, 0, 0},
+  new ds::FormRow(body, "Voltage Alert", [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->voltAlertEnabled),
                       [=](int32_t newValue) {
                         config->voltAlertEnabled = newValue;
@@ -298,8 +304,8 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  setupLine("Capacity Alert", [=](Window* parent, coord_t x, coord_t y) {
-    new ToggleSwitch(parent, {x, y, 0, 0},
+  new ds::FormRow(body, "Capacity Alert", [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->capAlertEnabled),
                       [=](int32_t newValue) {
                         config->capAlertEnabled = newValue;
@@ -308,8 +314,8 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  setupLine("Capacity Estimate", [=](Window* parent, coord_t x, coord_t y) {
-    new Choice(parent, {x, y, 0, 0}, capacityEstimateCurveLabels,
+  new ds::FormRow(body, "Capacity Estimate", [=](Window* slot) {
+    new Choice(slot, rect_t{}, capacityEstimateCurveLabels,
                FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE,
                FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC,
                GET_DEFAULT(flightBatteryCapacityEstimateCurveFromConfig(
@@ -321,8 +327,8 @@ void BatteryMonitorPage::build()
                });
   });
 
-  setupLine("Flight Pack Status", [=](Window* parent, coord_t x, coord_t y) {
-    new DynamicText(parent, {x, y, 0, 0}, [=]() {
+  new ds::FormRow(body, "Flight Pack Status", [=](Window* slot) {
+    new DynamicText(slot, rect_t{}, [=]() {
       char buf[64];
       auto state = flightBatterySessionState(monitor);
       getFlightPackStatusString(state, monitor, buf, sizeof(buf));
@@ -386,7 +392,7 @@ void BatteryMonitorPage::build()
 
   setupLine("Advanced Telemetry", nullptr);
 
-  setupLine(STR_VOLTAGE, [=](Window* parent, coord_t x, coord_t y) {
+  new ds::FormRow(body, STR_VOLTAGE, [=](Window* slot) {
     bool hasVoltageSensor = false;
     for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
       if (isBatteryMonitorVoltageSensor(i)) {
@@ -395,12 +401,12 @@ void BatteryMonitorPage::build()
       }
     }
     if (!hasVoltageSensor) {
-      new StaticText(parent, {x, y + PAD_LARGE, 0, 0},
+      new StaticText(slot, rect_t{},
                       "No voltage sensor - add one in Telemetry",
                       COLOR_THEME_WARNING_INDEX);
     } else {
       auto sc = new SourceChoice(
-          parent, {x, y, 0, 0}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
+          slot, rect_t{}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
           [=]() -> int {
             if (config->sourceIndex <= 0) return MIXSRC_NONE;
             return MIXSRC_FIRST_TELEM + 3 * (config->sourceIndex - 1);
@@ -419,7 +425,7 @@ void BatteryMonitorPage::build()
     }
   });
 
-  setupLine(STR_CURRENTSENSOR, [=](Window* parent, coord_t x, coord_t y) {
+  new ds::FormRow(body, STR_CURRENTSENSOR, [=](Window* slot) {
     bool hasCurrentSensor = false;
     for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
       if (isBatteryMonitorCapacitySensor(i)) {
@@ -428,12 +434,12 @@ void BatteryMonitorPage::build()
       }
     }
     if (!hasCurrentSensor) {
-      new StaticText(parent, {x, y + PAD_LARGE, 0, 0},
+      new StaticText(slot, rect_t{},
                       "No capacity sensor - add one in Telemetry",
                      COLOR_THEME_WARNING_INDEX);
     } else {
       auto sc = new SourceChoice(
-          parent, {x, y, 0, 0}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
+          slot, rect_t{}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
           [=]() -> int {
             if (config->currentIndex <= 0) return MIXSRC_NONE;
             return MIXSRC_FIRST_TELEM + 3 * (config->currentIndex - 1);

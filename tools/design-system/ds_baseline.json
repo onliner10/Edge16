@@ -44,7 +44,7 @@
     "mainview/widget_settings.cpp": 1,
     "mainview/widget_settings.h": 1,
     "mainview/widgets_setup.cpp": 3,
-    "model/battery_monitor_setup.cpp": 7,
+    "model/battery_monitor_setup.cpp": 5,
     "model/curveedit.cpp": 32,
     "model/function_switches.cpp": 30,
     "model/function_switches.h": 34,
@@ -138,5 +138,5 @@
     "widgets/value.cpp": 11
   },
   "suppressions": {},
-  "total": 1180
+  "total": 1178
 }
