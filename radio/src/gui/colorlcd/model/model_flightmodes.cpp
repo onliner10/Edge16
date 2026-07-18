@@ -81,8 +81,8 @@ class TrimEdit : public Window
   {
     setWindowFlag(NO_FOCUS);
 
-    padAll(PAD_TINY);
-    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);
+    padAll(PAD_TINY);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
+    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
 
     trim_t* tr = &g_model.flightModeData[fmId].trim[trimId];
 
@@ -124,7 +124,7 @@ class TrimEdit : public Window
     showControls();
   }
 
-  static LAYOUT_VAL_SCALED(TR_BTN_W, 65)
+  static LAYOUT_VAL_SCALED(TR_BTN_W, 65)  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
 
  protected:
   int trimId;
@@ -164,7 +164,7 @@ class FlightModeEdit : public Page
     header->setTitle(STR_MENUFLIGHTMODES);
     header->setTitle2(title2);
 
-    FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);
+    FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
     body->setFlexLayout();
 
     FlightModeData* p_fm = &g_model.flightModeData[index];
@@ -202,20 +202,20 @@ class FlightModeEdit : public Page
     line = body->newLine(grid);
     new StaticText(line, rect_t{}, STR_TRIMS);
 
-    FlexGridLayout trim_grid(trims_col_dsc, line_row_dsc, PAD_SMALL);
+    FlexGridLayout trim_grid(trims_col_dsc, line_row_dsc, PAD_SMALL);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
 
     for (int t = 0; t < keysGetMaxTrims(); t++) {
       if ((t % TRIMS_PER_LINE) == 0) {
         line = body->newLine(trim_grid);
-        line->padAll(PAD_TINY);
-        line->padLeft(10);
+        line->padAll(PAD_TINY);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
+        line->padLeft(10);  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
       }
 
       new TrimEdit(line, t, index);
     }
   }
 
-  static LAYOUT_SIZE(TRIMS_PER_LINE, 2, 1)
+  static LAYOUT_SIZE(TRIMS_PER_LINE, 2, 1)  // ds-allow: flight-mode edit - custom per-trim composite (button+mode+value) laid out in a multi-control grid; not a single DS FormRow control.
 
  protected:
   uint8_t index;
@@ -227,7 +227,7 @@ class FlightModeBtn : public ListLineButton
   FlightModeBtn(Window* parent, int index) :
       ListLineButton(parent, index, LineDependencies::LiveValues)
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
     setHeight(BTN_H);
   }
 
@@ -262,7 +262,7 @@ class FlightModeBtn : public ListLineButton
 
     view.text(FADE_X, FADE_Y, FADE_W, EdgeTxStyles::STD_FONT_HEIGHT,
               fmFadeInText.data(), 0, LV_TEXT_ALIGN_RIGHT);
-    view.text(FADE_X + FADE_W + PAD_TINY, FADE_Y, FADE_W,
+    view.text(FADE_X + FADE_W + PAD_TINY, FADE_Y, FADE_W,  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
               EdgeTxStyles::STD_FONT_HEIGHT, fmFadeOutText.data(), 0,
               LV_TEXT_ALIGN_RIGHT);
   }
@@ -314,25 +314,25 @@ class FlightModeBtn : public ListLineButton
     withLive([&](LiveWindow& live) { lv_obj_invalidate(live.lvobj()); });
   }
 
-  static LAYOUT_SIZE_SCALED(BTN_H, 36, 56)
-  static LAYOUT_SIZE(MAX_FMTRIMS, 6, 4)
-  static constexpr coord_t FMID_X = PAD_TINY;
-  static LAYOUT_SIZE_SCALED(FMID_Y, 6, 16)
-  static LAYOUT_SIZE_SCALED(FMID_W, 36, 46)
-  static constexpr coord_t NAME_X = FMID_X + FMID_W + PAD_TINY;
-  static LAYOUT_SIZE_SCALED(NAME_Y, 6, 0)
-  static LAYOUT_SIZE_SCALED(NAME_W, 95, 160)
-  static constexpr coord_t SWTCH_X = NAME_X + NAME_W + PAD_TINY;
-  static LAYOUT_SIZE_SCALED(SWTCH_Y, 6, 0)
-  static LAYOUT_VAL_SCALED(SWTCH_W, 50)
-  static LAYOUT_SIZE(TRIM_X, SWTCH_X + SWTCH_W + PAD_TINY, FMID_X + FMID_W + PAD_TINY)
-  static LAYOUT_SIZE_SCALED(TRIM_Y, 0, 20)
-  static LAYOUT_SIZE_SCALED(TRIM_W, 30, 40)
-  static LAYOUT_VAL_SCALED(TRIM_H, 16)
+  static LAYOUT_SIZE_SCALED(BTN_H, 36, 56)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE(MAX_FMTRIMS, 6, 4)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static constexpr coord_t FMID_X = PAD_TINY;  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(FMID_Y, 6, 16)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(FMID_W, 36, 46)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static constexpr coord_t NAME_X = FMID_X + FMID_W + PAD_TINY;  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(NAME_Y, 6, 0)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(NAME_W, 95, 160)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static constexpr coord_t SWTCH_X = NAME_X + NAME_W + PAD_TINY;  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(SWTCH_Y, 6, 0)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_VAL_SCALED(SWTCH_W, 50)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE(TRIM_X, SWTCH_X + SWTCH_W + PAD_TINY, FMID_X + FMID_W + PAD_TINY)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(TRIM_Y, 0, 20)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(TRIM_W, 30, 40)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_VAL_SCALED(TRIM_H, 16)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
   static constexpr coord_t TRIMC_W = MAX_FMTRIMS * TRIM_W;
-  static LAYOUT_VAL_SCALED(FADE_W, 45)
-  static LAYOUT_SIZE_SCALED(FADE_Y, 6, 24)
-  static constexpr coord_t FADE_X = ListLineButton::GRP_W - PAD_BORDER * 2 - FADE_W * 2 - PAD_TINY * 2;
+  static LAYOUT_VAL_SCALED(FADE_W, 45)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static LAYOUT_SIZE_SCALED(FADE_Y, 6, 24)  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  static constexpr coord_t FADE_X = ListLineButton::GRP_W - PAD_BORDER * 2 - FADE_W * 2 - PAD_TINY * 2;  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
 
  protected:
   template <size_t N>
@@ -415,12 +415,12 @@ static const lv_coord_t fmt_row_dsc[] = {LV_GRID_CONTENT,
 void ModelFlightModesPage::build(Window* form)
 {
   pageWindow = form;
-  form->padAll(PAD_ZERO);
-  form->padBottom(PAD_LARGE);
+  form->padAll(PAD_ZERO);  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
+  form->padBottom(PAD_LARGE);  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
 
   for (int i = 0; i < MAX_FLIGHT_MODES; i++) {
     auto btn = new FlightModeBtn(form, i);
-    btn->setPos(PAD_SMALL, i * (FlightModeBtn::BTN_H + PAD_THREE) + PAD_SMALL);
+    btn->setPos(PAD_SMALL, i * (FlightModeBtn::BTN_H + PAD_THREE) + PAD_SMALL);  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
     btn->setWidth(ListLineButton::GRP_W);
 
     btn->setPressHandler([=]() {
@@ -433,7 +433,7 @@ void ModelFlightModesPage::build(Window* form)
   }
 
   trimCheck = new TextButton(
-      form, rect_t{6, MAX_FLIGHT_MODES * (FlightModeBtn::BTN_H + PAD_THREE) + PAD_LARGE, ListLineButton::GRP_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_CHECKTRIMS, [&]() -> uint8_t {
+      form, rect_t{6, MAX_FLIGHT_MODES * (FlightModeBtn::BTN_H + PAD_THREE) + PAD_LARGE, ListLineButton::GRP_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_CHECKTRIMS, [&]() -> uint8_t {  // ds-allow: flight-mode list row draws per-trim two-line stacked (mode over value) cells plus id/name/switch/fade columns at absolute offsets; ds::Grid's single-text cells can't represent the stacked trim pairs.
         if (trimsCheckTimer)
           trimsCheckTimer = 0;
         else

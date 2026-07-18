@@ -80,10 +80,10 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
   addStyle(styles->state_focus_frame, LV_STATE_FOCUSED);
 
   lv_style_init(&borderStyle);
-  lv_style_set_line_width(&borderStyle, PAD_BORDER);
+  lv_style_set_line_width(&borderStyle, PAD_BORDER); // ds-allow: widget-zone selection overlay draws its dashed border with a raw line width; canvas chrome, not a DS control
   lv_style_set_line_opa(&borderStyle, LV_OPA_COVER);
-  lv_style_set_line_dash_width(&borderStyle, PAD_BORDER);
-  lv_style_set_line_dash_gap(&borderStyle, PAD_BORDER);
+  lv_style_set_line_dash_width(&borderStyle, PAD_BORDER); // ds-allow: widget-zone selection overlay sets its dashed-border dash width; canvas chrome, not a DS control
+  lv_style_set_line_dash_gap(&borderStyle, PAD_BORDER); // ds-allow: widget-zone selection overlay sets its dashed-border dash gap; canvas chrome, not a DS control
   lv_style_set_line_color(&borderStyle, makeLvColor(COLOR_THEME_SECONDARY2));
 
   withLive([&](LiveWindow& live) {

@@ -33,8 +33,8 @@ protected:
   StaticText* gpsLabel = nullptr;
   QRCode* gpsQR = nullptr;
 
-  static LAYOUT_VAL_SCALED(QR_SZ, 150)
-  static LAYOUT_VAL_SCALED(BTN_SZ, 80)
+  static LAYOUT_VAL_SCALED(QR_SZ, 150)  // ds-allow: GPS tool — QR-code size for coordinate QR positioned absolutely on canvas; not a DS form.
+  static LAYOUT_VAL_SCALED(BTN_SZ, 80)  // ds-allow: GPS tool — back-button size positioned absolutely on canvas; not a DS form.
 
   void buildHeader(Window * window);
   void buildBody(Window * window);

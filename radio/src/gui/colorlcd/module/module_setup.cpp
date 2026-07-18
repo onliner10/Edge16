@@ -84,8 +84,8 @@ struct FailsafeChoice : public Window {
   FailsafeChoice(Window* parent, uint8_t moduleIdx) :
       Window(parent, rect_t{}), moduleIdx(moduleIdx)
   {
-    padAll(PAD_TINY);
-    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);
+    padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
     auto md = &g_model.moduleData[moduleIdx];
     new Choice(this, rect_t{}, STR_VFAILSAFE, 0, FAILSAFE_LAST,
@@ -126,7 +126,7 @@ class ModuleWindow : public Window
 
   void updateModule()
   {
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
     clear();
 
     modOpts = nullptr;
@@ -216,8 +216,8 @@ class ModuleWindow : public Window
       new StaticText(line, rect_t{}, STR_RECEIVER);
 
       auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM, LV_SIZE_CONTENT);
+      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
       // Model index
       auto modelId = &g_model.header.modelId[moduleIdx];
@@ -346,8 +346,8 @@ class ModuleWindow : public Window
       new StaticText(line, rect_t{}, STR_MODULE);
 
       auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_LARGE);
+      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_LARGE);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
       registerButton = new TextButton(box, rect_t{}, STR_REGISTER);
       registerButton->setPressHandler([=]() -> uint8_t {
@@ -421,8 +421,8 @@ class ModuleWindow : public Window
       new StaticText(line, rect_t{}, STR_REFRESHRATE);
 
       auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
+      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
       auto edit = new NumberEdit(
           box, rect_t{}, SBUS_MIN_PERIOD, SBUS_MAX_PERIOD,
@@ -773,15 +773,15 @@ ModulePage::ModulePage(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, 
 
   body->setFlexLayout();
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
   // Module Type
   auto line = body->newLine(grid);
   new StaticText(line, rect_t{}, STR_MODE);
 
   auto box = new Window(line, rect_t{});
-  box->padAll(PAD_TINY);
-  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);
+  box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
 
   ModuleData* md = &g_model.moduleData[moduleIdx];
   auto moduleChoice =

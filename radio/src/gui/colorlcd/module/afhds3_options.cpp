@@ -56,8 +56,8 @@ struct PWMfrequencyChoice : public Window {
 PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx, uint8_t channelIdx) :
   Window(parent, rect_t{})
 {
-  padAll(PAD_TINY);
-  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);
+  padAll(PAD_TINY);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
+  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
   uint16_t &pwmvalue_type = _v1_pwmvalue_type[moduleIdx][channelIdx];
   auto cfg = afhds3::getConfig(moduleIdx);
   auto vCfg = &cfg->v1;
@@ -94,8 +94,8 @@ PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx, uint8_
 PWMfrequencyChoice::PWMfrequencyChoice(Window* parent, uint8_t moduleIdx ) :
   Window(parent, rect_t{})
 {
-  padAll(PAD_TINY);
-  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);
+  padAll(PAD_TINY);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
+  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
   uint16_t &pwmvalue_type = _v1_pwmvalue_type[moduleIdx][0];
   auto cfg = afhds3::getConfig(moduleIdx);
   auto vCfg = &cfg->v0;
@@ -139,9 +139,9 @@ AFHDS3_Options::AFHDS3_Options(uint8_t moduleIdx, Route route) : Page(ICON_MODEL
   title += ")";
   header->setTitle2(title);
 
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: AFHDS3 options - protocol option fields in horizontal boxes (side-by-side controls); not a single DS FormRow control.
 
   if (cfg->version == 0) {
     auto vCfg = &cfg->v0;

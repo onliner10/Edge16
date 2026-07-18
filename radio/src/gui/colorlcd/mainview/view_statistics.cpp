@@ -50,13 +50,13 @@ static const lv_coord_t dbg_3col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
 
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
-static LAYOUT_ORIENTATION(DBG_COL_CNT, 4, 3)
-static LAYOUT_ORIENTATION(DBG_B_WIDTH, (LCD_W - 20) / 4, (LCD_W - 20) / 2)
-static LAYOUT_VAL_SCALED(DBG_B_HEIGHT, 20)
-static LAYOUT_ORIENTATION(CV_SCALE, 3, 4)
+static LAYOUT_ORIENTATION(DBG_COL_CNT, 4, 3) // ds-allow: debug screen fixed-cell timing-table column count; not a DS form
+static LAYOUT_ORIENTATION(DBG_B_WIDTH, (LCD_W - 20) / 4, (LCD_W - 20) / 2) // ds-allow: debug screen fixed-cell timing-table cell width; not a DS form
+static LAYOUT_VAL_SCALED(DBG_B_HEIGHT, 20) // ds-allow: debug screen fixed-cell timing-table cell height; not a DS form
+static LAYOUT_ORIENTATION(CV_SCALE, 3, 4) // ds-allow: statistics throttle-curve graph vertical scale for canvas plotting; not a DS surface
 #define CV_WIDTH MAXTRACE
-#define CV_HEIGHT (CV_SCALE * EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL + 1)
-static LAYOUT_VAL_SCALED(RST_BTN_H, 24)
+#define CV_HEIGHT (CV_SCALE * EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL + 1) // ds-allow: statistics throttle-curve graph canvas height; not a DS surface
+static LAYOUT_VAL_SCALED(RST_BTN_H, 24) // ds-allow: statistics/debug screen reset-button height for its fixed table footer row; not a DS form
 
 template <class T>
 class DebugInfoNumber : public Window
@@ -86,8 +86,8 @@ class ThrottleCurveWindow : public Window
   {
     lv_coord_t h = height();
     axis[0] = {0, 0};
-    axis[1] = {0, (lv_coord_t)(h - PAD_THREE)};
-    axis[2] = {(lv_coord_t)width(), (lv_coord_t)(h - PAD_THREE)};
+    axis[1] = {0, (lv_coord_t)(h - PAD_THREE)}; // ds-allow: statistics throttle-curve graph axis endpoint drawn at an absolute canvas coordinate; not a DS surface
+    axis[2] = {(lv_coord_t)width(), (lv_coord_t)(h - PAD_THREE)}; // ds-allow: statistics throttle-curve graph axis endpoint drawn at an absolute canvas coordinate; not a DS surface
 
     withLive([&](LiveWindow& live) {
       auto axisLine = lv_line_create(live.lvobj());
@@ -97,7 +97,7 @@ class ThrottleCurveWindow : public Window
 
       for (int x = 0, i = 0; x < width() && i + 1 < int(DIM(ticks));
            x += 6, i += 2) {
-        ticks[i] = {lv_coord_t(x), (lv_coord_t)(h - PAD_SMALL - 1)};
+        ticks[i] = {lv_coord_t(x), (lv_coord_t)(h - PAD_SMALL - 1)}; // ds-allow: statistics throttle-curve graph tick drawn at an absolute canvas coordinate; not a DS surface
         ticks[i + 1] = {lv_coord_t(x), h};
         auto tick = lv_line_create(live.lvobj());
         if (!requireLvObj(tick)) return false;
@@ -123,7 +123,7 @@ class ThrottleCurveWindow : public Window
       for (int x = 0; x < width() && x < int(DIM(graph)) && traceRd < s_traceWr;
            x += 1, traceRd += 1) {
         uint8_t h = s_traceBuf[traceRd % width()];
-        lv_coord_t y = height() - PAD_THREE - CV_SCALE * h;
+        lv_coord_t y = height() - PAD_THREE - CV_SCALE * h; // ds-allow: statistics throttle-curve graph plots each sample at an absolute canvas y; not a DS surface
         graph[x] = {lv_coord_t(x), y};
         graphSize += 1;
       }
@@ -147,14 +147,14 @@ StatisticsViewPage::StatisticsViewPage(const PageDef& pageDef) :
 
 void StatisticsViewPage::build(Window* window)
 {
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
-  window->padLeft(PAD_SMALL);
-  window->padRight(PAD_SMALL);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO); // ds-allow: statistics/debug screen stacks its fixed timing-table rows with zero inter-row gap; not a DS list
+  window->padLeft(PAD_SMALL); // ds-allow: statistics screen insets its fixed timing-table columns by a fixed margin; not a DS list
+  window->padRight(PAD_SMALL); // ds-allow: statistics screen insets its fixed timing-table columns by a fixed margin; not a DS list
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_ZERO);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_ZERO); // ds-allow: statistics screen builds a raw fixed-column grid for its timing table; not a DS list
 
   auto line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Session data
   new (std::nothrow) StaticText(line, rect_t{}, STR_SESSION);
@@ -168,7 +168,7 @@ void StatisticsViewPage::build(Window* window)
       [] { return getTimerString(g_eeGeneral.globalTimer + getSessionTimer()); });
 
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Throttle
   new (std::nothrow) StaticText(line, rect_t{}, STR_THROTTLE_LABEL);
@@ -181,7 +181,7 @@ void StatisticsViewPage::build(Window* window)
       line, rect_t{}, [] { return getTimerString(getThrottlePercentRuntime() / 16); });
 
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Timers
   new (std::nothrow) StaticText(line, rect_t{}, STR_TIMER_LABEL);
@@ -190,8 +190,8 @@ void StatisticsViewPage::build(Window* window)
         line, rect_t{}, [=] { return getTimerString(getTimerStateValue(i)); });
 
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
-  line->padTop(3);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
+  line->padTop(3); // ds-allow: statistics screen nudges the throttle-curve graph row down by a fixed offset; not a DS list
 
   // Throttle curve
   auto curve =
@@ -201,7 +201,7 @@ void StatisticsViewPage::build(Window* window)
   }
 
   line = window->newLine(grid);
-  line->padAll(PAD_SMALL);
+  line->padAll(PAD_SMALL); // ds-allow: statistics/debug screen reset-button row padding; raw table line, not a DS list
 
   // Reset
   auto btn =
@@ -227,18 +227,18 @@ DebugViewPage::DebugViewPage(const PageDef& pageDef) :
 
 void DebugViewPage::build(Window* window)
 {
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO); // ds-allow: statistics/debug screen stacks its fixed timing-table rows with zero inter-row gap; not a DS list
 
 #if LANDSCAPE
-  FlexGridLayout grid(dbg_4col_dsc, row_dsc, PAD_ZERO);
-  FlexGridLayout grid2(dbg_4col_dsc, row_dsc, PAD_ZERO);
+  FlexGridLayout grid(dbg_4col_dsc, row_dsc, PAD_ZERO); // ds-allow: debug screen builds a raw fixed-column grid for its timing tables; not a DS list
+  FlexGridLayout grid2(dbg_4col_dsc, row_dsc, PAD_ZERO); // ds-allow: debug screen builds a raw fixed-column grid for its timing tables; not a DS list
 #else
-  FlexGridLayout grid(dbg_2col_dsc, row_dsc, PAD_ZERO);
-  FlexGridLayout grid2(dbg_3col_dsc, row_dsc, PAD_ZERO);
+  FlexGridLayout grid(dbg_2col_dsc, row_dsc, PAD_ZERO); // ds-allow: debug screen builds a raw fixed-column grid for its timing tables; not a DS list
+  FlexGridLayout grid2(dbg_3col_dsc, row_dsc, PAD_ZERO); // ds-allow: debug screen builds a raw fixed-column grid for its timing tables; not a DS list
 #endif
 
   auto line = window->newLine(grid);
-  line->padAll(PAD_TINY);
+  line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Mixer data
   static std::string pad_STR_MS = " " + std::string(STR_MS);
@@ -253,7 +253,7 @@ void DebugViewPage::build(Window* window)
           COLOR_THEME_PRIMARY1_INDEX, 0, pad_STR_PERIOD.c_str(), pad_STR_MS.c_str());
 
   line = window->newLine(grid);
-  line->padAll(PAD_TINY);
+  line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Free mem
   static std::string pad_STR_BYTES = " " + std::string(STR_BYTES);
@@ -264,14 +264,14 @@ void DebugViewPage::build(Window* window)
 
 #if defined(LUA)
   line = window->newLine(grid);
-  line->padAll(PAD_TINY);
+  line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // LUA timing data
   new (std::nothrow) StaticText(line, rect_t{}, STR_LUA_SCRIPTS_LABEL);
 #if PORTRAIT
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
-  line->padLeft(PAD_LARGE);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
+  line->padLeft(PAD_LARGE); // ds-allow: statistics/debug screen indents a wrapped portrait table line by a fixed margin; not a DS list
 #endif
   new (std::nothrow) DebugInfoNumber<uint16_t>(
       line, rect_t{0, 0, DBG_B_WIDTH, DBG_B_HEIGHT},
@@ -281,9 +281,9 @@ void DebugViewPage::build(Window* window)
       [] { return 10 * getMaxLuaInterval(); }, STR_INTERVAL_MS);
 
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 #if PORTRAIT
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: statistics/debug screen indents a wrapped portrait table line by a fixed margin; not a DS list
 #else
   grid.nextCell();
 #endif
@@ -298,8 +298,8 @@ void DebugViewPage::build(Window* window)
 
 #if PORTRAIT
   line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
-  line->padLeft(PAD_LARGE);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
+  line->padLeft(PAD_LARGE); // ds-allow: statistics/debug screen indents a wrapped portrait table line by a fixed margin; not a DS list
 #endif
 
   new (std::nothrow) DebugInfoNumber<uint32_t>(
@@ -308,14 +308,14 @@ void DebugViewPage::build(Window* window)
 #endif
 
   line = window->newLine(grid);
-  line->padAll(PAD_TINY);
+  line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   // Stacks data
   new (std::nothrow) StaticText(line, rect_t{}, STR_FREE_STACK);
 #if PORTRAIT
   line = window->newLine(grid2);
-  line->padAll(PAD_ZERO);
-  line->padLeft(PAD_LARGE);
+  line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
+  line->padLeft(PAD_LARGE); // ds-allow: statistics/debug screen indents a wrapped portrait table line by a fixed margin; not a DS list
 #endif
   new (std::nothrow) DebugInfoNumber<uint32_t>(
       line, rect_t{0, 0, DBG_B_WIDTH, DBG_B_HEIGHT},
@@ -331,7 +331,7 @@ void DebugViewPage::build(Window* window)
 
 #if defined(DEBUG_LATENCY)
   line = window->newLine(grid2);
-  line->padAll(PAD_TINY);
+  line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
   new (std::nothrow) StaticText(line, rect_t{}, STR_HEARTBEAT_LABEL);
   if (heartbeatCapture.valid)
@@ -345,13 +345,13 @@ void DebugViewPage::build(Window* window)
 #if defined(INTERNAL_GPS)
   if (serialGetModePort(UART_MODE_GPS) >= 0) {
     line = window->newLine(grid);
-    line->padAll(PAD_TINY);
+    line->padAll(PAD_TINY); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
 
     new (std::nothrow) StaticText(line, rect_t{}, STR_INT_GPS_LABEL);
 #if PORTRAIT
     line = window->newLine(grid2);
-    line->padAll(PAD_ZERO);
-    line->padLeft(PAD_LARGE);
+    line->padAll(PAD_ZERO); // ds-allow: statistics/debug screen timing-table row padding; raw table line, not a DS list
+    line->padLeft(PAD_LARGE); // ds-allow: statistics/debug screen indents a wrapped portrait table line by a fixed margin; not a DS list
 #endif
     new (std::nothrow) DynamicText(
         line, rect_t{0, 0, DBG_B_WIDTH, DBG_B_HEIGHT},
@@ -369,7 +369,7 @@ void DebugViewPage::build(Window* window)
 #endif
 
   line = window->newLine(grid2);
-  line->padAll(PAD_SMALL);
+  line->padAll(PAD_SMALL); // ds-allow: statistics/debug screen reset-button row padding; raw table line, not a DS list
 
   // Reset
   auto btn =

@@ -28,5 +28,5 @@ class FailSafePage : public Page
  public:
   explicit FailSafePage(uint8_t moduleIdx, Route route);
 
-  static LAYOUT_SIZE_SCALED(FS_BARGRAPH_WIDTH, 130, 90)
+  static LAYOUT_SIZE_SCALED(FS_BARGRAPH_WIDTH, 130, 90)  // ds-allow: custom failsafe - failsafe bargraph width constant for the embedded channel-bar graph; not a DS list.
 };

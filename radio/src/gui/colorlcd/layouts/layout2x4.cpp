@@ -75,9 +75,9 @@ class Layout2x4 : public Layout
         if (mainZone.x != zone.x || mainZone.y != zone.y ||
             mainZone.w != zone.w || mainZone.h != zone.h) {
           mainZone = zone;
-          lv_obj_set_pos(obj1, mainZone.x, mainZone.y);
+          lv_obj_set_pos(obj1, mainZone.x, mainZone.y); // ds-allow: screen layout engine places the left widget zone at absolute view coordinates; not a DS surface
           lv_obj_set_size(obj1, mainZone.w / 2, mainZone.h);
-          lv_obj_set_pos(obj2, mainZone.x + mainZone.w / 2, mainZone.y);
+          lv_obj_set_pos(obj2, mainZone.x + mainZone.w / 2, mainZone.y); // ds-allow: screen layout engine places the right widget zone at absolute view coordinates; not a DS surface
           lv_obj_set_size(obj2, mainZone.w / 2, mainZone.h);
         }
 

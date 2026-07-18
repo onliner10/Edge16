@@ -45,52 +45,52 @@ class FunctionSwitchBase : public Window
 #endif
 
 #if defined(FUNCTION_SWITCHES_RGB_LEDS)
-  static LAYOUT_VAL_SCALED(SW_W, 70)
-  static constexpr coord_t NM_X = SW_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(NM_W, 60)
-  static constexpr coord_t TP_X = NM_X + NM_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(TP_W, 78)
-  static constexpr coord_t GR_X = TP_X + TP_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(GR_W, 84)
-  static constexpr coord_t ST_X = GR_X + GR_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(ST_W, 60)
-  static constexpr coord_t ROW_HS = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;
+  static LAYOUT_VAL_SCALED(SW_W, 70)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t NM_X = SW_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(NM_W, 60)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t TP_X = NM_X + NM_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(TP_W, 78)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t GR_X = TP_X + TP_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(GR_W, 84)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t ST_X = GR_X + GR_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(ST_W, 60)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t ROW_HS = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #if NARROW_LAYOUT
-  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT * 3 + PAD_OUTLINE * 4;
+  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT * 3 + PAD_OUTLINE * 4;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t C1_X = GR_X;
-  static constexpr coord_t C1_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
-  static LAYOUT_VAL_SCALED(C1_W, 40)
+  static constexpr coord_t C1_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(C1_W, 40)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t C2_X = ST_X;
-  static constexpr coord_t C2_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
-  static LAYOUT_VAL_SCALED(C2_W, 40)
+  static constexpr coord_t C2_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(C2_W, 40)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t OVRLBL_X = NM_X;
   static constexpr coord_t OVRLBL_W = NM_W + TP_W;
   static constexpr coord_t OVROFF_X = C1_X;
-  static constexpr coord_t COLLBL_YO = PAD_MEDIUM;
+  static constexpr coord_t COLLBL_YO = PAD_MEDIUM;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #else
-  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_OUTLINE * 3;
-  static constexpr coord_t C1_X = ST_X + ST_W + PAD_SMALL;
+  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_OUTLINE * 3;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t C1_X = ST_X + ST_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t C1_Y = 0;
-  static LAYOUT_VAL_SCALED(C1_W, 40)
-  static constexpr coord_t C2_X = C1_X + C1_W + PAD_SMALL;
+  static LAYOUT_VAL_SCALED(C1_W, 40)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t C2_X = C1_X + C1_W + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t C2_Y = 0;
-  static LAYOUT_VAL_SCALED(C2_W, 40)
+  static LAYOUT_VAL_SCALED(C2_W, 40)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   static constexpr coord_t OVRLBL_X = GR_X;
-  static constexpr coord_t OVRLBL_W = GR_W + ST_W - PAD_LARGE;
-  static constexpr coord_t OVROFF_X = C1_X - PAD_MEDIUM * 2;
-  static constexpr coord_t COLLBL_YO = PAD_SMALL;
+  static constexpr coord_t OVRLBL_W = GR_W + ST_W - PAD_LARGE;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t OVROFF_X = C1_X - PAD_MEDIUM * 2;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t COLLBL_YO = PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #endif
 #else
-  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;
-  static constexpr coord_t SW_W = (LCD_W - PAD_SMALL * 2 - PAD_TINY * 4) / 5;
-  static constexpr coord_t NM_X = SW_W + PAD_TINY;
-  static LAYOUT_VAL_SCALED(NM_W, 80)
-  static constexpr coord_t TP_X = NM_X + SW_W + PAD_TINY;
-  static LAYOUT_VAL_SCALED(TP_W, 86)
-  static constexpr coord_t GR_X = TP_X + SW_W + PAD_TINY;
-  static LAYOUT_VAL_SCALED(GR_W, 94)
-  static constexpr coord_t ST_X = GR_X + SW_W + PAD_LARGE * 2 + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(ST_W, 70)
+  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t SW_W = (LCD_W - PAD_SMALL * 2 - PAD_TINY * 4) / 5;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t NM_X = SW_W + PAD_TINY;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(NM_W, 80)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t TP_X = NM_X + SW_W + PAD_TINY;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(TP_W, 86)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t GR_X = TP_X + SW_W + PAD_TINY;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(GR_W, 94)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t ST_X = GR_X + SW_W + PAD_LARGE * 2 + PAD_SMALL;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(ST_W, 70)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #endif
 
  protected:

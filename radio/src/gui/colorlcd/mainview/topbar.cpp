@@ -208,7 +208,7 @@ rect_t TopBar::getZone(unsigned int index) const
   if (index >= zoneCount) return rect_t{};
 
   const coord_t left = MENU_HEADER_BUTTONS_LEFT + 1;
-  const coord_t right = LCD_W - PAD_TINY;
+  const coord_t right = LCD_W - PAD_TINY; // ds-allow: main-view top bar computes its right edge for zones positioned absolutely across the header; not a DS row
   const coord_t gap = TOPBAR_WIDGET_GAP;
   const int first = firstLayoutWidget();
   const bool layoutWidget = hasLayoutWidget(index);
@@ -234,11 +234,11 @@ rect_t TopBar::getZone(unsigned int index) const
     if (w < TOPBAR_FLEX_MIN_WIDTH) w = TOPBAR_FLEX_MIN_WIDTH;
     if (x + w > right) w = right - x;
 
-    return {x, PAD_THREE, w, TOPBAR_ZONE_HEIGHT};
+    return {x, PAD_THREE, w, TOPBAR_ZONE_HEIGHT}; // ds-allow: main-view top bar returns the flex zone rect positioned absolutely across the header; not a DS row
   }
 
   if (!layoutWidget && !pendingSetupSlot) {
-    return {left, PAD_THREE, TOPBAR_FLEX_MIN_WIDTH, TOPBAR_ZONE_HEIGHT};
+    return {left, PAD_THREE, TOPBAR_FLEX_MIN_WIDTH, TOPBAR_ZONE_HEIGHT}; // ds-allow: main-view top bar returns a header zone rect positioned absolutely; not a DS row
   }
 
   coord_t x = right;
@@ -248,11 +248,11 @@ rect_t TopBar::getZone(unsigned int index) const
 
     coord_t w = intrinsicZoneWidth(i);
     x -= w;
-    if (i == (int)index) return {x, PAD_THREE, w, TOPBAR_ZONE_HEIGHT};
+    if (i == (int)index) return {x, PAD_THREE, w, TOPBAR_ZONE_HEIGHT}; // ds-allow: main-view top bar returns a status-widget zone rect positioned absolutely across the header; not a DS row
     x -= gap;
   }
 
-  return {left, PAD_THREE, TOPBAR_FLEX_MIN_WIDTH, TOPBAR_ZONE_HEIGHT};
+  return {left, PAD_THREE, TOPBAR_FLEX_MIN_WIDTH, TOPBAR_ZONE_HEIGHT}; // ds-allow: main-view top bar fallback header zone rect positioned absolutely; not a DS row
 }
 
 bool TopBar::hasLayoutWidget(unsigned int index) const

@@ -49,7 +49,7 @@ class OutputEditStatusBar : public Window
         channel, true);
   }
 
-  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_MARGIN, 3, 0)
+  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: output edit - settings form plus a fixed-width channel status bar; multi-region page, not a plain DS FormRow list.
 
  protected:
   ComboChannelBar *channelBar;
@@ -118,7 +118,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
 
 void OutputEditWindow::buildBody(Window *form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: output edit - settings form plus a fixed-width channel status bar; multi-region page, not a plain DS FormRow list.
   form->setFlexLayout();
 
   int limit = (g_model.extendedLimits ? LIMIT_EXT_MAX : LIMIT_STD_MAX);

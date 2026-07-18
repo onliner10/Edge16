@@ -33,11 +33,11 @@ class RadioHardwarePage : public PageGroupItem
   void build(Window* window) override;
 
 #if defined(FUNCTION_SWITCHES)
-  static LAYOUT_SIZE(BTN_COLS, 2, 2)
+  static LAYOUT_SIZE(BTN_COLS, 2, 2)  // ds-allow: radio hardware — column count for multi-column calibration/debug button group; not a single DS FormRow control.
 #else
-  static LAYOUT_SIZE(BTN_COLS, 4, 3)
+  static LAYOUT_SIZE(BTN_COLS, 4, 3)  // ds-allow: radio hardware — column count for multi-column calibration/debug button group; not a single DS FormRow control.
 #endif
-  static LAYOUT_SIZE(FS_BTN_COLS, 2, 2)
+  static LAYOUT_SIZE(FS_BTN_COLS, 2, 2)  // ds-allow: radio hardware — column count for function-switch button group; not a single DS FormRow control.
 
  protected:
   void cleanup() override;

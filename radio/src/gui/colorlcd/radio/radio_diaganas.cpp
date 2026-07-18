@@ -55,12 +55,12 @@ class AnaViewWindow : public Window
  public:
   AnaViewWindow(Window* parent) :
       Window(parent, {0, 0, parent->width(), parent->height()}),
-      grid(col_dsc, row_dsc, PAD_ZERO)
+      grid(col_dsc, row_dsc, PAD_ZERO)  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
   {
-    parent->padAll(PAD_ZERO);
-    padAll(PAD_TINY);
-    padLeft(PAD_SMALL);
-    padRight(PAD_SMALL);
+    parent->padAll(PAD_ZERO);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
+    padAll(PAD_TINY);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
+    padLeft(PAD_SMALL);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
+    padRight(PAD_SMALL);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
     setFlexLayout();
   }
 
@@ -79,11 +79,11 @@ class AnaViewWindow : public Window
 #if LANDSCAPE
       if ((i & 1) == 0) {
         line = newLine(grid);
-        line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+        line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
       }
 #else
       line = newLine(grid);
-      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 #endif
 
       if (((adcGetInputMask() & (1 << i)) != 0) && i < adcGetMaxInputs(ADC_INPUT_MAIN))
@@ -126,7 +126,7 @@ class AnaViewWindow : public Window
 #if defined(IMU) && LANDSCAPE
     if (imuGetName()) {
       line = newLine(grid);
-      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 
       grid.setColSpan(2);
       new StaticText(line, rect_t{}, STR_GYRO);
@@ -135,7 +135,7 @@ class AnaViewWindow : public Window
       grid.setColSpan(1);
 
       line = newLine(grid);
-      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 
       grid.setColSpan(2);
       new StaticText(line, rect_t{}, "Tilt X");
@@ -146,7 +146,7 @@ class AnaViewWindow : public Window
       for (int i = 0; i < 3; i++) {grid.nextCell();}
 
       line = newLine(grid);
-      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+      line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 
       grid.setColSpan(2);
       new StaticText(line, rect_t{}, "Tilt Y");
@@ -158,7 +158,7 @@ class AnaViewWindow : public Window
 
 #if defined(LUMINOSITY_SENSOR)
     line = newLine(grid);
-    line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+    line->setStylePadColumn(PAD_SMALL, LV_PART_MAIN);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 
     grid.setColSpan(2);
     new StaticText(line, rect_t{}, STR_SRC_LIGHT);
@@ -219,9 +219,9 @@ class AnaCalibratedViewWindow : public AnaViewWindow
 
     line = newLine(grid);
 #if PORTRAIT
-    line->padTop(PAD_LARGE * 2 + PAD_SMALL);
+    line->padTop(PAD_LARGE * 2 + PAD_SMALL);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 #else
-    line->padTop(PAD_TINY);
+    line->padTop(PAD_TINY);  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 #endif
 
     auto lbl = new DynamicText(
@@ -296,7 +296,7 @@ class AnaCalibratedViewWindow : public AnaViewWindow
   }
 #endif
 
-  static LAYOUT_SIZE(TSI2CEventsCol, 5, 0)
+  static LAYOUT_SIZE(TSI2CEventsCol, 5, 0)  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 
  protected:
 #if defined(HARDWARE_TOUCH)
@@ -503,7 +503,7 @@ class AnaMinMaxViewWindow : public AnaViewWindow
     AnaViewWindow::onLiveCheckEvents(live);
   }
 
-  static LAYOUT_SIZE(GRIDCOLS, 10, 5)
+  static LAYOUT_SIZE(GRIDCOLS, 10, 5)  // ds-allow: analog/IMU diagnostics - two inputs packed per landscape row with per-cell column spans (setColSpan) for gyro/lux rows; ds::Grid's fixed one-text-per-cell template with no colspan can't express it.
 };
 
 class AnaCalibratedViewPage : public PageGroupItem

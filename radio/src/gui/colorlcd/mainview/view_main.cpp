@@ -109,7 +109,7 @@ ViewMain::ViewMain() :
   withLive([&](LiveWindow& live) {
     tile_view = lv_tileview_create(live.lvobj());
     if (!requireLvObj(tile_view)) return false;
-    lv_obj_set_pos(tile_view, rect.x, rect.y);
+    lv_obj_set_pos(tile_view, rect.x, rect.y); // ds-allow: main view places the full-screen widget tile-view container at absolute view coordinates; not a DS surface
     lv_obj_set_size(tile_view, rect.w, rect.h);
     lv_obj_set_scrollbar_mode(tile_view, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(tile_view, LV_OBJ_FLAG_SCROLL_ELASTIC);

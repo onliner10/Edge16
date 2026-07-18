@@ -64,8 +64,8 @@ class StickCalibrationWindow : public Window
     calibStick->setPos(dx, dy);
   }
 
-  static LAYOUT_VAL_SCALED(CAL_CTR, 9)
-  static LAYOUT_VAL_SCALED(CAL_SIZ, 68)
+  static LAYOUT_VAL_SCALED(CAL_CTR, 9)  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
+  static LAYOUT_VAL_SCALED(CAL_SIZ, 68)  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
 
  protected:
   uint8_t stickX, stickY;
@@ -88,7 +88,7 @@ void RadioCalibrationPage::buildHeader(Window *window)
 
 void RadioCalibrationPage::buildBody(Window *window)
 {
-  window->padAll(PAD_ZERO);
+  window->padAll(PAD_ZERO);  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
 
   menuCalibrationState = CALIB_START;
 
@@ -113,19 +113,19 @@ void RadioCalibrationPage::buildBody(Window *window)
 
   new ViewMainDecoration(window, true);
 
-  axisBtn = new TextButton(window, {AXIS_X, PAD_LARGE, AXIS_W, 0}, STR_STICKS,
+  axisBtn = new TextButton(window, {AXIS_X, PAD_LARGE, AXIS_W, 0}, STR_STICKS,  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
                  [=]() -> uint8_t {
                    new HWInputDialog<HWSticks>(STR_STICKS);
                    return 0;
                  });
 
-  potsBtn = new TextButton(window, {POTS_X, PAD_LARGE, POTS_W, 0}, STR_POTS,
+  potsBtn = new TextButton(window, {POTS_X, PAD_LARGE, POTS_W, 0}, STR_POTS,  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
                  [=]() -> uint8_t {
                    new HWInputDialog<HWPots>(STR_POTS, HWPots::POTS_WINDOW_WIDTH);
                    return 0;
                  });
 
-  nxtBtn = new TextButton(window, {NXT_X, PAD_LARGE, NXT_W, 0}, "",
+  nxtBtn = new TextButton(window, {NXT_X, PAD_LARGE, NXT_W, 0}, "",  // ds-allow: calibration screen - absolute stick/pot/next button bar over a calibration canvas; not a DS form.
                  [=]() -> uint8_t {
                    nextStep();
                    return 0;

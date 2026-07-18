@@ -230,8 +230,8 @@ struct ToolButton : public TextButton {
     });
   }
 
-  static LAYOUT_ORIENTATION(TOOLS_BTN_W, (LCD_W - PAD_LARGE * 3) / 3, (LCD_W - PAD_LARGE * 2) / 2)
-  static LAYOUT_VAL_SCALED(TOOLS_BTN_H, 48)
+  static LAYOUT_ORIENTATION(TOOLS_BTN_W, (LCD_W - PAD_LARGE * 3) / 3, (LCD_W - PAD_LARGE * 2) / 2)  // ds-allow: tools launcher — tool-button width as viewport third/half for fixed multi-column button grid; not a DS list.
+  static LAYOUT_VAL_SCALED(TOOLS_BTN_H, 48)  // ds-allow: tools launcher — fixed tool-button height for multi-column button grid; not a DS list.
 };
 
 //-----------------------------------------------------------------------------
@@ -357,7 +357,7 @@ void RadioToolsPage::rebuild(Window* window)
 
   tools.sort(tool_compare_nocase);
 
-  window->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);
+  window->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: tools launcher — wraps fixed-size tool buttons into a multi-column grid; not a DS list.
 
   for (const auto& tool : tools) {
     new ToolButton(window, tool);

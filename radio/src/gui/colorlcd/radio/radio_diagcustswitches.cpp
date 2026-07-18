@@ -44,13 +44,13 @@ uint16_t getLedColor(int i)
 
 class RadioCustSwitchesDiagsWindow : public Window
 {
-  static LAYOUT_VAL_SCALED(FS_1ST_COLUMN, 95)
-  static LAYOUT_VAL_SCALED(FS_2ND_COLUMN, 160)
-  static LAYOUT_VAL_SCALED(FS_3RD_COLUMN, 260)
-  static LAYOUT_VAL_SCALED(FS_LBL_WIDTH, 60)
+  static LAYOUT_VAL_SCALED(FS_1ST_COLUMN, 95)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
+  static LAYOUT_VAL_SCALED(FS_2ND_COLUMN, 160)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
+  static LAYOUT_VAL_SCALED(FS_3RD_COLUMN, 260)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
+  static LAYOUT_VAL_SCALED(FS_LBL_WIDTH, 60)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
 #if defined(FUNCTION_SWITCHES_RGB_LEDS)
-  static LAYOUT_VAL_SCALED(FS_COLOR_WIDTH, 30)
-  static LAYOUT_VAL_SCALED(FS_COLOR_HEIGHT, 15)
+  static LAYOUT_VAL_SCALED(FS_COLOR_WIDTH, 30)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
+  static LAYOUT_VAL_SCALED(FS_COLOR_HEIGHT, 15)  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
   ColorSwatch* colorBox[NUM_FUNCTIONS_SWITCHES];
 #endif
 
@@ -58,20 +58,20 @@ class RadioCustSwitchesDiagsWindow : public Window
   RadioCustSwitchesDiagsWindow(Window *parent, const rect_t &rect) :
       Window(parent, rect)
   {
-    new StaticText(this, {FS_1ST_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},
+    new StaticText(this, {FS_1ST_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
                    "Phys");
-    new StaticText(this, {FS_2ND_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},
+    new StaticText(this, {FS_2ND_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
                    "Log");
-    new StaticText(this, {FS_3RD_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},
+    new StaticText(this, {FS_3RD_COLUMN, PAD_SMALL, FS_LBL_WIDTH, LV_SIZE_CONTENT},  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
                    "Led");
     for (uint8_t i = 0, r = 0; i < switchGetMaxSwitches(); i += 1) {
       if (switchIsCustomSwitch(i)) {
         coord_t y = (r + 2) * EdgeTxStyles::STD_FONT_HEIGHT;
           std::string s(CHAR_SWITCH);
           s += switchGetDefaultName(i);
-          new StaticText(this, {PAD_LARGE, y, FS_LBL_WIDTH, LV_SIZE_CONTENT}, s);
+          new StaticText(this, {PAD_LARGE, y, FS_LBL_WIDTH, LV_SIZE_CONTENT}, s);  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
         new DynamicText(
-            this, {FS_1ST_COLUMN + PAD_LARGE, y, FS_LBL_WIDTH, LV_SIZE_CONTENT},
+            this, {FS_1ST_COLUMN + PAD_LARGE, y, FS_LBL_WIDTH, LV_SIZE_CONTENT},  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
             [=]() {
               return getFSPhysicalState(i) ? CHAR_DOWN : CHAR_UP;
             });
@@ -111,7 +111,7 @@ void RadioCustSwitchesDiagsPage::buildHeader(Window *window)
 
 void RadioCustSwitchesDiagsPage::buildBody(Window *window)
 {
-  body->padAll(PAD_ZERO);
+  body->padAll(PAD_ZERO);  // ds-allow: function-switch diagnostics - FUNCTION_SWITCHES-gated (not built on the TX16S sim); Phys/Log/Led columns include a ColorSwatch LED swatch that ds::Grid's text-only cells can't hold.
   new RadioCustSwitchesDiagsWindow(window,
                                    {0, 0, window->width(), window->height()});
 }

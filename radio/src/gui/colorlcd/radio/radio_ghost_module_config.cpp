@@ -50,10 +50,10 @@ class GhostModuleConfigWindow : public Window
     }
   }
 
-  static LAYOUT_SIZE_SCALED(xOffset, 140, 20)
-  static LAYOUT_VAL_SCALED(yOffset, 20)
-  static LAYOUT_SIZE_SCALED(xOffset2, 260, 140)
-  static LAYOUT_VAL_SCALED(lineSpacing, 25)
+  static LAYOUT_SIZE_SCALED(xOffset, 140, 20)  // ds-allow: Ghost module config — label-column x-offset for menu lines drawn at absolute offsets; RF-module-specific canvas, not a DS list/form.
+  static LAYOUT_VAL_SCALED(yOffset, 20)  // ds-allow: Ghost module config — top y-offset for menu lines drawn at absolute offsets; RF-module-specific canvas, not a DS list/form.
+  static LAYOUT_SIZE_SCALED(xOffset2, 260, 140)  // ds-allow: Ghost module config — value-column x-offset for split menu lines drawn at absolute offsets; RF-module-specific canvas, not a DS list/form.
+  static LAYOUT_VAL_SCALED(lineSpacing, 25)  // ds-allow: Ghost module config — fixed row spacing for menu lines drawn at absolute offsets; RF-module-specific canvas, not a DS list/form.
 
  protected:
   StaticText* menuLines[GHST_MENU_LINES][2];
@@ -118,7 +118,7 @@ void RadioGhostModuleConfig::buildHeader(Window* window)
 
 void RadioGhostModuleConfig::buildBody(Window* window)
 {
-  window->padAll(PAD_ZERO);
+  window->padAll(PAD_ZERO);  // ds-allow: Ghost module config — zero body padding so RF-module menu canvas fills the page; not a DS list/form.
   new GhostModuleConfigWindow(window,
                               {0, 0, LCD_W, LCD_H - EdgeTxStyles::MENU_HEADER_HEIGHT - 5});
 }

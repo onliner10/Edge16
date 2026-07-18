@@ -43,8 +43,8 @@ inline int16_t ppmFrameLen(int8_t chCount)
 
 ChannelRange::ChannelRange(Window* parent) : Window(parent, rect_t{})
 {
-  padAll(PAD_TINY);
-  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);
+  padAll(PAD_TINY);  // ds-allow: compact inline channel-range control; tight micro-padding packing two NumberEdits on one line, not a DS FormRow
+  setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: compact inline channel-range control; fixed micro gap between start/end fields, not a DS FormRow
 }
 
 void ChannelRange::build()

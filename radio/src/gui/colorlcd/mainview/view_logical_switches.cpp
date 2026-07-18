@@ -40,9 +40,9 @@ static const lv_coord_t f_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
 #else
 
 // Footer grid
-LAYOUT_VAL_SCALED(LS_C1, 60)
-LAYOUT_VAL_SCALED(LS_C3, 112)
-LAYOUT_VAL_SCALED(LS_C5, 50)
+LAYOUT_VAL_SCALED(LS_C1, 60) // ds-allow: LS monitor footer grid fixed column-width constant for status cells; not a DS list
+LAYOUT_VAL_SCALED(LS_C3, 112) // ds-allow: LS monitor footer grid fixed column-width constant for status cells; not a DS list
+LAYOUT_VAL_SCALED(LS_C5, 50) // ds-allow: LS monitor footer grid fixed column-width constant for status cells; not a DS list
 static const lv_coord_t f_col_dsc[] = {
     LS_C1, LV_GRID_FR(1),        LS_C3, LV_GRID_FR(1), LS_C5,
     LS_C5, LV_GRID_TEMPLATE_LAST};
@@ -62,9 +62,9 @@ class LogicalSwitchDisplayFooter : public Window
   {
     setWindowFlag(OPAQUE);
 
-    padAll(PAD_ZERO);
-    padLeft(PAD_SMALL);
-    padRight(PAD_SMALL);
+    padAll(PAD_ZERO); // ds-allow: LS monitor footer zeroes padding around its fixed status-cell grid; not a DS list
+    padLeft(PAD_SMALL); // ds-allow: LS monitor footer insets its fixed status-cell grid by a fixed margin; not a DS list
+    padRight(PAD_SMALL); // ds-allow: LS monitor footer insets its fixed status-cell grid by a fixed margin; not a DS list
 
     if (withLive([&](LiveWindow& live) {
           auto obj = live.lvobj();
@@ -72,8 +72,8 @@ class LogicalSwitchDisplayFooter : public Window
 
           lv_obj_set_layout(obj, LV_LAYOUT_GRID);
           lv_obj_set_grid_dsc_array(obj, f_col_dsc, row_dsc);
-          lv_obj_set_style_pad_row(obj, 0, 0);
-          lv_obj_set_style_pad_column(obj, PAD_TINY, 0);
+          lv_obj_set_style_pad_row(obj, 0, 0); // ds-allow: LS monitor footer status-cell grid inter-cell spacing; raw grid, not a DS list
+          lv_obj_set_style_pad_column(obj, PAD_TINY, 0); // ds-allow: LS monitor footer status-cell grid inter-cell spacing; raw grid, not a DS list
 
           auto createLabel = [&](uint8_t col, uint8_t colCnt, uint8_t row,
                                  lv_obj_t*& label) {
@@ -192,8 +192,8 @@ class LogicalSwitchDisplayFooter : public Window
     refresh();
   }
 
- static LAYOUT_ORIENTATION(V2_COL_CNT, 1, 2) static LAYOUT_ORIENTATION(
-     ANDSW_ROW, 0, 1) static LAYOUT_ORIENTATION(ANDSW_COL, 3, 1)
+ static LAYOUT_ORIENTATION(V2_COL_CNT, 1, 2) static LAYOUT_ORIENTATION( // ds-allow: LS monitor footer grid cell-placement constants; not a DS list
+     ANDSW_ROW, 0, 1) static LAYOUT_ORIENTATION(ANDSW_COL, 3, 1) // ds-allow: LS monitor footer grid cell-placement constants; not a DS list
 
      protected : unsigned lsIndex = 0;
   lv_obj_t* lsFunc = nullptr;
@@ -217,11 +217,11 @@ LogicalSwitchesViewPage::LogicalSwitchesViewPage(const PageDef& pageDef) :
 
 void LogicalSwitchesViewPage::build(Window* window)
 {
-  window->padAll(PAD_ZERO);
+  window->padAll(PAD_ZERO); // ds-allow: LS monitor zeroes page padding to place the LS button matrix at absolute offsets; not a DS list
 
   coord_t xo =
-      (LCD_W - (BTN_MATRIX_COL * (BTN_WIDTH + PAD_TINY) - PAD_TINY)) / 2;
-  coord_t yo = PAD_TINY;
+      (LCD_W - (BTN_MATRIX_COL * (BTN_WIDTH + PAD_TINY) - PAD_TINY)) / 2; // ds-allow: LS monitor centers the button matrix by computing an absolute x origin; not a DS list
+  coord_t yo = PAD_TINY; // ds-allow: LS monitor button-matrix absolute y origin; not a DS list
 
   // Footer
   footer = new (std::nothrow) LogicalSwitchDisplayFooter(
@@ -232,13 +232,13 @@ void LogicalSwitchesViewPage::build(Window* window)
   int btnHeight =
       (window->height() - FOOTER_HEIGHT) /
           ((MAX_LOGICAL_SWITCHES + BTN_MATRIX_COL - 1) / BTN_MATRIX_COL) -
-      PAD_TINY;
+      PAD_TINY; // ds-allow: LS monitor computes matrix cell height minus inter-cell gap for absolute placement; not a DS list
 
   // LSW table
   std::string lsString("L64");
   for (uint8_t i = 0; i < MAX_LOGICAL_SWITCHES; i++) {
-    coord_t x = (i % BTN_MATRIX_COL) * (BTN_WIDTH + PAD_TINY) + xo;
-    coord_t y = (i / BTN_MATRIX_COL) * (btnHeight + PAD_TINY) + yo;
+    coord_t x = (i % BTN_MATRIX_COL) * (BTN_WIDTH + PAD_TINY) + xo; // ds-allow: LS monitor computes each button's absolute x in the matrix; not a DS list
+    coord_t y = (i / BTN_MATRIX_COL) * (btnHeight + PAD_TINY) + yo; // ds-allow: LS monitor computes each button's absolute y in the matrix; not a DS list
 
     LogicalSwitchData* ls = lswAddress(i);
     bool isActive = (ls->func != LS_FUNC_NONE);

@@ -55,7 +55,7 @@ static const lv_coord_t line_row_dsc[] = {LV_GRID_CONTENT,
 WidgetSettings::WidgetSettings(Widget* w) :
     BaseDialog(w->getFactory()->getDisplayName(), true), widget(w)
 {
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);
+  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY); // ds-allow: per-widget options form builds its own grid so a custom-width option editor (SLIDER_W slider) isn't resized by a DS FormRow control column
 
   uint8_t optIdx = 0;
 

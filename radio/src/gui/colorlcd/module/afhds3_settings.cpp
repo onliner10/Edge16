@@ -51,7 +51,7 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
     md(&g_model.moduleData[moduleIdx]),
     grid(g)
 {
-  setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
 
   FormLine* line;
 
@@ -70,8 +70,8 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
       new StaticText(line, rect_t{}, STR_TYPE);
 
   afhds3TypeForm = new Window(line, rect_t{});
-  afhds3TypeForm->padAll(PAD_TINY);
-  afhds3TypeForm->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_TINY);
+  afhds3TypeForm->padAll(PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
+  afhds3TypeForm->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
   afhds3TypeForm->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
 
   afhds3PhyMode =

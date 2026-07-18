@@ -36,13 +36,13 @@ class HWSticks : public Window
 
   // Absolute layout for Pots popup - due to performance issues with lv_textarea
   // in a flex layout
-  static LAYOUT_VAL_SCALED(S_LBL_W, 60)
-  static constexpr coord_t S_NM_X = S_LBL_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(S_NM_W, 64)
-  static constexpr coord_t S_INV_X = S_NM_X + S_NM_W + PAD_LARGE * 3;
+  static LAYOUT_VAL_SCALED(S_LBL_W, 60)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static constexpr coord_t S_NM_X = S_LBL_W + PAD_SMALL;  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_VAL_SCALED(S_NM_W, 64)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static constexpr coord_t S_INV_X = S_NM_X + S_NM_W + PAD_LARGE * 3;  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
   static constexpr coord_t S_INV_W = ToggleSwitch::TOGGLE_W;
-  static constexpr coord_t S_ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
-  #define S_Y(i) (i * S_ROW_H + PAD_TINY)
+  static constexpr coord_t S_ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  #define S_Y(i) (i * S_ROW_H + PAD_TINY)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
 };
 
 class HWPots : public Window
@@ -52,19 +52,19 @@ class HWPots : public Window
 
   // Absolute layout for Pots popup - due to performance issues with lv_textarea
   // in a flex layout
-  static LAYOUT_ORIENTATION_SCALED(P_LBL_W, 60, 120)
-  static constexpr coord_t P_NM_X = P_LBL_W + PAD_SMALL;
-  static LAYOUT_VAL_SCALED(P_NM_W, 64)
-  static LAYOUT_ORIENTATION(P_TYP_X, P_NM_X + P_NM_W + PAD_SMALL, LAYOUT_SCALE(32))
-  static LAYOUT_ORIENTATION(P_TYP_W, LAYOUT_SCALE(160), P_LBL_W)
-  static LAYOUT_ORIENTATION(P_INV_X, P_TYP_X + P_TYP_W + PAD_SMALL, P_NM_X + P_NM_W + PAD_SMALL)
+  static LAYOUT_ORIENTATION_SCALED(P_LBL_W, 60, 120)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static constexpr coord_t P_NM_X = P_LBL_W + PAD_SMALL;  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_VAL_SCALED(P_NM_W, 64)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_ORIENTATION(P_TYP_X, P_NM_X + P_NM_W + PAD_SMALL, LAYOUT_SCALE(32))  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_ORIENTATION(P_TYP_W, LAYOUT_SCALE(160), P_LBL_W)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_ORIENTATION(P_INV_X, P_TYP_X + P_TYP_W + PAD_SMALL, P_NM_X + P_NM_W + PAD_SMALL)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
   static constexpr coord_t P_INV_W = ToggleSwitch::TOGGLE_W;
-  static LAYOUT_ORIENTATION(P_ROW_H, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, LAYOUT_SCALE(72))
-  static LAYOUT_ORIENTATION_SCALED(P_OFST_Y, 0, 36)
-  static LAYOUT_ORIENTATION(POTS_WINDOW_WIDTH,
-                              P_LBL_W + P_NM_W + P_TYP_W + P_INV_W + PAD_TINY * 2 + PAD_SMALL * 5 + PAD_SCROLL,
-                              P_LBL_W + P_NM_W + P_INV_W + PAD_TINY * 2 + PAD_SMALL * 4 + PAD_SCROLL)
-  #define P_Y(i) (i * P_ROW_H + PAD_TINY)
+  static LAYOUT_ORIENTATION(P_ROW_H, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, LAYOUT_SCALE(72))  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_ORIENTATION_SCALED(P_OFST_Y, 0, 36)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static LAYOUT_ORIENTATION(POTS_WINDOW_WIDTH,  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+                              P_LBL_W + P_NM_W + P_TYP_W + P_INV_W + PAD_TINY * 2 + PAD_SMALL * 5 + PAD_SCROLL,  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+                              P_LBL_W + P_NM_W + P_INV_W + PAD_TINY * 2 + PAD_SMALL * 4 + PAD_SCROLL)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  #define P_Y(i) (i * P_ROW_H + PAD_TINY)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
 
  protected:
   bool potsChanged;
@@ -76,8 +76,8 @@ class HWSwitches : public Window
  public:
   HWSwitches(Window* parent);
 
-  static LAYOUT_SIZE_SCALED(SW_CTRL_W, 86, 72)
-  static constexpr coord_t SW_WINDOW_WIDTH = SW_CTRL_W * 4 + PAD_SMALL * 5 + PAD_TINY * 2 + PAD_SCROLL;
+  static LAYOUT_SIZE_SCALED(SW_CTRL_W, 86, 72)  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
+  static constexpr coord_t SW_WINDOW_WIDTH = SW_CTRL_W * 4 + PAD_SMALL * 5 + PAD_TINY * 2 + PAD_SCROLL;  // ds-allow: hardware inputs - stick/pot/switch config geometry: absolutely-positioned name/type/invert columns and switch-control grid; not a DS list/form.
 };
 
 template <class T>

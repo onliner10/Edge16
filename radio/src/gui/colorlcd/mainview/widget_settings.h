@@ -29,7 +29,7 @@ class WidgetSettings : public BaseDialog
  public:
   WidgetSettings(Widget* widget);
 
-  static LAYOUT_SIZE_SCALED(SLIDER_W, 150, 120)
+  static LAYOUT_SIZE_SCALED(SLIDER_W, 150, 120) // ds-allow: per-widget options form hosts a fixed-width custom slider editor (SLIDER_W) a DS FormRow control column would resize
 
  protected:
   Widget* widget;

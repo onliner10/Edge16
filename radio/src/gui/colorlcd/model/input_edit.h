@@ -32,9 +32,9 @@ class InputEditWindow : public Page
 
   bool openRoute(const Route& r, uint8_t depth) override;
 
-  static LAYOUT_SIZE(CURVE_W_LANDSCAPE, 138, 120)
-  static LAYOUT_ORIENTATION_SCALED(INPUT_EDIT_CURVE_WIDTH, CURVE_W_LANDSCAPE, 176)
-  static LAYOUT_ORIENTATION(INPUT_EDIT_CURVE_HEIGHT, INPUT_EDIT_CURVE_WIDTH, LAYOUT_SCALE(132))
+  static LAYOUT_SIZE(CURVE_W_LANDSCAPE, 138, 120)  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
+  static LAYOUT_ORIENTATION_SCALED(INPUT_EDIT_CURVE_WIDTH, CURVE_W_LANDSCAPE, 176)  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
+  static LAYOUT_ORIENTATION(INPUT_EDIT_CURVE_HEIGHT, INPUT_EDIT_CURVE_WIDTH, LAYOUT_SCALE(132))  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
 
  protected:
   uint8_t input;

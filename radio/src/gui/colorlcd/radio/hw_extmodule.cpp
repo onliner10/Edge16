@@ -32,7 +32,7 @@
 ExternalModuleWindow::ExternalModuleWindow(Window *parent, FlexGridLayout& grid)
 {
   auto line = parent->newLine(grid);
-  line->padLeft(PAD_SMALL);
+  line->padLeft(PAD_SMALL);  // ds-allow: hardware external-module config - boxed side-by-side option field with custom indentation; not a single DS FormRow control.
 
   new StaticText(line, rect_t{}, STR_SAMPLE_MODE);
 

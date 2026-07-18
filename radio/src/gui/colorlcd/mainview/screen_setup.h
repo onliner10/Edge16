@@ -33,7 +33,7 @@ class ScreenAddPage : public PageGroupItem
   void build(Window* window) override;
 
  protected:
-  static LAYOUT_VAL_SCALED(ADD_TXT_W, 200)
+  static LAYOUT_VAL_SCALED(ADD_TXT_W, 200) // ds-allow: add-screen page label-column width constant; layout-factory setup page, not a DS form
 };
 #endif
 

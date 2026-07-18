@@ -271,7 +271,7 @@ class BatteryMonitorWidget : public NativeWidget
   void setObjRect(lv_obj_t* obj, coord_t x, coord_t y, coord_t w, coord_t h)
   {
     if (!obj) return;
-    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_pos(obj, x, y); // ds-allow: battery-monitor widget — internal setObjRect helper places a sub-element at an absolute pixel origin inside the user-resizable zone; canvas widget, not a DS row/form.
     if (w < 1) w = 1;
     if (h < 1) h = 1;
     lv_obj_set_size(obj, w, h);
@@ -562,7 +562,7 @@ class BatteryMonitorWidget : public NativeWidget
         if (barH >= 12) font = FONT_STD_INDEX;
         etx_font(obj, font);
         coord_t fh = getFontHeight(LcdFlags(font) << 8u);
-        lv_obj_set_pos(obj, 2, barY + (barH - fh) / 2);
+        lv_obj_set_pos(obj, 2, barY + (barH - fh) / 2); // ds-allow: battery-monitor widget — compact-layout percent label centred over the fuel bar at an absolute offset; canvas widget, not a DS row/form.
         lv_obj_set_size(obj, w - 4, fh);
       });
       lastRemainingPct = 255;
@@ -629,7 +629,7 @@ class BatteryMonitorWidget : public NativeWidget
       });
       fill.with([&](lv_obj_t* obj) {
         track.with([&](lv_obj_t* t) { lv_obj_set_parent(obj, t); });
-        lv_obj_set_pos(obj, 0, 0);
+        lv_obj_set_pos(obj, 0, 0); // ds-allow: battery-monitor widget — fuel fill pinned to the track's top-left origin; canvas widget, not a DS row/form.
         lv_obj_set_size(obj, cw, barH);
       });
       if (showShortMetrics) {
@@ -736,7 +736,7 @@ class BatteryMonitorWidget : public NativeWidget
       headerPill.with(
           [&](lv_obj_t* obj) { setObjRect(obj, chipX, cy, chipW, headerH); });
       packLabel.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, chipX + 5, cy + 2);
+        lv_obj_set_pos(obj, chipX + 5, cy + 2); // ds-allow: battery-monitor widget — pack-name label inset inside the identity chip; canvas widget, not a DS row/form.
         lv_obj_set_size(obj, chipW - 10, headerH - 4);
         etx_font(obj, FONT_XXS_INDEX);
       });
@@ -747,7 +747,7 @@ class BatteryMonitorWidget : public NativeWidget
           setObjRect(obj, statusX, cy, statusW, headerH);
         });
         statusLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, statusX + 5, cy + 2);
+          lv_obj_set_pos(obj, statusX + 5, cy + 2); // ds-allow: battery-monitor widget — status label inset inside the status pill; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, statusW - 10, headerH - 4);
           etx_font(obj, FONT_XXS_INDEX);
         });
@@ -763,7 +763,7 @@ class BatteryMonitorWidget : public NativeWidget
 
     percentLabel.with([&](lv_obj_t* obj) {
       etx_font(obj, pctFont);
-      lv_obj_set_pos(obj, cx, pctY);
+      lv_obj_set_pos(obj, cx, pctY); // ds-allow: battery-monitor widget — hero percent label placed over the fuel bar at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(obj, cw, pctFh);
       lv_obj_move_foreground(obj);
     });
@@ -775,7 +775,7 @@ class BatteryMonitorWidget : public NativeWidget
 
     if (showSecondaryVoltage) {
       cellVoltageLabel.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, cx, secondaryY);
+        lv_obj_set_pos(obj, cx, secondaryY); // ds-allow: battery-monitor widget — secondary cell-voltage label at an absolute offset below the bar; canvas widget, not a DS row/form.
         lv_obj_set_size(obj, cw, secondaryH);
         etx_font(obj, FONT_XS_INDEX);
       });
@@ -792,32 +792,32 @@ class BatteryMonitorWidget : public NativeWidget
         }
         coord_t voltageW = cw - usedW - deltaW;
         cellVoltageLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, cx, metricsY);
+          lv_obj_set_pos(obj, cx, metricsY); // ds-allow: battery-monitor widget — first metrics-row label at an absolute offset within the zone; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, voltageW, metricH);
           lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
           etx_font(obj, FONT_XXS_INDEX);
         });
         consumedLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, cx + voltageW, metricsY);
+          lv_obj_set_pos(obj, cx + voltageW, metricsY); // ds-allow: battery-monitor widget — consumed-mAh metric at an absolute offset in the three-column metrics row; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, usedW, metricH);
           lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
           etx_font(obj, FONT_XXS_INDEX);
         });
         deltaLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, cx + voltageW + usedW, metricsY);
+          lv_obj_set_pos(obj, cx + voltageW + usedW, metricsY); // ds-allow: battery-monitor widget — delta metric at an absolute offset in the three-column metrics row; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, deltaW, metricH);
           etx_font(obj, FONT_XXS_INDEX);
         });
       } else {
         coord_t mHalf = cw / 2;
         consumedLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, cx, metricsY);
+          lv_obj_set_pos(obj, cx, metricsY); // ds-allow: battery-monitor widget — first metrics-row label at an absolute offset within the zone; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, mHalf, metricH);
           lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
           etx_font(obj, FONT_XXS_INDEX);
         });
         deltaLabel.with([&](lv_obj_t* obj) {
-          lv_obj_set_pos(obj, cx + mHalf, metricsY);
+          lv_obj_set_pos(obj, cx + mHalf, metricsY); // ds-allow: battery-monitor widget — delta metric at an absolute offset in the two-column metrics row; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, cw - mHalf, metricH);
           etx_font(obj, FONT_XXS_INDEX);
         });

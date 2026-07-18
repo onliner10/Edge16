@@ -31,15 +31,15 @@ void BatteryConfirmDialog::buildBody()
     });
   }
 
-  constexpr coord_t margin = PAD_LARGE;
-  constexpr coord_t titleTop = PAD_LARGE;
+  constexpr coord_t margin = PAD_LARGE;  // ds-allow: startup battery-select confirm; side margin for the computed absolute full-screen layout, shown before the DS dialog stack is available
+  constexpr coord_t titleTop = PAD_LARGE;  // ds-allow: startup battery-select confirm; title top inset in the computed absolute full-screen layout, shown before the DS dialog stack is available
   constexpr coord_t titleHeight = 36;
   constexpr coord_t subtitleTop = titleTop + titleHeight;
   constexpr coord_t subtitleHeight = 24;
-  constexpr coord_t listTop = subtitleTop + subtitleHeight + PAD_SMALL;
+  constexpr coord_t listTop = subtitleTop + subtitleHeight + PAD_SMALL;  // ds-allow: startup battery-select confirm; pack-list top computed below the subtitle in the absolute full-screen layout, shown before the DS dialog stack is available
   constexpr coord_t listWidth = LCD_W - margin * 2;
-  constexpr coord_t listHeight = LCD_H - listTop - PAD_LARGE;
-  constexpr coord_t rowHeight = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_LARGE;
+  constexpr coord_t listHeight = LCD_H - listTop - PAD_LARGE;  // ds-allow: startup battery-select confirm; pack-list height fills to the bottom margin in the absolute full-screen layout, shown before the DS dialog stack is available
+  constexpr coord_t rowHeight = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_LARGE;  // ds-allow: startup battery-select confirm; enlarged pack-row height for the computed absolute full-screen layout, shown before the DS dialog stack is available
 
   Window::makeLive<StaticText>(
       this, rect_t{margin, titleTop, listWidth, titleHeight},
@@ -53,8 +53,8 @@ void BatteryConfirmDialog::buildBody()
       this, rect_t{margin, listTop, listWidth, listHeight});
   if (!body) return;
 
-  body->padAll(PAD_ZERO);
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, listWidth, listHeight);
+  body->padAll(PAD_ZERO);  // ds-allow: startup battery-select confirm; zero-pad the absolutely-sized pack-list body, shown before the DS dialog stack is available
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, listWidth, listHeight);  // ds-allow: startup battery-select confirm; pack-list body sized to the computed absolute list rect, shown before the DS dialog stack is available
   body->withLive([](Window::LiveWindow& live) {
     auto obj = live.lvobj();
     lv_obj_set_scroll_dir(obj, LV_DIR_VER);

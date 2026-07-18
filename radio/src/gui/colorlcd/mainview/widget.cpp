@@ -211,7 +211,7 @@ Widget::Widget(const WidgetFactory* factory, Window* parent, const rect_t& rect,
 
 static coord_t responsive_text_padding(coord_t height)
 {
-  return height <= EdgeTxStyles::MENU_HEADER_HEIGHT ? PAD_TINY : PAD_SMALL;
+  return height <= EdgeTxStyles::MENU_HEADER_HEIGHT ? PAD_TINY : PAD_SMALL; // ds-allow: widget base picks content text padding by widget-zone height; internal absolute layout in a resizable dashboard zone, not a DS control
 }
 
 FontIndex Widget::responsiveTextFont(coord_t height)
@@ -245,7 +245,7 @@ void Widget::layoutTextLabel(lv_obj_t* label, const rect_t& rect,
   if (xOffset > 0 && w > xOffset) w -= xOffset;
 
   etx_font(label, font);
-  lv_obj_set_pos(label, x, y);
+  lv_obj_set_pos(label, x, y); // ds-allow: widget base positions its content label at an absolute offset within the widget zone; not a DS control
   lv_obj_set_size(label, w, fontHeight);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
 }
@@ -298,7 +298,7 @@ rect_t NativeWidget::cardRect() const
 {
   if (!usesCardChrome()) return {0, 0, width(), height()};
 
-  constexpr coord_t inset = PAD_TINY;
+  constexpr coord_t inset = PAD_TINY; // ds-allow: widget base insets the card rect by a fixed margin; internal absolute layout in a resizable dashboard zone, not a DS control
   coord_t w = width() > 2 * inset ? width() - 2 * inset : width();
   coord_t h = height() > 2 * inset ? height() - 2 * inset : height();
   return {inset, inset, w, h};
@@ -307,8 +307,8 @@ rect_t NativeWidget::cardRect() const
 rect_t NativeWidget::contentRect() const
 {
   rect_t r = cardRect();
-  coord_t inset = usesCardChrome() ? PAD_MEDIUM : PAD_TINY;
-  if (r.h <= 54) inset = usesCardChrome() ? PAD_SMALL : PAD_TINY;
+  coord_t inset = usesCardChrome() ? PAD_MEDIUM : PAD_TINY; // ds-allow: widget base insets card content by a chrome-dependent margin; internal absolute layout in a resizable dashboard zone, not a DS control
+  if (r.h <= 54) inset = usesCardChrome() ? PAD_SMALL : PAD_TINY; // ds-allow: widget base shrinks the content inset for short widget zones; internal absolute layout, not a DS control
 
   coord_t w = r.w > 2 * inset ? r.w - 2 * inset : r.w;
   coord_t h = r.h > 2 * inset ? r.h - 2 * inset : r.h;
@@ -321,7 +321,7 @@ void NativeWidget::setObjRect(lv_obj_t* obj, coord_t x, coord_t y, coord_t w,
   if (!obj) return;
   if (w < 1) w = 1;
   if (h < 1) h = 1;
-  lv_obj_set_pos(obj, x, y);
+  lv_obj_set_pos(obj, x, y); // ds-allow: widget base positions child objects at absolute offsets within the widget zone; not a DS control
   lv_obj_set_size(obj, w, h);
 }
 
@@ -344,9 +344,9 @@ lv_obj_t* NativeWidget::createFlexBox(lv_obj_t* parent, lv_flex_flow_t flow)
   lv_obj_set_flex_flow(obj, flow);
   lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(obj, PAD_TINY, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(obj, PAD_TINY, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN); // ds-allow: widget base zeroes its internal flex-container padding; canvas layout inside a resizable dashboard zone, not a DS control
+  lv_obj_set_style_pad_row(obj, PAD_TINY, LV_PART_MAIN); // ds-allow: widget base sets its internal flex-container row gap; canvas layout inside a resizable dashboard zone, not a DS control
+  lv_obj_set_style_pad_column(obj, PAD_TINY, LV_PART_MAIN); // ds-allow: widget base sets its internal flex-container column gap; canvas layout inside a resizable dashboard zone, not a DS control
   return obj;
 }
 
@@ -360,8 +360,8 @@ void NativeWidget::layoutFlexBox(lv_obj_t* obj, const rect_t& rect,
   lv_obj_set_layout(obj, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(obj, flow);
   lv_obj_set_flex_align(obj, main, cross, track);
-  lv_obj_set_style_pad_row(obj, gap, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(obj, gap, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(obj, gap, LV_PART_MAIN); // ds-allow: widget base sets its internal flex-container row gap; canvas layout inside a resizable dashboard zone, not a DS control
+  lv_obj_set_style_pad_column(obj, gap, LV_PART_MAIN); // ds-allow: widget base sets its internal flex-container column gap; canvas layout inside a resizable dashboard zone, not a DS control
 }
 
 void NativeWidget::setFlexChild(lv_obj_t* obj, coord_t width, coord_t height,
@@ -414,7 +414,7 @@ coord_t NativeWidget::cardHeaderHeight(const rect_t& content)
 
 coord_t NativeWidget::cardGap(const rect_t& content)
 {
-  return content.h <= 34 ? 2 : PAD_TINY;
+  return content.h <= 34 ? 2 : PAD_TINY; // ds-allow: widget base chooses inter-element card gap by content height; internal absolute layout, not a DS control
 }
 
 coord_t NativeWidget::cardBarHeight(const rect_t& content)
@@ -791,7 +791,7 @@ void Widget::enableFocus(bool enable)
   if (enable) {
     if (!focusBorder.isPresent()) {
       lv_style_init(&borderStyle);
-      lv_style_set_line_width(&borderStyle, PAD_BORDER);
+      lv_style_set_line_width(&borderStyle, PAD_BORDER); // ds-allow: widget base draws its focus border with a raw line width; canvas chrome, not a DS control
       lv_style_set_line_opa(&borderStyle, LV_OPA_COVER);
       lv_style_set_line_color(&borderStyle, makeLvColor(COLOR_THEME_ACTIVE));
 

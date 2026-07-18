@@ -113,11 +113,11 @@ class TSStyle
 
   lv_style_t tsFreshStyle;
 
-  static LAYOUT_VAL_SCALED(NUM_W, 36)
-  static LAYOUT_VAL_SCALED(NAME_W, 56)
-  static LAYOUT_VAL_SCALED(ID_Y, 16)
-  static LAYOUT_VAL_SCALED(ID_H, 12)
-  static LAYOUT_VAL_SCALED(FRSH_Y, 10)
+  static LAYOUT_VAL_SCALED(NUM_W, 36) // ds-allow: telemetry sensor list-row number column width; row draws num/name/id at absolute offsets, not a DS list row
+  static LAYOUT_VAL_SCALED(NAME_W, 56) // ds-allow: telemetry sensor list-row name column width; row draws num/name/id at absolute offsets, not a DS list row
+  static LAYOUT_VAL_SCALED(ID_Y, 16) // ds-allow: telemetry sensor list-row id-text y offset; row draws num/name/id at absolute offsets, not a DS list row
+  static LAYOUT_VAL_SCALED(ID_H, 12) // ds-allow: telemetry sensor list-row id-text height; row draws num/name/id at absolute offsets, not a DS list row
+  static LAYOUT_VAL_SCALED(FRSH_Y, 10) // ds-allow: telemetry sensor list-row freshness-marker y offset; row draws its columns at absolute offsets, not a DS list row
 
  private:
   bool styleInitDone;
@@ -723,7 +723,7 @@ class SensorEditWindow : public SubPage
             buf[3] = hex2char((value & 0x000f) >> 0);
             return std::string(buf, sizeof(buf));
           });
-          num = new NumberEdit(parent, {x + NUM_EDIT_W + PAD_SMALL, y, NUM_EDIT_W, 0}, 0, 0xff,
+          num = new NumberEdit(parent, {x + NUM_EDIT_W + PAD_SMALL, y, NUM_EDIT_W, 0}, 0, 0xff, // ds-allow: telemetry sensor edit sub-page places the instance NumberEdit at an absolute x after the id field; multi-control line, not a plain DS FormRow
                               GET_SET_DEFAULT(sensor->instance));
         });
 
@@ -784,7 +784,7 @@ class SensorEditWindow : public SubPage
         });
 
     paramLines[P_RATIO] = setupLine(STR_RATIO, [=](Window* parent, coord_t x, coord_t y) {
-          auto pct = new StaticText(parent, {x + NUM_EDIT_W + PAD_MEDIUM, y + PAD_MEDIUM, 0, 0}, "");
+          auto pct = new StaticText(parent, {x + NUM_EDIT_W + PAD_MEDIUM, y + PAD_MEDIUM, 0, 0}, ""); // ds-allow: telemetry ratio edit line places a suffix label at an absolute offset right of the NumberEdit; multi-control line, not a plain DS FormRow
           auto num = new NumberEdit(
               parent, {x, y, NUM_EDIT_W, 0}, 0, MIXSRC_MAX_VALUE,
               GET_DEFAULT(sensor->custom.ratio),
@@ -882,7 +882,7 @@ class SensorEditWindow : public SubPage
     updateSensorParameters();
   }
 
-  static LAYOUT_SIZE(NUM_EDIT_W, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, LAYOUT_SCALE(80))
+  static LAYOUT_SIZE(NUM_EDIT_W, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, LAYOUT_SCALE(80)) // ds-allow: telemetry edit narrow NumberEdit width used to pack multiple fields per line at absolute offsets; not a DS FormRow metric
 };
 
 ModelTelemetryPage::ModelTelemetryPage(const PageDef& pageDef) :
@@ -1010,9 +1010,9 @@ void ModelTelemetryPage::buildSensorList(int8_t focusSensorIndex)
 
 void ModelTelemetryPage::build(Window* window)
 {
-  window->padAll(PAD_TINY);
-  window->padBottom(PAD_LARGE);
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  window->padAll(PAD_TINY); // ds-allow: telemetry page container padding around the sensor list + form sub-sections; page-level pad, not a DS list
+  window->padBottom(PAD_LARGE); // ds-allow: telemetry page bottom padding so the last form line clears the footer; page-level pad, not a DS list
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO); // ds-allow: telemetry page stacks the sensor list and multiple form sub-sections with zero gap; hand-built page, not a DS list
 
   // Sensors
   new Subtitle(window, STR_TELEMETRY_SENSORS);
@@ -1076,17 +1076,17 @@ void ModelTelemetryPage::build(Window* window)
                          1);
 #endif
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY); // ds-allow: telemetry options form uses a fixed 2-column FlexGridLayout with PAD_TINY gutter; not composed from DS FormRows
 
   // Show instance IDs button
   line = window->newLine(grid);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry 'show instance IDs' line indents its label under the sensors subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_SHOW_INSTANCE_ID);
   new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(g_model.showInstanceIds));
 
   // Ignore instance button
   line = window->newLine(grid);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry 'ignore instance' line indents its label under the sensors subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_IGNORE_INSTANCE);
   new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(g_model.ignoreSensorIds));
 
@@ -1094,7 +1094,7 @@ void ModelTelemetryPage::build(Window* window)
   new Subtitle(window, getRxStatLabels()->label);
 
   line = window->newLine(grid);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat low-alarm line indents its label under the RX-stat subtitle; manual padLeft on a label+NumberEdit line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_LOWALARM);
   auto* lowAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
                  GET_SET_DEFAULT(g_model.rfAlarms.warning));
@@ -1102,7 +1102,7 @@ void ModelTelemetryPage::build(Window* window)
   lowAlarm->setEditTitle(STR_ROLLER_RF_LOW_ALARM);
 
   line = window->newLine(grid);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat critical-alarm line indents its label under the RX-stat subtitle; manual padLeft on a label+NumberEdit line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_CRITICALALARM);
   auto* critAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
                  GET_SET_DEFAULT(g_model.rfAlarms.critical));
@@ -1110,7 +1110,7 @@ void ModelTelemetryPage::build(Window* window)
   critAlarm->setEditTitle(STR_ROLLER_RF_CRITICAL_ALARM);
 
   line = window->newLine(grid);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat disable-alarm line indents its label under the RX-stat subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_DISABLE_ALARM);
   new ToggleSwitch(line, rect_t{},
                    GET_SET_DEFAULT(g_model.disableTelemetryWarning));
@@ -1121,7 +1121,7 @@ void ModelTelemetryPage::build(Window* window)
   FlexGridLayout grid5(col_dsc5, row_dsc);
 
   line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario source line indents its label under the Vario subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_SOURCE);
   auto choice = new SourceChoice(
       line, rect_t{}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
@@ -1140,7 +1140,7 @@ void ModelTelemetryPage::build(Window* window)
   });
 
   line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario range line indents its label under the Vario subtitle; packs min+max NumberEdits, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_RANGE);
 
   auto vMin = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, -17, 17,
@@ -1158,7 +1158,7 @@ void ModelTelemetryPage::build(Window* window)
   vMax->setEditTitle(STR_ROLLER_VARIO_MAX);
 
   line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE);
+  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario center line indents its label under the Vario subtitle; packs center min/max NumberEdits, not a plain DS FormRow
   new StaticText(line, rect_t{}, STR_CENTER);
 
   auto cMin = new NumberEdit(

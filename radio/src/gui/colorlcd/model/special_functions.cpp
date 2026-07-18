@@ -379,7 +379,7 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
 {
   specialFunctionOneWindow->clear();
   specialFunctionOneWindow->setFlexLayout();
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: special-functions edit - each line packs function + parameter + repeat/enable controls; multi-control, not a single DS FormRow.
   auto line = specialFunctionOneWindow->newLine(grid);
 
   CustomFunctionData* cfn = customFunctionData();
@@ -681,9 +681,9 @@ void FunctionEditPage::updateSpecialFunctionOneWindow()
 
 void FunctionEditPage::buildBody(Window* form)
 {
-  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_LARGE);
+  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_LARGE);  // ds-allow: special-functions edit - each line packs function + parameter + repeat/enable controls; multi-control, not a single DS FormRow.
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: special-functions edit - each line packs function + parameter + repeat/enable controls; multi-control, not a single DS FormRow.
 
   CustomFunctionData* cfn = customFunctionData();
 

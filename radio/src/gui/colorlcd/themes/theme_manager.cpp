@@ -529,7 +529,7 @@ HeaderDateTime::HeaderDateTime(Window* parent, coord_t x, coord_t y) :
   initRequiredLvObj(
       date, [](lv_obj_t* parent) { return etx_label_create(parent, FONT_XS_INDEX); },
       [](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, 0, 0);
+        lv_obj_set_pos(obj, 0, 0);  // ds-allow: theme manager - thumbnail date labels/close icon positioned absolutely on the theme card; canvas preview, not a DS row.
         lv_obj_set_size(obj, HDR_DATE_WIDTH, HDR_DATE_HEIGHT);
         lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
@@ -538,7 +538,7 @@ HeaderDateTime::HeaderDateTime(Window* parent, coord_t x, coord_t y) :
   initRequiredLvObj(
       time, [](lv_obj_t* parent) { return etx_label_create(parent, FONT_XS_INDEX); },
       [](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, 0, HDR_DATE_LINE2);
+        lv_obj_set_pos(obj, 0, HDR_DATE_LINE2);  // ds-allow: theme manager - thumbnail date labels/close icon positioned absolutely on the theme card; canvas preview, not a DS row.
         lv_obj_set_size(obj, HDR_DATE_WIDTH, HDR_DATE_HEIGHT);
         lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
@@ -604,7 +604,7 @@ HeaderIcon::HeaderIcon(Window* parent, EdgeTxIcon icon, std::function<void()> ac
   action(std::move(action))
 {
   this->icon = new StaticIcon(this, 0, 0, icon, COLOR_THEME_PRIMARY2_INDEX);
-  this->icon->center(width() - PAD_SMALL, height());
+  this->icon->center(width() - PAD_SMALL, height());  // ds-allow: theme manager - thumbnail date labels/close icon positioned absolutely on the theme card; canvas preview, not a DS row.
 #if defined(HARDWARE_TOUCH)
   if (this->action) {
     setWindowFlag(NO_CLICK);
@@ -631,7 +631,7 @@ HeaderBackIcon::HeaderBackIcon(Window* parent, std::function<void()> action) :
   StaticIcon(parent, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_XO, 0, ICON_TOPRIGHT_BG, COLOR_THEME_FOCUS_INDEX),
   action(std::move(action))
 {
-  (new StaticIcon(this, 0, 0, ICON_BTN_CLOSE, COLOR_THEME_PRIMARY2_INDEX))->center(width() + PAD_MEDIUM, height());
+  (new StaticIcon(this, 0, 0, ICON_BTN_CLOSE, COLOR_THEME_PRIMARY2_INDEX))->center(width() + PAD_MEDIUM, height());  // ds-allow: theme manager - thumbnail date labels/close icon positioned absolutely on the theme card; canvas preview, not a DS row.
 #if defined(HARDWARE_TOUCH)
   if (this->action) {
     setWindowFlag(NO_CLICK);

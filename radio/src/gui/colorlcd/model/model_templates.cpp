@@ -31,26 +31,26 @@ static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                      LV_GRID_TEMPLATE_LAST};
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
-TemplatePage::TemplatePage() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO)
+TemplatePage::TemplatePage() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO)  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
 {
   body->setFlexLayout();
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_SMALL);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_SMALL);  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
 
   auto line = body->newLine(grid);
 
   listWindow = new Window(line, rect_t{});
   listWindow->scrollbar();
-  listWindow->padAll(PAD_TINY);
-  listWindow->padRight(PAD_SMALL);
-  listWindow->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, LV_PCT(100), body->height() - PAD_SMALL * 2);
+  listWindow->padAll(PAD_TINY);  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
+  listWindow->padRight(PAD_SMALL);  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
+  listWindow->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, LV_PCT(100), body->height() - PAD_SMALL * 2);  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
   listWindow->setFlexAlign(LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START,
                            LV_FLEX_ALIGN_SPACE_BETWEEN);
   listWindow->setGridCell(LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_START, 0,
                           1);
 
   infoLabel = new StaticText(line, rect_t{}, "");
-  infoLabel->setHeight(body->height() - PAD_SMALL * 2);
+  infoLabel->setHeight(body->height() - PAD_SMALL * 2);  // ds-allow: model templates - scrolling template list beside an info panel sized to the body height; fixed split, not a DS list.
   infoLabel->addStyle(styles->text_align_left, LV_PART_MAIN);
   infoLabel->textColor(COLOR_THEME_PRIMARY1_INDEX);
   infoLabel->textColor(COLOR_THEME_DISABLED_INDEX, ETX_STATE_NO_INFO_COLOR);

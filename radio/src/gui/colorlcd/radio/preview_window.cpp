@@ -152,7 +152,7 @@ PreviewWindow::PreviewWindow(Window *window, rect_t rect,
   new ThemedTextEdit(this, {CBT_X, EDT_Y, EDY_W, 0}, STR_THEME_EDIT, true);
   new ThemedTextEdit(this, {EDT2_X, EDT_Y, EDY_W, 0}, STR_THEME_FOCUS, false);
 
-  new HeaderDateTime(this, width() - DATE_XO, PAD_SMALL);
+  new HeaderDateTime(this, width() - DATE_XO, PAD_SMALL);  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
 
   auto qm = new Window(this, {QM_X, QM_Y, QM_W, QM_H});
   qm->solidBg(COLOR_THEME_QM_BG_INDEX);
@@ -161,27 +161,27 @@ PreviewWindow::PreviewWindow(Window *window, rect_t rect,
     auto sep = lv_obj_create(live.lvobj());
     if (!sep) return;
     etx_solid_bg(sep, COLOR_THEME_QM_FG_INDEX);
-    lv_obj_set_size(sep, LCD_W, PAD_THREE);
+    lv_obj_set_size(sep, LCD_W, PAD_THREE);  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
   });
   auto mask = getBuiltinIcon(ICON_TOP_LOGO);
   new StaticIcon(qm, (QM_W - mask->width) / 2, 0, ICON_TOP_LOGO, COLOR_THEME_QM_FG_INDEX);
 
-  auto qmb = new Window(qm, {PAD_SMALL, mask->height + PAD_SMALL, QuickMenuGroup::QM_BUTTON_WIDTH, QuickMenuGroup::QM_BUTTON_HEIGHT});
+  auto qmb = new Window(qm, {PAD_SMALL, mask->height + PAD_SMALL, QuickMenuGroup::QM_BUTTON_WIDTH, QuickMenuGroup::QM_BUTTON_HEIGHT});  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
   qmb->addStyle(styles->rounded, LV_PART_MAIN);
   qmb->textColor(COLOR_THEME_QM_FG_INDEX, LV_PART_MAIN);
   qmb->solidBg(COLOR_THEME_QM_BG_INDEX, LV_PART_MAIN);
-  new StaticIcon(qmb, (QuickMenuGroup::QM_BUTTON_WIDTH - QuickMenuGroup::QM_ICON_SIZE) / 2, PAD_SMALL,
+  new StaticIcon(qmb, (QuickMenuGroup::QM_BUTTON_WIDTH - QuickMenuGroup::QM_ICON_SIZE) / 2, PAD_SMALL,  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
                   ICON_MODEL_SELECT, COLOR_THEME_QM_FG_INDEX);
-  new StaticText(qmb, {0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2, QuickMenuGroup::QM_BUTTON_WIDTH - 1, 0},
+  new StaticText(qmb, {0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2, QuickMenuGroup::QM_BUTTON_WIDTH - 1, 0},  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
                   STR_QM_MANAGE_MODELS, COLOR_THEME_QM_FG_INDEX, CENTERED | FONT(XS));
 
-  qmb = new Window(qm, {QuickMenuGroup::QM_BUTTON_WIDTH + PAD_SMALL * 2, mask->height + PAD_SMALL, QuickMenuGroup::QM_BUTTON_WIDTH, QuickMenuGroup::QM_BUTTON_HEIGHT});
+  qmb = new Window(qm, {QuickMenuGroup::QM_BUTTON_WIDTH + PAD_SMALL * 2, mask->height + PAD_SMALL, QuickMenuGroup::QM_BUTTON_WIDTH, QuickMenuGroup::QM_BUTTON_HEIGHT});  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
   qmb->addStyle(styles->rounded, LV_PART_MAIN);
   qmb->textColor(COLOR_THEME_QM_BG_INDEX, LV_PART_MAIN);
   qmb->solidBg(COLOR_THEME_QM_FG_INDEX, LV_PART_MAIN);
-  new StaticIcon(qmb, (QuickMenuGroup::QM_BUTTON_WIDTH - QuickMenuGroup::QM_ICON_SIZE) / 2, PAD_SMALL,
+  new StaticIcon(qmb, (QuickMenuGroup::QM_BUTTON_WIDTH - QuickMenuGroup::QM_ICON_SIZE) / 2, PAD_SMALL,  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
                   ICON_MODEL, COLOR_THEME_QM_BG_INDEX);
-  new StaticText(qmb, {0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2, QuickMenuGroup::QM_BUTTON_WIDTH - 1, 0},
+  new StaticText(qmb, {0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2, QuickMenuGroup::QM_BUTTON_WIDTH - 1, 0},  // ds-allow: main-view preview - miniature absolute-positioned replica of the home screen for the theme editor; canvas mockup, not a DS surface.
                   STR_QM_MODEL_SETUP, COLOR_THEME_QM_BG_INDEX, CENTERED | FONT(XS));
 
   lv_group_set_default(def_group);

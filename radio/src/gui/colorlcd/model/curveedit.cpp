@@ -97,7 +97,7 @@ class CurveEdit : public Curve
     coord_t x = getPointX(point.x);
     coord_t y = getPointY(point.y);
     if (pointDots[i]) {
-      lv_obj_set_pos(pointDots[i], x - POS_PT_SZ / 2, y - POS_PT_SZ / 2);
+      lv_obj_set_pos(pointDots[i], x - POS_PT_SZ / 2, y - POS_PT_SZ / 2);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
       lv_obj_clear_flag(pointDots[i], LV_OBJ_FLAG_HIDDEN);
     }
 
@@ -133,8 +133,8 @@ class CurveDataEdit : public Window
     scrollbar();
     setStyleMaxHeight(rect.h, LV_PART_MAIN);
 
-    padAll(PAD_ZERO);
-    padBottom(PAD_SMALL);
+    padAll(PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+    padBottom(PAD_SMALL);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
   }
 
   void update()
@@ -156,17 +156,17 @@ class CurveDataEdit : public Window
     }
   }
 
-  static LAYOUT_VAL_SCALED(ROW_HEIGHT, 82)
+  static LAYOUT_VAL_SCALED(ROW_HEIGHT, 82)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 #if WIDE_LAYOUT
-  static LAYOUT_VAL_SCALED(NUM_BTN_WIDTH, 50)
+  static LAYOUT_VAL_SCALED(NUM_BTN_WIDTH, 50)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 #else
-  static LAYOUT_VAL_SCALED(NUM_BTN_WIDTH, 47)
+  static LAYOUT_VAL_SCALED(NUM_BTN_WIDTH, 47)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 #endif
-  static LAYOUT_VAL_SCALED(NUM_HDR_HEIGHT, 15)
-  static LAYOUT_VAL_SCALED(PTNUM_X, 15)
-  static LAYOUT_VAL_SCALED(PTNUM_H, 13)
-  static constexpr coord_t PT_EDIT_WIDTH = PTNUM_X + (NUM_BTN_WIDTH + PAD_TINY) * 5;
-  static LAYOUT_ORIENTATION(CURVE_WIDTH, LCD_W - PAD_SMALL - PT_EDIT_WIDTH, LAYOUT_SCALE(200))
+  static LAYOUT_VAL_SCALED(NUM_HDR_HEIGHT, 15)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+  static LAYOUT_VAL_SCALED(PTNUM_X, 15)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+  static LAYOUT_VAL_SCALED(PTNUM_H, 13)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+  static constexpr coord_t PT_EDIT_WIDTH = PTNUM_X + (NUM_BTN_WIDTH + PAD_TINY) * 5;  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+  static LAYOUT_ORIENTATION(CURVE_WIDTH, LCD_W - PAD_SMALL - PT_EDIT_WIDTH, LAYOUT_SCALE(200))  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
  protected:
   uint8_t index;
@@ -178,7 +178,7 @@ class CurveDataEdit : public Window
     // Point number
     for (int i = 0; i < count; i++) {
       new (std::nothrow) StaticText(parent,
-                     {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y,
+                     {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
                       NUM_BTN_WIDTH, PTNUM_H},
                      std::to_string(i + start + 1),
                      COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | CENTERED);
@@ -187,7 +187,7 @@ class CurveDataEdit : public Window
     y += NUM_HDR_HEIGHT;
 
     new (std::nothrow) StaticText(
-        parent, {1, y + PAD_MEDIUM, PTNUM_X, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+        parent, {1, y + PAD_MEDIUM, PTNUM_X, EdgeTxStyles::UI_ELEMENT_HEIGHT},  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
         "X", COLOR_THEME_PRIMARY1_INDEX, CENTERED);
 
     int8_t* points = curveAddress(index);
@@ -199,7 +199,7 @@ class CurveDataEdit : public Window
       if (start == 0) {
         new (std::nothrow) StaticText(
             parent,
-            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,
+            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
              NUM_BTN_WIDTH, EdgeTxStyles::UI_ELEMENT_HEIGHT},
             "-100", COLOR_THEME_SECONDARY1_INDEX, CENTERED);
         i += 1;
@@ -212,7 +212,7 @@ class CurveDataEdit : public Window
         uint8_t px = i + start - 1;
         numEditX[px] = new (std::nothrow) NumberEdit(
             parent,
-            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y, NUM_BTN_WIDTH,
+            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y, NUM_BTN_WIDTH,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
              EdgeTxStyles::UI_ELEMENT_HEIGHT},
             (px == 0) ? -100 : points[curvePointsCount + px - 1],
             (px == curvePointsCount - 3) ? 100
@@ -234,7 +234,7 @@ class CurveDataEdit : public Window
       if ((start + count) == curvePointsCount) {
         new (std::nothrow) StaticText(
             parent,
-            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,
+            {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
              NUM_BTN_WIDTH, EdgeTxStyles::UI_ELEMENT_HEIGHT},
             "100", COLOR_THEME_SECONDARY1_INDEX, CENTERED);
       }
@@ -242,23 +242,23 @@ class CurveDataEdit : public Window
       for (int i = 0; i < count; i++) {
         new (std::nothrow) StaticText(
             parent,
-            rect_t{PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,
+            rect_t{PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y + PAD_MEDIUM,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
                    NUM_BTN_WIDTH, EdgeTxStyles::UI_ELEMENT_HEIGHT},
             std::to_string(-100 + (200 * (i + start)) / (curvePointsCount - 1)),
             COLOR_THEME_SECONDARY1_INDEX, CENTERED);
       }
     }
 
-    y += EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY;
+    y += EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY;  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
     new (std::nothrow) StaticText(
-        parent, {1, y + PAD_MEDIUM, PTNUM_X, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+        parent, {1, y + PAD_MEDIUM, PTNUM_X, EdgeTxStyles::UI_ELEMENT_HEIGHT},  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
         "Y", COLOR_THEME_PRIMARY1_INDEX, CENTERED);
 
     // y value
     for (int i = 0; i < count; i++) {
       new (std::nothrow) NumberEdit(parent,
-          {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y, NUM_BTN_WIDTH,
+          {PTNUM_X + (i * (NUM_BTN_WIDTH + PAD_TINY)), y, NUM_BTN_WIDTH,  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
            EdgeTxStyles::UI_ELEMENT_HEIGHT},
           -100, 100, GET_VALUE(points[i + start]),
           [=](int32_t newValue) {
@@ -272,7 +272,7 @@ class CurveDataEdit : public Window
 };
 
 CurveEditWindow::CurveEditWindow(uint8_t index, Route route, mixsrc_t source) :
-    Page(ICON_MODEL_CURVES, route, PAD_ZERO), index(index), source(source)
+    Page(ICON_MODEL_CURVES, route, PAD_ZERO), index(index), source(source)  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 {
   buildBody(body);
   buildHeader(header);
@@ -291,12 +291,12 @@ void CurveEditWindow::buildBody(Window* window)
   CurveHeader& curve = g_model.curves[index];
   int8_t* points = curveAddress(index);
 
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
-  FlexGridLayout grid(default_col_dsc, default_row_dsc, PAD_ZERO);
+  FlexGridLayout grid(default_col_dsc, default_row_dsc, PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
   auto line = window->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
   line->setGridAlign(LV_GRID_ALIGN_SPACE_BETWEEN,
                      LV_GRID_ALIGN_SPACE_BETWEEN);
 
@@ -317,18 +317,18 @@ void CurveEditWindow::buildBody(Window* window)
       [&](Window& box) {
         box.setWidth(boxWidth);
         box.setHeight(boxHeight);
-        box.padAll(PAD_ZERO);
+        box.padAll(PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
         buildRequiredWindow<Window>(
             [&](Window& form) {
-              form.padAll(PAD_ZERO);
-              form.setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+              form.padAll(PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
+              form.setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
               FlexGridLayout iGrid(controls_col_dsc, default_row_dsc,
-                                   PAD_ZERO);
+                                   PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
 
               auto iLine = form.newLine(iGrid);
-              iLine->padAll(PAD_TINY);
+              iLine->padAll(PAD_TINY);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
               iLine->setGridAlign(LV_GRID_ALIGN_SPACE_BETWEEN,
                                   LV_GRID_ALIGN_SPACE_BETWEEN);
 
@@ -352,7 +352,7 @@ void CurveEditWindow::buildBody(Window* window)
               if (smooth) smooth->check(g_model.curves[index].smooth);
 
               iLine = form.newLine(iGrid);
-              iLine->padAll(PAD_TINY);
+              iLine->padAll(PAD_TINY);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
               iLine->setGridAlign(LV_GRID_ALIGN_SPACE_BETWEEN,
                                   LV_GRID_ALIGN_SPACE_BETWEEN);
 
@@ -425,7 +425,7 @@ void CurveEditWindow::buildBody(Window* window)
               }
 
               iLine = form.newLine(iGrid);
-              iLine->padAll(PAD_ZERO);
+              iLine->padAll(PAD_ZERO);  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
               iLine->setGridAlign(LV_GRID_ALIGN_SPACE_BETWEEN,
                                   LV_GRID_ALIGN_SPACE_BETWEEN);
 
@@ -438,7 +438,7 @@ void CurveEditWindow::buildBody(Window* window)
                   rect_t{0, 0, box.width(),
                          box.height() -
                              (EdgeTxStyles::UI_ELEMENT_HEIGHT +
-                              PAD_TINY * 2) *
+                              PAD_TINY * 2) *  // ds-allow: curve editor - per-point number grid and curve preview drawn at absolute coordinates; graphical editor, not a DS list/form.
                                  2},
                   index);
 

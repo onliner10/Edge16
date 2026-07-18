@@ -48,11 +48,11 @@ class ColorEditor : public Window
 
   void setColorEditorType(COLOR_EDITOR_TYPE colorType);
 
-  static LAYOUT_VAL_SCALED(BAR_MARGIN, 5)
-  static LAYOUT_VAL_SCALED(BAR_HEIGHT_OFFSET, 25)
-  static LAYOUT_VAL_SCALED(LBL_YO, 9)
-  static LAYOUT_VAL_SCALED(VAL_XO, 10)
-  static LAYOUT_VAL_SCALED_EVEN(CRSR_SZ, 10)
+  static LAYOUT_VAL_SCALED(BAR_MARGIN, 5)  // ds-allow: color editor geometry; gap around the color bars, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(BAR_HEIGHT_OFFSET, 25)  // ds-allow: color editor geometry; bar height reserved for labels below, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(LBL_YO, 9)  // ds-allow: color editor geometry; bar name-label y offset, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(VAL_XO, 10)  // ds-allow: color editor geometry; bar value-label x offset, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED_EVEN(CRSR_SZ, 10)  // ds-allow: color editor geometry; cursor circle diameter, absolute internal layout not a DS token
 
  protected:
   ColorType* _colorType = nullptr;

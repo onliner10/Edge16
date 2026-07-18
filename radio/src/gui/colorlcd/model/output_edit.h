@@ -36,7 +36,7 @@ class OutputEditWindow : public Page
  public:
   explicit OutputEditWindow(uint8_t channel, Route route);
 
-  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_WIDTH, 250, 180)
+  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_WIDTH, 250, 180)  // ds-allow: output edit - channel status-bar width constant; multi-region page, not a plain DS FormRow list.
 
  protected:
   uint8_t channel;

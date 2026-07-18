@@ -40,8 +40,8 @@ class ThemeSetupPage : public PageGroupItem
   void build(Window *window) override;
   void checkEvents() override;
 
-  static LAYOUT_VAL_SCALED(COLOR_PREVIEW_SIZE, 18)
-  static LAYOUT_ORIENTATION(LIST_SIZE, (LCD_W - PAD_MEDIUM * 2) / 2 - COLOR_PREVIEW_SIZE, LCD_H / 2 - LAYOUT_SCALE(38));
+  static LAYOUT_VAL_SCALED(COLOR_PREVIEW_SIZE, 18)  // ds-allow: theme editor — preview-pane size as viewport fraction in fixed list+preview split; not a DS list/form.
+  static LAYOUT_ORIENTATION(LIST_SIZE, (LCD_W - PAD_MEDIUM * 2) / 2 - COLOR_PREVIEW_SIZE, LCD_H / 2 - LAYOUT_SCALE(38));  // ds-allow: theme editor — color-list size as viewport fraction beside preview pane; fixed multi-pane split, not a DS list/form.
 
  protected:
   Window *pageWindow = nullptr;

@@ -28,7 +28,7 @@ GVarNumberEdit::GVarNumberEdit(Window* parent, int32_t vmin,
                                int32_t vmax, std::function<int32_t()> getValue,
                                std::function<void(int32_t)> setValue,
                                LcdFlags textFlags, int32_t voffset, int32_t vdefault) :
-    Window(parent, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + GV_BTN_W + PAD_TINY * 3, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY * 2}),
+    Window(parent, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + GV_BTN_W + PAD_TINY * 3, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY * 2}),  // ds-allow: composite GVAR field; fixed overall width packing NumberEdit + GV button plus their gaps, not a single DS FormRow control
     vmin(vmin),
     vmax(vmax),
     getValue(getValue),
@@ -36,7 +36,7 @@ GVarNumberEdit::GVarNumberEdit(Window* parent, int32_t vmin,
     voffset(voffset)
 {
   setTextFlag(textFlags);
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: composite GVAR field; tight internal padding around the NumberEdit + GV button pack, not a single DS FormRow control
 
   // GVAR field
   gvar_field = new (std::nothrow) Choice(
@@ -59,7 +59,7 @@ GVarNumberEdit::GVarNumberEdit(Window* parent, int32_t vmin,
 #if defined(GVARS)
   // The GVAR button
   if (modelGVEnabled()) {
-    m_gvBtn = new (std::nothrow) TextButton(this, {EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_TINY, 0, GV_BTN_W, 0}, STR_GV, [=]() {
+    m_gvBtn = new (std::nothrow) TextButton(this, {EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_TINY, 0, GV_BTN_W, 0}, STR_GV, [=]() {  // ds-allow: composite GVAR field; GV button placed at a fixed offset right of the NumberEdit inside the packed control, not a DS FormRow
       switchGVarMode();
       return GV_IS_GV_VALUE(getValue());
     });

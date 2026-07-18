@@ -40,11 +40,11 @@ void RadioGpsTool::buildHeader(Window* window)
 
 void RadioGpsTool::buildBody(Window* window)
 {
-  window->padAll(PAD_ZERO);
-  gpsLabel = new StaticText(window, {PAD_LARGE, PAD_LARGE, LV_SIZE_CONTENT, 0}, "", COLOR_THEME_PRIMARY1_INDEX, FONT(L));
+  window->padAll(PAD_ZERO);  // ds-allow: GPS tool — zero body padding so coordinate/QR canvas fills the page; not a DS form.
+  gpsLabel = new StaticText(window, {PAD_LARGE, PAD_LARGE, LV_SIZE_CONTENT, 0}, "", COLOR_THEME_PRIMARY1_INDEX, FONT(L));  // ds-allow: GPS tool — coordinate readout positioned absolutely at top-left of canvas; not a DS form.
   gpsQR = new QRCode(window, (window->width() - QR_SZ) / 2, (window->height() - QR_SZ) / 2, QR_SZ, "");
   new TextButton(window,
-                {window->width() - BTN_SZ - PAD_LARGE * 2, window->height() - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_LARGE * 2, BTN_SZ, 0},
+                {window->width() - BTN_SZ - PAD_LARGE * 2, window->height() - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_LARGE * 2, BTN_SZ, 0},  // ds-allow: GPS tool — refresh button positioned absolutely at bottom-right of canvas; not a DS form.
                 STR_REFRESH, [=]() {
                   refresh();
                   return 0;

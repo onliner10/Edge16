@@ -88,7 +88,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 InputSource::InputSource(Window *parent, ExpoData *input) :
     Window(parent, rect_t{}), input(input)
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: input-source composite; tight padding wrapping the source picker + sensor sub-form, not a single DS control
   setFlexFlow(LV_FLEX_FLOW_COLUMN);
   setSize(lv_pct(100), LV_SIZE_CONTENT);
 
@@ -105,14 +105,14 @@ InputSource::InputSource(Window *parent, ExpoData *input) :
 
   sensor_form = new (std::nothrow) Window(this, rect_t{});
   if (!sensor_form) return;
-  sensor_form->padAll(PAD_TINY);
+  sensor_form->padAll(PAD_TINY);  // ds-allow: input-source composite; tight padding around the telemetry-sensor sub-form, not a single DS control
   sensor_form->setFlexLayout();
 
   FlexGridLayout grid(col_dsc, row_dsc);
 
   // Value
   auto line = sensor_form->newLine(grid);
-  line->padAll(PAD_ZERO);
+  line->padAll(PAD_ZERO);  // ds-allow: input-source composite; sensor Value sub-row zero padding, not a single DS control
   line->setWidth(SENSOR_W);
 
   new (std::nothrow) StaticText(line, rect_t{}, STR_VALUE);
@@ -120,7 +120,7 @@ InputSource::InputSource(Window *parent, ExpoData *input) :
 
   // Scale
   line = sensor_form->newLine(grid);
-  line->padAll(PAD_OUTLINE);
+  line->padAll(PAD_OUTLINE);  // ds-allow: input-source composite; sensor Scale sub-row hairline padding, not a single DS control
   line->setWidth(SENSOR_W);
 
   new (std::nothrow) StaticText(line, rect_t{}, STR_SCALE);

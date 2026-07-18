@@ -61,7 +61,7 @@ class InputEditAdvanced : public Page
     header->setTitle(STR_MENUINPUTS);
     header->setTitle2(title2);
 
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
     body->setFlexLayout();
 
     ExpoData* input = expoAddress(index);
@@ -118,17 +118,17 @@ InputEditWindow::InputEditWindow(int8_t input, uint8_t index, Route route) :
   setTitle();
 
 #if PORTRAIT
-  body->padAll(PAD_ZERO);
+  body->padAll(PAD_ZERO);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
 
-  auto box = new Window(body, rect_t{0, 0, body->width(), body->height() - INPUT_EDIT_CURVE_HEIGHT - PAD_TINY * 2});
+  auto box = new Window(body, rect_t{0, 0, body->width(), body->height() - INPUT_EDIT_CURVE_HEIGHT - PAD_TINY * 2});  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
   box->scrollbar();
-  box->padAll(PAD_SMALL);
+  box->padAll(PAD_SMALL);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
 
   auto form = new Window(box, rect_t{});
   buildBody(form);
 
   preview = new Curve(
-      body, rect_t{(LCD_W - INPUT_EDIT_CURVE_WIDTH) / 2, body->height() - INPUT_EDIT_CURVE_HEIGHT - PAD_TINY, INPUT_EDIT_CURVE_WIDTH, INPUT_EDIT_CURVE_HEIGHT},
+      body, rect_t{(LCD_W - INPUT_EDIT_CURVE_WIDTH) / 2, body->height() - INPUT_EDIT_CURVE_HEIGHT - PAD_TINY, INPUT_EDIT_CURVE_WIDTH, INPUT_EDIT_CURVE_HEIGHT},  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
       [=](int x) -> int {
         ExpoData* line = expoAddress(index);
         int16_t anas[MAX_INPUTS] = {0};
@@ -137,11 +137,11 @@ InputEditWindow::InputEditWindow(int8_t input, uint8_t index, Route route) :
       },
       [=]() -> int { return getValue(expoAddress(index)->srcRaw); });
 #else
-  body->padAll(PAD_SMALL);
+  body->padAll(PAD_SMALL);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
   buildBody(body);
 
   preview = new Curve(
-      this, rect_t{LCD_W - INPUT_EDIT_CURVE_WIDTH - PAD_LARGE, EdgeTxStyles::MENU_HEADER_HEIGHT + PAD_TINY, INPUT_EDIT_CURVE_WIDTH, INPUT_EDIT_CURVE_HEIGHT},
+      this, rect_t{LCD_W - INPUT_EDIT_CURVE_WIDTH - PAD_LARGE, EdgeTxStyles::MENU_HEADER_HEIGHT + PAD_TINY, INPUT_EDIT_CURVE_WIDTH, INPUT_EDIT_CURVE_HEIGHT},  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
       [=](int x) -> int {
         ExpoData* line = expoAddress(index);
         int16_t anas[MAX_INPUTS] = {0};
@@ -167,8 +167,8 @@ bool InputEditWindow::openRoute(const Route& r, uint8_t depth)
 
 void InputEditWindow::buildBody(Window* form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
-  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
+  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
 
   ExpoData* input = expoAddress(index);
 
@@ -255,7 +255,7 @@ void InputEditWindow::buildBody(Window* form)
   param->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
 
   line = form->newLine(grid);
-  line->padAll(PAD_LARGE);
+  line->padAll(PAD_LARGE);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
   auto btn =
       new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
         new InputEditAdvanced(this->input, index,

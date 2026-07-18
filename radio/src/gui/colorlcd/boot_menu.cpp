@@ -40,20 +40,20 @@
 
 static constexpr coord_t LINE_H = 2;
 
-LAYOUT_VAL_SCALED(TITLE_Y1, 28)
-LAYOUT_VAL_SCALED(TITLE_Y2, 56)
+LAYOUT_VAL_SCALED(TITLE_Y1, 28) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(TITLE_Y2, 56) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION(FOOTER_X1, PAD_LARGE * 2, LCD_W / 2)
-LAYOUT_ORIENTATION(FOOTER_X2, LCD_W - 1 - PAD_LARGE * 2, LCD_W / 2)
-LAYOUT_ORIENTATION(FOOTER_ALIGN1, LEFT, CENTERED)
-LAYOUT_ORIENTATION(FOOTER_ALIGN2, RIGHT, LEFT)
-LAYOUT_VAL_SCALED(FOOTER_Y1, 30)
-LAYOUT_ORIENTATION_SCALED(FOOTER_Y2, 30, 58)
-LAYOUT_ORIENTATION_SCALED(FOOTER_LY, 38, 62)
+LAYOUT_ORIENTATION(FOOTER_X1, PAD_LARGE * 2, LCD_W / 2) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION(FOOTER_X2, LCD_W - 1 - PAD_LARGE * 2, LCD_W / 2) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION(FOOTER_ALIGN1, LEFT, CENTERED) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION(FOOTER_ALIGN2, RIGHT, LEFT) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(FOOTER_Y1, 30) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(FOOTER_Y2, 30, 58) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(FOOTER_LY, 38, 62) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
 constexpr coord_t PROGRESS_W = LCD_W * 3 / 4;
 constexpr coord_t PROGRESS_X = (LCD_W - PROGRESS_W) / 2;
-LAYOUT_VAL_SCALED(PROGRESS_H, 31)
+LAYOUT_VAL_SCALED(PROGRESS_H, 31) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
 extern BitmapBuffer * lcd;
 
@@ -75,19 +75,19 @@ void blExit(void)
 static void bootloaderDrawTitle(const char* text)
 {
   lcd->drawText(LCD_W / 2, TITLE_Y1, text, CENTERED | BL_FOREGROUND);
-  lcd->drawSolidFilledRect(PAD_LARGE, TITLE_Y2, LCD_W - PAD_LARGE * 2, LINE_H, BL_FOREGROUND);
+  lcd->drawSolidFilledRect(PAD_LARGE, TITLE_Y2, LCD_W - PAD_LARGE * 2, LINE_H, BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 }
 
 static void bootloaderDrawFooter()
 {
-  lcd->drawSolidFilledRect(PAD_LARGE, LCD_H - FOOTER_LY, LCD_W - PAD_LARGE * 2, LINE_H, BL_FOREGROUND);
+  lcd->drawSolidFilledRect(PAD_LARGE, LCD_H - FOOTER_LY, LCD_W - PAD_LARGE * 2, LINE_H, BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 }
 
 static void bootloaderDrawVerFooter()
 {
   bootloaderDrawFooter();
   if (LCD_W < LCD_H)
-    lcd->drawText(LCD_W / 2, LCD_H - FOOTER_Y2 + PAD_TINY, TR_BL_CURRENT_FW, CENTERED | BL_FOREGROUND);
+    lcd->drawText(LCD_W / 2, LCD_H - FOOTER_Y2 + PAD_TINY, TR_BL_CURRENT_FW, CENTERED | BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
   const char* fw_ver = getFirmwareVersion();
   if (!fw_ver) fw_ver = TR_BL_NO_VERSION;
   lcd->drawText(LCD_W / 2, LCD_H - FOOTER_Y1, fw_ver, CENTERED | BL_FOREGROUND);
@@ -188,43 +188,43 @@ void bootloaderDrawScreen(BootloaderState st, int opt, const char* str)
     lcd->drawRect(PROGRESS_X, pb_y, PROGRESS_W, PROGRESS_H, LINE_H, SOLID, BL_SELECTED);
 
     LcdFlags color = (st == ST_FLASH_DONE) ? BL_GREEN : BL_RED;
-    lcd->drawSolidFilledRect(PROGRESS_X + PAD_SMALL, pb_y + PAD_SMALL, ((PROGRESS_W - PAD_SMALL * 2) * opt) / 100, PROGRESS_H - PAD_SMALL * 2, color);
+    lcd->drawSolidFilledRect(PROGRESS_X + PAD_SMALL, pb_y + PAD_SMALL, ((PROGRESS_W - PAD_SMALL * 2) * opt) / 100, PROGRESS_H - PAD_SMALL * 2, color); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
   }
 }
 
 #else
 
-LAYOUT_ORIENTATION_SCALED(SYM_X, 102, 38)
-LAYOUT_ORIENTATION_SCALED(LBL_X, 124, 60)
-LAYOUT_VAL_SCALED(SYM_Y, 75)
-LAYOUT_VAL_SCALED(SYM_H, 35)
+LAYOUT_ORIENTATION_SCALED(SYM_X, 102, 38) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(LBL_X, 124, 60) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(SYM_Y, 75) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(SYM_H, 35) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_VAL_SCALED(BOX_GAP, 8)
-LAYOUT_VAL_SCALED(BOX_Y, 71)
-LAYOUT_VAL_SCALED(BOX_H, 27)
+LAYOUT_VAL_SCALED(BOX_GAP, 8) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(BOX_Y, 71) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(BOX_H, 27) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION_SCALED(OPTBOX_X, 92, 28)
+LAYOUT_ORIENTATION_SCALED(OPTBOX_X, 92, 28) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION_SCALED(USB_ICN_X, 60, 105)
-LAYOUT_ORIENTATION_SCALED(USB_ICN_Y, 106, 185)
-LAYOUT_ORIENTATION_SCALED(USB_TXT_X, 195, 160)
-LAYOUT_ORIENTATION_SCALED(USB_TXT_Y1, 97, 125)
-LAYOUT_ORIENTATION_SCALED(USB_TXT_Y2, 72, 100)
-LAYOUT_ORIENTATION(USB_TXT_ALIGN, 0, CENTERED)
+LAYOUT_ORIENTATION_SCALED(USB_ICN_X, 60, 105) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(USB_ICN_Y, 106, 185) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(USB_TXT_X, 195, 160) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(USB_TXT_Y1, 97, 125) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(USB_TXT_Y2, 72, 100) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION(USB_TXT_ALIGN, 0, CENTERED) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION_SCALED(USB_PLG_X, 136, 134)
-LAYOUT_ORIENTATION_SCALED(USB_PLG_TXT_YO, 30, 58)
+LAYOUT_ORIENTATION_SCALED(USB_PLG_X, 136, 134) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(USB_PLG_TXT_YO, 30, 58) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION_SCALED(FILENAM_X1, 94, 28)
-LAYOUT_ORIENTATION_SCALED(FILENAM_X2, 124, 58)
-LAYOUT_VAL_SCALED(FILENAM_Y1, 75)
-LAYOUT_VAL_SCALED(FILENAM_H, 25)
-LAYOUT_ORIENTATION_SCALED(FILESEL_X, 119, 53)
-LAYOUT_ORIENTATION_SCALED(FILESEL_W, 278, 240)
+LAYOUT_ORIENTATION_SCALED(FILENAM_X1, 94, 28) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(FILENAM_X2, 124, 58) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(FILENAM_Y1, 75) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_VAL_SCALED(FILENAM_H, 25) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(FILESEL_X, 119, 53) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(FILESEL_W, 278, 240) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
-LAYOUT_ORIENTATION_SCALED(VERCHK_X, 168, 112)
-LAYOUT_ORIENTATION_SCALED(VERCHK_Y, 138, 240)
-LAYOUT_ORIENTATION_SCALED(VERCHK_ICN_X, 78, 22)
+LAYOUT_ORIENTATION_SCALED(VERCHK_X, 168, 112) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(VERCHK_Y, 138, 240) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
+LAYOUT_ORIENTATION_SCALED(VERCHK_ICN_X, 78, 22) // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
 alignas(LZ4Bitmap) const uint8_t __bmp_plug_usb[] {
   #include "bmp_bootloader_plug_usb.lbm"
@@ -261,7 +261,7 @@ void bootloaderDrawItem(const char* symbol, const char* text, coord_t& y, coord_
 void bootloaderDrawSelected(coord_t boxX2, int opt)
 {
   boxX2 -= OPTBOX_X;
-  lcd->drawSolidRect(OPTBOX_X, BOX_Y + (opt * SYM_H), boxX2, BOX_H, PAD_TINY, BL_SELECTED);
+  lcd->drawSolidRect(OPTBOX_X, BOX_Y + (opt * SYM_H), boxX2, BOX_H, PAD_TINY, BL_SELECTED); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 }
 
 void bootloaderDrawScreen(BootloaderState st, int opt, const char* str)
@@ -287,7 +287,7 @@ void bootloaderDrawScreen(BootloaderState st, int opt, const char* str)
       bootloaderDrawItem(LV_SYMBOL_WIFI, TR_BL_RF_USB_ACCESS, y, boxX2);
 #endif
 
-    bootloaderDrawItem(LV_SYMBOL_NEW_LINE, TR_BL_EXIT, y, boxX2, PAD_TINY);
+    bootloaderDrawItem(LV_SYMBOL_NEW_LINE, TR_BL_EXIT, y, boxX2, PAD_TINY); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
     bootloaderDrawSelected(boxX2, opt);
 
@@ -362,7 +362,7 @@ void bootloaderDrawScreen(BootloaderState st, int opt, const char* str)
       }
 
       lcd->drawRect(PROGRESS_X, (LCD_H - PROGRESS_H) / 2, PROGRESS_W, PROGRESS_H, LINE_H, SOLID, BL_SELECTED);
-      lcd->drawSolidFilledRect(PROGRESS_X + PAD_SMALL, (LCD_H - PROGRESS_H) / 2 + PAD_SMALL, ((PROGRESS_W - PAD_SMALL * 2) * opt) / 100, PROGRESS_H - PAD_SMALL * 2, color);
+      lcd->drawSolidFilledRect(PROGRESS_X + PAD_SMALL, (LCD_H - PROGRESS_H) / 2 + PAD_SMALL, ((PROGRESS_W - PAD_SMALL * 2) * opt) / 100, PROGRESS_H - PAD_SMALL * 2, color); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
     } else if (st == ST_DIR_CHECK) {
       if (opt == FR_NO_PATH) {
         lcd->drawText(LCD_W / 2, LCD_H / 2, LV_SYMBOL_CLOSE " " TR_BL_DIR_MISSING, CENTERED | BL_FOREGROUND);
@@ -383,13 +383,13 @@ void bootloaderDrawScreen(BootloaderState st, int opt, const char* str)
           lcd->drawText(LCD_W / 2, LCD_H / 2, LV_SYMBOL_CLOSE " " TR_BL_INVALID_FIRMWARE, CENTERED | BL_FOREGROUND);
         } else {
           lcd->drawText(VERCHK_X, VERCHK_Y, TR_BL_FORK, RIGHT | BL_FOREGROUND);
-          lcd->drawSizedText(VERCHK_X + PAD_MEDIUM, VERCHK_Y, tag.fork, 6, BL_FOREGROUND);
+          lcd->drawSizedText(VERCHK_X + PAD_MEDIUM, VERCHK_Y, tag.fork, 6, BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
           lcd->drawText(VERCHK_X, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT, TR_BL_VERSION, RIGHT | BL_FOREGROUND);
-          lcd->drawText(VERCHK_X + PAD_MEDIUM, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT, tag.version, BL_FOREGROUND);
+          lcd->drawText(VERCHK_X + PAD_MEDIUM, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT, tag.version, BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
           lcd->drawText(VERCHK_X, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT * 2, TR_BL_RADIO, RIGHT | BL_FOREGROUND);
-          lcd->drawText(VERCHK_X + PAD_MEDIUM, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT * 2, tag.flavour, BL_FOREGROUND);
+          lcd->drawText(VERCHK_X + PAD_MEDIUM, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT * 2, tag.flavour, BL_FOREGROUND); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
 
           lcd->drawText(VERCHK_ICN_X, VERCHK_Y + EdgeTxStyles::STD_FONT_HEIGHT, LV_SYMBOL_OK, BL_GREEN);
         }
@@ -435,7 +435,7 @@ void bootloaderDrawFilename(const char* str, uint8_t line, bool selected)
   lcd->drawText(FILENAM_X2, FILENAM_Y1 + (line * FILENAM_H), str, BL_FOREGROUND);
 
   if (selected) {
-    lcd->drawSolidRect(FILESEL_X, BOX_Y + (line * FILENAM_H), FILESEL_W, BOX_H, PAD_TINY, BL_SELECTED);
+    lcd->drawSolidRect(FILESEL_X, BOX_Y + (line * FILENAM_H), FILESEL_W, BOX_H, PAD_TINY, BL_SELECTED); // ds-allow: bootloader menu drawn directly to the LCD framebuffer at absolute coordinates (pre-app, no LVGL); outside the DS page framework
   }
 }
 

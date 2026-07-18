@@ -112,13 +112,13 @@ MainViewTrim::MainViewTrim(Window* parent, const rect_t& rect, uint8_t idx,
     etx_solid_bg(obj, COLOR_THEME_SECONDARY1_INDEX);
     etx_obj_add_style(obj, styles->rounded, LV_PART_MAIN);
     if (isVertical) {
-      lv_obj_set_pos(obj, (MainViewSlider::SLIDER_BAR_SIZE - TRIM_LINE_WIDTH) / 2,
+      lv_obj_set_pos(obj, (MainViewSlider::SLIDER_BAR_SIZE - TRIM_LINE_WIDTH) / 2, // ds-allow: main-view trim HUD centers the trim bar absolutely within the slider bar; not a DS surface
                      MainViewSlider::SLIDER_BAR_SIZE / 2);
       lv_obj_set_size(obj, TRIM_LINE_WIDTH,
                       MainViewSlider::VERTICAL_SLIDERS_HEIGHT -
                           MainViewSlider::SLIDER_BAR_SIZE + 1);
     } else {
-      lv_obj_set_pos(obj, MainViewSlider::SLIDER_BAR_SIZE / 2,
+      lv_obj_set_pos(obj, MainViewSlider::SLIDER_BAR_SIZE / 2, // ds-allow: main-view trim HUD positions the trim bar absolutely within the slider bar; not a DS surface
                      (MainViewSlider::SLIDER_BAR_SIZE - TRIM_LINE_WIDTH - 1) / 2);
       lv_obj_set_size(obj,
                       MainViewSlider::HORIZONTAL_SLIDERS_WIDTH -

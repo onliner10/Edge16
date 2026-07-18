@@ -73,12 +73,12 @@ class BTDetailsDialog : public BaseDialog
 BluetoothConfigWindow::BluetoothConfigWindow(Window* parent, FlexGridLayout& grid)
 {
   auto line = parent->newLine(grid);
-  line->padLeft(PAD_SMALL);
+  line->padLeft(PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
   new StaticText(line, rect_t{}, STR_MODE);
 
   auto box = new Window(line, rect_t{});
-  box->padAll(PAD_TINY);
-  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);
+  box->padAll(PAD_TINY);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
+  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
   box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
   box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
 
@@ -99,12 +99,12 @@ BluetoothConfigWindow::BluetoothConfigWindow(Window* parent, FlexGridLayout& gri
 
   // BT radio name
   nameEdit = parent->newLine(grid);
-  nameEdit->padLeft(PAD_SMALL);
+  nameEdit->padLeft(PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
   new StaticText(nameEdit, rect_t{}, STR_NAME);
 
   box = new Window(nameEdit, rect_t{});
-  box->padAll(PAD_TINY);
-  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);
+  box->padAll(PAD_TINY);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
+  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
   box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
   box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
   new RadioTextEdit(box, rect_t{}, g_eeGeneral.bluetoothName,

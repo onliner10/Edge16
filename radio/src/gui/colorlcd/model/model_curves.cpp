@@ -36,7 +36,7 @@ class CurveButton : public Button
   CurveButton(Window *parent, const rect_t &rect, uint8_t index) :
       Button(parent, rect), index(index)
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 
     // Title
     char buf[32];
@@ -54,22 +54,22 @@ class CurveButton : public Button
     // Preview
     preview = new CurveRenderer(
         *this,
-        {PAD_MEDIUM, PAD_MEDIUM + EdgeTxStyles::STD_FONT_HEIGHT, width() - PAD_MEDIUM * 2 - PAD_SMALL,
-         width() - PAD_MEDIUM * 2 - PAD_SMALL},
+        {PAD_MEDIUM, PAD_MEDIUM + EdgeTxStyles::STD_FONT_HEIGHT, width() - PAD_MEDIUM * 2 - PAD_SMALL,  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
+         width() - PAD_MEDIUM * 2 - PAD_SMALL},  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
         [=](int x) -> int { return applyCustomCurve(x, index); });
 
     // Curve characteristics
     CurveHeader &curve = g_model.curves[index];
     snprintf(buf, 32, "%s %d %s", STR_CURVE_TYPES[curve.type], 5 + curve.points,
              STR_PTS);
-    new StaticText(this, {0, height() - EdgeTxStyles::STD_FONT_HEIGHT - PAD_MEDIUM, LV_PCT(100), EdgeTxStyles::STD_FONT_HEIGHT}, buf,
+    new StaticText(this, {0, height() - EdgeTxStyles::STD_FONT_HEIGHT - PAD_MEDIUM, LV_PCT(100), EdgeTxStyles::STD_FONT_HEIGHT}, buf,  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
                    COLOR_THEME_SECONDARY1_INDEX, CENTERED | FONT(BOLD));
   }
 
   void update() { preview->update(); }
 
-  static LAYOUT_VAL_SCALED(INFO_H, 27)
-  static constexpr coord_t CURVE_BTN_W = (LCD_W - PAD_LARGE * (ModelCurvesPage::PER_ROW + 1)) / ModelCurvesPage::PER_ROW;
+  static LAYOUT_VAL_SCALED(INFO_H, 27)  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
+  static constexpr coord_t CURVE_BTN_W = (LCD_W - PAD_LARGE * (ModelCurvesPage::PER_ROW + 1)) / ModelCurvesPage::PER_ROW;  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
   static constexpr coord_t CURVE_BTH_H = CURVE_BTN_W + EdgeTxStyles::STD_FONT_HEIGHT * 2;
 
  protected:
@@ -221,9 +221,9 @@ void ModelCurvesPage::build(Window *window)
 #endif
   static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 
   FormLine *line = nullptr;
 

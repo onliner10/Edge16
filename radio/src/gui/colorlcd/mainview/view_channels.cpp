@@ -44,31 +44,31 @@ class ChannelsViewFooter : public Window
     solidBg(COLOR_THEME_SECONDARY1_INDEX);
 
     auto w =
-        new Window(this, {PAD_MEDIUM, PAD_SMALL, LEG_COLORBOX + PAD_TINY, LEG_COLORBOX + PAD_TINY});
+        new Window(this, {PAD_MEDIUM, PAD_SMALL, LEG_COLORBOX + PAD_TINY, LEG_COLORBOX + PAD_TINY}); // ds-allow: channel monitor footer legend swatch positioned absolutely; not a DS row
     w->setWindowFlag(NO_FOCUS);
     w->solidBg(COLOR_THEME_SECONDARY3_INDEX);
     w = new Window(w, {1, 1, LEG_COLORBOX, LEG_COLORBOX});
     w->setWindowFlag(NO_FOCUS);
     w->solidBg(COLOR_THEME_ACTIVE_INDEX);
 
-    new StaticText(this, {LEG_COLORBOX + PAD_MEDIUM + PAD_SMALL, PAD_TINY, LV_SIZE_CONTENT, TXT_H}, STR_MONITOR_OUTPUT_DESC, COLOR_THEME_PRIMARY2_INDEX);
+    new StaticText(this, {LEG_COLORBOX + PAD_MEDIUM + PAD_SMALL, PAD_TINY, LV_SIZE_CONTENT, TXT_H}, STR_MONITOR_OUTPUT_DESC, COLOR_THEME_PRIMARY2_INDEX); // ds-allow: channel monitor footer legend label positioned absolutely beside its swatch; not a DS row
 
-    int x = getTextWidth(STR_MONITOR_OUTPUT_DESC) + LEG_COLORBOX + PAD_MEDIUM * 2;
+    int x = getTextWidth(STR_MONITOR_OUTPUT_DESC) + LEG_COLORBOX + PAD_MEDIUM * 2; // ds-allow: channel monitor footer computes the next legend item's absolute x offset; not a DS row
 
-    w = new Window(this, {x + PAD_MEDIUM, PAD_SMALL, LEG_COLORBOX + PAD_TINY, LEG_COLORBOX + PAD_TINY});
+    w = new Window(this, {x + PAD_MEDIUM, PAD_SMALL, LEG_COLORBOX + PAD_TINY, LEG_COLORBOX + PAD_TINY}); // ds-allow: channel monitor footer second legend swatch positioned absolutely; not a DS row
     w->setWindowFlag(NO_FOCUS);
     w->solidBg(COLOR_THEME_SECONDARY3_INDEX);
     w = new Window(w, {1, 1, LEG_COLORBOX, LEG_COLORBOX});
     w->setWindowFlag(NO_FOCUS);
     w->solidBg(COLOR_THEME_FOCUS_INDEX);
 
-    new StaticText(this, {x + LEG_COLORBOX + PAD_MEDIUM + PAD_SMALL, PAD_TINY, LV_SIZE_CONTENT, TXT_H},
+    new StaticText(this, {x + LEG_COLORBOX + PAD_MEDIUM + PAD_SMALL, PAD_TINY, LV_SIZE_CONTENT, TXT_H}, // ds-allow: channel monitor footer second legend label positioned absolutely; not a DS row
                    STR_MONITOR_MIXER_DESC, COLOR_THEME_PRIMARY2_INDEX);
   }
 
-  static LAYOUT_VAL_SCALED(LEG_COLORBOX, 14)
-  static LAYOUT_VAL_SCALED(TXT_H, 18)
-  static constexpr coord_t FOOTER_H = LEG_COLORBOX + PAD_SMALL * 2 + PAD_TINY;
+  static LAYOUT_VAL_SCALED(LEG_COLORBOX, 14) // ds-allow: channel monitor footer legend swatch size constant; absolutely-laid-out legend, not a DS row
+  static LAYOUT_VAL_SCALED(TXT_H, 18) // ds-allow: channel monitor footer legend label height constant; absolutely-laid-out legend, not a DS row
+  static constexpr coord_t FOOTER_H = LEG_COLORBOX + PAD_SMALL * 2 + PAD_TINY; // ds-allow: channel monitor footer height constant for the absolutely-placed footer window; not a DS surface
 };
 
 //-----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ class ChannelsViewPage : public PageGroupItem
     icon = ICON_MONITOR;
   }
 
-  static constexpr coord_t CHANS_H = 3 * ChannelBar::BAR_HEIGHT + PAD_THREE;
+  static constexpr coord_t CHANS_H = 3 * ChannelBar::BAR_HEIGHT + PAD_THREE; // ds-allow: channel monitor group height constant for absolutely-stacked channel bars; not a DS list
 
  protected:
   uint8_t startChan;
@@ -91,13 +91,13 @@ class ChannelsViewPage : public PageGroupItem
 
   void build(Window* window) override
   {
-    window->padAll(PAD_ZERO);
+    window->padAll(PAD_ZERO); // ds-allow: channel monitor zeroes page padding to place channel bars at absolute offsets; not a DS list
 
 #if PORTRAIT
-    coord_t w = window->width() - (PAD_SMALL * 2);
+    coord_t w = window->width() - (PAD_SMALL * 2); // ds-allow: channel monitor computes bar column width inside its absolute layout; not a DS list
 #else
-    coord_t w = cols == 1 ? window->width() - (PAD_SMALL * 2)
-                          : window->width() / 2 - (PAD_SMALL * 2);
+    coord_t w = cols == 1 ? window->width() - (PAD_SMALL * 2) // ds-allow: channel monitor computes bar column width inside its absolute layout; not a DS list
+                          : window->width() / 2 - (PAD_SMALL * 2); // ds-allow: channel monitor computes two-column bar width inside its absolute layout; not a DS list
 #endif
 
     // Channels bars
@@ -106,11 +106,11 @@ class ChannelsViewPage : public PageGroupItem
       if (chan >= MAX_OUTPUT_CHANNELS) break;
       if (ALL_CHANNELS || isChannelUsed(chan)) {
 #if PORTRAIT
-        coord_t xPos = PAD_SMALL;
-        coord_t yPos = j * ((window->height() - PAD_LARGE * 3) / rows);
+        coord_t xPos = PAD_SMALL; // ds-allow: channel monitor places each bar at an absolute x offset; not a DS list
+        coord_t yPos = j * ((window->height() - PAD_LARGE * 3) / rows); // ds-allow: channel monitor places each bar at an absolute y offset across rows; not a DS list
 #else
-        coord_t xPos = cols == 1 ? PAD_SMALL
-                                 : ((j & 1) ? w + (PAD_SMALL * 2) : PAD_SMALL);
+        coord_t xPos = cols == 1 ? PAD_SMALL // ds-allow: channel monitor places each bar at an absolute x offset per column; not a DS list
+                                 : ((j & 1) ? w + (PAD_SMALL * 2) : PAD_SMALL); // ds-allow: channel monitor places each bar at an absolute x offset per column; not a DS list
         coord_t yPos = (j / cols) * ((window->height() - ChannelsViewFooter::FOOTER_H) / rows);
 #endif
         auto channelBar = new (std::nothrow)

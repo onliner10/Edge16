@@ -156,10 +156,10 @@ Curve::Curve(Window* parent, const rect_t& rect,
   if (!withLive([&](LiveWindow& live) {
         auto obj = live.lvobj();
         auto renderRect =
-            rect_t{(positionFunc ? POS_PT_SZ / 2 : PAD_BORDER),
-                   (positionFunc ? POS_PT_SZ / 2 : PAD_BORDER),
-                   rect.w - (positionFunc ? POS_PT_SZ & 0xFE : PAD_BORDER * 2),
-                   rect.h - (positionFunc ? POS_PT_SZ & 0xFE : PAD_BORDER * 2)};
+            rect_t{(positionFunc ? POS_PT_SZ / 2 : PAD_BORDER),  // ds-allow: curve control; graph draw-rect x inset (half marker size or border), absolute graph coordinates not a DS form
+                   (positionFunc ? POS_PT_SZ / 2 : PAD_BORDER),  // ds-allow: curve control; graph draw-rect y inset (half marker size or border), absolute graph coordinates not a DS form
+                   rect.w - (positionFunc ? POS_PT_SZ & 0xFE : PAD_BORDER * 2),  // ds-allow: curve control; graph draw-rect width less the marker/border insets, absolute graph coordinates not a DS form
+                   rect.h - (positionFunc ? POS_PT_SZ & 0xFE : PAD_BORDER * 2)};  // ds-allow: curve control; graph draw-rect height less the marker/border insets, absolute graph coordinates not a DS form
         if (!base.init(live, renderRect, valueFunc)) {
           failClosed();
           return false;
@@ -173,8 +173,8 @@ Curve::Curve(Window* parent, const rect_t& rect,
           dx = POS_PT_SZ / 2;
           dy = POS_PT_SZ / 2;
         } else {
-          dx = PAD_BORDER;
-          dy = PAD_BORDER;
+          dx = PAD_BORDER;  // ds-allow: curve control; graph origin x inset by border when no position marker, absolute graph coordinates not a DS form
+          dy = PAD_BORDER;  // ds-allow: curve control; graph origin y inset by border when no position marker, absolute graph coordinates not a DS form
         }
         dw = rect.w - dx * 2;
         dh = rect.h - dy * 2;
@@ -196,8 +196,8 @@ Curve::Curve(Window* parent, const rect_t& rect,
             failClosed();
             return false;
           }
-          positionValue->padLeft(PAD_TINY);
-          positionValue->padRight(PAD_TINY);
+          positionValue->padLeft(PAD_TINY);  // ds-allow: curve control; position-readout chip left padding, graphical overlay label not a DS form
+          positionValue->padRight(PAD_TINY);  // ds-allow: curve control; position-readout chip right padding, graphical overlay label not a DS form
           positionValue->withLive([](Window::LiveWindow& livePosition) {
             etx_solid_bg(livePosition.lvobj(), COLOR_THEME_ACTIVE_INDEX);
           });
@@ -252,7 +252,7 @@ void Curve::updatePosition()
     lv_coord_t x = getPointX(valueX);
     lv_coord_t y = getPointY(valueY);
 
-    lv_obj_set_pos(posPoint, x - POS_PT_SZ / 2, y - POS_PT_SZ / 2);
+    lv_obj_set_pos(posPoint, x - POS_PT_SZ / 2, y - POS_PT_SZ / 2);  // ds-allow: curve control; position marker centred on the computed curve point, absolute graph coordinates not a DS form
 
     posLinePoints[0] = {x, dy};
     posLinePoints[1] = {x, (lv_coord_t)(dy + dh - 1)};

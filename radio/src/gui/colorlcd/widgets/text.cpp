@@ -52,7 +52,7 @@ class TextWidget : public NativeWidget
         [&](lv_obj_t* obj) {
           lv_obj_add_style(obj, &style, LV_PART_MAIN);
           lv_obj_set_style_text_color(obj, lv_color_black(), LV_PART_MAIN);
-          lv_obj_set_pos(obj, 1, 1);
+          lv_obj_set_pos(obj, 1, 1); // ds-allow: text widget — drop-shadow label nudged 1px behind the main label; canvas widget in a user-resizable dashboard zone, not a DS row/form.
           lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
         });
 
@@ -109,7 +109,7 @@ class TextWidget : public NativeWidget
         textAlign = LV_TEXT_ALIGN_CENTER;
 
       contentBox.with([&](lv_obj_t* obj) {
-        layoutFlexBox(obj, content, LV_FLEX_FLOW_COLUMN, PAD_ZERO,
+        layoutFlexBox(obj, content, LV_FLEX_FLOW_COLUMN, PAD_ZERO, // ds-allow: text widget — content flexbox uses zero gap so the label fills the user-resizable zone edge-to-edge; canvas widget, not a DS form row.
                       LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
       });
       label.with([&](lv_obj_t* obj) {

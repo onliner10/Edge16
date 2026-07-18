@@ -34,7 +34,7 @@ SourceNumberEdit::SourceNumberEdit(Window* parent,
                                    LcdFlags textFlags, int32_t voffset,
                                    int32_t vdefault,
                                    const char* editTitle) :
-    Window(parent, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + SRC_BTN_W + PAD_TINY * 3, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY * 2}),
+    Window(parent, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + SRC_BTN_W + PAD_TINY * 3, EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY * 2}),  // ds-allow: composite source field; fixed overall width packing NumberEdit + SRC button plus their gaps, not a single DS FormRow control
     vmin(vmin),
     vmax(vmax),
     sourceMin(sourceMin),
@@ -44,7 +44,7 @@ SourceNumberEdit::SourceNumberEdit(Window* parent,
 {
   setTextFlag(textFlags);
 
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: composite source field; tight internal padding around the NumberEdit + SRC button pack, not a single DS FormRow control
   setFlexFlow(LV_FLEX_FLOW_ROW_WRAP);
   withLive([](LiveWindow& live) {
     lv_obj_set_style_flex_cross_place(live.lvobj(), LV_FLEX_ALIGN_CENTER, 0);
@@ -83,7 +83,7 @@ SourceNumberEdit::SourceNumberEdit(Window* parent,
   }
 
   // The Source button
-  m_srcBtn = new (std::nothrow) TextButton(this, {EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_TINY, 0, SRC_BTN_W, 0}, "SRC", [=]() {
+  m_srcBtn = new (std::nothrow) TextButton(this, {EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_TINY, 0, SRC_BTN_W, 0}, "SRC", [=]() {  // ds-allow: composite source field; SRC button placed at a fixed offset right of the NumberEdit inside the packed control, not a DS FormRow
     switchSourceMode();
     return isSource();
   });

@@ -110,14 +110,14 @@ class ColorEditorPopup : public BaseDialog
     vbox->withLive([](Window::LiveWindow& live) {
       lv_obj_set_style_grid_cell_x_align(live.lvobj(), LV_GRID_ALIGN_CENTER, 0);
     });
-    vbox->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_MEDIUM, r.w, r.h);
+    vbox->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_MEDIUM, r.w, r.h);  // ds-allow: color picker popup; controls column sized to the color-editor square rect, graphical picker outside DS
 
     auto hbox = Window::makeLive<Window>(vbox, rect_t{});
     if (!hbox) {
       failClosed();
       return;
     }
-    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);
+    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);  // ds-allow: color picker popup; swatch + hex-value preview row, graphical picker outside DS
     hbox->withLive([](Window::LiveWindow& live) {
       lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
                             LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_SPACE_AROUND);
@@ -142,8 +142,8 @@ class ColorEditorPopup : public BaseDialog
       failClosed();
       return;
     }
-    hbox->padAll(PAD_TINY);
-    hbox->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);
+    hbox->padAll(PAD_TINY);  // ds-allow: color picker popup; editor-type button row tight padding, graphical picker outside DS
+    hbox->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: color picker popup; editor-type button row wrap gap, graphical picker outside DS
     hbox->withLive([](Window::LiveWindow& live) {
       lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
                             LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_AROUND);
@@ -199,13 +199,13 @@ class ColorEditorPopup : public BaseDialog
     thmBtn->focus();
 
     hbox = Window::makeLive<Window>(
-        vbox, rect_t{0, height() - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_SMALL,
+        vbox, rect_t{0, height() - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_SMALL,  // ds-allow: color picker popup; action-button row anchored one element-height above the popup bottom, graphical picker outside DS
                      0, 0});
     if (!hbox) {
       failClosed();
       return;
     }
-    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);
+    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);  // ds-allow: color picker popup; Cancel/Save action-button row, graphical picker outside DS
     hbox->withLive([](Window::LiveWindow& live) {
       lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_CENTER,
                             LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_SPACE_BETWEEN);
@@ -232,16 +232,16 @@ class ColorEditorPopup : public BaseDialog
     }
   }
 
-  static LAYOUT_VAL_SCALED(CE_SZ, 182)
+  static LAYOUT_VAL_SCALED(CE_SZ, 182)  // ds-allow: color picker popup; color-editor square side length, absolute graphical sizing outside DS
 #if NARROW_LAYOUT
-      static LAYOUT_ORIENTATION(COLOR_EDIT_WIDTH, LCD_W * 0.95, LCD_W * 0.7)
+      static LAYOUT_ORIENTATION(COLOR_EDIT_WIDTH, LCD_W * 0.95, LCD_W * 0.7)  // ds-allow: color picker popup; narrow-layout popup width as a viewport fraction, graphical picker outside DS
 #else
-      static LAYOUT_ORIENTATION(COLOR_EDIT_WIDTH, LCD_W * 0.8, LCD_W * 0.7)
+      static LAYOUT_ORIENTATION(COLOR_EDIT_WIDTH, LCD_W * 0.8, LCD_W * 0.7)  // ds-allow: color picker popup; wide-layout popup width as a viewport fraction, graphical picker outside DS
 #endif
-          static LAYOUT_ORIENTATION(COLOR_EDIT_HEIGHT, LCD_H * 0.9, LV_SIZE_CONTENT) static LAYOUT_VAL_SCALED(
+          static LAYOUT_ORIENTATION(COLOR_EDIT_HEIGHT, LCD_H * 0.9, LV_SIZE_CONTENT) static LAYOUT_VAL_SCALED(  // ds-allow: color picker popup; popup height as a viewport fraction, graphical picker outside DS
               COLOR_PAD_WIDTH,
-              52) static LAYOUT_VAL_SCALED(BTN_W,
-                                           80) static LAYOUT_VAL_SCALED(BTN_PAD_TOP,
+              52) static LAYOUT_VAL_SCALED(BTN_W,  // ds-allow: color picker popup; color-preview swatch pixel width, absolute graphical sizing outside DS
+                                           80) static LAYOUT_VAL_SCALED(BTN_PAD_TOP,  // ds-allow: color picker popup; picker button pixel width, absolute graphical sizing outside DS
                                                                         60)
 };
 

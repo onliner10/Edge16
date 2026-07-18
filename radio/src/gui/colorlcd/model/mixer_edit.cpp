@@ -59,7 +59,7 @@ class MixerEditStatusBar : public Window
                             channel, true);
   }
 
-  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_MARGIN, 3, 0)
+  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
 
  protected:
   ComboChannelBar *channelBar;
@@ -67,7 +67,7 @@ class MixerEditStatusBar : public Window
 };
 
 MixEditWindow::MixEditWindow(int8_t channel, uint8_t index, Route route) :
-    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)
+    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
 {
   buildBody(body);
   buildHeader(header);
@@ -108,7 +108,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
 
 void MixEditWindow::buildBody(Window *form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
   form->setFlexLayout();
 
   MixData *mix = mixAddress(index);
@@ -165,7 +165,7 @@ void MixEditWindow::buildBody(Window *form)
                  mix->srcRaw);
 
   line = form->newLine(grid);
-  line->padAll(PAD_LARGE);
+  line->padAll(PAD_LARGE);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
   auto btn =
       new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
         new MixEditAdvanced(channel, index,

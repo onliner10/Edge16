@@ -122,10 +122,10 @@ class RadioFunctionSwitch : public FunctionSwitchBase
           SET_DIRTY();
         }, ETX_RGB888);
 
-    offOverride = new ToggleSwitch(this, {OVROFF_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},
+    offOverride = new ToggleSwitch(this, {OVROFF_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},  // ds-allow: custom-function-switch overrides - on/off override toggles positioned absolutely by shared function-switch geometry; not a DS row.
                                   [=]() { return g_eeGeneral.cfsOffColorLuaOverride(switchIndex); },
                                   [=](bool v) { g_eeGeneral.cfsSetOffColorLuaOverride(switchIndex, v); });
-    onOverride = new ToggleSwitch(this, {C2_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},
+    onOverride = new ToggleSwitch(this, {C2_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},  // ds-allow: custom-function-switch overrides - on/off override toggles positioned absolutely by shared function-switch geometry; not a DS row.
                                   [=]() { return g_eeGeneral.cfsOnColorLuaOverride(switchIndex); },
                                   [=](bool v) { g_eeGeneral.cfsSetOnColorLuaOverride(switchIndex, v); });
 #endif //FUNCTION_SWITCHES_RGB_LEDS

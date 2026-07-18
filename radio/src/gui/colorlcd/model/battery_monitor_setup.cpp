@@ -128,7 +128,7 @@ class CompatiblePackLine : public ListLineButton
       : ListLineButton(parent, slot, LineDependencies::LiveValues), monitor(monitor), slot(slot)
   {
     setHeight(PACK_LINE_H);
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO); // ds-allow: battery-monitor pack row (ListLineButton) zeroes padding to draw pack spec text at absolute offsets; not a plain DS list row
     setWidth(ListLineButton::GRP_W);
 
     setPressHandler([this]() -> uint8_t {
@@ -148,8 +148,8 @@ class CompatiblePackLine : public ListLineButton
 
   void describeLine(LineView& view) const override
   {
-    view.text(PAD_MEDIUM, PACK_TEXT_Y,
-              ListLineButton::GRP_W - PAD_MEDIUM * 2,
+    view.text(PAD_MEDIUM, PACK_TEXT_Y, // ds-allow: battery-monitor pack row draws spec text at absolute x/y offsets in describeLine; not a plain DS list row
+              ListLineButton::GRP_W - PAD_MEDIUM * 2, // ds-allow: battery-monitor pack row text width computed from group width at absolute offsets; not a plain DS list row
               EdgeTxStyles::STD_FONT_HEIGHT, lineText);
   }
 
@@ -170,7 +170,7 @@ class CompatiblePackLine : public ListLineButton
   char lineText[64] = {};
 
   static constexpr coord_t PACK_LINE_H = EdgeTxStyles::UI_ELEMENT_HEIGHT +
-                                         PAD_TINY * 2;
+                                         PAD_TINY * 2; // ds-allow: battery-monitor pack row height constant for absolute-offset text layout; not a DS row
   static constexpr coord_t PACK_TEXT_Y =
       (PACK_LINE_H - EdgeTxStyles::STD_FONT_HEIGHT) / 2;
 
@@ -381,7 +381,7 @@ void BatteryMonitorPage::build()
   if (!libraryFull) {
     setupLine(nullptr, [=](Window* parent, coord_t x, coord_t y) {
       new TextButton(parent,
-                     {x, y, LCD_W - x - PAD_LARGE,
+                     {x, y, LCD_W - x - PAD_LARGE, // ds-allow: battery-monitor 'Create battery' button sized to remaining body width at an absolute rect; not a DS form control
                       EdgeTxStyles::UI_ELEMENT_HEIGHT},
                      "Create battery", [this]() -> uint8_t {
                        createBattery();

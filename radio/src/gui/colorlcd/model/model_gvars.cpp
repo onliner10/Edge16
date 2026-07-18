@@ -339,7 +339,7 @@ class GVarEditWindow : public Page
                                          LV_GRID_TEMPLATE_LAST};
 
     window->setFlexLayout();
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: GVar edit sub-page - per-flight-mode rows pack an enable toggle plus value field (dual control); ds::FormRow's single 40/60 control column can't express it.
 
     auto line = window->newLine(grid);
 

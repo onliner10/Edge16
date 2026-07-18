@@ -39,8 +39,8 @@ class MPMProtoOption : public FormLine {
     label = new StaticText(this, rect_t{}, "");
 
     auto box = new Window(this, rect_t{});
-    box->padAll(PAD_TINY);
-    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);
+    box->padAll(PAD_TINY);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
+    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
 
     choice = new Choice(box, rect_t{}, 0, 0, nullptr);
     edit = new NumberEdit(box, rect_t{}, 0, 0, nullptr);
@@ -48,7 +48,7 @@ class MPMProtoOption : public FormLine {
     rssi = new DynamicNumber<uint16_t>(
         box, rect_t{}, [] { return (uint16_t)TELEMETRY_RSSI(); }, COLOR_THEME_PRIMARY1_INDEX, 0,
         getRxStatLabels()->label, getRxStatLabels()->unit);
-    rssi->padTop(PAD_SMALL);
+    rssi->padTop(PAD_SMALL);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
   }
 
   void update(const MultiRfProtocols::RfProto* rfProto, ModuleData* md,

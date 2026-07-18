@@ -95,20 +95,20 @@ class TopBar: public WidgetsContainer
 
   void load();
 
-  static LAYOUT_VAL_SCALED(HDR_DATE_XO, 48)
+  static LAYOUT_VAL_SCALED(HDR_DATE_XO, 48) // ds-allow: main-view top bar date x-offset constant for content placed absolutely within the header; not a DS row
 
-  static constexpr coord_t TOPBAR_ZONE_HEIGHT = EdgeTxStyles::MENU_HEADER_HEIGHT - 2 * PAD_THREE;
-  static constexpr coord_t TOPBAR_WIDGET_GAP = PAD_TINY;
-  static LAYOUT_VAL_SCALED(TOPBAR_FLEX_MIN_WIDTH, 96)
-  static LAYOUT_VAL_SCALED(TOPBAR_STATUS_WIDTH, 50)
-  static LAYOUT_VAL_SCALED(TOPBAR_LINK_WIDTH, 48)
-  static LAYOUT_VAL_SCALED(TOPBAR_BATTERY_WIDTH, 50)
-  static LAYOUT_VAL_SCALED(TOPBAR_VOLUME_WIDTH, 56)
-  static LAYOUT_VAL_SCALED(TOPBAR_DATETIME_WIDTH, 50)
-  static LAYOUT_VAL_SCALED(TOPBAR_CLOCK_WIDTH, 64)
-  static LAYOUT_VAL_SCALED(TOPBAR_TODAY_WIDTH, 52)
-  static LAYOUT_VAL_SCALED(TOPBAR_GPS_WIDTH, 38)
-  static LAYOUT_VAL_SCALED(TOPBAR_LEGACY_STATUS_WIDTH, 74)
+  static constexpr coord_t TOPBAR_ZONE_HEIGHT = EdgeTxStyles::MENU_HEADER_HEIGHT - 2 * PAD_THREE; // ds-allow: main-view top bar zone height for absolutely-positioned header zones; not a DS row
+  static constexpr coord_t TOPBAR_WIDGET_GAP = PAD_TINY; // ds-allow: main-view top bar inter-zone gap used in absolute zone-rect math; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_FLEX_MIN_WIDTH, 96) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_STATUS_WIDTH, 50) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_LINK_WIDTH, 48) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_BATTERY_WIDTH, 50) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_VOLUME_WIDTH, 56) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_DATETIME_WIDTH, 50) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_CLOCK_WIDTH, 64) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_TODAY_WIDTH, 52) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_GPS_WIDTH, 38) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
+  static LAYOUT_VAL_SCALED(TOPBAR_LEGACY_STATUS_WIDTH, 74) // ds-allow: main-view top bar zone width constant for absolutely-positioned header zones; not a DS row
 
  protected:
   uint32_t lastRefresh = 0;

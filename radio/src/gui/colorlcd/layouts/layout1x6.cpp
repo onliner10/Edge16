@@ -66,7 +66,7 @@ class Layout6x1 : public Layout
       if (mainZone.x != zone.x || mainZone.y != zone.y ||
           mainZone.w != zone.w || mainZone.h != zone.h) {
         mainZone = zone;
-        lv_obj_set_pos(obj, mainZone.x, mainZone.y);
+        lv_obj_set_pos(obj, mainZone.x, mainZone.y); // ds-allow: screen layout engine places the full-screen widget zone at absolute view coordinates; not a DS surface
         lv_obj_set_size(obj, mainZone.w, mainZone.h);
       }
 

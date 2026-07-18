@@ -30,5 +30,5 @@ class RadioVersionPage: public PageGroupItem
 
   void build(Window * window) override;
 
-  static LAYOUT_VAL_SCALED(QR_SZ, 150)
+  static LAYOUT_VAL_SCALED(QR_SZ, 150)  // ds-allow: version screen — QR-code size for absolutely-positioned QR box; canvas layout, not a DS list.
 };

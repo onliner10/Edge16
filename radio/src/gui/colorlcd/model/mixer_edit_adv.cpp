@@ -52,7 +52,7 @@
   }
 
 MixEditAdvanced::MixEditAdvanced(int8_t channel, uint8_t index, Route route) :
-    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)
+    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
 {
   std::string title2(getSourceString(MIXSRC_FIRST_CH + channel));
   header->setTitle(STR_MIXES);
@@ -75,7 +75,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
 
 void MixEditAdvanced::buildBody(Window* form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
   form->setFlexLayout();
 
   MixData* mix = mixAddress(index);

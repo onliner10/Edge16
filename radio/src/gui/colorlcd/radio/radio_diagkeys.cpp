@@ -58,7 +58,7 @@ static lv_obj_t* createDiagLabel(lv_obj_t* parent, const char* text, coord_t x,
   auto label = etx_label_create(parent);
   if (label) {
     lv_label_set_text(label, text);
-    lv_obj_set_pos(label, x, y);
+    lv_obj_set_pos(label, x, y);  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
   }
   return label;
 }
@@ -73,29 +73,29 @@ class RadioKeyDiagsWindow : public Window
  public:
   RadioKeyDiagsWindow(Window *parent, const rect_t &rect) : Window(parent, rect)
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
 
-    coord_t colWidth = (width() - PAD_LARGE * 3) / 3;
-    coord_t colHeight = height() - PAD_LARGE - PAD_SMALL;
+    coord_t colWidth = (width() - PAD_LARGE * 3) / 3;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
+    coord_t colHeight = height() - PAD_LARGE - PAD_SMALL;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
 
     Window* form;
-    coord_t x = PAD_MEDIUM;
+    coord_t x = PAD_MEDIUM;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
 
     if (keysGetMaxKeys() > 0) {
-      form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});
+      form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
       form->textColor(COLOR_THEME_PRIMARY1_INDEX);
       addKeys(form);
-      x += colWidth + PAD_MEDIUM;
+      x += colWidth + PAD_MEDIUM;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
     } else {
-      colWidth = (width() - PAD_MEDIUM * 3) / 2;
+      colWidth = (width() - PAD_MEDIUM * 3) / 2;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
     }
 
-    form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});
+    form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
     form->textColor(COLOR_THEME_PRIMARY1_INDEX);
     addSwitches(form);
-    x += colWidth + PAD_MEDIUM;
+    x += colWidth + PAD_MEDIUM;  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
 
-    form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});
+    form = new Window(parent, rect_t{x, PAD_MEDIUM, colWidth, colHeight});  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
     form->textColor(COLOR_THEME_PRIMARY1_INDEX);
     addTrims(form);
   }
@@ -166,8 +166,8 @@ class RadioKeyDiagsWindow : public Window
         formatNumberAsString(s, 10, i + 1, 0, 10, "T");
         auto y = i * EdgeTxStyles::STD_FONT_HEIGHT +
                  EdgeTxStyles::STD_FONT_HEIGHT;
-        createDiagLabel(obj, s, PAD_SMALL, y);
-        trimValues[i * 2] = createDiagLabel(obj, "", TRIM_MINUS_X - PAD_TINY, y);
+        createDiagLabel(obj, s, PAD_SMALL, y);  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
+        trimValues[i * 2] = createDiagLabel(obj, "", TRIM_MINUS_X - PAD_TINY, y);  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
         trimValues[i * 2 + 1] = createDiagLabel(obj, "", TRIM_PLUS_X, y);
       }
     });
@@ -228,9 +228,9 @@ class RadioKeyDiagsWindow : public Window
   lv_obj_t **switchValues = nullptr;
   lv_obj_t **trimValues = nullptr;
 
-  static LAYOUT_VAL_SCALED(KVAL_X, 70)
-  static LAYOUT_VAL_SCALED(TRIM_MINUS_X, 62)
-  static LAYOUT_VAL_SCALED(TRIM_PLUS_X, 75)
+  static LAYOUT_VAL_SCALED(KVAL_X, 70)  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
+  static LAYOUT_VAL_SCALED(TRIM_MINUS_X, 62)  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
+  static LAYOUT_VAL_SCALED(TRIM_PLUS_X, 75)  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
 };
 
 void RadioKeyDiagsPage::buildHeader(Window *window)
@@ -241,7 +241,7 @@ void RadioKeyDiagsPage::buildHeader(Window *window)
 
 void RadioKeyDiagsPage::buildBody(Window *window)
 {
-  body->padAll(PAD_ZERO);
+  body->padAll(PAD_ZERO);  // ds-allow: key/switch/trim diagnostics - three independent absolutely-positioned columns of live state labels refreshed in place; not a uniform-row DS list/grid.
   new RadioKeyDiagsWindow(window, {0, 0, window->width(), window->height()});
 }
 

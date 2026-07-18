@@ -385,9 +385,9 @@ RegisterDialog::RegisterDialog(uint8_t moduleIdx) :
     // status = new StaticText(line, rect_t{}, STR_WAITING_FOR_RX);
 
     auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);
+    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
     box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);
+    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
 
     new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
       this->deleteLater();
@@ -539,7 +539,7 @@ void ModuleOptions::update()
       getPXX2ModuleOptions(modelId) &
       ((1 << MODULE_OPTION_EXTERNAL_ANTENNA) | (1 << MODULE_OPTION_POWER));
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);
+  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
 
   form.with([&](Window& formWindow) {
     formWindow.clear();
@@ -618,9 +618,9 @@ void ModuleOptions::update()
     line = formWindow.newLine(grid);
 
     auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);
+    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
     box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);
+    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
 
     new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
       this->deleteLater();
@@ -857,7 +857,7 @@ void RxOptions::update()
   uint8_t rxVariant = rxInfo.variant;
   uint8_t capabilities = rxInfo.capabilities;
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);
+  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
 
   form.with([&](Window& formWindow) {
     auto line = formWindow.newLine(grid);
@@ -977,9 +977,9 @@ void RxOptions::update()
     new DynamicText(line, rect_t{}, [=]() { return statusText; });
 
     auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);
+    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
     box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);
+    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
 
     new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
       this->deleteLater();

@@ -92,7 +92,7 @@ void drawSplash()
     coord_t y = (LANDSCAPE ? LCD_H / 2 : LCD_H * 2 / 5) - logo->height / 2;
     new (std::nothrow) StaticLZ4Image(splashScreen, x, y, logo);
 
-    coord_t w = LAYOUT_SCALE(200);
+    coord_t w = LAYOUT_SCALE(200);  // ds-allow: startup splash screen - version-text block width scaled to an absolute pixel value on the animation canvas; not a DS surface.
     x = (LANDSCAPE ? LCD_W * 4 / 5 : LCD_W / 2) - w / 2;
     y = LCD_H - EdgeTxStyles::STD_FONT_HEIGHT * 4;
     new (std::nothrow) StaticText(splashScreen, {x, y, w, EdgeTxStyles::STD_FONT_HEIGHT}, ver_str.c_str(), COLOR_GREY_INDEX, CENTERED);
@@ -152,7 +152,7 @@ void waitSplash()
   cancelSplash();
 }
 
-static LAYOUT_VAL_SCALED(SHUTDOWN_CIRCLE_RADIUS, 75)
+static LAYOUT_VAL_SCALED(SHUTDOWN_CIRCLE_RADIUS, 75)  // ds-allow: startup/shutdown screen - progress ring/circle drawn at absolute coordinates; animation canvas, not a DS surface.
 
 const int8_t bmp_shutdown_xo[] = {0, 0, -SHUTDOWN_CIRCLE_RADIUS,
                                   -SHUTDOWN_CIRCLE_RADIUS};

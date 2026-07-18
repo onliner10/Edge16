@@ -31,7 +31,7 @@ template <typename T>
 PpmFrameSettings<T>::PpmFrameSettings(Window* parent, T* ppm) :
     Window(parent, rect_t{})
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: PPM module settings - option fields in a box with a fixed pad; side-by-side controls, not a single DS FormRow.
   setFlexLayout(LV_FLEX_FLOW_ROW);
 
   // PPM frame length

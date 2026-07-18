@@ -72,8 +72,8 @@ CrossfireSettings::CrossfireSettings(Window* parent, const FlexGridLayout& g,
   auto armingLine = newLine(grid);
   lblArmMode = new StaticText(armingLine, rect_t{}, STR_CRSF_ARMING_MODE);
   auto box = new Window(armingLine, rect_t{});
-  box->padAll(PAD_TINY);
-  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
+  box->padAll(PAD_TINY);  // ds-allow: CRSF module settings - option fields in a horizontal box (side-by-side controls); not a single DS FormRow control.
+  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: CRSF module settings - option fields in a horizontal box (side-by-side controls); not a single DS FormRow control.
   choArmMode = new Choice(box, rect_t{}, STR_CRSF_ARMING_MODES, 0, 1, GET_SET_DEFAULT(md->crsf.crsfArmingMode));
   choArmSwitch = new SwitchChoice(box, rect_t{}, SWSRC_FIRST, SWSRC_LAST, GET_SET_DEFAULT(md->crsf.crsfArmingTrigger));
   choArmSwitch->setAvailableHandler([=](int sw) { return isSwitchAvailableForArming(sw); });

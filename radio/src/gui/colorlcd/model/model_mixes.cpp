@@ -68,8 +68,8 @@ class MPlexIcon : public Window
     index = i;
   }
 
-  static LAYOUT_VAL_SCALED(MPLEX_ICON_W, 25)
-  static LAYOUT_VAL_SCALED(MPLEX_ICON_H, 29)
+  static LAYOUT_VAL_SCALED(MPLEX_ICON_W, 25) // ds-allow: mix row multiplex-icon width; icon sits at an absolute offset beside the rich mix row, not a DS component
+  static LAYOUT_VAL_SCALED(MPLEX_ICON_H, 29) // ds-allow: mix row multiplex-icon height; icon sits at an absolute offset beside the rich mix row, not a DS component
 
  protected:
   uint8_t index;
@@ -143,7 +143,7 @@ class MixLineButton : public InputMixButtonBase
     mplex->show(y > ListLineButton::BTN_H);
   }
 
-  static LAYOUT_VAL_SCALED(MPLEX_XO, 28)
+  static LAYOUT_VAL_SCALED(MPLEX_XO, 28) // ds-allow: mix row multiplex-icon x-offset; icon positioned absolutely left of the mix row, not a DS component
 
  protected:
   MPlexIcon* mplex = nullptr;
@@ -159,7 +159,7 @@ class MixGroup : public InputMixGroupBase
   {
     adjustHeight();
 
-    label.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, PAD_TINY, -1); });
+    label.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, PAD_TINY, -1); }); // ds-allow: mix group channel label positioned absolutely (raw lv_obj_set_pos) in the row header; not a DS row
 
     lv_obj_t* chText = nullptr;
     if (idx >= MIXSRC_FIRST_CH && idx <= MIXSRC_LAST_CH &&
@@ -170,7 +170,7 @@ class MixGroup : public InputMixGroupBase
         char* s = strAppend(chanStr, STR_CH);
         strAppendUnsigned(s, idx - MIXSRC_FIRST_CH + 1);
         lv_label_set_text(chText, chanStr);
-        lv_obj_set_pos(chText, PAD_TINY, CHNUM_Y - 1);
+        lv_obj_set_pos(chText, PAD_TINY, CHNUM_Y - 1); // ds-allow: mix group channel-number text positioned absolutely (raw lv_obj_set_pos) inside the row; not a DS row
       });
     }
 
@@ -180,7 +180,7 @@ class MixGroup : public InputMixGroupBase
   void enableMixerMonitor()
   {
     if (!monitor)
-      monitor = new MixerChannelBar(this, {ListLineButton::GRP_W - CHBAR_W - PAD_LARGE, 1, CHBAR_W, CHBAR_H}, idx - MIXSRC_FIRST_CH);
+      monitor = new MixerChannelBar(this, {ListLineButton::GRP_W - CHBAR_W - PAD_LARGE, 1, CHBAR_W, CHBAR_H}, idx - MIXSRC_FIRST_CH); // ds-allow: mix row embeds a MixerChannelBar monitor at an absolute right-aligned rect; ds::ListRow can't host it
     monitorVisible = true;
     monitor->show();
     adjustHeight();
@@ -198,9 +198,9 @@ class MixGroup : public InputMixGroupBase
     _adjustHeight(monitorVisible ? CHNUM_Y : 0);
   }
 
-  static LAYOUT_VAL_SCALED(CHNUM_Y, 17)
-  static LAYOUT_VAL_SCALED(CHBAR_W, 100)
-  static LAYOUT_VAL_SCALED(CHBAR_H, 14)
+  static LAYOUT_VAL_SCALED(CHNUM_Y, 17) // ds-allow: mix row channel-number y-offset for the embedded monitor layout; absolute offset, not a DS row
+  static LAYOUT_VAL_SCALED(CHBAR_W, 100) // ds-allow: mix row channel-monitor bar width; embedded monitor sized absolutely, not a DS component
+  static LAYOUT_VAL_SCALED(CHBAR_H, 14) // ds-allow: mix row channel-monitor bar height; embedded monitor sized absolutely, not a DS component
 
  protected:
   MixerChannelBar* monitor = nullptr;
@@ -452,15 +452,14 @@ void ModelMixesPage::build(Window * window)
   _copyMode = 0;
   _copySrc = nullptr;
 
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
-
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY); // ds-allow: mixes page stacks rich mix-group rows with a PAD_TINY gap; hand-built list, not a DS list
   form = new Window(window, rect_t{0, 0, ListLineButton::GRP_W, LV_SIZE_CONTENT});
-  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY); // ds-allow: mixes form sub-window (fixed GRP_W) stacks rows with PAD_TINY gap; not a DS form
 
   auto box = new Window(window, rect_t{});
-  box->padAll(PAD_TINY);
-  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
-  box->padLeft(PAD_MEDIUM);
+  box->padAll(PAD_TINY); // ds-allow: mixes 'show monitors' toggle box uses container padding; ad-hoc row box, not a DS FormRow
+  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL); // ds-allow: mixes 'show monitors' toggle box lays label+switch in a row with PAD_SMALL gap; ad-hoc box, not a DS FormRow
+  box->padLeft(PAD_MEDIUM); // ds-allow: mixes 'show monitors' toggle box left-indents to align with mix rows; manual pad, not a DS FormRow
 
   box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
 

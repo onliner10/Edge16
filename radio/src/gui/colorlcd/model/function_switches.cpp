@@ -44,23 +44,23 @@ const char* edgetx_fs_manual_url =
 //-----------------------------------------------------------------------------
 
 FunctionSwitchBase::FunctionSwitchBase(Window* parent, uint8_t sw) :
-      Window(parent, {0, 0, LCD_W - PAD_SMALL * 2, ROW_H}),
+      Window(parent, {0, 0, LCD_W - PAD_SMALL * 2, ROW_H}),  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
       switchIndex(sw)
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
   std::string s(CHAR_SWITCH);
   s += switchGetDefaultName(switchIndex);
 
-  new StaticText(this, {PAD_LARGE, PAD_MEDIUM, SW_W, EdgeTxStyles::STD_FONT_HEIGHT}, s);
+  new StaticText(this, {PAD_LARGE, PAD_MEDIUM, SW_W, EdgeTxStyles::STD_FONT_HEIGHT}, s);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
 #if defined(FUNCTION_SWITCHES_RGB_LEDS)
 #if NARROW_LAYOUT
-  offLabel = new StaticText(this, {C1_X - C1_W - PAD_TINY, C1_Y + COLLBL_YO, C1_W, 0}, STR_OFF, COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | RIGHT);
-  onLabel = new StaticText(this, {C2_X - C2_W - PAD_TINY, C2_Y + COLLBL_YO, C2_W, 0}, STR_ON_ONE_SWITCHES[0], COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | RIGHT);
+  offLabel = new StaticText(this, {C1_X - C1_W - PAD_TINY, C1_Y + COLLBL_YO, C1_W, 0}, STR_OFF, COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | RIGHT);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  onLabel = new StaticText(this, {C2_X - C2_W - PAD_TINY, C2_Y + COLLBL_YO, C2_W, 0}, STR_ON_ONE_SWITCHES[0], COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | RIGHT);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #endif
 
-  overrideLabel = new StaticText(this, {OVRLBL_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_LARGE, OVRLBL_W, 0},
+  overrideLabel = new StaticText(this, {OVRLBL_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_LARGE, OVRLBL_W, 0},  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                                  STR_LUA_OVERRIDE, COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | RIGHT);
 #endif
 }
@@ -200,10 +200,10 @@ class FunctionSwitch : public FunctionSwitchBase
           SET_DIRTY();
         }, ETX_RGB888);
 
-    offOverride = new ToggleSwitch(this, {OVROFF_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},
+    offOverride = new ToggleSwitch(this, {OVROFF_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                                   [=]() { return g_model.cfsOffColorLuaOverride(switchIndex); },
                                   [=](bool v) { g_model.cfsSetOffColorLuaOverride(switchIndex, v); });
-    onOverride = new ToggleSwitch(this, {C2_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},
+    onOverride = new ToggleSwitch(this, {C2_X, C1_Y + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE, 0, 0},  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                                   [=]() { return g_model.cfsOnColorLuaOverride(switchIndex); },
                                   [=](bool v) { g_model.cfsSetOnColorLuaOverride(switchIndex, v); });
 #endif //FUNCTION_SWITCHES_RGB_LEDS
@@ -239,11 +239,11 @@ class SwitchGroup : public Window
 {
  public:
   SwitchGroup(Window* parent, uint8_t group) :
-      Window(parent, {0, 0, LCD_W - PAD_SMALL * 2, ROW_H}), groupIndex(group)
+      Window(parent, {0, 0, LCD_W - PAD_SMALL * 2, ROW_H}), groupIndex(group)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   {
-    padAll(PAD_TINY);
+    padAll(PAD_TINY);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
-    new StaticText(this, {0, PAD_MEDIUM, NM_W, EdgeTxStyles::STD_FONT_HEIGHT},
+    new StaticText(this, {0, PAD_MEDIUM, NM_W, EdgeTxStyles::STD_FONT_HEIGHT},  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                    STR_FUNCTION_SWITCH_GROUPS[groupIndex]);
 
     auto btn = new TextButton(
@@ -258,7 +258,7 @@ class SwitchGroup : public Window
         });
     btn->check(g_model.cfsGroupAlwaysOn(groupIndex));
 
-    new StaticText(this, {SL_X, PAD_MEDIUM, SL_W, EdgeTxStyles::STD_FONT_HEIGHT}, STR_SWITCH_STARTUP);
+    new StaticText(this, {SL_X, PAD_MEDIUM, SL_W, EdgeTxStyles::STD_FONT_HEIGHT}, STR_SWITCH_STARTUP);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
     startChoice = new Choice(
         this, {ST_X, 0, ST_W, 0}, 0, switchGetMaxSwitches() + 1,
@@ -293,14 +293,14 @@ class SwitchGroup : public Window
     startChoice->setValue(groupDefaultSwitch(groupIndex) + 1);
   }
 
-  static LAYOUT_VAL_SCALED(NM_W, 80)
-  static constexpr coord_t AO_X = NM_W + PAD_TINY;
-  static LAYOUT_VAL_SCALED(AO_W, 90)
-  static constexpr coord_t SL_X = AO_X + AO_W + PAD_LARGE * 3 + PAD_MEDIUM;
-  static LAYOUT_VAL_SCALED(SL_W, 80)
-  static constexpr coord_t ST_X = SL_X + SL_W + PAD_TINY;
-  static LAYOUT_VAL_SCALED(ST_W, 60)
-  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;
+  static LAYOUT_VAL_SCALED(NM_W, 80)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t AO_X = NM_W + PAD_TINY;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(AO_W, 90)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t SL_X = AO_X + AO_W + PAD_LARGE * 3 + PAD_MEDIUM;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(SL_W, 80)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t ST_X = SL_X + SL_W + PAD_TINY;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static LAYOUT_VAL_SCALED(ST_W, 60)  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE * 2;  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
  protected:
   uint8_t groupIndex;
@@ -314,8 +314,8 @@ FunctionSwitchesBase::FunctionSwitchesBase(EdgeTxIcon icon, Route route, const c
   header->setTitle(title);
   header->setTitle2(STR_FUNCTION_SWITCHES);
 
-  body->padAll(PAD_TINY);
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  body->padAll(PAD_TINY);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
 #if defined(FUNCTION_SWITCHES_RGB_LEDS)
   previewMsg.subscribe(Messaging::COLOR_PREVIEW, [=](uint32_t param) {
@@ -327,22 +327,22 @@ FunctionSwitchesBase::FunctionSwitchesBase(EdgeTxIcon icon, Route route, const c
 
   auto box = new Window(body, {0, 0, LV_PCT(100), LV_SIZE_CONTENT});
   new StaticText(box, {0, 0, FunctionSwitch::SW_W, 0}, STR_SWITCHES);
-  new StaticText(box, {FunctionSwitch::NM_X + PAD_OUTLINE, 0, FunctionSwitch::NM_W, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(box, {FunctionSwitch::TP_X + PAD_OUTLINE, 0, FunctionSwitch::TP_W, 0}, STR_SWITCH_TYPE,
+  new StaticText(box, {FunctionSwitch::NM_X + PAD_OUTLINE, 0, FunctionSwitch::NM_W, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  new StaticText(box, {FunctionSwitch::TP_X + PAD_OUTLINE, 0, FunctionSwitch::TP_W, 0}, STR_SWITCH_TYPE,  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                  COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(box, {FunctionSwitch::GR_X + PAD_OUTLINE, 0, FunctionSwitch::GR_W, 0}, STR_GROUP, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  startupHeader = new StaticText(box, {FunctionSwitch::ST_X + PAD_OUTLINE, 0, FunctionSwitch::ST_W, 0}, STR_SWITCH_STARTUP,
+  new StaticText(box, {FunctionSwitch::GR_X + PAD_OUTLINE, 0, FunctionSwitch::GR_W, 0}, STR_GROUP, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  startupHeader = new StaticText(box, {FunctionSwitch::ST_X + PAD_OUTLINE, 0, FunctionSwitch::ST_W, 0}, STR_SWITCH_STARTUP,  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
                  COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
 #if defined(FUNCTION_SWITCHES_RGB_LEDS) && !NARROW_LAYOUT
-  new StaticText(box, {FunctionSwitch::C1_X + PAD_OUTLINE, 0, FunctionSwitch::C1_W, 0}, STR_OFF, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(box, {FunctionSwitch::C2_X + PAD_OUTLINE, 0, FunctionSwitch::C2_W, 0}, STR_ON_ONE_SWITCHES[0], COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
+  new StaticText(box, {FunctionSwitch::C1_X + PAD_OUTLINE, 0, FunctionSwitch::C1_W, 0}, STR_OFF, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
+  new StaticText(box, {FunctionSwitch::C2_X + PAD_OUTLINE, 0, FunctionSwitch::C2_W, 0}, STR_ON_ONE_SWITCHES[0], COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 #endif
 }
 
 void FunctionSwitchesBase::addQRCode()
 {
 #if defined(HARDWARE_TOUCH)
-  body->padBottom(PAD_LARGE);
+  body->padBottom(PAD_LARGE);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
 
   auto box = new Window(body, {0, 0, LV_PCT(100), LV_SIZE_CONTENT});
 
@@ -355,7 +355,7 @@ void FunctionSwitchesBase::addQRCode()
     lv_qrcode_set_dark_color(qr, makeLvColor(COLOR_THEME_SECONDARY1));
     lv_qrcode_set_light_color(qr, makeLvColor(COLOR_THEME_SECONDARY3));
     lv_qrcode_update(qr, edgetx_fs_manual_url, strlen(edgetx_fs_manual_url));
-    lv_obj_set_pos(qr, (LCD_W - 150) / 2, EdgeTxStyles::STD_FONT_HEIGHT);
+    lv_obj_set_pos(qr, (LCD_W - 150) / 2, EdgeTxStyles::STD_FONT_HEIGHT);  // ds-allow: function-switch config - per-switch columns with in-cell on/off override toggles positioned absolutely; FUNCTION_SWITCHES hardware page (not built on TX16S sim); ds::Grid's text-only cells can't hold the embedded toggles.
   });
 #endif
 }

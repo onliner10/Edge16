@@ -58,14 +58,14 @@ class QuickMenuGroup : public Window
   void onDelete() override;
 
 #if PORTRAIT
-  static LAYOUT_VAL_SCALED(QM_BUTTON_WIDTH, 72)
+  static LAYOUT_VAL_SCALED(QM_BUTTON_WIDTH, 72)  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
 #else
-  static LAYOUT_SIZE_SCALED(QM_BUTTON_WIDTH, 72, 60)
+  static LAYOUT_SIZE_SCALED(QM_BUTTON_WIDTH, 72, 60)  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
 #endif
-  static LAYOUT_VAL_SCALED(QM_BUTTON_HEIGHT, 70)
+  static LAYOUT_VAL_SCALED(QM_BUTTON_HEIGHT, 70)  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
 
-  static LAYOUT_VAL_SCALED(QM_ICON_SIZE, 30)
-  static LAYOUT_ORIENTATION(QM_ICON_PAD, PAD_MEDIUM, PAD_SMALL)
+  static LAYOUT_VAL_SCALED(QM_ICON_SIZE, 30)  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
+  static LAYOUT_ORIENTATION(QM_ICON_PAD, PAD_MEDIUM, PAD_SMALL)  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
 
  protected:
   std::vector<ButtonBase*> btns;

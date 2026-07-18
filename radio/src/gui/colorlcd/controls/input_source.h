@@ -33,7 +33,7 @@ class InputSource : public Window
 
   void update();
 
-  static LAYOUT_ORIENTATION(SENSOR_W, LV_PCT(60), LV_PCT(100))
+  static LAYOUT_ORIENTATION(SENSOR_W, LV_PCT(60), LV_PCT(100))  // ds-allow: input-source composite; sensor sub-field width as a percent of the parent per orientation, not a DS token
 
  public:
   InputSource(Window* parent, ExpoData* input);

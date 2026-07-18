@@ -27,7 +27,7 @@
 
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
-LAYOUT_VAL_SCALED(SCALE_HEIGHT, 15)
+LAYOUT_VAL_SCALED(SCALE_HEIGHT, 15)  // ds-allow: spectrum analyser — height of the frequency-scale strip above the FFT graph canvas; not a DS form.
 constexpr coord_t SPECTRUM_HEIGHT = LCD_H - EdgeTxStyles::MENU_HEADER_HEIGHT -
                                     SCALE_HEIGHT -
                                     EdgeTxStyles::UI_ELEMENT_HEIGHT;
@@ -64,7 +64,7 @@ class SpectrumFooterWindow : public Window
   SpectrumFooterWindow(Window* parent, const rect_t& rect, int moduleIdx) :
       Window(parent, rect)
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: spectrum analyser — zero footer padding so freq/span/tracker fields sit at absolute width-thirds; not a DS form.
 
     if (isModuleMultimodule(moduleIdx)) {
       char label[16];
@@ -73,22 +73,22 @@ class SpectrumFooterWindow : public Window
       snprintf(label, sizeof(label), "T: %dMHz",
                int(reusableBuffer.spectrumAnalyser.freq / 1000000));
       (new StaticText(
-           this, rect_t{PAD_TINY, 0, FLD_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+           this, rect_t{PAD_TINY, 0, FLD_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},  // ds-allow: spectrum analyser — multimodule frequency label at the first absolute width-third; not a DS form.
            label))
-          ->padTop(PAD_MEDIUM);
+          ->padTop(PAD_MEDIUM);  // ds-allow: spectrum analyser — top inset for the frequency label at the first width-third; not a DS form.
 
       // Span
       snprintf(label, sizeof(label), "S: %dMHz",
                int(reusableBuffer.spectrumAnalyser.span / 1000000));
       (new StaticText(
            this,
-           rect_t{PAD_TINY + FLD_W, 0, FLD_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+           rect_t{PAD_TINY + FLD_W, 0, FLD_W, EdgeTxStyles::UI_ELEMENT_HEIGHT},  // ds-allow: spectrum analyser — multimodule span label at the second absolute width-third; not a DS form.
            label))
-          ->padTop(PAD_MEDIUM);
+          ->padTop(PAD_MEDIUM);  // ds-allow: spectrum analyser — top inset for the span label at the second width-third; not a DS form.
     } else {
       // Frequency
       auto freq = new NumberEdit(
-          this, rect_t{PAD_TINY, 0, FLD_W, 0},
+          this, rect_t{PAD_TINY, 0, FLD_W, 0},  // ds-allow: spectrum analyser — frequency field at the first absolute width-third; not a DS form.
           reusableBuffer.spectrumAnalyser.freqMin,
           reusableBuffer.spectrumAnalyser.freqMax,
           GET_DEFAULT(reusableBuffer.spectrumAnalyser.freq / 1000000),
@@ -98,7 +98,7 @@ class SpectrumFooterWindow : public Window
 
       // Span
       auto span = new NumberEdit(
-          this, rect_t{PAD_TINY + FLD_W, 0, FLD_W, 0}, 1,
+          this, rect_t{PAD_TINY + FLD_W, 0, FLD_W, 0}, 1,  // ds-allow: spectrum analyser — span field at the second absolute width-third; not a DS form.
           reusableBuffer.spectrumAnalyser.spanMax,
           GET_DEFAULT(reusableBuffer.spectrumAnalyser.span / 1000000),
           SET_VALUE(reusableBuffer.spectrumAnalyser.span, newValue * 1000000));
@@ -109,7 +109,7 @@ class SpectrumFooterWindow : public Window
     // Tracker
     auto tracker = new NumberEdit(
         this,
-        rect_t{(PAD_TINY + FLD_W) * 2, 0, FLD_W,
+        rect_t{(PAD_TINY + FLD_W) * 2, 0, FLD_W,  // ds-allow: spectrum analyser — tracker field at the third absolute width-third; not a DS form.
                EdgeTxStyles::UI_ELEMENT_HEIGHT},
         (reusableBuffer.spectrumAnalyser.freq -
          reusableBuffer.spectrumAnalyser.span / 2) /
@@ -124,7 +124,7 @@ class SpectrumFooterWindow : public Window
     tracker->setDefault(reusableBuffer.spectrumAnalyser.freqDefault);
   }
 
-  static constexpr coord_t FLD_W = (LCD_W - PAD_TINY * 4) / 3;
+  static constexpr coord_t FLD_W = (LCD_W - PAD_TINY * 4) / 3;  // ds-allow: spectrum analyser — footer field width = one absolute width-third for the three freq/span/tracker fields; not a DS form.
 };
 
 class SpectrumScaleWindow : public Window
@@ -148,7 +148,7 @@ class SpectrumScaleWindow : public Window
       int x = (frequency - startFreq) / reusableBuffer.spectrumAnalyser.step;
       if (x >= LCD_W - 1) break;
       formatNumberAsString(s, 16, frequency / 1000000, 16);
-      new StaticText(this, {x - PAD_LARGE * 2, 0, PAD_LARGE * 4, SCALE_HEIGHT},
+      new StaticText(this, {x - PAD_LARGE * 2, 0, PAD_LARGE * 4, SCALE_HEIGHT},  // ds-allow: spectrum analyser — frequency-scale tick label positioned absolutely along the FFT graph x-axis; not a DS form.
                      s, COLOR_THEME_PRIMARY1_INDEX, FONT(XS) | CENTERED);
     }
   }
@@ -175,7 +175,7 @@ class SpectrumWindow : public Window
   SpectrumWindow(Window* parent, const rect_t& rect) : Window(parent, rect)
   {
     lv_style_init(&style);
-    lv_style_set_line_width(&style, PAD_THREE);
+    lv_style_set_line_width(&style, PAD_THREE);  // ds-allow: spectrum analyser — line width for the FFT graph trace drawn on the canvas; not a DS form.
     lv_style_set_line_opa(&style, LV_OPA_COVER);
     lv_style_set_line_color(&style, makeLvColor(COLOR_THEME_ACTIVE));
 
@@ -321,7 +321,7 @@ class SpectrumWindow : public Window
   }
 
  protected:
-  static LAYOUT_VAL_SCALED(LINE_SPACE, 40) static LAYOUT_VAL_SCALED(WARN_YO, 20)
+  static LAYOUT_VAL_SCALED(LINE_SPACE, 40) static LAYOUT_VAL_SCALED(WARN_YO, 20)  // ds-allow: spectrum analyser — horizontal grid-line spacing and warning-label y-offset on the FFT graph canvas; not a DS form.
 
       lv_style_t style;
   lv_point_precise_t maxPts[2 * LCD_W / 4];
@@ -340,7 +340,7 @@ class SpectrumWindow : public Window
 };
 
 RadioSpectrumAnalyser::RadioSpectrumAnalyser(uint8_t moduleIdx, Route route) :
-    Page(ICON_RADIO_TOOLS, route, PAD_ZERO), moduleIdx(moduleIdx)
+    Page(ICON_RADIO_TOOLS, route, PAD_ZERO), moduleIdx(moduleIdx)  // ds-allow: spectrum analyser — page built with zero padding so the FFT graph canvas fills the screen; not a DS form.
 {
   setCloseHandler([=]() { stop(); });
   init();

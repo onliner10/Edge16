@@ -65,13 +65,13 @@ public:
   bool hasLcdBufferForTest() const { return lcdBuffer != nullptr; }
 #endif
 
-  static LAYOUT_VAL_SCALED(POPUP_HEADER_HEIGHT, 30)
-  static LAYOUT_SIZE_SCALED(POPUP_X, 50, 40)
-  static LAYOUT_SIZE_SCALED(POPUP_Y, 70, 110)
-  static LAYOUT_VAL_SCALED(ERR_TTL_X, 50)
-  static LAYOUT_VAL_SCALED(ERR_TTL_Y, 30)
-  static LAYOUT_VAL_SCALED(ERR_MSG_Y, 62)
-  static LAYOUT_VAL_SCALED(ERR_MSG_HO, 92)
+  static LAYOUT_VAL_SCALED(POPUP_HEADER_HEIGHT, 30)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_SIZE_SCALED(POPUP_X, 50, 40)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_SIZE_SCALED(POPUP_Y, 70, 110)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_VAL_SCALED(ERR_TTL_X, 50)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_VAL_SCALED(ERR_TTL_Y, 30)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_VAL_SCALED(ERR_MSG_Y, 62)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
+  static LAYOUT_VAL_SCALED(ERR_MSG_HO, 92)  // ds-allow: standalone-Lua host geometry - error-popup position/size constants for the full-screen script-owned canvas; not a DS page.
 
 protected:
   RequiredLvObj errorModal;

@@ -63,7 +63,7 @@ class ColorBar : public FormField
       lv_obj_add_event_cb(live.lvobj(), ColorBar::draw_end,
                           LV_EVENT_DRAW_POST_END, nullptr);
 
-      etx_std_style(live.lvobj(), LV_PART_MAIN, PAD_ZERO);
+      etx_std_style(live.lvobj(), LV_PART_MAIN, PAD_ZERO);  // ds-allow: color editor; zero-pad the gradient color-bar draw surface, graphical control outside DS
     });
     addStyle(styles->border_color[COLOR_THEME_PRIMARY1_INDEX],
              LV_PART_MAIN | LV_STATE_EDITED);
@@ -192,7 +192,7 @@ class ColorBar : public FormField
     cursor_area.x2 = cursor_area.x1 + ColorEditor::CRSR_SZ - 1;
 
     auto pos = bar->valueToScreen(bar->value);
-    cursor_area.y1 = area.y1 + pos - PAD_THREE;
+    cursor_area.y1 = area.y1 + pos - PAD_THREE;  // ds-allow: color editor; cursor circle drawn at absolute y offset within the color bar, graphical control outside DS
     cursor_area.y2 = cursor_area.y1 + ColorEditor::CRSR_SZ - 1;
 
     lv_draw_rect_dsc_t cursor_dsc;
@@ -234,14 +234,14 @@ class BarColorType : public ColorType
       if (!bars[i]) continue;
 
       // bar labels
-      auto x = bars[i]->left() + PAD_TINY;
+      auto x = bars[i]->left() + PAD_TINY;  // ds-allow: color editor; bar label x anchored to the bar's left edge, absolute internal layout outside DS
       auto y = bars[i]->bottom();
 
       parent->withLive([&](Window::LiveWindow& live) {
         barLabels[i] =
             create_bar_label(live.lvobj(), x, y + ColorEditor::LBL_YO);
         barValLabels[i] = create_bar_value_label(
-            live.lvobj(), x + ColorEditor::VAL_XO, y + PAD_THREE);
+            live.lvobj(), x + ColorEditor::VAL_XO, y + PAD_THREE);  // ds-allow: color editor; bar value label placed at absolute offset below the bar, graphical control outside DS
       });
     }
   }
@@ -282,7 +282,7 @@ class BarColorType : public ColorType
   lv_obj_t* create_bar_label(lv_obj_t* parent, lv_coord_t x, lv_coord_t y)
   {
     lv_obj_t* obj = etx_label_create(parent, FONT_XXS_INDEX);
-    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_pos(obj, x, y);  // ds-allow: color editor; bar name label positioned at absolute coordinates, graphical control outside DS
     etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX);
     return obj;
   }
@@ -291,7 +291,7 @@ class BarColorType : public ColorType
                                    lv_coord_t y)
   {
     lv_obj_t* obj = etx_label_create(parent);
-    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_pos(obj, x, y);  // ds-allow: color editor; bar value label positioned at absolute coordinates, graphical control outside DS
     etx_txt_color(obj, COLOR_THEME_PRIMARY1_INDEX);
     return obj;
   }
@@ -393,7 +393,7 @@ class ThemeColorType : public ColorType
 
     auto vbox = new (std::nothrow) Window(parent, rect_t{});
     if (!vbox) return;
-    vbox->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+    vbox->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: color editor; theme-swatch rows stacked with zero gap, graphical swatch grid outside DS
 
     makeButtonsRow(vbox, COLOR_THEME_PRIMARY1_INDEX, COLOR_THEME_PRIMARY2_INDEX,
                   COLOR_THEME_PRIMARY3_INDEX);
@@ -432,8 +432,8 @@ class ThemeColorType : public ColorType
     if (!parent) return;
     auto hbox = new (std::nothrow) Window(parent, rect_t{});
     if (!hbox) return;
-    hbox->padAll(PAD_OUTLINE);
-    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_OUTLINE);
+    hbox->padAll(PAD_OUTLINE);  // ds-allow: color editor; theme-swatch button row hairline padding, graphical swatch grid outside DS
+    hbox->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_OUTLINE);  // ds-allow: color editor; theme-swatch button row hairline gap, graphical swatch grid outside DS
     hbox->setFlexAlign(LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                        LV_FLEX_ALIGN_SPACE_AROUND);
 
@@ -442,7 +442,7 @@ class ThemeColorType : public ColorType
     if (c3 != c2) makeButton(hbox, c3);
   }
 
-  static LAYOUT_VAL_SCALED(BTN_W, 44)
+  static LAYOUT_VAL_SCALED(BTN_W, 44)  // ds-allow: color editor; theme-swatch button pixel width, absolute swatch-cell sizing outside DS
 };
 
 // Color editor that shows the system fixed colors as buttons
@@ -455,8 +455,8 @@ class FixedColorType : public ColorType
 
     auto vbox = new (std::nothrow) Window(parent, rect_t{});
     if (!vbox) return;
-    vbox->padAll(PAD_OUTLINE);
-    vbox->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_OUTLINE);
+    vbox->padAll(PAD_OUTLINE);  // ds-allow: color editor; fixed-color swatch grid hairline padding, graphical swatch grid outside DS
+    vbox->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_OUTLINE);  // ds-allow: color editor; fixed-color swatch grid hairline gap between wrapped swatches, graphical swatch grid outside DS
     vbox->setFlexAlign(LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                        LV_FLEX_ALIGN_SPACE_AROUND);
 
@@ -484,7 +484,7 @@ class FixedColorType : public ColorType
     });
   }
 
-  static LAYOUT_VAL_SCALED(BTN_W, 42)
+  static LAYOUT_VAL_SCALED(BTN_W, 42)  // ds-allow: color editor; fixed-color swatch button pixel width, absolute swatch-cell sizing outside DS
 };
 
 /////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,7 @@ class MixEditWindow : public Page
 
   bool openRoute(const Route& r, uint8_t depth) override;
 
-  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_WIDTH, 250, 180)
+  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_WIDTH, 250, 180)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
 
  protected:
   uint8_t channel;

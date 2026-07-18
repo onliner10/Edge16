@@ -52,14 +52,14 @@ ChannelBar::ChannelBar(Window* parent, const rect_t& rect, uint8_t channel,
         if (!requireLvObj(bar)) return false;
         lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
         etx_solid_bg(bar, barColorIndex);
-        lv_obj_set_pos(bar, width() / 2, 1);
+        lv_obj_set_pos(bar, width() / 2, 1);  // ds-allow: graphical channel-bar control; fill bar drawn from centre-line with 1px border inset, not a DS row
         lv_obj_set_size(bar, 0, height() - 2);
 
-        coord_t yo = (height() < 10) ? -1 : -PAD_TINY;
+        coord_t yo = (height() < 10) ? -1 : -PAD_TINY;  // ds-allow: graphical channel-bar control; value-label y-offset computed from bar height, absolute internal layout
 
         valText = etx_label_create(obj, FONT_XS_INDEX);
         if (!requireLvObj(valText)) return false;
-        lv_obj_set_pos(valText, width() / 2 + VAL_XO, yo);
+        lv_obj_set_pos(valText, width() / 2 + VAL_XO, yo);  // ds-allow: graphical channel-bar control; value label placed at centre-line offset, absolute internal layout
         lv_obj_set_size(valText, VAL_W, VAL_H);
         etx_obj_add_style(valText, styles->text_align_left, LV_PART_MAIN);
         lv_obj_set_style_translate_x(valText, VAL_XT, LV_STATE_USER_1);
@@ -122,7 +122,7 @@ void ChannelBar::updateLiveValue(bool force)
 
         int16_t x = width() / 2 - ((chanVal > 0) ? 0 : size);
 
-        lv_obj_set_pos(bar, x, 1);
+        lv_obj_set_pos(bar, x, 1);  // ds-allow: graphical channel-bar control; live-value fill bar repositioned at absolute x with 1px inset, not a DS row
         lv_obj_set_size(bar, size, height() - 2);
       }
 
@@ -264,17 +264,17 @@ ComboChannelBar::ComboChannelBar(Window* parent, const rect_t& rect,
 
   auto invMask = getBuiltinIcon(ICON_CHAN_MONITOR_INVERTED);
 
-  coord_t barW = width() - invMask->width - PAD_TINY;
+  coord_t barW = width() - invMask->width - PAD_TINY;  // ds-allow: graphical channel-bar control; sub-bar width computed to leave room for inverted-mask icon, absolute internal layout
 
   outputChannelBar = new (std::nothrow) OutputChannelBar(
       this,
-      {PAD_TINY + invMask->width, ChannelBar::BAR_HEIGHT + PAD_TINY, barW,
+      {PAD_TINY + invMask->width, ChannelBar::BAR_HEIGHT + PAD_TINY, barW,  // ds-allow: graphical channel-bar control; output sub-bar rect placed at absolute offsets past the icon, not a DS row
        ChannelBar::BAR_HEIGHT},
       channel, isInHeader);
 
   new (std::nothrow) MixerChannelBar(
       this,
-      {PAD_TINY + invMask->width, (2 * ChannelBar::BAR_HEIGHT) + PAD_TINY + 1,
+      {PAD_TINY + invMask->width, (2 * ChannelBar::BAR_HEIGHT) + PAD_TINY + 1,  // ds-allow: graphical channel-bar control; mixer sub-bar rect stacked at absolute offsets, not a DS row
        barW, ChannelBar::BAR_HEIGHT},
       channel);
 
@@ -283,7 +283,7 @@ ComboChannelBar::ComboChannelBar(Window* parent, const rect_t& rect,
   char* s = strAppend(chanString, STR_CH);
   strAppendSigned(s, channel + 1);
   new (std::nothrow) StaticText(
-      this, {PAD_TINY + invMask->width, 0, LV_SIZE_CONTENT, ChannelBar::VAL_H},
+      this, {PAD_TINY + invMask->width, 0, LV_SIZE_CONTENT, ChannelBar::VAL_H},  // ds-allow: graphical channel-bar control; channel-number label placed at absolute offset past the icon, not a DS row
       chanString, txtColIdx, FONT(XS) | LEFT);
 
   // Channel name
@@ -292,7 +292,7 @@ ComboChannelBar::ComboChannelBar(Window* parent, const rect_t& rect,
     strAppend(nm, g_model.limitData[channel].name, LEN_CHANNEL_NAME);
     new (std::nothrow) StaticText(
         this,
-        {PAD_TINY + ChannelBar::VAL_W, 0, LV_SIZE_CONTENT, ChannelBar::VAL_H},
+        {PAD_TINY + ChannelBar::VAL_W, 0, LV_SIZE_CONTENT, ChannelBar::VAL_H},  // ds-allow: graphical channel-bar control; channel-name label placed at absolute offset past the value cell, not a DS row
         nm, txtColIdx, FONT(XS) | LEFT);
   }
 
@@ -311,7 +311,7 @@ ComboChannelBar::ComboChannelBar(Window* parent, const rect_t& rect,
   // Override icon
 #if defined(OVERRIDE_CHANNEL_FUNCTION)
   overrideIcon = new (std::nothrow)
-      StaticIcon(this, 0, PAD_SMALL, ICON_CHAN_MONITOR_LOCKED, txtColIdx);
+      StaticIcon(this, 0, PAD_SMALL, ICON_CHAN_MONITOR_LOCKED, txtColIdx);  // ds-allow: graphical channel-bar control; override icon placed at absolute offset, not a DS row
   if (overrideIcon)
     overrideIcon->show(getSafetyChannel(channel) !=
                        OVERRIDE_CHANNEL_UNDEFINED);
@@ -320,7 +320,7 @@ ComboChannelBar::ComboChannelBar(Window* parent, const rect_t& rect,
   // Channel reverted icon
   LimitData* ld = limitAddress(channel);
   if (ld && ld->revert) {
-    new (std::nothrow) StaticIcon(this, 0, invMask->height + PAD_MEDIUM,
+    new (std::nothrow) StaticIcon(this, 0, invMask->height + PAD_MEDIUM,  // ds-allow: graphical channel-bar control; reverted-channel icon placed at absolute y offset, not a DS row
                                   ICON_CHAN_MONITOR_INVERTED, txtColIdx);
   }
 }

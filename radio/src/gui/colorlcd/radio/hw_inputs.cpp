@@ -42,7 +42,7 @@ struct HWInputEdit : public RadioTextEdit {
   {
   }
 
-  static LAYOUT_VAL_SCALED(HW_INP_W, 64)
+  static LAYOUT_VAL_SCALED(HW_INP_W, 64)  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 };
 
 static const lv_coord_t col_two_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
@@ -63,16 +63,16 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
 HWSticks::HWSticks(Window* parent) : Window(parent, {0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
-  new StaticText(this, {S_NM_X, -PAD_TINY, 0, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(this, {S_INV_X, -PAD_TINY, 0, 0}, STR_MENU_INVERT, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
+  new StaticText(this, {S_NM_X, -PAD_TINY, 0, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
+  new StaticText(this, {S_INV_X, -PAD_TINY, 0, 0}, STR_MENU_INVERT, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
-  coord_t yo = EdgeTxStyles::STD_FONT_HEIGHT - PAD_TINY;
+  coord_t yo = EdgeTxStyles::STD_FONT_HEIGHT - PAD_TINY;  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
   auto max_sticks = adcGetMaxInputs(ADC_INPUT_MAIN);
   for (int i = 0; i < max_sticks; i++) {
-    new StaticText(this, {0, S_Y(i) + yo + PAD_MEDIUM, S_LBL_W, 0},
+    new StaticText(this, {0, S_Y(i) + yo + PAD_MEDIUM, S_LBL_W, 0},  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
                    analogGetCanonicalName(ADC_INPUT_MAIN, i));
     new HWInputEdit(this, (char*)analogGetCustomLabel(ADC_INPUT_MAIN, i),
                     LEN_ANA_NAME, S_NM_X, S_Y(i) + yo);
@@ -87,7 +87,7 @@ HWSticks::HWSticks(Window* parent) : Window(parent, {0, 0, LV_PCT(100), LV_SIZE_
   }
 
 #if defined(STICK_DEAD_ZONE)
-  new StaticText(this, {0, S_Y(max_sticks) + yo + PAD_MEDIUM}, STR_DEAD_ZONE);
+  new StaticText(this, {0, S_Y(max_sticks) + yo + PAD_MEDIUM}, STR_DEAD_ZONE);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
   auto dz = new Choice(this, {S_INV_X, S_Y(max_sticks) + yo}, 0, 7,
                        GET_SET_DEFAULT(g_eeGeneral.stickDeadZone));
   dz->setTextHandler([](uint8_t value) {
@@ -99,7 +99,7 @@ HWSticks::HWSticks(Window* parent) : Window(parent, {0, 0, LV_PCT(100), LV_SIZE_
 HWPots::HWPots(Window* parent) :
     Window(parent, {0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
   potsChanged = false;
 
@@ -110,11 +110,11 @@ HWPots::HWPots(Window* parent) :
     }
   });
 
-  new StaticText(this, {P_NM_X, -PAD_TINY, 0, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(this, {P_TYP_X, -PAD_TINY, 0, 0}, STR_TYPE, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
-  new StaticText(this, {P_INV_X, -PAD_TINY, 0, 0}, STR_MENU_INVERT, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
+  new StaticText(this, {P_NM_X, -PAD_TINY, 0, 0}, STR_NAME, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
+  new StaticText(this, {P_TYP_X, -PAD_TINY, 0, 0}, STR_TYPE, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
+  new StaticText(this, {P_INV_X, -PAD_TINY, 0, 0}, STR_MENU_INVERT, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
-  coord_t yo = EdgeTxStyles::STD_FONT_HEIGHT - PAD_TINY;
+  coord_t yo = EdgeTxStyles::STD_FONT_HEIGHT - PAD_TINY;  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
   auto max_pots = adcGetMaxInputs(ADC_INPUT_FLEX);
   for (int i = 0; i < max_pots; i++) {
@@ -125,7 +125,7 @@ HWPots::HWPots(Window* parent) :
     // #if !defined(SIMU) && defined(RADIO_FAMILY_T16)
     //     if (!globalData.flyskygimbals && (i >= (NUM_POTS - 2))) continue;
     // #endif
-    new StaticText(this, {0, P_Y(i) + yo + PAD_MEDIUM, P_LBL_W, 0},
+    new StaticText(this, {0, P_Y(i) + yo + PAD_MEDIUM, P_LBL_W, 0},  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
                    adcGetInputLabel(ADC_INPUT_FLEX, i));
 
     new HWInputEdit(this, (char*)analogGetCustomLabel(ADC_INPUT_FLEX, i),
@@ -210,11 +210,11 @@ class HWSwitch
  public:
   HWSwitch(Window* parent, int swnum, coord_t y)
   {
-    new SwitchDynamicLabel(parent, swnum, PAD_TINY, y + PAD_SMALL, HWSwitches::SW_CTRL_W);
+    new SwitchDynamicLabel(parent, swnum, PAD_TINY, y + PAD_SMALL, HWSwitches::SW_CTRL_W);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
     new HWInputEdit(parent, g_eeGeneral.getSwitchCustomName(swnum), LEN_SWITCH_NAME,
-                    HWSwitches::SW_CTRL_W + PAD_SMALL, y);
+                    HWSwitches::SW_CTRL_W + PAD_SMALL, y);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
-    coord_t x = HWSwitches::SW_CTRL_W * 2 + PAD_SMALL * 2;
+    coord_t x = HWSwitches::SW_CTRL_W * 2 + PAD_SMALL * 2;  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
     if (switchIsFlex(swnum)) {
       channel = new Choice(
@@ -232,7 +232,7 @@ class HWSwitch
         if (val < 0) return STR_NONE;
         return adcGetInputLabel(ADC_INPUT_FLEX, val);
       });
-      x += HWSwitches::SW_CTRL_W + PAD_SMALL;
+      x += HWSwitches::SW_CTRL_W + PAD_SMALL;  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
     }
 
     sw_cfg = new Choice(
@@ -256,7 +256,7 @@ class HWSwitch
     }
   }
 
-  static constexpr coord_t SW_CTRL_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
+  static constexpr coord_t SW_CTRL_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
  protected:
   Choice* channel = nullptr;
@@ -266,12 +266,12 @@ class HWSwitch
 HWSwitches::HWSwitches(Window* parent) :
     Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
 
   auto max_switches = switchGetMaxAllSwitches();
   for (int i = 0, j = 0; i < max_switches; i++) {
     if (!switchIsCustomSwitch(i)) {
-      new HWSwitch(this, i, j * HWSwitch::SW_CTRL_H + PAD_OUTLINE);
+      new HWSwitch(this, i, j * HWSwitch::SW_CTRL_H + PAD_OUTLINE);  // ds-allow: hardware inputs - stick/pot/switch config drawn in absolutely-positioned name/type/invert columns and switch-control grids; not a DS list/form.
       j++;
     }
   }

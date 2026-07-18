@@ -36,7 +36,7 @@ class QMPageChoice : public Choice
                std::function<void(int16_t)> setValue,
                const char *title);
 
-  static LAYOUT_ORIENTATION(TABLE_WIDTH, LCD_W * 5 / 8, LCD_W / 2 + PAD_LARGE * 3)
+  static LAYOUT_ORIENTATION(TABLE_WIDTH, LCD_W * 5 / 8, LCD_W / 2 + PAD_LARGE * 3) // ds-allow: quick-menu page-choice table width as a viewport fraction; picker internal, not a DS row
 
  protected:
   friend QMPageChoiceMenuToolbar;

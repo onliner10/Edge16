@@ -52,16 +52,16 @@ class ChannelValue : public Window
 
   void delayedInit() override
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO); // ds-allow: outputs widget — channel container padded to zero so the bar rows fill the user-resizable zone edge-to-edge; canvas widget, not a DS list/form.
 
     if (!withLive([&](LiveWindow& live) {
           lv_obj_set_layout(live.lvobj(), LV_LAYOUT_FLEX);
           lv_obj_set_flex_flow(live.lvobj(), LV_FLEX_FLOW_COLUMN);
           lv_obj_set_flex_align(live.lvobj(), LV_FLEX_ALIGN_START,
                                 LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
-          lv_obj_set_style_pad_all(live.lvobj(), 0, LV_PART_MAIN);
-          lv_obj_set_style_pad_row(live.lvobj(), 1, LV_PART_MAIN);
-          lv_obj_set_style_pad_column(live.lvobj(), 0, LV_PART_MAIN);
+          lv_obj_set_style_pad_all(live.lvobj(), 0, LV_PART_MAIN); // ds-allow: outputs widget — channel-stack flex container pad reset to zero; canvas widget filling the resizable zone, not a DS list/form.
+          lv_obj_set_style_pad_row(live.lvobj(), 1, LV_PART_MAIN); // ds-allow: outputs widget — 1px inter-row gap between stacked channel bars; canvas layout, not a DS row/form.
+          lv_obj_set_style_pad_column(live.lvobj(), 0, LV_PART_MAIN); // ds-allow: outputs widget — zero column gap on the channel stack; canvas layout, not a DS row/form.
 
           auto obj = lv_obj_create(live.lvobj());
           if (!requireLvObj(rowBox, obj)) return false;
@@ -74,8 +74,8 @@ class ChannelValue : public Window
           lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                                 LV_FLEX_ALIGN_START);
           lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
-          lv_obj_set_style_pad_column(obj, PAD_TINY, LV_PART_MAIN);
+          lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN); // ds-allow: outputs widget — per-row flexbox pad reset to zero; canvas widget, not a DS form row.
+          lv_obj_set_style_pad_column(obj, PAD_TINY, LV_PART_MAIN); // ds-allow: outputs widget — tiny gap between a channel row's label and value cells; canvas layout, not a DS form row.
           lv_obj_set_size(obj, width(), labelHeight());
 
           obj = lv_obj_create(live.lvobj());
@@ -155,7 +155,7 @@ class ChannelValue : public Window
   coord_t labelWidth() const
   {
     if (!showValue()) return width();
-    coord_t w = width() - valueWidth() - PAD_TINY;
+    coord_t w = width() - valueWidth() - PAD_TINY; // ds-allow: outputs widget — label width derived from zone width minus the value column and a tiny gap; pixel geometry, not a DS row.
     return w > 1 ? w : 1;
   }
 
@@ -239,7 +239,7 @@ class ChannelValue : public Window
           track.with([&](lv_obj_t* obj) { lv_obj_set_size(obj, w, bh); });
 
           bar.with([&](lv_obj_t* obj) {
-            lv_obj_set_pos(obj, x, 0);
+            lv_obj_set_pos(obj, x, 0); // ds-allow: outputs widget — fill bar positioned at computed pixel x inside its track; canvas widget, not a DS row.
             lv_obj_set_size(obj, fillW, bh);
           });
         }
@@ -253,8 +253,8 @@ class ChannelValue : public Window
     });
   }
 
-  static LAYOUT_VAL_SCALED(ROW_HEIGHT, 18)
-  static LAYOUT_VAL_SCALED(COMPACT_ROW_HEIGHT, 15)
+  static LAYOUT_VAL_SCALED(ROW_HEIGHT, 18) // ds-allow: outputs widget — DPI-scaled default channel-row height; canvas geometry, not a DS row.
+  static LAYOUT_VAL_SCALED(COMPACT_ROW_HEIGHT, 15) // ds-allow: outputs widget — DPI-scaled compact top-bar channel-row height; canvas geometry, not a DS row.
 
  protected:
   uint8_t channel;
@@ -375,7 +375,7 @@ class OutputsWidget : public NativeWidget
     }
     bool shortCard = usesCardChrome() && content.h < 58;
     coord_t rowH = ChannelValue::rowHeightFor(compact || shortCard);
-    coord_t rowGap = compact ? 0 : (shortCard ? 1 : PAD_TINY);
+    coord_t rowGap = compact ? 0 : (shortCard ? 1 : PAD_TINY); // ds-allow: outputs widget — inter-row gap sized to the zone/card mode; pixel geometry, not a DS row.
     coord_t rowStep = rowH + rowGap;
     uint8_t n = 0;
     if (shortCard) {
@@ -405,7 +405,7 @@ class OutputsWidget : public NativeWidget
           rect_t rowRect = {
               static_cast<coord_t>(content.x + c * colWidth),
               static_cast<coord_t>(content.y + r * rowStep),
-              static_cast<coord_t>(colWidth - (cols > 1 ? PAD_SMALL : 0)),
+              static_cast<coord_t>(colWidth - (cols > 1 ? PAD_SMALL : 0)), // ds-allow: outputs widget — per-column width minus a gutter for the multi-column bar grid; pixel geometry, not a DS grid component.
               rowH};
           if (channelWidgetCount < MAX_OUTPUT_CHANNELS) {
             channelWidgets[channelWidgetCount] = new (std::nothrow)
@@ -471,11 +471,11 @@ class OutputsWidget : public NativeWidget
     channelWidgetCount = 0;
   }
 
-  static LAYOUT_VAL_SCALED(SHOW_MIN_W, 100) static LAYOUT_VAL_SCALED(SHOW_MIN_H, 20) static LAYOUT_VAL_SCALED(
+  static LAYOUT_VAL_SCALED(SHOW_MIN_W, 100) static LAYOUT_VAL_SCALED(SHOW_MIN_H, 20) static LAYOUT_VAL_SCALED( // ds-allow: outputs widget — DPI-scaled minimum-size thresholds gating whether the bar grid renders in the zone; canvas geometry, not a DS row/form.
       COMPACT_SHOW_MIN_W,
-      36) static LAYOUT_VAL_SCALED(COLS_MIN_W,
-                                   300) static LAYOUT_VAL_SCALED(SHORT_COLS_MIN_W,
-                                                                 150) static LAYOUT_VAL_SCALED(MIN_USEFUL_H,
+      36) static LAYOUT_VAL_SCALED(COLS_MIN_W, // ds-allow: outputs widget — DPI-scaled compact-mode min width and column threshold for adapting the bar grid to the zone; canvas geometry, not a DS row/form.
+                                   300) static LAYOUT_VAL_SCALED(SHORT_COLS_MIN_W, // ds-allow: outputs widget — DPI-scaled width threshold for switching the bar grid to two columns; canvas geometry, not a DS grid component.
+                                                                 150) static LAYOUT_VAL_SCALED(MIN_USEFUL_H, // ds-allow: outputs widget — DPI-scaled short-card and minimum-useful-height thresholds for the bar grid; canvas geometry, not a DS row/form.
                                                                                                24)
 };
 

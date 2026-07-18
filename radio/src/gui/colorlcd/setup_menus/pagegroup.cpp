@@ -132,8 +132,8 @@ class SelectedTabIcon : public StaticIcon
   std::string getName() const override { return "SelectedTabIcon"; }
 #endif
 
-  static LAYOUT_VAL_SCALED(SEL_DOT_X, 10)
-  static LAYOUT_VAL_SCALED(SEL_DOT_Y, 39)
+  static LAYOUT_VAL_SCALED(SEL_DOT_X, 10) // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+  static LAYOUT_VAL_SCALED(SEL_DOT_Y, 39) // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
 };
 
 class PageGroupIconButton : public ButtonBase
@@ -155,7 +155,7 @@ class PageGroupIconButton : public ButtonBase
 
   bool isVisible() const { return pageTab->isVisible(); }
 
-  static LAYOUT_VAL_SCALED(ICON_Y, 7)
+  static LAYOUT_VAL_SCALED(ICON_Y, 7) // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
 
  protected:
   PageGroupItem* pageTab;
@@ -186,10 +186,10 @@ PageGroupHeaderBase::PageGroupHeaderBase(Window* parent, coord_t height, EdgeTxI
       if (!obj) return;
       parentLabel.reset(obj);
       etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
-      lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT, PageHeader::PAGE_TITLE_TOP);
+      lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT, PageHeader::PAGE_TITLE_TOP); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(obj,
                       LCD_W - PageHeader::PAGE_TITLE_LEFT -
-                          PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2,
+                          PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                       EdgeTxStyles::STD_FONT_HEIGHT);
       lv_label_set_text(obj, parentTitle);
     });
@@ -204,7 +204,7 @@ PageGroupHeaderBase::PageGroupHeaderBase(Window* parent, coord_t height, EdgeTxI
       auto sep = lv_obj_create(live.lvobj());
       if (!requireLvObj(sep)) return false;
       etx_solid_bg(sep);
-      lv_obj_set_pos(sep, 0, EdgeTxStyles::MENU_HEADER_HEIGHT);
+      lv_obj_set_pos(sep, 0, EdgeTxStyles::MENU_HEADER_HEIGHT); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(sep, LCD_W,
                       PageGroup::PAGE_GROUP_TOP_BAR_H -
                           EdgeTxStyles::MENU_HEADER_HEIGHT);
@@ -212,18 +212,18 @@ PageGroupHeaderBase::PageGroupHeaderBase(Window* parent, coord_t height, EdgeTxI
     });
 
     titleLabel.with([](lv_obj_t* obj) {
-      lv_obj_set_style_pad_left(obj, PAD_MEDIUM, LV_PART_MAIN);
-      lv_obj_set_style_pad_top(obj, 1, LV_PART_MAIN);
-      lv_obj_set_pos(obj, 0, PageGroup::PAGE_GROUP_TOP_BAR_H);
+      lv_obj_set_style_pad_left(obj, PAD_MEDIUM, LV_PART_MAIN); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+      lv_obj_set_style_pad_top(obj, 1, LV_PART_MAIN); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+      lv_obj_set_pos(obj, 0, PageGroup::PAGE_GROUP_TOP_BAR_H); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(obj, LCD_W, PageGroup::PAGE_GROUP_ALT_TITLE_H);
     });
 #else
     titleLabel.with([](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT,
+      lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                      PageHeader::PAGE_TITLE_TOP + EdgeTxStyles::STD_FONT_HEIGHT);
       lv_obj_set_size(obj,
                       LCD_W - PageHeader::PAGE_TITLE_LEFT -
-                          PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2,
+                          PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                       EdgeTxStyles::STD_FONT_HEIGHT);
     });
 #endif
@@ -235,7 +235,7 @@ PageGroupHeaderBase::PageGroupHeaderBase(Window* parent, coord_t height, EdgeTxI
                                          {MENU_HEADER_BUTTONS_LEFT, 0,
                                           LCD_W - MENU_HEADER_BUTTONS_LEFT, EdgeTxStyles::MENU_HEADER_HEIGHT + ICON_EXTRA_H});
     if (!carousel) return;
-    carousel->padAll(PAD_ZERO);
+    carousel->padAll(PAD_ZERO); // ds-allow: page-group header carousel container padding zeroed by the page framework; framework chrome, not a DS surface
     carousel->setWindowFlag(NO_FOCUS);
 
     selectedIcon = new (std::nothrow) SelectedTabIcon(carousel);
@@ -294,8 +294,8 @@ void PageGroupHeaderBase::setTitle(const char* title)
     constexpr coord_t titleX = PageHeader::PAGE_TITLE_LEFT;
     constexpr coord_t titleW =
         LCD_W - PageHeader::PAGE_TITLE_LEFT -
-        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2;
-    constexpr coord_t chevronGap = PAD_SMALL;
+        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2; // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+    constexpr coord_t chevronGap = PAD_SMALL; // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
     constexpr coord_t maxTextW = titleW - PAGE_SELECTOR_CHEVRON_W - chevronGap;
 
     titleLabel.with([&](lv_obj_t* obj) {
@@ -312,7 +312,7 @@ void PageGroupHeaderBase::setTitle(const char* title)
       lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
       coord_t textW = getTextWidth(title, 0, LcdFlags(FONT_L_INDEX) << 8u);
       if (textW > maxTextW) textW = maxTextW;
-      lv_obj_set_pos(obj, titleX + textW + chevronGap,
+      lv_obj_set_pos(obj, titleX + textW + chevronGap, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                      (PageGroup::PAGE_GROUP_TOP_BAR_H -
                       PAGE_SELECTOR_CHEVRON_H) / 2 + 1);
     });
@@ -335,13 +335,13 @@ void PageGroupHeaderBase::enablePageSelector()
   titleLabel.with([](lv_obj_t* obj) {
     constexpr coord_t titleW =
         LCD_W - PageHeader::PAGE_TITLE_LEFT -
-        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2;
+        PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2; // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
     const coord_t titleH = getFontHeight(LcdFlags(FONT_L_INDEX) << 8u);
     etx_font(obj, FONT_L_INDEX);
     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
-    lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT,
+    lv_obj_set_pos(obj, PageHeader::PAGE_TITLE_LEFT, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                    (PageGroup::PAGE_GROUP_TOP_BAR_H - titleH) / 2);
-    lv_obj_set_size(obj, titleW - PAGE_SELECTOR_CHEVRON_W - PAD_SMALL,
+    lv_obj_set_size(obj, titleW - PAGE_SELECTOR_CHEVRON_W - PAD_SMALL, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
                     titleH);
   });
 
@@ -364,7 +364,7 @@ void PageGroupHeaderBase::enablePageSelector()
       this,
       {PageHeader::PAGE_TITLE_LEFT, 0,
        LCD_W - PageHeader::PAGE_TITLE_LEFT -
-           PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2,
+           PageGroup::PAGE_GROUP_BACK_BTN_W * 2 - PAD_LARGE * 2, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
        PageGroup::PAGE_GROUP_TOP_BAR_H},
       [=]() -> uint8_t {
         openPageSelector();
@@ -413,7 +413,7 @@ void PageGroupHeaderBase::addTab(PageGroupItem* page)
 #if VERSION_MAJOR == 2
   uint8_t idx = buttons.size();
   auto btn = new (std::nothrow) PageGroupIconButton(
-      carousel, {getX(idx), 0, MENU_HEADER_BUTTON_WIDTH + PAD_THREE, PageGroup::PAGE_GROUP_TOP_BAR_H + PAD_THREE + PAD_TINY}, page, idx);
+      carousel, {getX(idx), 0, MENU_HEADER_BUTTON_WIDTH + PAD_THREE, PageGroup::PAGE_GROUP_TOP_BAR_H + PAD_THREE + PAD_TINY}, page, idx); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
   if (!btn) {
     pages.pop_back();
     return;
@@ -586,7 +586,7 @@ void PageGroupBase::doBuild(Window& body, PageGroupItem* tab)
                                      LV_PART_MAIN);
   });
 
-  body.padAll(tab->getPadding());
+  body.padAll(tab->getPadding()); // ds-allow: page framework applies each tab's body padding default; framework scaffolding, not screen styling
 
 #if defined(DEBUG) || defined(SIMU)
   start_ms = time_get_ms();
@@ -843,19 +843,19 @@ class TabsGroupHeader : public PageGroupHeaderBase
   {
 #if PORTRAIT && VERSION_MAJOR > 2
     parentLabel.with([](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, PageGroup::PAGE_GROUP_TOP_BAR_H + PAD_LARGE,
-                     PAD_MEDIUM * 2);
+      lv_obj_set_pos(obj, PageGroup::PAGE_GROUP_TOP_BAR_H + PAD_LARGE, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+                     PAD_MEDIUM * 2); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(obj,
                       LCD_W - PageGroup::PAGE_GROUP_TOP_BAR_H * 2 -
-                          PAD_LARGE * 2,
-                      PageGroup::PAGE_GROUP_TOP_BAR_H - PAD_MEDIUM * 2);
+                          PAD_LARGE * 2, // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+                      PageGroup::PAGE_GROUP_TOP_BAR_H - PAD_MEDIUM * 2); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
     });
 
     withLive([&](LiveWindow& live) {
       auto sep = lv_obj_create(live.lvobj());
       if (!requireLvObj(sep)) return false;
       etx_solid_bg(sep);
-      lv_obj_set_pos(sep, 0, EdgeTxStyles::MENU_HEADER_HEIGHT);
+      lv_obj_set_pos(sep, 0, EdgeTxStyles::MENU_HEADER_HEIGHT); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(sep, LCD_W,
                       TabsGroup::TABS_GROUP_TOP_BAR_H -
                           EdgeTxStyles::MENU_HEADER_HEIGHT);
@@ -863,20 +863,20 @@ class TabsGroupHeader : public PageGroupHeaderBase
     });
 
     titleLabel.with([](lv_obj_t* obj) {
-      lv_obj_set_style_pad_left(obj, PAD_MEDIUM, LV_PART_MAIN);
-      lv_obj_set_style_pad_top(obj, 1, LV_PART_MAIN);
-      lv_obj_set_pos(obj, 0, TabsGroup::TABS_GROUP_TOP_BAR_H);
+      lv_obj_set_style_pad_left(obj, PAD_MEDIUM, LV_PART_MAIN); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+      lv_obj_set_style_pad_top(obj, 1, LV_PART_MAIN); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
+      lv_obj_set_pos(obj, 0, TabsGroup::TABS_GROUP_TOP_BAR_H); // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       lv_obj_set_size(obj, LCD_W, TabsGroup::TABS_GROUP_ALT_TITLE_H);
     });
 #endif
 
 #if VERSION_MAJOR > 2
-    prevBtn = new (std::nothrow) IconButton(this, ICON_BTN_PREV, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W * 3, PAD_MEDIUM, [=]() {
+    prevBtn = new (std::nothrow) IconButton(this, ICON_BTN_PREV, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W * 3, PAD_MEDIUM, [=]() { // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       prevTab();
       return 0;
     });
 
-    nextBtn = new (std::nothrow) IconButton(this, ICON_BTN_NEXT, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W * 2, PAD_MEDIUM, [=]() {
+    nextBtn = new (std::nothrow) IconButton(this, ICON_BTN_NEXT, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W * 2, PAD_MEDIUM, [=]() { // ds-allow: page-group/tabs chrome positioned absolutely by the page framework itself; scaffolding beneath the DS component layer
       nextTab();
       return 0;
     });

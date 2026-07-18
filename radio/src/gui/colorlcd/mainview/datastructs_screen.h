@@ -193,12 +193,12 @@ struct CustomScreenData {
 
 //-----------------------------------------------------------------------------
 
-static LAYOUT_VAL_SCALED(MENU_HEADER_BUTTONS_LEFT, 47)
+static LAYOUT_VAL_SCALED(MENU_HEADER_BUTTONS_LEFT, 47) // ds-allow: layout-factory geometry constant fixing where absolutely-positioned top-bar zones begin in the header; not a DS surface
 
 #if WIDE_LAYOUT
-static LAYOUT_VAL_SCALED(TOPBAR_ZONE_WIDTH, 74)
+static LAYOUT_VAL_SCALED(TOPBAR_ZONE_WIDTH, 74) // ds-allow: layout-factory width constant for absolutely-positioned top-bar zones; not a DS surface
 #else
-static LAYOUT_VAL_SCALED(TOPBAR_ZONE_WIDTH, 70)
+static LAYOUT_VAL_SCALED(TOPBAR_ZONE_WIDTH, 70) // ds-allow: layout-factory width constant for absolutely-positioned top-bar zones; not a DS surface
 #endif
 static constexpr int MAX_TOPBAR_ZONES = (LCD_W - MENU_HEADER_BUTTONS_LEFT - 1 + TOPBAR_ZONE_WIDTH / 2) / TOPBAR_ZONE_WIDTH;
 

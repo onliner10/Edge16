@@ -40,11 +40,11 @@ struct ModelButtonLayout {
   uint16_t columns;
 };
 
-static constexpr coord_t L0_W = (ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 3) / 2;
+static constexpr coord_t L0_W = (ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 3) / 2; // ds-allow: model-card width for the 2-column browser layout, derived from the models-panel width minus card outlines; grid card dimension, not a DS list metric
 static constexpr coord_t L0_H = L0_W * 11 / 20;
-static constexpr coord_t L1_W = (ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 4) / 3;
+static constexpr coord_t L1_W = (ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 4) / 3; // ds-allow: model-card width for the 3-column browser layout, derived from the models-panel width minus card outlines; grid card dimension, not a DS list metric
 static constexpr coord_t L1_H = L1_W * 11 / 20;
-static constexpr coord_t L3_W = ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 2;
+static constexpr coord_t L3_W = ModelLabelsWindow::MDLS_W - PAD_OUTLINE * 2; // ds-allow: model-card width for the single-column browser layout, derived from the models-panel width minus card outlines; grid card dimension, not a DS list metric
 
 ModelButtonLayout modelLayouts[] = {
     {L0_W, L0_H, true, FONT(STD), 2},
@@ -63,7 +63,7 @@ class ModelButton : public Button
       modelCell(modelCell),
       m_setSelected(std::move(setSelected))
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO); // ds-allow: model card button zeroes padding so its image/name overlay fills the card; absolute-positioned grid card, not a DS list row
     setWindowFlag(NO_FOCUS);
 #if defined(SIMU)
     setAutomationRole("model_button");
@@ -75,8 +75,7 @@ class ModelButton : public Button
 
   void delayedInit() override
   {
-    coord_t w = width() - PAD_SMALL * 2;
-
+    coord_t w = width() - PAD_SMALL * 2; // ds-allow: model card inner content width (card width minus side insets); absolute card layout, not a DS component
     LcdFlags font = modelLayouts[layout].font;
     if ((getTextWidth(modelCell->modelName, 0, font) > w))
       font = (font == FONT(STD)) ? FONT(XS) : FONT(XXS);
@@ -85,17 +84,17 @@ class ModelButton : public Button
       if (modelCell->modelBitmap[0] == 0)
         showNoImgMsg();
 
-      coord_t fh = getFontHeight(font) - ((font == FONT(STD)) ? PAD_SMALL : (font == FONT(XS)) ? PAD_THREE : 1);
-      coord_t fo = (font == FONT(STD)) ? -PAD_THREE : (font == FONT(XS)) ? -PAD_THREE : -1;
+      coord_t fh = getFontHeight(font) - ((font == FONT(STD)) ? PAD_SMALL : (font == FONT(XS)) ? PAD_THREE : 1); // ds-allow: model card name-label height tuned per font inside the card; absolute card layout, not a DS control
+      coord_t fo = (font == FONT(STD)) ? -PAD_THREE : (font == FONT(XS)) ? -PAD_THREE : -1; // ds-allow: model card name-label top offset tuned per font inside the card; absolute card layout, not a DS control
 
-      modelName = new StaticText(this, {PAD_TINY, PAD_TINY, w, fh}, modelCell->modelName,
+      modelName = new StaticText(this, {PAD_TINY, PAD_TINY, w, fh}, modelCell->modelName, // ds-allow: model card name overlay positioned absolutely inside the image card; not a DS component
                                  COLOR_THEME_SECONDARY1_INDEX, CENTERED | font);
       modelName->bgColor(COLOR_THEME_ACTIVE_INDEX, LV_STATE_USER_1);
       modelName->bgColor(COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);
       modelName->addStyle(styles->bg_opacity_75, LV_PART_MAIN);
-      modelName->padTop(fo);
+      modelName->padTop(fo); // ds-allow: model card name overlay nudged vertically to sit over the thumbnail; manual pad on an absolute card element, not a DS control
     } else {
-      modelName = new StaticText(this, {PAD_TINY, PAD_SMALL, w, EdgeTxStyles::STD_FONT_HEIGHT}, modelCell->modelName,
+      modelName = new StaticText(this, {PAD_TINY, PAD_SMALL, w, EdgeTxStyles::STD_FONT_HEIGHT}, modelCell->modelName, // ds-allow: model card name (no-image layout) positioned absolutely inside the card; not a DS component
                                  COLOR_THEME_SECONDARY1_INDEX, font);
     }
     modelName->setLongMode(LV_LABEL_LONG_DOT);
@@ -131,13 +130,13 @@ class ModelButton : public Button
       if (imgLoaded) return false;
       imgLoaded = true;
 
-      coord_t w = width() - PAD_SMALL * 2;
-      coord_t h = height() - PAD_SMALL * 2;
+      coord_t w = width() - PAD_SMALL * 2; // ds-allow: model card thumbnail width (card size minus side insets); absolute card layout, not a DS component
+      coord_t h = height() - PAD_SMALL * 2; // ds-allow: model card thumbnail height (card size minus side insets); absolute card layout, not a DS component
 
       if (modelLayouts[layout].hasImage) {
         if (modelCell->modelBitmap[0]) {
           GET_FILENAME(filename, BITMAPS_PATH, modelCell->modelBitmap, "");
-          auto bitmap = new StaticBitmap(this, {PAD_TINY, PAD_TINY, w, h}, filename);
+          auto bitmap = new StaticBitmap(this, {PAD_TINY, PAD_TINY, w, h}, filename); // ds-allow: model card thumbnail positioned absolutely to fill the card; not a DS component
           bitmap->moveBackground();
           bitmap->show(bitmap->hasImage());
           if (modelName) modelName->moveForeground();
@@ -171,13 +170,13 @@ class ModelButton : public Button
       return;
     }
 
-    coord_t w = width() - PAD_SMALL * 2;
-    coord_t h = height() - PAD_SMALL * 2;
+    coord_t w = width() - PAD_SMALL * 2; // ds-allow: model card no-image message width (card size minus side insets); absolute card layout, not a DS component
+    coord_t h = height() - PAD_SMALL * 2; // ds-allow: model card no-image message height (card size minus side insets); absolute card layout, not a DS component
     std::string errorMsg = "(";
     errorMsg += STR_NO_PICTURE;
     errorMsg += ")";
     LcdFlags font = (modelLayouts[layout].font == FONT(STD)) ? FONT(XS) : FONT(XXS);
-    noImageMsg = new StaticText(this, {PAD_TINY, h / 2, w, getFontHeight(font)}, errorMsg,
+    noImageMsg = new StaticText(this, {PAD_TINY, h / 2, w, getFontHeight(font)}, errorMsg, // ds-allow: model card no-image message centered absolutely in the card; not a DS component
                                 COLOR_THEME_SECONDARY1_INDEX, CENTERED | font);
     if (modelName) modelName->moveForeground();
   }
@@ -276,7 +275,7 @@ class ModelsPageBody : public Window
  public:
   ModelsPageBody(Window *parent, const rect_t &rect) : Window(parent, rect)
   {
-    padAll(PAD_TINY);
+    padAll(PAD_TINY); // ds-allow: models grid viewport padding around the 2-D card grid; grid container, not a DS list
   }
 
   void update()
@@ -307,8 +306,8 @@ class ModelsPageBody : public Window
     coord_t h = modelLayouts[g_eeGeneral.modelSelectLayout].height;
 
     for (auto &model : models) {
-      coord_t x = (n % cols) * (w + PAD_TINY);
-      coord_t y = (n / cols) * (h + PAD_TINY);
+      coord_t x = (n % cols) * (w + PAD_TINY); // ds-allow: model card x computed from column index and card size for the 2-D grid; absolute grid placement, not a DS list
+      coord_t y = (n / cols) * (h + PAD_TINY); // ds-allow: model card y computed from row index and card size for the 2-D grid; absolute grid placement, not a DS list
       n += 1;
 
       ModelButton* button = nullptr;
@@ -630,7 +629,7 @@ class ModelLayoutButton : public IconButton
 
 //-----------------------------------------------------------------------------
 
-ModelLabelsWindow::ModelLabelsWindow() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO, true)
+ModelLabelsWindow::ModelLabelsWindow() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZERO, true) // ds-allow: model-select page constructed with zero body padding so the models grid + labels panel own the full viewport; not a DS list page
 {
 #if defined(SIMU)
   setAutomationId("page.manage_models");
@@ -846,7 +845,7 @@ void ModelLabelsWindow::buildHead(Window *hdr)
 
 #if !PORTRAIT
   // new model button
-  new TextButton(hdr, {LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W - NEW_BTN_W - PAD_LARGE, PAD_MEDIUM, NEW_BTN_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_NEW, [=]() {
+  new TextButton(hdr, {LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W - NEW_BTN_W - PAD_LARGE, PAD_MEDIUM, NEW_BTN_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_NEW, [=]() { // ds-allow: model-select header 'New' button positioned absolutely against the back button and screen edge; header control, not a DS form
     auto menu = new Menu();
     menu->setTitle(STR_CREATE_NEW);
     menu->addLine(STR_NEW_MODEL, [=]() { newModel(); });
@@ -854,7 +853,7 @@ void ModelLabelsWindow::buildHead(Window *hdr)
     return 0;
   });
 
-  mdlLayout = new ModelLayoutButton(this, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W - LAYOUT_BTN_XO, PAD_MEDIUM, g_eeGeneral.modelSelectLayout, [=]() {
+  mdlLayout = new ModelLayoutButton(this, LCD_W - PageGroup::PAGE_GROUP_BACK_BTN_W - LAYOUT_BTN_XO, PAD_MEDIUM, g_eeGeneral.modelSelectLayout, [=]() { // ds-allow: model-select header layout-cycle button positioned absolutely against the back button; header control, not a DS form
     uint8_t l = mdlLayout->getLayout();
     l = (l + 1) & 3;
     mdlLayout->setLayout(l);
@@ -889,14 +888,14 @@ void ModelLabelsWindow::buildBody(Window *window)
 
   // Sort Button
   new Choice(
-      window, {LABELS_X, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, SORT_BUTTON_W, 0}, STR_SORT_ORDERS, NAME_ASC, DATE_DES,
+      window, {LABELS_X, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, SORT_BUTTON_W, 0}, STR_SORT_ORDERS, NAME_ASC, DATE_DES, // ds-allow: model-select sort Choice positioned absolutely below the labels panel and sized to the panel width; not a DS form
       [=]() { return mdlselector->getSortOrder(); },
       [=](int newValue) { mdlselector->setSortOrder((ModelsSortBy)newValue); },
       STR_SORT_MODELS_BY);
 
 #if PORTRAIT
   // new model button
-  new TextButton(window, {LCD_W - NEW_BTN_W - PAD_LARGE, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, NEW_BTN_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_NEW, [=]() {
+  new TextButton(window, {LCD_W - NEW_BTN_W - PAD_LARGE, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, NEW_BTN_W, EdgeTxStyles::UI_ELEMENT_HEIGHT}, STR_NEW, [=]() { // ds-allow: model-select (portrait) 'New' button positioned absolutely below the labels panel; header control, not a DS form
     auto menu = new Menu();
     menu->setTitle(STR_CREATE_NEW);
     menu->addLine(STR_NEW_MODEL, [=]() { newModel(); });
@@ -904,7 +903,7 @@ void ModelLabelsWindow::buildBody(Window *window)
     return 0;
   });
 
-  mdlLayout = new ModelLayoutButton(window, LCD_W - LAYOUT_BTN_XO, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, g_eeGeneral.modelSelectLayout, [=]() {
+  mdlLayout = new ModelLayoutButton(window, LCD_W - LAYOUT_BTN_XO, LABELS_Y + LABELS_HEIGHT + PAD_SMALL, g_eeGeneral.modelSelectLayout, [=]() { // ds-allow: model-select (portrait) layout-cycle button positioned absolutely below the labels panel; header control, not a DS form
     uint8_t l = mdlLayout->getLayout();
     l = (l + 1) & 3;
     mdlLayout->setLayout(l);

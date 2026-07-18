@@ -183,7 +183,7 @@ class InputGroup : public InputMixGroupBase
   {
     adjustHeight();
 
-    label.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, PAD_TINY, PAD_SMALL); });
+    label.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, PAD_TINY, PAD_SMALL); });  // ds-allow: input list row is a rich multi-field line (source, weight, curve, flags) with absolute label placement; ds::ListRow's title/subtitle/trailing slots can't represent it.
 
     refresh();
   }
@@ -433,10 +433,10 @@ void ModelInputsPage::buildClassic(Window* window)
   _copyMode = 0;
   _copySrc = nullptr;
 
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: input list row is a rich multi-field line (source, weight, curve, flags) with absolute label placement; ds::ListRow's title/subtitle/trailing slots can't represent it.
 
   form = new Window(window, rect_t{});
-  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: input list row is a rich multi-field line (source, weight, curve, flags) with absolute label placement; ds::ListRow's title/subtitle/trailing slots can't represent it.
 
   auto btn = new TextButton(window, rect_t{}, LV_SYMBOL_PLUS, [=]() {
     newInput();

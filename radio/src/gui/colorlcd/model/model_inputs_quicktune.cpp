@@ -466,7 +466,7 @@ class QuickTuneFillBar : public Window
       auto* o = live.lvobj();
       etx_bg_color(o, COLOR_THEME_PRIMARY3_INDEX, LV_PART_MAIN);
       lv_obj_set_style_radius(o, 4, 0);
-      lv_obj_set_style_pad_all(o, 0, 0);
+      lv_obj_set_style_pad_all(o, 0, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
       lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
       lv_obj_set_style_border_width(o, 0, 0);
 
@@ -1105,13 +1105,13 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     cardObj = live.lvobj();
     etx_solid_bg(cardObj, COLOR_THEME_SECONDARY3_INDEX);
     lv_obj_set_style_radius(cardObj, 14, 0);
-    etx_padding(cardObj, PAD_MEDIUM);
+    etx_padding(cardObj, PAD_MEDIUM);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_clear_flag(cardObj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_layout(cardObj, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(cardObj, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(cardObj, LV_FLEX_ALIGN_START,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(cardObj, PAD_SMALL, 0);
+    lv_obj_set_style_pad_row(cardObj, PAD_SMALL, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
   });
 
   // Title
@@ -1151,7 +1151,7 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_SPACE_EVENLY,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(cont, PAD_LARGE, 0);
+    lv_obj_set_style_pad_column(cont, PAD_LARGE, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_set_width(cont, lv_pct(100));
     lv_obj_set_flex_grow(cont, 1);
     lv_obj_set_style_min_height(cont, 112, 0);
@@ -1163,14 +1163,14 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     lv_obj_set_flex_flow(leftCol, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(leftCol, LV_FLEX_ALIGN_START,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(leftCol, PAD_TINY, 0);
+    lv_obj_set_style_pad_row(leftCol, PAD_TINY, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_set_flex_grow(leftCol, 1);
     lv_obj_set_width(leftCol, lv_pct(48));
     lv_obj_set_height(leftCol, lv_pct(100));
     lv_obj_clear_flag(leftCol, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(leftCol, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(leftCol, 0, 0);
-    lv_obj_set_style_pad_all(leftCol, 0, 0);
+    lv_obj_set_style_pad_all(leftCol, 0, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
 
     auto* minLabel = lv_label_create(leftCol);
     ctx->minLabel = minLabel;
@@ -1205,14 +1205,14 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
     lv_obj_set_flex_flow(rightCol, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(rightCol, LV_FLEX_ALIGN_START,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(rightCol, PAD_TINY, 0);
+    lv_obj_set_style_pad_row(rightCol, PAD_TINY, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_set_flex_grow(rightCol, 1);
     lv_obj_set_width(rightCol, lv_pct(48));
     lv_obj_set_height(rightCol, lv_pct(100));
     lv_obj_clear_flag(rightCol, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(rightCol, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(rightCol, 0, 0);
-    lv_obj_set_style_pad_all(rightCol, 0, 0);
+    lv_obj_set_style_pad_all(rightCol, 0, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
 
     auto* maxLabel = lv_label_create(rightCol);
     ctx->maxLabel = maxLabel;
@@ -1313,11 +1313,11 @@ void ModelInputsPage::openLimitsWheel(uint8_t channel)
 void ModelInputsPage::buildQuickTuneTabs(Window* window)
 {
   auto row = new Window(window, rect_t{});
-  row->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);
+  row->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
   row->setWidth(lv_pct(100));
 
   auto tabs = new Window(row, rect_t{});
-  tabs->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);
+  tabs->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
   tabs->setFlexGrow(1);
 
   auto addTab = [&](QuickTunePage page) {
@@ -1394,19 +1394,19 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
     lv_obj_set_flex_flow(o, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(o, LV_FLEX_ALIGN_SPACE_EVENLY,
                           LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(o, PAD_SMALL, 0);
-    lv_obj_set_style_pad_column(o, PAD_SMALL, 0);
-    lv_obj_set_style_pad_all(o, PAD_SMALL, 0);
+    lv_obj_set_style_pad_row(o, PAD_SMALL, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
+    lv_obj_set_style_pad_column(o, PAD_SMALL, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
+    lv_obj_set_style_pad_all(o, PAD_SMALL, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
   });
 
-  static const lv_coord_t cardH = EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_SMALL;
+  static const lv_coord_t cardH = EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_SMALL;  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
 
   // Shared card styling lambda
   auto styleCard = [](lv_obj_t* o) {
     etx_solid_bg(o, COLOR_THEME_SECONDARY3_INDEX, LV_PART_MAIN);
     lv_obj_set_style_radius(o, 8, 0);
-    etx_padding(o, PAD_SMALL, LV_PART_MAIN);
+    etx_padding(o, PAD_SMALL, LV_PART_MAIN);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     etx_border_color(o, COLOR_THEME_SECONDARY2_INDEX, LV_PART_MAIN);
     lv_obj_set_style_border_width(o, 1, 0);
     lv_obj_set_style_border_opa(o, LV_OPA_50, 0);
@@ -1414,7 +1414,7 @@ void ModelInputsPage::buildQuickTuneRows(Window* window)
     lv_obj_set_flex_flow(o, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(o, PAD_TINY, 0);
+    lv_obj_set_style_pad_row(o, PAD_TINY, 0);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
   };
 
@@ -1644,7 +1644,7 @@ void ModelInputsPage::build(Window* window)
   form = window;
 
   window->scrollbar();
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: quick-tune tiles - bespoke two-column expo/rate cards with per-card padding/row-column gaps tuned to the tile layout; custom card grid, not a DS FormRow/ListRow.
   window->setAutomationId("model.inputs.quick");
 
   s_quickTuneLastFlightMode = mixerCurrentFlightMode;

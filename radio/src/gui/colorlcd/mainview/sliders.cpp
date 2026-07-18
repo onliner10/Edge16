@@ -92,9 +92,9 @@ MainViewSlider::MainViewSlider(Window* parent, const rect_t& rect, uint8_t idx,
                            LV_COLOR_FORMAT_A8);
 
       if (isVertical) {
-        lv_obj_set_pos(obj, PAD_TINY, SLIDER_BAR_SIZE / 2);
+        lv_obj_set_pos(obj, PAD_TINY, SLIDER_BAR_SIZE / 2); // ds-allow: main-view HUD slider places its tick-mask canvas absolutely within the slider bar; not a DS surface
       } else {
-        lv_obj_set_pos(obj, SLIDER_BAR_SIZE / 2, PAD_TINY);
+        lv_obj_set_pos(obj, SLIDER_BAR_SIZE / 2, PAD_TINY); // ds-allow: main-view HUD slider places its tick-mask canvas absolutely within the slider bar; not a DS surface
       }
     });
   }
@@ -163,8 +163,8 @@ MaskBitmap* MainViewSlider::getTicksMask()
         x = 0;
         l = w;
       } else {
-        x = PAD_TINY;
-        l = w - PAD_TINY * 2;
+        x = PAD_TINY; // ds-allow: main-view HUD slider computes tick-mask pixel offsets on a canvas; not a DS surface
+        l = w - PAD_TINY * 2; // ds-allow: main-view HUD slider computes tick-mask pixel spans on a canvas; not a DS surface
       }
       memset(&mask->data[y * w + x], 0xFF, l);
       y += SLIDER_TICK_SPACING;
@@ -178,8 +178,8 @@ MaskBitmap* MainViewSlider::getTicksMask()
         y = 0;
         l = h;
       } else {
-        y = PAD_TINY;
-        l = h - PAD_TINY * 2;
+        y = PAD_TINY; // ds-allow: main-view HUD slider computes tick-mask pixel offsets on a canvas; not a DS surface
+        l = h - PAD_TINY * 2; // ds-allow: main-view HUD slider computes tick-mask pixel spans on a canvas; not a DS surface
       }
       for (coord_t n = y; n < y + l; n += 1)
         mask->data[n * w + x] = 0xFF;
@@ -244,7 +244,7 @@ MainView6POS::MainView6POS(Window* parent, uint8_t idx) :
       if (!requireLvObj(p)) return false;
       lv_label_set_text(p, num);
       lv_obj_set_size(p, MULTIPOS_SZ, MULTIPOS_SZ);
-      lv_obj_set_pos(p, x, 0);
+      lv_obj_set_pos(p, x, 0); // ds-allow: main-view 6POS HUD positions each position label absolutely along the slider; not a DS surface
       etx_txt_color(p, COLOR_THEME_SECONDARY1_INDEX, LV_PART_MAIN);
       x += MULTIPOS_W_SPACING;
     }
@@ -255,7 +255,7 @@ MainView6POS::MainView6POS(Window* parent, uint8_t idx) :
   posIcon.withLive([&](LiveWindow& live) {
     auto obj = etx_label_create(live.lvobj(), FONT_BOLD_INDEX);
     if (!requireLvObj(posVal, obj)) return false;
-    lv_obj_set_pos(obj, PAD_THREE, -PAD_TINY);
+    lv_obj_set_pos(obj, PAD_THREE, -PAD_TINY); // ds-allow: main-view 6POS HUD positions its value icon absolutely; not a DS surface
     lv_obj_set_size(obj, MULTIPOS_SZ, MULTIPOS_SZ);
     etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);
     return true;

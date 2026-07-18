@@ -87,7 +87,7 @@ class ScriptEditWindow : public Page
   {
     window->setFlexLayout();
 
-    FlexGridLayout grid(e_col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(e_col_dsc, row_dsc, PAD_TINY); // ds-allow: mixer-scripts edit form uses a fixed 2-column FlexGridLayout with PAD_TINY gutter; not composed from DS FormRows
 
     // the general pattern seems to be using capture-by-value for the closures:
     // so need to copy the pointers, not the objects
@@ -126,7 +126,7 @@ class ScriptEditWindow : public Page
         ScriptInput& si = sio->inputs[i];
         auto lbl =
             new StaticText(line, rect_t{}, si.name);
-        lbl->padLeft(PAD_LARGE);
+        lbl->padLeft(PAD_LARGE); // ds-allow: mixer-scripts input row indents its label under the Inputs subtitle; manual padLeft, not a DS FormRow
         if (si.type == INPUT_TYPE_VALUE) {
           (new NumberEdit(line, rect_t{}, si.min, si.max,
                           GET_SET_WITH_OFFSET(sd->inputs[i].value, si.def)))
@@ -151,7 +151,7 @@ class ScriptEditWindow : public Page
               char* s = getSourceString(MIXSRC_FIRST_LUA + (idx * MAX_SCRIPT_OUTPUTS) + i);
               return std::string(s);
             });
-        lbl->padLeft(PAD_LARGE);
+        lbl->padLeft(PAD_LARGE); // ds-allow: mixer-scripts output row indents its label under the Outputs subtitle; manual padLeft, not a DS FormRow
         new DynamicNumber<int16_t>(
             line, rect_t{}, [=]() { return calcRESXto1000(so->value); },
             COLOR_THEME_PRIMARY1_INDEX, PREC1);
@@ -179,9 +179,9 @@ class ScriptLineButton : public ListLineButton
       runtimeData(runtimeData)
   {
     setHeight(EdgeTxStyles::UI_ELEMENT_HEIGHT);
-    padTop(PAD_SMALL);
-    padLeft(PAD_TINY);
-    padRight(PAD_TINY);
+    padTop(PAD_SMALL); // ds-allow: mixer-scripts table row (ListLineButton) pads to align its fixed name/file/state columns at absolute offsets; not a DS list row
+    padLeft(PAD_TINY); // ds-allow: mixer-scripts table row (ListLineButton) pads to align its fixed name/file/state columns at absolute offsets; not a DS list row
+    padRight(PAD_TINY); // ds-allow: mixer-scripts table row (ListLineButton) pads to align its fixed name/file/state columns at absolute offsets; not a DS list row
 
     parent->updateLayout();
   }
@@ -215,11 +215,11 @@ class ScriptLineButton : public ListLineButton
 
   void describeLine(LineView& view) const override
   {
-    constexpr coord_t col0 = PAD_TINY;
-    constexpr coord_t col1 = col0 + 40 + PAD_SMALL;
-    constexpr coord_t col2 = col1 + 84 + PAD_SMALL;
-    constexpr coord_t col3 = col2 + 84 + PAD_SMALL;
-    constexpr coord_t y = PAD_SMALL;
+    constexpr coord_t col0 = PAD_TINY; // ds-allow: mixer-scripts table column origin computed at absolute offset in describeLine; fixed lua/name/file/state grid, not a DS list
+    constexpr coord_t col1 = col0 + 40 + PAD_SMALL; // ds-allow: mixer-scripts table column origin computed at absolute offset in describeLine; fixed lua/name/file/state grid, not a DS list
+    constexpr coord_t col2 = col1 + 84 + PAD_SMALL; // ds-allow: mixer-scripts table column origin computed at absolute offset in describeLine; fixed lua/name/file/state grid, not a DS list
+    constexpr coord_t col3 = col2 + 84 + PAD_SMALL; // ds-allow: mixer-scripts table column origin computed at absolute offset in describeLine; fixed lua/name/file/state grid, not a DS list
+    constexpr coord_t y = PAD_SMALL; // ds-allow: mixer-scripts table row baseline computed at absolute offset in describeLine; fixed multi-column grid, not a DS list
     view.text(col0, y, 40, EdgeTxStyles::STD_FONT_HEIGHT, luaText);
     view.text(col1, y, 84, EdgeTxStyles::STD_FONT_HEIGHT, nameText);
     view.text(col2, y, 84, EdgeTxStyles::STD_FONT_HEIGHT, fileText);
@@ -286,8 +286,8 @@ void ModelMixerScriptsPage::rebuild(Window* window, int8_t focusIdx)
 void ModelMixerScriptsPage::build(Window* window, int8_t focusIdx)
 {
   pageWindow = window;
-  window->padBottom(PAD_LARGE);
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  window->padBottom(PAD_LARGE); // ds-allow: mixer-scripts overview list adds bottom padding so the last fixed-column table row clears the footer; container pad, not a DS list
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY); // ds-allow: mixer-scripts overview stacks fixed-column table rows with a PAD_TINY gap; hand-built list, not a DS list
 
   int8_t scriptIdx = 0;
   for (int8_t idx = 0; idx < MAX_SCRIPTS; idx++) {

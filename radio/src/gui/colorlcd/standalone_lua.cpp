@@ -194,19 +194,19 @@ StandaloneLuaWindow::StandaloneLuaWindow(bool useLvgl, int initFn, int runFn) :
   bool focusStandaloneCanvas = false;
 
   if (useLvglLayout()) {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
     etx_scrollbar(obj);
 
     lv_obj_t* lbl = nullptr;
     if (!initRequiredLvObj(lbl, createStandaloneLuaLoadingLabel,
                            [&](lv_obj_t* obj) {
-                             lv_obj_set_pos(obj, 0, 0);
+                             lv_obj_set_pos(obj, 0, 0);  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
                              lv_obj_set_size(obj, LCD_W, LCD_H);
                              etx_solid_bg(obj, COLOR_THEME_PRIMARY1_INDEX);
                              etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
                              lv_obj_set_style_text_align(
                                  obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-                             lv_obj_set_style_pad_top(
+                             lv_obj_set_style_pad_top(  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
                                  obj,
                                  (LCD_H - EdgeTxStyles::STD_FONT_HEIGHT) / 2,
                                  LV_PART_MAIN);
@@ -479,14 +479,14 @@ void StandaloneLuaWindow::popupPaint(BitmapBuffer* dc, coord_t x, coord_t y, coo
   dc->drawSolidFilledRect(x, y, w, POPUP_HEADER_HEIGHT, COLOR_THEME_FOCUS);
 
   // title bar
-  dc->drawText(x + PAD_SMALL,
+  dc->drawText(x + PAD_SMALL,  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
                y + (POPUP_HEADER_HEIGHT - getFontHeight(FONT(STD))) / 2, text,
                COLOR_THEME_PRIMARY2);
 
   dc->drawSolidFilledRect(x, y + POPUP_HEADER_HEIGHT, w,
                           h - POPUP_HEADER_HEIGHT, COLOR_THEME_SECONDARY3);
 
-  dc->drawText(x + PAD_SMALL, y + POPUP_HEADER_HEIGHT + EdgeTxStyles::STD_FONT_HEIGHT, info,
+  dc->drawText(x + PAD_SMALL, y + POPUP_HEADER_HEIGHT + EdgeTxStyles::STD_FONT_HEIGHT, info,  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
                COLOR_THEME_SECONDARY1);
 }
 
@@ -540,7 +540,7 @@ void StandaloneLuaWindow::showError(bool firstCall, const char* title, const cha
 
           auto modal = lv_obj_create(parent);
           if (!requireLvObj(errorModal, modal)) return false;
-          lv_obj_set_pos(modal, lv_obj_get_scroll_x(parent),
+          lv_obj_set_pos(modal, lv_obj_get_scroll_x(parent),  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
                          lv_obj_get_scroll_y(parent));
           lv_obj_set_size(modal, LCD_W, LCD_H);
           etx_bg_color(modal, COLOR_BLACK_INDEX);
@@ -548,7 +548,7 @@ void StandaloneLuaWindow::showError(bool firstCall, const char* title, const cha
 
           auto titleObj = etx_label_create(modal, FONT_L_INDEX);
           if (!requireLvObj(errorTitle, titleObj)) return false;
-          lv_obj_set_pos(titleObj, ERR_TTL_X, ERR_TTL_Y);
+          lv_obj_set_pos(titleObj, ERR_TTL_X, ERR_TTL_Y);  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
           lv_obj_set_size(titleObj, LCD_W - ERR_TTL_X * 2,
                           EdgeTxStyles::UI_ELEMENT_HEIGHT);
           etx_txt_color(titleObj, COLOR_THEME_PRIMARY2_INDEX);
@@ -557,9 +557,9 @@ void StandaloneLuaWindow::showError(bool firstCall, const char* title, const cha
 
           auto msgObj = etx_label_create(modal);
           if (!requireLvObj(errorMsg, msgObj)) return false;
-          lv_obj_set_pos(msgObj, ERR_TTL_X, ERR_MSG_Y);
+          lv_obj_set_pos(msgObj, ERR_TTL_X, ERR_MSG_Y);  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
           lv_obj_set_size(msgObj, LCD_W - ERR_TTL_X * 2, LCD_H - ERR_MSG_HO);
-          lv_obj_set_style_pad_all(msgObj, PAD_SMALL, LV_PART_MAIN);
+          lv_obj_set_style_pad_all(msgObj, PAD_SMALL, LV_PART_MAIN);  // ds-allow: standalone-Lua host - full-screen script-owned canvas plus an absolutely-positioned error popup; not a DS page.
           etx_txt_color(msgObj, COLOR_THEME_PRIMARY1_INDEX);
           etx_solid_bg(msgObj, COLOR_THEME_SECONDARY3_INDEX);
           etx_obj_add_style(msgObj, styles->text_align_center, LV_PART_MAIN);

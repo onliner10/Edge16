@@ -85,7 +85,7 @@ FontIndex chipTextFontForBox(const char* text, coord_t width, coord_t height)
   return FONT_XXS_INDEX;
 }
 
-constexpr coord_t TOPBAR_CONTENT_PAD = PAD_TINY;
+constexpr coord_t TOPBAR_CONTENT_PAD = PAD_TINY; // ds-allow: radio-info status widgets — shared inner inset for top-bar content boxes; canvas widgets positioning elements at pixel offsets, not a DS row/form.
 
 StatusContentBox topbarContentBox(coord_t w, coord_t h)
 {
@@ -147,7 +147,7 @@ void setStatusLabel(lv_obj_t* label, const char* text, LcdColorIndex color,
     lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
     lv_label_set_text(label, text);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_set_pos(label, x, y);
+    lv_obj_set_pos(label, x, y); // ds-allow: radio-info status helper — places a status label at an absolute pixel offset computed by the widget; canvas widget, not a DS row/form.
     lv_obj_set_size(label, w, h);
   });
 }
@@ -227,7 +227,7 @@ class LinkStatusWidget : public Widget
   void onUpdate() override
   {
     const bool topbar = isCompactTopBarWidget();
-    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL;
+    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL; // ds-allow: RSSI link-bars widget — content inset chosen by top-bar vs main-view mode; pixel geometry, not a DS row/form.
     const coord_t labelW = width() > 2 * pad ? width() - 2 * pad : width();
 
     setLvVisible(title, !topbar && height() >= 54);
@@ -274,7 +274,7 @@ class LinkStatusWidget : public Widget
       }
     }
 
-    coord_t gap = topbar ? TOPBAR_CONTENT_PAD : PAD_THREE;
+    coord_t gap = topbar ? TOPBAR_CONTENT_PAD : PAD_THREE; // ds-allow: RSSI link-bars widget — inter-bar gap sized to top-bar vs main-view; pixel geometry, not a DS row/form.
     coord_t barW = (graphW - (LINK_BARS - 1) * gap) / LINK_BARS;
     if (topbar)
       barW = maxCoord(barW, (coord_t)1);
@@ -285,7 +285,7 @@ class LinkStatusWidget : public Widget
       if (!bars[i]) continue;
       coord_t barH = ((i + 1) * graphH + LINK_BARS - 1) / LINK_BARS;
       if (i == 0) barH = maxCoord(barH, topbar ? (coord_t)8 : (coord_t)9);
-      lv_obj_set_pos(bars[i], graphX + i * (barW + gap),
+      lv_obj_set_pos(bars[i], graphX + i * (barW + gap), // ds-allow: RSSI link-bars widget — each signal bar positioned at an absolute offset within the zone; canvas widget, not a DS row/form.
                      graphY + graphH - barH);
       lv_obj_set_size(bars[i], barW, barH);
     }
@@ -317,7 +317,7 @@ class LinkStatusWidget : public Widget
       else
         snprintf(text, sizeof(text), "%u", rssi);
 
-      FontIndex font = responsiveTextFont(height() - 2 * PAD_SMALL -
+      FontIndex font = responsiveTextFont(height() - 2 * PAD_SMALL - // ds-allow: RSSI link-bars widget — value font sized to the zone height minus vertical insets; pixel geometry, not a DS row/form.
                                           EdgeTxStyles::STD_FONT_HEIGHT / 2);
       setStatusLabel(
           value, text,
@@ -370,12 +370,12 @@ class TxBatteryStatusWidget : public Widget
   void onUpdate() override
   {
     const bool topbar = isCompactTopBarWidget();
-    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL;
+    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL; // ds-allow: TX-battery HUD widget — content inset chosen by top-bar vs main-view mode; pixel geometry, not a DS row/form.
 
     setLvVisible(title, false);
     setLvVisible(value, false);
 
-    coord_t capW = PAD_THREE;
+    coord_t capW = PAD_THREE; // ds-allow: TX-battery HUD widget — battery terminal-cap width default; pixel geometry, not a DS row/form.
     coord_t battW = 0;
     coord_t battH = 0;
     coord_t battX = pad;
@@ -383,7 +383,7 @@ class TxBatteryStatusWidget : public Widget
 
     if (topbar) {
       auto box = topbarContentBox(width(), height());
-      capW = minCoord(PAD_THREE, maxCoord((coord_t)(box.w / 8), (coord_t)1));
+      capW = minCoord(PAD_THREE, maxCoord((coord_t)(box.w / 8), (coord_t)1)); // ds-allow: TX-battery HUD widget — cap width clamped to a fraction of the top-bar box; pixel geometry, not a DS row/form.
       battW = maxCoord((coord_t)(box.w - capW), (coord_t)1);
       battH = minCoord(box.h, maxCoord((coord_t)(battW / 2), (coord_t)1));
       battX = box.x;
@@ -401,23 +401,23 @@ class TxBatteryStatusWidget : public Widget
     }
 
     if (shell) {
-      lv_obj_set_pos(shell, battX, battY);
+      lv_obj_set_pos(shell, battX, battY); // ds-allow: TX-battery HUD widget — battery shell positioned at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(shell, battW, battH);
       setStatusPartBorder(shell, statusPrimaryColor(topbar), 2);
     }
     if (cap) {
-      lv_obj_set_pos(cap, battX + battW, battY + battH / 4);
+      lv_obj_set_pos(cap, battX + battW, battY + battH / 4); // ds-allow: TX-battery HUD widget — terminal cap positioned against the shell at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(cap, capW, battH / 2);
     }
 
-    coord_t fillInset = PAD_THREE;
+    coord_t fillInset = PAD_THREE; // ds-allow: TX-battery HUD widget — inset of the fill inside the battery shell; pixel geometry, not a DS row/form.
     coord_t fillX = battX + fillInset;
     coord_t fillY = battY + fillInset;
     fillMaxW = battW > 2 * fillInset ? battW - 2 * fillInset : battW;
     fillH = battH > 2 * fillInset ? battH - 2 * fillInset : battH;
 
     if (fill) {
-      lv_obj_set_pos(fill, fillX, fillY);
+      lv_obj_set_pos(fill, fillX, fillY); // ds-allow: TX-battery HUD widget — fill positioned inside the shell at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(fill, fillMaxW, fillH);
     }
 
@@ -464,7 +464,7 @@ class TxBatteryStatusWidget : public Widget
         FontIndex font = chipTextFontForBox(text, battW - 4, battH - 4);
         etx_font(pctLabel, font);
         coord_t fh = getFontHeight(LcdFlags(font) << 8u);
-        lv_obj_set_pos(pctLabel, battX, battY + (battH - fh) / 2);
+        lv_obj_set_pos(pctLabel, battX, battY + (battH - fh) / 2); // ds-allow: TX-battery HUD widget — percent label centred over the shell at an absolute offset; canvas widget, not a DS row/form.
         lv_obj_set_size(pctLabel, battW, fh);
       }
       etx_txt_color(pctLabel, COLOR_BLACK_INDEX);
@@ -525,7 +525,7 @@ class VolumeStatusWidget : public Widget
   void onUpdate() override
   {
     const bool topbar = isCompactTopBarWidget();
-    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL;
+    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL; // ds-allow: volume capsule widget — content inset chosen by top-bar vs main-view mode; pixel geometry, not a DS row/form.
 
     setLvVisible(title, !topbar && height() >= 54);
     setLvVisible(value, !topbar);
@@ -545,20 +545,20 @@ class VolumeStatusWidget : public Widget
 
     if (!topbar && width() > 110) {
       coord_t textW = maxCoord((coord_t)(box.w / 3), (coord_t)38);
-      trackRight = width() > pad + textW + PAD_SMALL
-                       ? width() - pad - textW - PAD_SMALL
+      trackRight = width() > pad + textW + PAD_SMALL // ds-allow: volume capsule widget — track right edge leaves room for the value text plus small gaps; pixel geometry, not a DS row/form.
+                       ? width() - pad - textW - PAD_SMALL // ds-allow: volume capsule widget — track right edge computed from zone width minus text and small gaps; pixel geometry, not a DS row/form.
                        : trackRight;
-      textX = trackRight + PAD_SMALL;
+      textX = trackRight + PAD_SMALL; // ds-allow: volume capsule widget — value text X placed a small gap right of the track; pixel geometry, not a DS row/form.
     }
 
     trackMaxW = trackRight > trackX ? trackRight - trackX : 1;
-    trackH = topbar ? clampCoord((coord_t)(box.h / 4), PAD_THREE, PAD_LARGE)
-                    : clampCoord((coord_t)(box.h / 5), PAD_LARGE, (coord_t)18);
+    trackH = topbar ? clampCoord((coord_t)(box.h / 4), PAD_THREE, PAD_LARGE) // ds-allow: volume capsule widget — track height clamped to token-derived bounds; pixel geometry, not a DS row/form.
+                    : clampCoord((coord_t)(box.h / 5), PAD_LARGE, (coord_t)18); // ds-allow: volume capsule widget — main-view track height clamped to token-derived bounds; pixel geometry, not a DS row/form.
     coord_t trackY =
         topbar ? box.y + box.h - trackH : box.y + (box.h - trackH) / 2;
 
     if (track) {
-      lv_obj_set_pos(track, trackX, trackY);
+      lv_obj_set_pos(track, trackX, trackY); // ds-allow: volume capsule widget — track positioned at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(track, trackMaxW, trackH);
     }
 
@@ -568,13 +568,13 @@ class VolumeStatusWidget : public Widget
     fillH = trackH;
 
     if (fill) {
-      lv_obj_set_pos(fill, fillX, fillY);
+      lv_obj_set_pos(fill, fillX, fillY); // ds-allow: volume capsule widget — fill positioned over the track at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(fill, fillMaxW, fillH);
     }
     if (topbar && capsuleLabel) {
       coord_t textW =
-          trackMaxW > 2 * PAD_TINY ? trackMaxW - 2 * PAD_TINY : trackMaxW;
-      coord_t textX = trackX + PAD_TINY;
+          trackMaxW > 2 * PAD_TINY ? trackMaxW - 2 * PAD_TINY : trackMaxW; // ds-allow: volume capsule widget — capsule label width inset from the track by tiny pads; pixel geometry, not a DS row/form.
+      coord_t textX = trackX + PAD_TINY; // ds-allow: volume capsule widget — capsule label X inset by a tiny pad; pixel geometry, not a DS row/form.
       coord_t labelAreaH = trackY > box.y ? trackY - box.y : box.h;
       FontIndex font = chipTextFontForBox("VOL", textW, labelAreaH);
       coord_t labelH = getFontHeight(LcdFlags(font) << 8u);
@@ -584,7 +584,7 @@ class VolumeStatusWidget : public Widget
       etx_txt_color(capsuleLabel, statusPrimaryColor(topbar));
       lv_obj_set_style_text_align(capsuleLabel, LV_TEXT_ALIGN_CENTER,
                                   LV_PART_MAIN);
-      lv_obj_set_pos(capsuleLabel, textX, labelY);
+      lv_obj_set_pos(capsuleLabel, textX, labelY); // ds-allow: volume capsule widget — capsule label positioned at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(capsuleLabel, textW, labelH);
     }
 
@@ -652,7 +652,7 @@ class VolumeStatusWidget : public Widget
       setStatusLabel(
           value, text,
           level == 0 ? COLOR_THEME_DISABLED_INDEX : statusPrimaryColor(false),
-          responsiveTextFont(height() - 2 * PAD_SMALL -
+          responsiveTextFont(height() - 2 * PAD_SMALL - // ds-allow: volume capsule widget — value font sized to the zone height minus vertical insets; pixel geometry, not a DS row/form.
                              EdgeTxStyles::STD_FONT_HEIGHT / 2),
           lv_obj_get_x(value), lv_obj_get_y(value), lv_obj_get_width(value),
           lv_obj_get_height(value));
@@ -688,7 +688,7 @@ class RadioInfoWidget : public Widget
     bool compact = isCompactTopBarWidget();
 
     // Logs
-    logsIcon = new (std::nothrow) StaticIcon(this, W_LOG_X, PAD_THREE, ICON_DOT,
+    logsIcon = new (std::nothrow) StaticIcon(this, W_LOG_X, PAD_THREE, ICON_DOT, // ds-allow: radio-info top-bar widget — logs icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
                                              COLOR_THEME_PRIMARY2_INDEX);
     if (logsIcon) logsIcon->hide();
 
@@ -699,12 +699,12 @@ class RadioInfoWidget : public Widget
 #if defined(AUDIO)
     if (!compact) {
       audioScale = new (std::nothrow)
-          StaticIcon(this, W_AUDIO_SCALE_X, PAD_TINY, ICON_TOPMENU_VOLUME_SCALE,
+          StaticIcon(this, W_AUDIO_SCALE_X, PAD_TINY, ICON_TOPMENU_VOLUME_SCALE, // ds-allow: radio-info top-bar widget — audio-scale icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
                      COLOR_THEME_SECONDARY2_INDEX);
 
       for (int i = 0; i < 5; i += 1) {
         audioVol[i] = new (std::nothrow) StaticIcon(
-            this, W_AUDIO_X, PAD_TINY, (EdgeTxIcon)(ICON_TOPMENU_VOLUME_0 + i),
+            this, W_AUDIO_X, PAD_TINY, (EdgeTxIcon)(ICON_TOPMENU_VOLUME_0 + i), // ds-allow: radio-info top-bar widget — volume-level icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
             COLOR_THEME_PRIMARY2_INDEX);
         if (audioVol[i]) audioVol[i]->hide();
       }
@@ -749,7 +749,7 @@ class RadioInfoWidget : public Widget
 #if defined(INTERNAL_MODULE_PXX1) && defined(EXTERNAL_ANTENNA)
     if (!compact) {
       extAntenna = new (std::nothrow)
-          StaticIcon(this, W_RSSI_X - PAD_SMALL, 1, ICON_TOPMENU_ANTENNA,
+          StaticIcon(this, W_RSSI_X - PAD_SMALL, 1, ICON_TOPMENU_ANTENNA, // ds-allow: radio-info top-bar widget — external-antenna icon placed just left of the RSSI cluster at a fixed offset; canvas widget, not a DS row/form.
                      COLOR_THEME_PRIMARY2_INDEX);
       if (extAntenna) extAntenna->hide();
     }
@@ -876,17 +876,17 @@ class RadioInfoWidget : public Widget
   static const WidgetOption options[];
 
   static constexpr coord_t W_AUDIO_X = 0;
-  static LAYOUT_VAL_SCALED(W_AUDIO_SCALE_X, 15) static LAYOUT_VAL_SCALED(
-      W_USB_X, 32) static LAYOUT_VAL_SCALED(W_USB_Y, 5) static constexpr coord_t
+  static LAYOUT_VAL_SCALED(W_AUDIO_SCALE_X, 15) static LAYOUT_VAL_SCALED( // ds-allow: radio-info top-bar widget — DPI-scaled audio-scale icon X for the top bar; canvas geometry, not a DS row/form.
+      W_USB_X, 32) static LAYOUT_VAL_SCALED(W_USB_Y, 5) static constexpr coord_t // ds-allow: radio-info top-bar widget — DPI-scaled USB icon X/Y (logs icon shares X) for the top bar; canvas geometry, not a DS row/form.
       W_LOG_X = W_USB_X;
-  static LAYOUT_VAL_SCALED(W_RSSI_X, 37) static LAYOUT_VAL_SCALED(W_RSSI_BAR_W,
-                                                                  5) static LAYOUT_VAL_SCALED(W_RSSI_BAR_H, 36) static LAYOUT_VAL_SCALED(W_RSSI_BAR_SZ, 7) static LAYOUT_VAL_SCALED(W_BATT_Y, 25) static LAYOUT_VAL_SCALED(W_BATT_FILL_W, 20) static LAYOUT_VAL_SCALED(W_BATT_FILL_H, 10) static LAYOUT_VAL_SCALED(W_BATT_FILL_GRN,
-                                                                                                                                                                                                                                                                                                                   12) static LAYOUT_VAL_SCALED(W_BATT_FILL_ORA, 5) static LAYOUT_VAL_SCALED(W_BATT_HUD_X,
-                                                                                                                                                                                                                                                                                                                                                                                             2) static LAYOUT_VAL_SCALED(W_BATT_HUD_W,
-                                                                                                                                                                                                                                                                                                                                                                                                                         29) static LAYOUT_VAL_SCALED(W_BATT_HUD_H, 13) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_W, 25) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_H, 9) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_GRN, 14) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_ORA,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  6) static LAYOUT_VAL_SCALED(W_BATT_CHG_X,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              25) static LAYOUT_VAL_SCALED(W_BATT_CHG_Y, 23) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_W,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      5) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_SZ,
+  static LAYOUT_VAL_SCALED(W_RSSI_X, 37) static LAYOUT_VAL_SCALED(W_RSSI_BAR_W, // ds-allow: radio-info top-bar widget — DPI-scaled RSSI cluster X and main-view RSSI bar width; canvas geometry, not a DS row/form.
+                                                                  5) static LAYOUT_VAL_SCALED(W_RSSI_BAR_H, 36) static LAYOUT_VAL_SCALED(W_RSSI_BAR_SZ, 7) static LAYOUT_VAL_SCALED(W_BATT_Y, 25) static LAYOUT_VAL_SCALED(W_BATT_FILL_W, 20) static LAYOUT_VAL_SCALED(W_BATT_FILL_H, 10) static LAYOUT_VAL_SCALED(W_BATT_FILL_GRN, // ds-allow: radio-info top-bar widget — DPI-scaled main-view RSSI bar dims, battery Y and battery-fill width/height; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                   12) static LAYOUT_VAL_SCALED(W_BATT_FILL_ORA, 5) static LAYOUT_VAL_SCALED(W_BATT_HUD_X, // ds-allow: radio-info top-bar widget — DPI-scaled main-view battery fill green/orange thresholds and compact HUD X; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                             2) static LAYOUT_VAL_SCALED(W_BATT_HUD_W, // ds-allow: radio-info top-bar widget — DPI-scaled compact battery HUD shell width; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                         29) static LAYOUT_VAL_SCALED(W_BATT_HUD_H, 13) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_W, 25) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_H, 9) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_GRN, 14) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_ORA, // ds-allow: radio-info top-bar widget — DPI-scaled compact battery HUD shell height and fill dims/green threshold; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  6) static LAYOUT_VAL_SCALED(W_BATT_CHG_X, // ds-allow: radio-info top-bar widget — DPI-scaled compact HUD orange fill threshold and battery-charge icon X; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              25) static LAYOUT_VAL_SCALED(W_BATT_CHG_Y, 23) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_W, // ds-allow: radio-info top-bar widget — DPI-scaled battery-charge icon Y and compact HUD RSSI bar width; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      5) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_SZ, // ds-allow: radio-info top-bar widget — DPI-scaled compact HUD RSSI bar step/size; canvas geometry, not a DS row/form.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   7)
 
       coord_t batteryFillX() const
@@ -923,7 +923,7 @@ class RadioInfoWidget : public Widget
   {
     if (!isCompactTopBarWidget()) return W_RSSI_X;
 
-    coord_t minX = W_BATT_HUD_X + W_BATT_HUD_W + PAD_MEDIUM;
+    coord_t minX = W_BATT_HUD_X + W_BATT_HUD_W + PAD_MEDIUM; // ds-allow: radio-info top-bar widget — RSSI cluster min X kept clear of the battery HUD by a medium gap; pixel geometry, not a DS row/form.
     coord_t alignX = width() - rssiClusterWidth();
     return alignX > minX ? alignX : minX;
   }
@@ -940,12 +940,12 @@ class RadioInfoWidget : public Widget
 
   coord_t rssiBarHeight() const
   {
-    return isCompactTopBarWidget() ? height() - 2 * PAD_TINY : (coord_t)31;
+    return isCompactTopBarWidget() ? height() - 2 * PAD_TINY : (coord_t)31; // ds-allow: radio-info top-bar widget — RSSI bar height in the compact top bar from zone height minus tiny insets; pixel geometry, not a DS row/form.
   }
 
   coord_t rssiBarBottom() const
   {
-    return isCompactTopBarWidget() ? height() - PAD_TINY : W_RSSI_BAR_H;
+    return isCompactTopBarWidget() ? height() - PAD_TINY : W_RSSI_BAR_H; // ds-allow: radio-info top-bar widget — RSSI bar baseline in the compact top bar from zone height minus a tiny inset; pixel geometry, not a DS row/form.
   }
 
  protected:
@@ -970,7 +970,7 @@ class RadioInfoWidget : public Widget
   StaticIcon* extAntenna = nullptr;
 #endif
 
-  coord_t batteryShellY() const { return height() - W_BATT_HUD_H - PAD_TINY; }
+  coord_t batteryShellY() const { return height() - W_BATT_HUD_H - PAD_TINY; } // ds-allow: radio-info top-bar widget — battery HUD shell Y anchored to the zone bottom minus a tiny inset; pixel geometry, not a DS row/form.
 
   coord_t rssiClusterWidth() const
   {
@@ -980,16 +980,16 @@ class RadioInfoWidget : public Widget
   void layoutStatus()
   {
     if (batteryShell) {
-      lv_obj_set_pos(batteryShell, W_BATT_HUD_X, batteryShellY());
+      lv_obj_set_pos(batteryShell, W_BATT_HUD_X, batteryShellY()); // ds-allow: radio-info top-bar widget — battery HUD shell positioned at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(batteryShell, W_BATT_HUD_W, W_BATT_HUD_H);
     }
     if (batteryCap) {
-      lv_obj_set_pos(batteryCap, W_BATT_HUD_X + W_BATT_HUD_W,
+      lv_obj_set_pos(batteryCap, W_BATT_HUD_X + W_BATT_HUD_W, // ds-allow: radio-info top-bar widget — battery HUD cap positioned against the shell at an absolute offset; canvas widget, not a DS row/form.
                      batteryShellY() + 3);
       lv_obj_set_size(batteryCap, 3, W_BATT_HUD_H - 6);
     }
     if (batteryFill) {
-      lv_obj_set_pos(batteryFill, batteryFillX(), batteryFillY());
+      lv_obj_set_pos(batteryFill, batteryFillX(), batteryFillY()); // ds-allow: radio-info top-bar widget — battery HUD fill positioned inside the shell at an absolute offset; canvas widget, not a DS row/form.
       lv_obj_set_size(batteryFill, batteryFillWidth(), batteryFillHeight());
       lastBatt = 255;
     }
@@ -1002,7 +1002,7 @@ class RadioInfoWidget : public Widget
     for (unsigned int i = 0; i < DIM(rssiBars); i++) {
       if (!rssiBars[i]) continue;
       uint8_t height = rssiBarsHeight[i];
-      lv_obj_set_pos(rssiBars[i], rssiX() + i * rssiBarStep(),
+      lv_obj_set_pos(rssiBars[i], rssiX() + i * rssiBarStep(), // ds-allow: radio-info top-bar widget — each RSSI bar positioned at an absolute offset within the cluster; canvas widget, not a DS row/form.
                      rssiBarBottom() - height);
       lv_obj_set_size(rssiBars[i], rssiBarWidth(), height);
     }
@@ -1030,7 +1030,7 @@ class DateTimeWidget : public Widget
         HeaderDateTime::HDR_DATE_LINE2 + HeaderDateTime::HDR_DATE_HEIGHT + 2;
     coord_t y = isCompactTopBarWidget()
                     ? maxCoord((rect.h - dateTimeHeight) / 2, (coord_t)0)
-                    : PAD_THREE;
+                    : PAD_THREE; // ds-allow: date-time widget — non-compact Y offset inset from the top of the zone; pixel geometry, not a DS row/form.
     dateTime = new (std::nothrow) HeaderDateTime(this, x, y);
     update();
   }
@@ -1053,7 +1053,7 @@ class DateTimeWidget : public Widget
     coord_t x = compact ? pad : width() - displayWidth - DT_XO;
     coord_t y = compact
                     ? maxCoord((height() - dateTime->height()) / 2, (coord_t)0)
-                    : PAD_THREE;
+                    : PAD_THREE; // ds-allow: date-time widget — non-compact Y offset inset from the top of the zone; pixel geometry, not a DS row/form.
     dateTime->setDisplayWidth(displayWidth);
     dateTime->setTextAlign(LV_TEXT_ALIGN_LEFT);
     dateTime->setPos(x, y);
@@ -1066,7 +1066,7 @@ class DateTimeWidget : public Widget
 
   // Adjustment to make main view date/time align with model/radio settings
   // views
-  static LAYOUT_VAL_SCALED(DT_XO, 1)
+  static LAYOUT_VAL_SCALED(DT_XO, 1) // ds-allow: date-time widget — DPI-scaled X nudge aligning main-view date/time with the settings views; canvas geometry, not a DS row/form.
 };
 
 const WidgetOption DateTimeWidget::options[] = {
@@ -1124,7 +1124,7 @@ class DateTextWidget : public Widget
     color = COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX);
 
     const bool topbar = isCompactTopBarWidget();
-    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL;
+    const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL; // ds-allow: date/clock text widget — content inset chosen by top-bar vs main-view mode; pixel geometry, not a DS row/form.
     if (topbar) {
       textBox = topbarContentBox(width(), height());
     } else {
@@ -1178,7 +1178,7 @@ class DateTextWidget : public Widget
       etx_txt_color_from_flags(obj, color);
     lv_obj_set_style_text_align(
         obj, topbar ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_set_pos(obj, textBox.x, labelY);
+    lv_obj_set_pos(obj, textBox.x, labelY); // ds-allow: date/clock text widget — text label positioned at an absolute offset within the content box; canvas widget, not a DS row/form.
     lv_obj_set_size(obj, textBox.w, labelH);
   }
 
@@ -1230,7 +1230,7 @@ class InternalGPSWidget : public Widget
       Widget(factory, parent, rect, location)
   {
     icon = new (std::nothrow)
-        StaticIcon(this, width() / 2 - PAD_LARGE - PAD_TINY, ICON_H,
+        StaticIcon(this, width() / 2 - PAD_LARGE - PAD_TINY, ICON_H, // ds-allow: internal-GPS widget — GPS icon centred with a fixed pixel nudge in the zone; canvas widget, not a DS row/form.
                    ICON_TOPMENU_GPS, COLOR_THEME_SECONDARY2_INDEX);
 
     numSats = new (std::nothrow) DynamicNumber<uint16_t>(
@@ -1257,7 +1257,7 @@ class InternalGPSWidget : public Widget
   StaticIcon* icon = nullptr;
   DynamicNumber<uint16_t>* numSats = nullptr;
 
-  static LAYOUT_VAL_SCALED(ICON_H, 19) static LAYOUT_VAL_SCALED(SATS_H, 12)
+  static LAYOUT_VAL_SCALED(ICON_H, 19) static LAYOUT_VAL_SCALED(SATS_H, 12) // ds-allow: internal-GPS widget — DPI-scaled GPS icon Y and satellite-count row height; canvas geometry, not a DS row/form.
 };
 
 BaseWidgetFactory<InternalGPSWidget> InternalGPSWidget("Internal GPS", nullptr,

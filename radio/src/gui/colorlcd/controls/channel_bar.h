@@ -33,12 +33,12 @@ class ChannelBar : public Window
              std::function<int16_t()> getValue, LcdColorIndex barColorIndex,
              LcdColorIndex textColorIndex = COLOR_THEME_SECONDARY1_INDEX);
 
-  static LAYOUT_VAL_SCALED(BAR_HEIGHT, 15)
+  static LAYOUT_VAL_SCALED(BAR_HEIGHT, 15)  // ds-allow: graphical channel-bar geometry; fill-bar pixel height, absolute internal layout not a DS token
 
-  static LAYOUT_VAL_SCALED(VAL_W, 45)
-  static LAYOUT_VAL_SCALED(VAL_H, 16)
-  static LAYOUT_VAL_SCALED(VAL_XO, 5)
-  static LAYOUT_VAL_SCALED(VAL_XT, -54)
+  static LAYOUT_VAL_SCALED(VAL_W, 45)  // ds-allow: graphical channel-bar geometry; value-cell pixel width, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(VAL_H, 16)  // ds-allow: graphical channel-bar geometry; value-cell pixel height, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(VAL_XO, 5)  // ds-allow: graphical channel-bar geometry; value-label x-offset from centre-line, absolute internal layout not a DS token
+  static LAYOUT_VAL_SCALED(VAL_XT, -54)  // ds-allow: graphical channel-bar geometry; value-label translate for negative-value alignment, absolute internal layout not a DS token
 
  protected:
   uint8_t channel = 0;

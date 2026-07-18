@@ -37,10 +37,10 @@ FMMatrix<T>::FMMatrix(Window* parent, const rect_t& r, T* input) :
 
   update();
 
-  setWidth(FM_COLS * (FM_BTN_W + PAD_TINY) + PAD_TINY);
-  setHeight(FM_ROWS * (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY) + PAD_TINY);
+  setWidth(FM_COLS * (FM_BTN_W + PAD_TINY) + PAD_TINY);  // ds-allow: flight-mode matrix; width computed from column count, button width and inter-button gap, matrix control not a DS list
+  setHeight(FM_ROWS * (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY) + PAD_TINY);  // ds-allow: flight-mode matrix; height computed from row count, button height and inter-button gap, matrix control not a DS list
 
-  padAll(PAD_SMALL);
+  padAll(PAD_SMALL);  // ds-allow: flight-mode matrix; inner padding around the FM toggle-button grid, matrix control not a DS list
 }
 
 template <class T>

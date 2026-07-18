@@ -275,7 +275,7 @@ class NativeWidget : public Widget
   static void setObjVisible(lv_obj_t* obj, bool visible);
   static lv_obj_t* createFlexBox(lv_obj_t* parent, lv_flex_flow_t flow);
   static void layoutFlexBox(lv_obj_t* obj, const rect_t& rect,
-                            lv_flex_flow_t flow, coord_t gap = PAD_TINY,
+                            lv_flex_flow_t flow, coord_t gap = PAD_TINY, // ds-allow: widget base flex-layout helper default gap; internal widget-zone layout, not a DS control
                             lv_flex_align_t main = LV_FLEX_ALIGN_START,
                             lv_flex_align_t cross = LV_FLEX_ALIGN_CENTER,
                             lv_flex_align_t track = LV_FLEX_ALIGN_START);

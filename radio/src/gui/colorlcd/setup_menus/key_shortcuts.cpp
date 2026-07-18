@@ -101,7 +101,7 @@ QMKeyShortcutsPage::QMKeyShortcutsPage(Route route):
   addKey(EVT_KEY_LONG(KEY_MODEL), qmPages, "MDL");
   addKey(EVT_KEY_LONG(KEY_TELE), qmPages, "TELE");
 
-  new (std::nothrow) TextButton(body, {LV_PCT(10), y + PAD_LARGE, LV_PCT(80), 0}, STR_SF_RESET,
+  new (std::nothrow) TextButton(body, {LV_PCT(10), y + PAD_LARGE, LV_PCT(80), 0}, STR_SF_RESET, // ds-allow: key-shortcuts reset button placed with percentage geometry on a bespoke page; not a DS FormRow
                   [=]() {
                     g_eeGeneral.defaultKeyShortcuts();
                     SET_DIRTY();

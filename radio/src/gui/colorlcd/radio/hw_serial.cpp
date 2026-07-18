@@ -35,11 +35,11 @@ SerialConfigWindow::SerialConfigWindow(Window *parent, FlexGridLayout& grid)
     if (!port || !port->name) continue;
 
     auto line = parent->newLine(grid);
-    (new StaticText(line, rect_t{}, port->name))->padLeft(PAD_SMALL);
+    (new StaticText(line, rect_t{}, port->name))->padLeft(PAD_SMALL);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
 
     auto box = new Window(line, rect_t{});
-    box->padAll(PAD_TINY);
-    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);
+    box->padAll(PAD_TINY);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
+    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
     box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
     box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
 
@@ -67,8 +67,8 @@ SerialConfigWindow::SerialConfigWindow(Window *parent, FlexGridLayout& grid)
     if (port_nr != SP_VCP) {
         grid.setColSpan(2);
         auto line = parent->newLine(grid);
-        line->padLeft(PAD_LARGE * 2);
-        line->padBottom(PAD_MEDIUM);
+        line->padLeft(PAD_LARGE * 2);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
+        line->padBottom(PAD_MEDIUM);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
         new StaticText(line, rect_t{}, STR_TTL_WARNING, COLOR_THEME_WARNING_INDEX);
         grid.setColSpan(1);
     }

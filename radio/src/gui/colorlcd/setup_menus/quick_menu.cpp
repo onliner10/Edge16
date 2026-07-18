@@ -549,7 +549,7 @@ QuickMenu::QuickMenu() :
     auto sep = lv_obj_create(live.lvobj());
     if (!requireLvObj(sep)) return false;
     etx_solid_bg(sep, COLOR_THEME_QM_FG_INDEX);
-    lv_obj_set_size(sep, QM_W, PAD_THREE);
+    lv_obj_set_size(sep, QM_W, PAD_THREE); // ds-allow: quick menu fixed launcher grid — separator sized absolutely; bespoke launcher, not a DS list
     return true;
   });
 

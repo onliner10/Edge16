@@ -31,8 +31,8 @@ class ModelSetupPage: public PageGroupItem {
 
   void build(Window * window) override;
 
-  static LAYOUT_SIZE(BTN_COLS, 3, 3)
-  static LAYOUT_VAL_SCALED(BTN_H, 62)
-  static LAYOUT_VAL_SCALED(OPTS_W, 100)
-  static LAYOUT_SIZE_SCALED(NAM_W, 200, 140)
+  static LAYOUT_SIZE(BTN_COLS, 3, 3) // ds-allow: model-setup sub-page button-group column count; non-form navigation grid metric, not a DS list
+  static LAYOUT_VAL_SCALED(BTN_H, 62) // ds-allow: model-setup sub-page button-group cell height; non-form navigation grid metric, not a DS list
+  static LAYOUT_VAL_SCALED(OPTS_W, 100) // ds-allow: model-setup ADC-filter option Choice width used for absolute label placement; multi-control line metric, not a DS FormRow
+  static LAYOUT_SIZE_SCALED(NAM_W, 200, 140) // ds-allow: model-setup name-field width constant for absolute field sizing; not a DS FormRow metric
 };

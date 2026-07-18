@@ -62,7 +62,7 @@ static void viewOption(Window* parent, coord_t x, coord_t y,
                 std::function<uint8_t()> getValue,
                 std::function<void(uint8_t)> setValue, bool globalState)
 {
-  auto lbl = new StaticText(parent, {x + ModelSetupPage::OPTS_W + PAD_MEDIUM, y + PAD_SMALL + 1, 0, 0},
+  auto lbl = new StaticText(parent, {x + ModelSetupPage::OPTS_W + PAD_MEDIUM, y + PAD_SMALL + 1, 0, 0}, // ds-allow: model-setup ADC-filter option label positioned absolutely right of the Choice; custom multi-control line, not a plain DS FormRow
                           STR_ADCFILTERVALUES[globalState ? 1 : 2], COLOR_THEME_SECONDARY1_INDEX);
   new Choice(parent, {x, y, ModelSetupPage::OPTS_W, 0}, STR_ADCFILTERVALUES, 0, 2, getValue,
               [=](int newValue) {
@@ -211,14 +211,14 @@ struct CenterBeepsMatrix : public ButtonMatrix {
 
     update();
 
-    setWidth(min((int)btn_cnt, SW_BTNS) * SW_BTN_W + PAD_SMALL);
+    setWidth(min((int)btn_cnt, SW_BTNS) * SW_BTN_W + PAD_SMALL); // ds-allow: center-beep matrix width computed from button count and cell size; matrix control, not a DS FormRow
 
     uint8_t rows = ((btn_cnt - 1) / SW_BTNS) + 1;
-    setHeight((rows * (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL)) + PAD_SMALL);
+    setHeight((rows * (EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_SMALL)) + PAD_SMALL); // ds-allow: center-beep matrix height computed from row count and cell size; matrix control, not a DS FormRow
 
-    padAll(PAD_SMALL);
-    setStylePadRow(PAD_SMALL, LV_PART_MAIN);
-    setStylePadColumn(PAD_SMALL, LV_PART_MAIN);
+    padAll(PAD_SMALL); // ds-allow: center-beep matrix inner padding around its analog-center button grid; matrix control, not a DS FormRow
+    setStylePadRow(PAD_SMALL, LV_PART_MAIN); // ds-allow: center-beep matrix row gap between grid buttons; matrix control, not a DS FormRow
+    setStylePadColumn(PAD_SMALL, LV_PART_MAIN); // ds-allow: center-beep matrix column gap between grid buttons; matrix control, not a DS FormRow
   }
 
   void onPress(uint8_t btn_id)
@@ -248,9 +248,9 @@ struct CenterBeepsMatrix : public ButtonMatrix {
     setChecked(btn_id);
   }
 
-  static LAYOUT_SIZE(SW_BTNS, 8, 4)
-  static LAYOUT_SIZE_SCALED(SW_BTN_W, 56, 72)
-  static LAYOUT_VAL_SCALED(SW_BTN_H, 36)
+  static LAYOUT_SIZE(SW_BTNS, 8, 4) // ds-allow: center-beep matrix buttons-per-row constant (portrait/landscape); matrix grid metric, not a DS FormRow
+  static LAYOUT_SIZE_SCALED(SW_BTN_W, 56, 72) // ds-allow: center-beep matrix button width constant; matrix grid cell size, not a DS FormRow
+  static LAYOUT_VAL_SCALED(SW_BTN_H, 36) // ds-allow: center-beep matrix button height constant; matrix grid cell size, not a DS FormRow
 
  private:
   uint8_t max_analogs;
@@ -271,8 +271,8 @@ const static SetupLineDef otherPageSetupLines[] = {
   {
     nullptr,
     [](Window* parent, coord_t x, coord_t y) {
-      auto bm = new CenterBeepsMatrix(parent, {PAD_MEDIUM, y, 0, 0});
-      parent->setHeight(bm->height() + PAD_SMALL);
+      auto bm = new CenterBeepsMatrix(parent, {PAD_MEDIUM, y, 0, 0}); // ds-allow: center-beep matrix placed at an absolute x offset within the setup line; hosts a custom matrix, not a DS FormRow control
+      parent->setHeight(bm->height() + PAD_SMALL); // ds-allow: center-beep setup line height grown to fit the embedded matrix; custom matrix host, not a DS FormRow
     }
   },
   {nullptr, nullptr},
@@ -346,7 +346,7 @@ const static SetupLineDef throttleParamsSetupLines[] = {
   {nullptr, nullptr},
 };
 #if defined(USE_HATS_AS_KEYS)
-static LAYOUT_VAL_SCALED(HATSMODE_W, 120)
+static LAYOUT_VAL_SCALED(HATSMODE_W, 120) // ds-allow: hats-mode Choice width constant for the trims setup line paired with a help button; multi-control line, not a plain DS FormRow
 #endif
 
 const static SetupLineDef trimsSetupLines[] = {
@@ -354,7 +354,7 @@ const static SetupLineDef trimsSetupLines[] = {
     // Reset trims
     nullptr,
     [](Window* parent, coord_t x, coord_t y) {
-      new TextButton(parent, {PAD_TINY, y, LCD_W - PAD_MEDIUM * 2, 0}, STR_RESET_BTN, []() -> uint8_t {
+      new TextButton(parent, {PAD_TINY, y, LCD_W - PAD_MEDIUM * 2, 0}, STR_RESET_BTN, []() -> uint8_t { // ds-allow: reset-trims button sized to full line width at an absolute rect; button line, not a plain DS FormRow control
         for (auto &fm : g_model.flightModeData) memclear(&fm.trim, sizeof(fm.trim));
         SET_DIRTY();
         AUDIO_WARNING1();
@@ -369,7 +369,7 @@ const static SetupLineDef trimsSetupLines[] = {
     [](Window* parent, coord_t x, coord_t y) {
       new Choice(parent, {x, y, HATSMODE_W, 0}, STR_HATSOPT, HATSMODE_TRIMS_ONLY, HATSMODE_GLOBAL,
                 GET_SET_DEFAULT(g_model.hatsMode));
-      new TextButton(parent, {x + HATSMODE_W + PAD_SMALL, y, 0, 0}, "?", [=]() {
+      new TextButton(parent, {x + HATSMODE_W + PAD_SMALL, y, 0, 0}, "?", [=]() { // ds-allow: hats-mode help '?' button positioned absolutely right of the Choice; multi-control line, not a plain DS FormRow
         new MessageDialog(STR_HATSMODE_KEYS, STR_HATSMODE_KEYS_HELP, "",
                           LEFT);
         return 0;
@@ -511,5 +511,5 @@ void ModelSetupPage::build(Window * window)
   buildModelSetupForm(form);
 
   // Sub-page navigation grid (non-form) — unchanged.
-  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, route(), BTN_H);
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, modelSetupButtons, route(), BTN_H); // ds-allow: model-setup sub-page navigation grid (multi-column button group) placed at an absolute rect with PAD_TINY gutter; non-form matrix, not a DS FormRow
 }

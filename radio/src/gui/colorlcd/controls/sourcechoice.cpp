@@ -134,7 +134,7 @@ class SourceChoiceMenuToolbar : public MenuToolbar
     }
   }
 
-  static LAYOUT_SIZE(FILTER_COLUMNS, 3, 2)
+  static LAYOUT_SIZE(FILTER_COLUMNS, 3, 2)  // ds-allow: source-picker filter toolbar uses a fixed column count for its option grid per orientation; picker internal, not a DS row
 
  protected:
   MenuToolbarButton* invertBtn = nullptr;

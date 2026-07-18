@@ -54,7 +54,7 @@ class SourceNumberEdit : public Window
 
   void update();
 
-  static LAYOUT_VAL_SCALED(SRC_BTN_W, 38)
+  static LAYOUT_VAL_SCALED(SRC_BTN_W, 38)  // ds-allow: composite source field; SRC toggle-button width for the fixed-width NumberEdit + button pack, not a DS token
 
  protected:
   Choice* source_field = nullptr;

@@ -48,7 +48,7 @@ class LogicalSwitchEditPage : public Page
 {
  public:
   explicit LogicalSwitchEditPage(uint8_t index, Route route) :
-      Page(ICON_MODEL_LOGICAL_SWITCHES, route, PAD_ZERO), index(index)
+      Page(ICON_MODEL_LOGICAL_SWITCHES, route, PAD_ZERO), index(index)  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
   {
     buildHeader(header);
     buildBody(body);
@@ -96,8 +96,8 @@ class LogicalSwitchEditPage : public Page
 
     logicalSwitchOneWindow->clear();
     logicalSwitchOneWindow->setFlexLayout();
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
-    FlexGridLayout grid2(col_dsc2, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
+    FlexGridLayout grid2(col_dsc2, row_dsc, PAD_TINY);  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
 
     LogicalSwitchData* cs = lswAddress(index);
     uint8_t cstate = lswFamily(cs->func);
@@ -251,10 +251,10 @@ class LogicalSwitchEditPage : public Page
   void buildBody(Window* window)
   {
     window->setFlexLayout();
-    window->padLeft(PAD_SMALL);
-    window->padRight(PAD_SMALL);
+    window->padLeft(PAD_SMALL);  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
+    window->padRight(PAD_SMALL);  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
 
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: LS edit sub-page - V1/V2 rows switch between single- and dual-control layouts (e.g. EDGE's two number fields via a second grid); a single DS FormRow control column can't express it.
 
     LogicalSwitchData* cs = lswAddress(index);
 

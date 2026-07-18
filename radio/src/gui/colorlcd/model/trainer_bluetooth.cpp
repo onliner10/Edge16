@@ -80,7 +80,7 @@ BluetoothTrainerWindow::BluetoothTrainerWindow(Window* parent) :
     Window(parent, rect_t{})
 {
   setFlexLayout();
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer Bluetooth config - form grid whose lines pair label with device-list/status controls; pre-DS form grid beyond a single DS FormRow control.
 
   auto line = newLine(grid);
   state = new StaticText(line, rect_t{}, "");

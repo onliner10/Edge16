@@ -87,9 +87,9 @@ class Curve : public Window
 
   void onLiveCheckEvents(LiveWindow& live) override;
 
-  static LAYOUT_VAL_SCALED(POS_LBL_X, 10) static LAYOUT_VAL_SCALED(
+  static LAYOUT_VAL_SCALED(POS_LBL_X, 10) static LAYOUT_VAL_SCALED(  // ds-allow: curve control geometry; position-readout label x offset, absolute graph coordinates not a DS token
       POS_LBL_Y,
-      10) static LAYOUT_VAL_SCALED(POS_LBL_H,
-                                   17) static LAYOUT_VAL_SCALED_ODD(POS_PT_SZ,
+      10) static LAYOUT_VAL_SCALED(POS_LBL_H,  // ds-allow: curve control geometry; position-readout label y offset, absolute graph coordinates not a DS token
+                                   17) static LAYOUT_VAL_SCALED_ODD(POS_PT_SZ,  // ds-allow: curve control geometry; position-readout label height and marker point size, absolute graph coordinates not a DS token
                                                                     9)
 };

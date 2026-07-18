@@ -55,7 +55,7 @@ class MainViewTrim : public Window
   coord_t sx();
   coord_t sy();
 
-  static LAYOUT_VAL_SCALED(TRIM_LINE_WIDTH, 8)
+  static LAYOUT_VAL_SCALED(TRIM_LINE_WIDTH, 8) // ds-allow: main-view trim HUD bar thickness constant; absolutely-drawn HUD element, not a DS control
 };
 
 class MainViewHorizontalTrim : public MainViewTrim

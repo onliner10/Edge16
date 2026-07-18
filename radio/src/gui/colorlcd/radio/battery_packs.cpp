@@ -31,7 +31,7 @@
 
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
-static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY;
+static constexpr coord_t ROW_H = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_TINY;  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
 static constexpr uint16_t DEFAULT_BATTERY_PACK_CAPACITY_MAH = 2200;
 static constexpr uint16_t MIN_BATTERY_PACK_CAPACITY_MAH = 100;
 
@@ -54,7 +54,7 @@ class BatteryPackButton : public Button
   BatteryPackButton(BatteryPacksPage* page, Window* parent, uint8_t slot) :
       Button(parent, {0, 0, LCD_W, ROW_H}), page(page), slot(slot)
   {
-    padAll(PAD_TINY);
+    padAll(PAD_TINY);  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
     setPressHandler([=]() -> uint8_t {
       page->editPack(slot);
       return 0;
@@ -72,7 +72,7 @@ class BatteryPackButton : public Button
     snprintf(spec, sizeof(spec), "%s %dS %dmAh",
              batteryTypeToString((BatteryType)pack->batteryType),
              pack->cellCount, pack->capacity);
-    new StaticText(this, {PAD_MEDIUM, y, LCD_W - PAD_MEDIUM * 2,
+    new StaticText(this, {PAD_MEDIUM, y, LCD_W - PAD_MEDIUM * 2,  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
                           EdgeTxStyles::STD_FONT_HEIGHT},
                    spec, COLOR_THEME_PRIMARY1_INDEX);
   }
@@ -85,8 +85,8 @@ class BatteryPackButton : public Button
 BatteryPacksPage::BatteryPacksPage(Route route) :
     SubPage(ICON_RADIO, route, STR_MAIN_MENU_RADIO_SETTINGS, STR_BATTERY_PACKS)
 {
-  body->padAll(PAD_SMALL);
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  body->padAll(PAD_SMALL);  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
   build();
 }
 
@@ -161,10 +161,10 @@ BatteryPackEditBody::BatteryPackEditBody(BatteryPackEditWindow* page,
                                          uint8_t slot) :
     Window(parent, {0, 0, LCD_W, height}), page(page), slot(slot)
 {
-  padAll(PAD_MEDIUM);
+  padAll(PAD_MEDIUM);  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
 
 #if defined(COLORLCD)
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: battery packs - pack rows drawn at absolute offsets plus a settings form; not a plain DS list.
   setFlexLayout();
 
   BatteryPackData* pack = &g_eeGeneral.batteryPacks[slot];

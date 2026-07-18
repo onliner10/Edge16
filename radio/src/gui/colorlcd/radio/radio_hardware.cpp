@@ -56,7 +56,7 @@ static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
 RadioHardwarePage::RadioHardwarePage(const PageDef& pageDef) :
-    PageGroupItem(pageDef, PAD_TINY)
+    PageGroupItem(pageDef, PAD_TINY)  // ds-allow: radio hardware — tiny inter-line padding for a form mixing packed battery-range lines and multi-column button groups; not a single DS FormRow control.
 {
   enableVBatBridge();
 }
@@ -102,9 +102,9 @@ const static SetupLineDef setupLines[] = {
           parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, -60 + 90, g_eeGeneral.vBatMax + 29 + 90,
           GET_SET_WITH_OFFSET(g_eeGeneral.vBatMin, 90), PREC1);
       batMin->setSuffix("V");
-      new StaticText(parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_SMALL, y + PAD_SMALL + 1, PAD_LARGE, EdgeTxStyles::STD_FONT_HEIGHT}, "-");
+      new StaticText(parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_SMALL, y + PAD_SMALL + 1, PAD_LARGE, EdgeTxStyles::STD_FONT_HEIGHT}, "-");  // ds-allow: radio hardware — '-' separator placed absolutely between the vBatMin/vBatMax fields on the battery-range line; not a single DS FormRow control.
       auto batMax = new NumberEdit(
-          parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_LARGE + PAD_SMALL, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, g_eeGeneral.vBatMin - 29 + 120, 40 + 120,
+          parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_LARGE + PAD_SMALL, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, g_eeGeneral.vBatMin - 29 + 120, 40 + 120,  // ds-allow: radio hardware — vBatMax field placed absolutely after the separator on the battery-range line; not a single DS FormRow control.
           GET_SET_WITH_OFFSET(g_eeGeneral.vBatMax, 120), PREC1);
       batMax->setSuffix("V");
 
@@ -138,7 +138,7 @@ const static SetupLineDef setupLines[] = {
       // RTC Batt display
       new DynamicNumber<uint16_t>(
           parent,
-          {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y + PAD_SMALL + 1, 0, 0},
+          {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y + PAD_SMALL + 1, 0, 0},  // ds-allow: radio hardware — RTC battery voltage readout placed absolutely beside the enable toggle on one line; not a single DS FormRow control.
           [] { return getRTCBatteryVoltage(); }, COLOR_THEME_PRIMARY1_INDEX, PREC2,
           "", "V");
     }
@@ -184,11 +184,11 @@ const static PageButtonDef debugButtons[] = {
 
 void RadioHardwarePage::build(Window* window)
 {
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: radio hardware — column gap for a form mixing packed battery-range lines and multi-column button groups; not a single DS FormRow control.
 
   SetupLine::showLines(window, 0, SubPage::EDT_X, padding, setupLines);
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: radio hardware — column gap for the module-config sub-grids on the hardware page; not a single DS FormRow control.
 
 #if defined(HARDWARE_INTERNAL_MODULE)
   new Subtitle(window, STR_INTERNALRF);
@@ -209,8 +209,8 @@ void RadioHardwarePage::build(Window* window)
   new SerialConfigWindow(window, grid);
 
   // Calibration
-  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_INPUTS, BTN_COLS, PAD_ZERO, calibrationButtons, route());
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_INPUTS, BTN_COLS, PAD_ZERO, calibrationButtons, route());  // ds-allow: radio hardware — multi-column calibration button group spanning the page width; not a single DS FormRow control.
 
   // Debugs
-  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_DEBUG, FS_BTN_COLS, PAD_ZERO, debugButtons, route());
+  new SetupButtonGroup(window, {0, 0, LCD_W - padding * 2, 0}, STR_DEBUG, FS_BTN_COLS, PAD_ZERO, debugButtons, route());  // ds-allow: radio hardware — multi-column debug button group spanning the page width; not a single DS FormRow control.
 }

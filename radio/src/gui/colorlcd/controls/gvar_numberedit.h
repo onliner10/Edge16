@@ -53,7 +53,7 @@ class GVarNumberEdit : public Window
   }
   void setDisplayHandler(std::function<std::string(int value)> function);
 
-  static LAYOUT_VAL_SCALED(GV_BTN_W, 40)
+  static LAYOUT_VAL_SCALED(GV_BTN_W, 40)  // ds-allow: composite GVAR field; GV toggle-button width for the fixed-width NumberEdit + button pack, not a DS token
 
  protected:
   Choice* gvar_field = nullptr;

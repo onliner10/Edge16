@@ -56,7 +56,7 @@ CurveParam::CurveParam(Window* parent, const rect_t& rect, CurveRef* ref,
                        std::function<void(int32_t)> setRefValue, int16_t sourceMin, mixsrc_t source) :
     Window(parent, rect), ref(ref)
 {
-  padAll(PAD_TINY);
+  padAll(PAD_TINY);  // ds-allow: curve-param composite control; tight micro-padding wrapping curve-type choice + value/func/custom sub-fields on one row, not a DS FormRow
   setFlexFlow(LV_FLEX_FLOW_ROW_WRAP);
   withLive([](LiveWindow& live) {
     lv_obj_set_style_flex_cross_place(live.lvobj(), LV_FLEX_ALIGN_CENTER, 0);

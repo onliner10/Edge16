@@ -355,12 +355,12 @@ extern const char* boardTouchType;
 
 void RadioVersionPage::build(Window* window)
 {
-  window->padAll(PAD_ZERO);
+  window->padAll(PAD_ZERO);  // ds-allow: version screen — zero body padding so the QR box + info box canvas fills the page; not a DS list.
 
   coord_t qw, qh, iw, ih, ix, iy;
 
 #if LANDSCAPE
-  qw = QR_SZ + PAD_LARGE * 2;
+  qw = QR_SZ + PAD_LARGE * 2;  // ds-allow: version screen — landscape QR-box width from absolute QR size; canvas layout, not a DS list.
   qh = window->height();
   iw = window->width() - qw;
   ih = qh;
@@ -368,7 +368,7 @@ void RadioVersionPage::build(Window* window)
   iy = 0;
 #else
   qw = window->width();
-  qh = QR_SZ + EdgeTxStyles::STD_FONT_HEIGHT * 2 + PAD_LARGE + PAD_SMALL;
+  qh = QR_SZ + EdgeTxStyles::STD_FONT_HEIGHT * 2 + PAD_LARGE + PAD_SMALL;  // ds-allow: version screen — portrait QR-box height from absolute QR size; canvas layout, not a DS list.
   iw = qw;
   ih = window->height() - qh;
   ix = 0;
@@ -376,20 +376,20 @@ void RadioVersionPage::build(Window* window)
 #endif
 
   auto qrBox = new Window(window, {0, 0, qw, qh});
-  qrBox->padAll(PAD_ZERO);
+  qrBox->padAll(PAD_ZERO);  // ds-allow: version screen — zero padding on QR box whose copyright/url/QR children are positioned absolutely; not a DS list.
 
-  new StaticText(qrBox, {0, PAD_SMALL, LV_PCT(100), 0}, copyright_str,
+  new StaticText(qrBox, {0, PAD_SMALL, LV_PCT(100), 0}, copyright_str,  // ds-allow: version screen — copyright line positioned absolutely at top of QR box; canvas layout, not a DS list.
                  COLOR_THEME_SECONDARY1_INDEX, CENTERED);
 
-  new StaticText(qrBox, {0, qh - QR_SZ - PAD_MEDIUM - EdgeTxStyles::STD_FONT_HEIGHT, LV_PCT(100), 0},
+  new StaticText(qrBox, {0, qh - QR_SZ - PAD_MEDIUM - EdgeTxStyles::STD_FONT_HEIGHT, LV_PCT(100), 0},  // ds-allow: version screen — URL line positioned absolutely above the QR code; canvas layout, not a DS list.
                  edgetx_url, COLOR_THEME_SECONDARY1_INDEX, CENTERED);
 
-  new QRCode(qrBox, (qw - QR_SZ) / 2, qh - QR_SZ - PAD_MEDIUM, QR_SZ, edgetx_url);
+  new QRCode(qrBox, (qw - QR_SZ) / 2, qh - QR_SZ - PAD_MEDIUM, QR_SZ, edgetx_url);  // ds-allow: version screen — QR code positioned absolutely within the QR box; canvas layout, not a DS list.
 
   auto infoBox = new Window(window, {ix, iy, iw, ih});
-  infoBox->padAll(PAD_SMALL);
-  infoBox->padLeft(PAD_LARGE);
-  infoBox->padRight(PAD_LARGE);
+  infoBox->padAll(PAD_SMALL);  // ds-allow: version screen — padding on the absolutely-positioned info box beside the QR box; canvas layout, not a DS list.
+  infoBox->padLeft(PAD_LARGE);  // ds-allow: version screen — left inset for version text in the absolutely-positioned info box; canvas layout, not a DS list.
+  infoBox->padRight(PAD_LARGE);  // ds-allow: version screen — right inset for version text in the absolutely-positioned info box; canvas layout, not a DS list.
 
   std::string nl("\n");
   std::string version;
@@ -423,7 +423,7 @@ void RadioVersionPage::build(Window* window)
   new StaticText(infoBox, {0, 0, LV_PCT(100), LV_SIZE_CONTENT}, version);
 
   // Module and receivers versions
-  new TextButton(infoBox, {0, ih - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_LARGE - PAD_SMALL, LV_PCT(100), 0},
+  new TextButton(infoBox, {0, ih - EdgeTxStyles::UI_ELEMENT_HEIGHT - PAD_LARGE - PAD_SMALL, LV_PCT(100), 0},  // ds-allow: version screen — modules/RX-version button positioned absolutely at bottom of info box; canvas layout, not a DS list.
                   STR_MODULES_RX_VERSION, [=]() {
                     new VersionDialog();
                     return 0;

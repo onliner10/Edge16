@@ -55,12 +55,12 @@ class SwitchWarnMatrix : public ButtonMatrix
 
     update();
 
-    setWidth(min((int)btn_cnt, SW_BTNS) * SW_BTN_W + PAD_SMALL);
+    setWidth(min((int)btn_cnt, SW_BTNS) * SW_BTN_W + PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
 
     uint8_t rows = ((btn_cnt - 1) / SW_BTNS) + 1;
-    setHeight((rows * SW_BTN_H) + PAD_SMALL);
+    setHeight((rows * SW_BTN_H) + PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
 
-    padAll(PAD_SMALL);
+    padAll(PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
   }
 
   void onPress(uint8_t btn_id) override
@@ -101,9 +101,9 @@ class SwitchWarnMatrix : public ButtonMatrix
     setChecked(btn_id);
   }
 
-  static LAYOUT_SIZE(SW_BTNS, 8, 4)
-  static LAYOUT_SIZE_SCALED(SW_BTN_W, 56, 72)
-  static LAYOUT_VAL_SCALED(SW_BTN_H, 36)
+  static LAYOUT_SIZE(SW_BTNS, 8, 4)  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
+  static LAYOUT_SIZE_SCALED(SW_BTN_W, 56, 72)  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
+  static LAYOUT_VAL_SCALED(SW_BTN_H, 36)  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
 
  private:
   uint8_t sw_idx[MAX_SWITCHES];
@@ -158,12 +158,12 @@ class PotWarnMatrix : public ButtonMatrix
 
     setWidth(min((int)btn_cnt, SwitchWarnMatrix::SW_BTNS) *
                  SwitchWarnMatrix::SW_BTN_W +
-             PAD_SMALL);
+             PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
 
     uint8_t rows = ((btn_cnt - 1) / SwitchWarnMatrix::SW_BTNS) + 1;
-    setHeight((rows * SwitchWarnMatrix::SW_BTN_H) + PAD_SMALL);
+    setHeight((rows * SwitchWarnMatrix::SW_BTN_H) + PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
 
-    padAll(PAD_SMALL);
+    padAll(PAD_SMALL);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
   }
 
   void onPress(uint8_t btn_id)
@@ -242,7 +242,7 @@ PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route,
                       });
 
       // Custom Throttle warning value
-      customThrottleValue = new NumberEdit(parent, {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y, 0, 0}, -100, 100,
+      customThrottleValue = new NumberEdit(parent, {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y, 0, 0}, -100, 100,  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
                                           GET_SET_DEFAULT(g_model.customThrottleWarningPosition));
       customThrottleValue->setDirectKeyboard(false);
       customThrottleValue->setEditTitle(STR_ROLLER_THROTTLE_VALUE);
@@ -253,8 +253,8 @@ PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route,
   setupLine(STR_SWITCHES, [](Window*, coord_t, coord_t){});
   setupLine(nullptr,
     [=](Window* parent, coord_t x, coord_t y) {
-      auto w = new SwitchWarnMatrix(parent, rect_t{PAD_SMALL, y, 0, 0});
-      parent->setHeight(w->height() + PAD_TINY * 2);
+      auto w = new SwitchWarnMatrix(parent, rect_t{PAD_SMALL, y, 0, 0});  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
+      parent->setHeight(w->height() + PAD_TINY * 2);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
     });
 
   // Pots and sliders warning
@@ -280,8 +280,8 @@ PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route,
       // Pot warnings
       potsWarnMatrix = setupLine(nullptr,
         [=](Window* parent, coord_t x, coord_t y) {
-          auto w = new PotWarnMatrix(parent, {PAD_SMALL, y, 0, 0});
-          parent->setHeight(w->height() + PAD_TINY * 2);
+          auto w = new PotWarnMatrix(parent, {PAD_SMALL, y, 0, 0});  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
+          parent->setHeight(w->height() + PAD_TINY * 2);  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
         });
       potsWarnMatrix->show(g_model.potsWarnMode > 0);
     }

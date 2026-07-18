@@ -73,7 +73,7 @@ class QuickMenuButton : public ButtonBase
     iconPtr = Window::makeLive<StaticIcon>(
         this,
         (QuickMenuGroup::QM_BUTTON_WIDTH - QuickMenuGroup::QM_ICON_SIZE) / 2,
-        PAD_SMALL, icon, COLOR_THEME_QM_FG_INDEX);
+        PAD_SMALL, icon, COLOR_THEME_QM_FG_INDEX); // ds-allow: quick menu fixed icon-button grid laid out absolutely; bespoke launcher grid, not a DS list
     if (!iconPtr) {
       failClosed();
       return;
@@ -90,7 +90,7 @@ class QuickMenuButton : public ButtonBase
 
     textPtr = Window::makeLive<StaticText>(
         this,
-        rect_t{0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2,
+        rect_t{0, QuickMenuGroup::QM_ICON_SIZE + PAD_TINY * 2,  // ds-allow: quick-menu group - icon buttons sized/positioned absolutely in a fixed grid; bespoke launcher grid, not a DS list.
                QuickMenuGroup::QM_BUTTON_WIDTH - 1, 0},
         title, COLOR_THEME_QM_FG_INDEX, CENTERED | FONT(XS));
     if (!textPtr) {
@@ -189,7 +189,7 @@ class QuickMenuButton : public ButtonBase
 QuickMenuGroup::QuickMenuGroup(Window* parent) :
     Window(parent, {0, 0, parent->width(), parent->height()})
 {
-  padAll(PAD_OUTLINE);
+  padAll(PAD_OUTLINE); // ds-allow: quick menu launcher grid container outline padding; bespoke launcher chrome, not a DS surface
   group = lv_group_create();
 }
 
@@ -296,8 +296,8 @@ void QuickMenuGroup::doLayout(int cols)
   int n = 0;
   for (size_t i = 0; i < btns.size(); i += 1) {
     if (((QuickMenuButton*)btns[i])->isVisible()) {
-      coord_t x = (n % cols) * (QM_BUTTON_WIDTH + PAD_MEDIUM);
-      coord_t y = (n / cols) * (QM_BUTTON_HEIGHT + PAD_MEDIUM);
+      coord_t x = (n % cols) * (QM_BUTTON_WIDTH + PAD_MEDIUM); // ds-allow: quick menu fixed icon-button grid laid out absolutely; bespoke launcher grid, not a DS list
+      coord_t y = (n / cols) * (QM_BUTTON_HEIGHT + PAD_MEDIUM); // ds-allow: quick menu fixed icon-button grid laid out absolutely; bespoke launcher grid, not a DS list
       btns[i]->setPos(x, y);
       n += 1;
     }

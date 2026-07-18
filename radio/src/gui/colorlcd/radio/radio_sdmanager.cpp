@@ -77,8 +77,8 @@ class FlashDialog: public FullScreenDialog
   T device;
   Progress* progress = nullptr;
 
-  static LAYOUT_VAL_SCALED(PROGRESS_YO, 27)
-  static LAYOUT_VAL_SCALED(PROGRESS_W, 200)
+  static LAYOUT_VAL_SCALED(PROGRESS_YO, 27)  // ds-allow: SD manager — y-offset for the absolutely-positioned firmware-flash progress bar overlay; not a DS list.
+  static LAYOUT_VAL_SCALED(PROGRESS_W, 200)  // ds-allow: SD manager — width for the absolutely-positioned firmware-flash progress bar overlay; not a DS list.
 };
 
 #if defined(PXX2)
@@ -210,7 +210,7 @@ ModuleCallback onUpdateStateChangedCallbackFor(FrskyOtaFlashDialog* dialog) {
 
 void RadioSdManagerPage::build(Window * window)
 {
-  window->padAll(PAD_ZERO);
+  window->padAll(PAD_ZERO);  // ds-allow: SD manager — zero body padding so the browser + preview split fills the page; not a DS list.
 
   coord_t browserWidth = LANDSCAPE ? window->width() * 3 / 5 : window->width();
   coord_t browserHeight = LANDSCAPE ? window->height() : window->height() * 2 / 3;
@@ -218,10 +218,10 @@ void RadioSdManagerPage::build(Window * window)
   browser = new FileBrowser(window, {0, 0, browserWidth, browserHeight}, ROOT_PATH);
   browser->adjustWidth();
 
-  coord_t previewX = (LANDSCAPE ? browserWidth : 0) + PAD_TINY;
-  coord_t previewY = (LANDSCAPE ? 0 : browserHeight) + PAD_TINY;
-  coord_t previewWidth = (LANDSCAPE ? window->width() - browserWidth : window->width()) - PAD_TINY * 2;
-  coord_t previewHeight = (LANDSCAPE ? window->height() : window->height() - browserHeight) - PAD_TINY * 2;
+  coord_t previewX = (LANDSCAPE ? browserWidth : 0) + PAD_TINY;  // ds-allow: SD manager — preview-pane x in the fixed browser/preview viewport split; not a DS list.
+  coord_t previewY = (LANDSCAPE ? 0 : browserHeight) + PAD_TINY;  // ds-allow: SD manager — preview-pane y in the fixed browser/preview viewport split; not a DS list.
+  coord_t previewWidth = (LANDSCAPE ? window->width() - browserWidth : window->width()) - PAD_TINY * 2;  // ds-allow: SD manager — preview-pane width in the fixed browser/preview viewport split; not a DS list.
+  coord_t previewHeight = (LANDSCAPE ? window->height() : window->height() - browserHeight) - PAD_TINY * 2;  // ds-allow: SD manager — preview-pane height in the fixed browser/preview viewport split; not a DS list.
 
   auto box = new Window(window, {previewX, previewY, previewWidth, previewHeight});
 

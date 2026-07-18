@@ -36,7 +36,7 @@ class ModelCurvesPage : public PageGroupItem
 
   virtual void build(Window* window) override;
 
-  static LAYOUT_ORIENTATION(PER_ROW, 3, 2)
+  static LAYOUT_ORIENTATION(PER_ROW, 3, 2)  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 
  protected:
   uint8_t focusIndex = -1;

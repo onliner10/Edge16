@@ -108,7 +108,7 @@ void TrainerModuleWindow::onLiveCheckEvents(Window::LiveWindow& live)
 
 void TrainerModuleWindow::update()
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer slave form - grid lines pair a label with composite widgets (channel-range selector, PPM-frame settings); multi-control lines, not single DS FormRows.
   clear();
 
   auto td = &g_model.trainerData;
@@ -151,7 +151,7 @@ TrainerPage::TrainerPage(Route route) : Page(ICON_MODEL_SETUP, route)
 
   body->setFlexLayout();
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer setup page grid - renders the Mode label+Choice line then delegates to a TrainerModuleWindow sub-form; page-level grid, not a plain DS FormRow list.
 
   auto line = body->newLine(grid);
   new StaticText(line, rect_t{}, STR_MODE);

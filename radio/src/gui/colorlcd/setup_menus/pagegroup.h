@@ -62,10 +62,10 @@ class PageGroupItem
 {
  public:
   PageGroupItem(std::string title, QMPage qmPage = QM_NONE) :
-      title(std::move(title)), icon(ICON_EDGETX), qmPageId(qmPage), padding(PAD_SMALL)
+      title(std::move(title)), icon(ICON_EDGETX), qmPageId(qmPage), padding(PAD_SMALL) // ds-allow: page framework's per-tab body padding default; framework scaffolding, not screen styling
   {}
 
-  PageGroupItem(const PageDef& pageDef, PaddingSize padding = PAD_SMALL) :
+  PageGroupItem(const PageDef& pageDef, PaddingSize padding = PAD_SMALL) : // ds-allow: page framework's per-tab body padding default; framework scaffolding, not screen styling
       title(STR_VAL(pageDef.title)), icon(pageDef.icon), qmPageId(pageDef.qmPage),
       padding(padding), pageDef(&pageDef)
   {}
@@ -147,8 +147,8 @@ class PageGroupHeaderBase : public Window
   void onDelete() override;
 
 #if VERSION_MAJOR == 2
-  static LAYOUT_VAL_SCALED(ICON_EXTRA_H, 10)
-  static LAYOUT_VAL_SCALED(MENU_HEADER_BUTTON_WIDTH, 33)
+  static LAYOUT_VAL_SCALED(ICON_EXTRA_H, 10) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
+  static LAYOUT_VAL_SCALED(MENU_HEADER_BUTTON_WIDTH, 33) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
 #endif
 
  protected:
@@ -257,12 +257,12 @@ class PageGroup : public PageGroupBase
   bool isPageGroup() override { return true; }
 
 #if VERSION_MAJOR == 2
-  static LAYOUT_VAL_SCALED(PAGE_GROUP_TOP_BAR_H, 48)
+  static LAYOUT_VAL_SCALED(PAGE_GROUP_TOP_BAR_H, 48) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
   static constexpr coord_t PAGE_GROUP_ALT_TITLE_H = EdgeTxStyles::STD_FONT_HEIGHT;
   static constexpr coord_t PAGE_GROUP_BACK_BTN_W = 0;
-  static LAYOUT_VAL_SCALED(PAGE_GROUP_BACK_BTN_XO, 45)
+  static LAYOUT_VAL_SCALED(PAGE_GROUP_BACK_BTN_XO, 45) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
 #else
-  static LAYOUT_VAL_SCALED(PAGE_GROUP_TOP_BAR_H, 45)
+  static LAYOUT_VAL_SCALED(PAGE_GROUP_TOP_BAR_H, 45) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
   static constexpr coord_t PAGE_GROUP_ALT_TITLE_H = 0;
   static constexpr coord_t PAGE_GROUP_BACK_BTN_W = PAGE_GROUP_TOP_BAR_H;
   static constexpr coord_t PAGE_GROUP_BACK_BTN_XO = PAGE_GROUP_TOP_BAR_H;
@@ -288,11 +288,11 @@ class TabsGroup : public PageGroupBase
   bool isPageGroup() override { return false; }
 
 #if VERSION_MAJOR == 2
-  static LAYOUT_VAL_SCALED(TABS_GROUP_TOP_BAR_H, 48)
+  static LAYOUT_VAL_SCALED(TABS_GROUP_TOP_BAR_H, 48) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
   static constexpr coord_t TABS_GROUP_ALT_TITLE_H = EdgeTxStyles::STD_FONT_HEIGHT;
 #else
-  static LAYOUT_ORIENTATION_SCALED(TABS_GROUP_TOP_BAR_H, 45, 48)
-  static LAYOUT_ORIENTATION(TABS_GROUP_ALT_TITLE_H, 0, EdgeTxStyles::STD_FONT_HEIGHT)
+  static LAYOUT_ORIENTATION_SCALED(TABS_GROUP_TOP_BAR_H, 45, 48) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
+  static LAYOUT_ORIENTATION(TABS_GROUP_ALT_TITLE_H, 0, EdgeTxStyles::STD_FONT_HEIGHT) // ds-allow: page-group/tabs header/top-bar dimension defined by the page framework itself; scaffolding beneath the DS component layer
 #endif
   static constexpr coord_t TABS_GROUP_BODY_Y = TABS_GROUP_TOP_BAR_H + TABS_GROUP_ALT_TITLE_H;
 

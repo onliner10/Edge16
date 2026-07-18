@@ -74,11 +74,11 @@ std::string replaceAll(std::string str, const std::string& from, const std::stri
 
 //-----------------------------------------------------------------------------
 
-#define GRP_W(n) ((QuickMenuGroup::QM_BUTTON_WIDTH + PAD_MEDIUM) * n - PAD_MEDIUM + PAD_OUTLINE * 2)
+#define GRP_W(n) ((QuickMenuGroup::QM_BUTTON_WIDTH + PAD_MEDIUM) * n - PAD_MEDIUM + PAD_OUTLINE * 2) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
 #if LANDSCAPE
-#define GRP_H(n) ((QuickMenuGroup::QM_BUTTON_HEIGHT + PAD_MEDIUM) * n - PAD_MEDIUM + PAD_OUTLINE * 2)
+#define GRP_H(n) ((QuickMenuGroup::QM_BUTTON_HEIGHT + PAD_MEDIUM) * n - PAD_MEDIUM + PAD_OUTLINE * 2) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
 #else
-#define GRP_H(n) ((QuickMenuGroup::QM_BUTTON_HEIGHT + PAD_SMALL) * n - PAD_SMALL + PAD_OUTLINE * 2)
+#define GRP_H(n) ((QuickMenuGroup::QM_BUTTON_HEIGHT + PAD_SMALL) * n - PAD_SMALL + PAD_OUTLINE * 2) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
 #endif
 
 class QuickMenu : public NavWindow
@@ -127,30 +127,30 @@ class QuickMenu : public NavWindow
 #endif
 
 #if VERSION_MAJOR == 2
-  static LAYOUT_ORIENTATION(QM_MAIN_COLS, 5, 3)
-  static LAYOUT_ORIENTATION(QM_MAIN_ROWS, 2, 4)
+  static LAYOUT_ORIENTATION(QM_MAIN_COLS, 5, 3) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_MAIN_ROWS, 2, 4) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
   static constexpr int QM_MAIN_W = GRP_W(QM_MAIN_COLS);
   static constexpr int QM_MAIN_H = GRP_H(QM_MAIN_ROWS);
-  static constexpr coord_t QM_W = QM_MAIN_W + PAD_LARGE * 2;
-  static constexpr coord_t QM_H = QM_MAIN_H + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_MEDIUM * 2;
+  static constexpr coord_t QM_W = QM_MAIN_W + PAD_LARGE * 2; // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static constexpr coord_t QM_H = QM_MAIN_H + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_MEDIUM * 2; // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
   static constexpr coord_t QM_MAIN_X = (QM_W - QM_MAIN_W) / 2;
-  static constexpr coord_t QM_MAIN_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
+  static constexpr coord_t QM_MAIN_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE; // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
   static constexpr int FIRST_SEARCH_IDX = 0;
 #else
-  static LAYOUT_ORIENTATION(QM_MAIN_COLS, 6, 1)
-  static LAYOUT_ORIENTATION(QM_MAIN_ROWS, 1, 6)
-  static LAYOUT_ORIENTATION(QM_SUB_COLS, 6, 3)
-  static LAYOUT_ORIENTATION(QM_SUB_ROWS, 2, 6)
+  static LAYOUT_ORIENTATION(QM_MAIN_COLS, 6, 1) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_MAIN_ROWS, 1, 6) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_SUB_COLS, 6, 3) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_SUB_ROWS, 2, 6) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
   static constexpr int QM_MAIN_W = GRP_W(QM_MAIN_COLS);
   static constexpr int QM_MAIN_H = GRP_H(QM_MAIN_ROWS);
   static constexpr int QM_SUB_W = GRP_W(QM_SUB_COLS);
   static constexpr int QM_SUB_H = GRP_H(QM_SUB_ROWS);
   static constexpr coord_t QM_W = LCD_W;
   static constexpr coord_t QM_H = LCD_H;
-  static LAYOUT_ORIENTATION(QM_MAIN_X, (QM_W - QM_MAIN_W) / 2, (QM_W - QM_MAIN_W - QM_SUB_W - PAD_SMALL) / 2)
-  static constexpr coord_t QM_MAIN_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE;
-  static LAYOUT_ORIENTATION(QM_SUB_X, QM_MAIN_X, QM_MAIN_X + QM_MAIN_W + PAD_SMALL)
-  static LAYOUT_ORIENTATION(QM_SUB_Y, QM_MAIN_Y + QM_MAIN_H + PAD_LARGE, QM_MAIN_Y)
+  static LAYOUT_ORIENTATION(QM_MAIN_X, (QM_W - QM_MAIN_W) / 2, (QM_W - QM_MAIN_W - QM_SUB_W - PAD_SMALL) / 2) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static constexpr coord_t QM_MAIN_Y = EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_OUTLINE; // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_SUB_X, QM_MAIN_X, QM_MAIN_X + QM_MAIN_W + PAD_SMALL) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
+  static LAYOUT_ORIENTATION(QM_SUB_Y, QM_MAIN_Y + QM_MAIN_H + PAD_LARGE, QM_MAIN_Y) // ds-allow: quick menu fixed grid of icon buttons + separator positioned absolutely; bespoke launcher grid, not a DS list
   static constexpr int FIRST_SEARCH_IDX = 1;  // Skip favorites
 #endif
   static constexpr coord_t QM_X = (LCD_W - QM_W) / 2;

@@ -93,7 +93,7 @@ class GaugeWidget : public NativeWidget
           auto obj = lv_obj_create(box);
           if (!requireLvObj(bar, obj)) return false;
           lv_obj_remove_style_all(obj);
-          lv_obj_set_pos(obj, 0, 0);
+          lv_obj_set_pos(obj, 0, 0); // ds-allow: gauge widget — progress bar pinned to the track's top-left origin; canvas widget positioned by pixel inside a user-resizable dashboard zone, not a DS row/form.
           lv_obj_clear_flag(obj,
                             static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
           lv_obj_set_style_radius(obj, PILL_RADIUS, LV_PART_MAIN);
@@ -141,7 +141,7 @@ class GaugeWidget : public NativeWidget
     bool compact = isCompactTopBarWidget();
     bool stackCard = usesCardChrome() && content.h >= 72;
     const char* source = getSourceString(index);
-    coord_t gap = usesCardChrome() ? cardGap(content) : PAD_TINY;
+    coord_t gap = usesCardChrome() ? cardGap(content) : PAD_TINY; // ds-allow: gauge widget — title/bar gap computed from the zone size; canvas widget laid out by pixel, not a DS form row.
     coord_t titleH = 0;
     coord_t barH = usesCardChrome() ? cardBarHeight(content)
                                     : (content.h < 58 ? 10 : GUAGE_H);
@@ -282,7 +282,7 @@ class GaugeWidget : public NativeWidget
     }
   }
 
-  static LAYOUT_VAL_SCALED(GUAGE_H, 16) static LAYOUT_VAL_SCALED(ALIGN_MAX_W,
+  static LAYOUT_VAL_SCALED(GUAGE_H, 16) static LAYOUT_VAL_SCALED(ALIGN_MAX_W, // ds-allow: gauge widget — DPI-scaled bar height and alignment-threshold constants for the canvas gauge geometry; not a DS row/form.
                                                                  90)
 };
 

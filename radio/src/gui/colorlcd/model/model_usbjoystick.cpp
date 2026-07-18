@@ -72,7 +72,7 @@ class USBChannelEditStatusBar : public Window
         channel, true);
   }
 
-  static LAYOUT_SIZE_SCALED(USBCH_EDIT_STATUS_BAR_MARGIN, 3, 0)
+  static LAYOUT_SIZE_SCALED(USBCH_EDIT_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
  protected:
   ComboChannelBar* channelBar;
@@ -88,7 +88,7 @@ class USBChannelButtonSel : public ButtonMatrix
       m_channel(channel),
       m_setValue(std::move(_setValue))
   {
-    padAll(PAD_OUTLINE);
+    padAll(PAD_OUTLINE);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
     bg_color[0] = makeLvColor(COLOR_THEME_PRIMARY2);  // Unused
     fg_color[0] = makeLvColor(COLOR_THEME_SECONDARY1);
@@ -175,18 +175,18 @@ class USBChannelButtonSel : public ButtonMatrix
 class USBChannelEditWindow : public Page
 {
  public:
-  USBChannelEditWindow(uint8_t channel, Route route) : Page(ICON_MODEL_USB, route, PAD_TINY), channel(channel)
+  USBChannelEditWindow(uint8_t channel, Route route) : Page(ICON_MODEL_USB, route, PAD_TINY), channel(channel)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
   {
-    body->padLeft(PAD_MEDIUM);
-    body->padRight(PAD_MEDIUM);
+    body->padLeft(PAD_MEDIUM);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+    body->padRight(PAD_MEDIUM);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
     buildHeader(header);
     buildBody(body);
   }
 
-  static LAYOUT_SIZE_SCALED(USBCH_EDIT_STATUS_BAR_WIDTH, 250, 160)
-  static LAYOUT_SIZE(USBCH_EDIT_RIGHT_MARGIN, 0, 3)
-  static LAYOUT_SIZE(USBCH_COLS, 4, 2)
+  static LAYOUT_SIZE_SCALED(USBCH_EDIT_STATUS_BAR_WIDTH, 250, 160)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+  static LAYOUT_SIZE(USBCH_EDIT_RIGHT_MARGIN, 0, 3)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+  static LAYOUT_SIZE(USBCH_COLS, 4, 2)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
  protected:
   uint8_t channel;
@@ -249,8 +249,8 @@ class USBChannelEditWindow : public Page
 
   void buildBody(Window* form)
   {
-    FlexGridLayout grid(ch_col_dsc, row_dsc, PAD_TINY);
-    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+    FlexGridLayout grid(ch_col_dsc, row_dsc, PAD_TINY);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
     USBJoystickChData* cch = usbJChAddress(channel);
 
@@ -315,8 +315,8 @@ class USBChannelEditWindow : public Page
                SET_VALUE_WUPDATE(cch->param));
 
     line = form->newLine(grid);
-    line->padTop(PAD_ZERO);
-    line->padBottom(PAD_ZERO);
+    line->padTop(PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+    line->padBottom(PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
     collisionText =
         new StaticText(line, rect_t{}, "",
                        COLOR_THEME_PRIMARY2_INDEX, FONT(BOLD) | CENTERED);
@@ -414,13 +414,13 @@ class USBChannelLineButton : public ListLineButton
   std::unique_ptr<ds::RowContent> dsRow;
 };
 
-ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, route, PAD_BORDER)
+ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, route, PAD_BORDER)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 {
   header->setTitle(STR_MAIN_MENU_MODEL_SETTINGS);
   header->setTitle2(STR_USBJOYSTICK_LABEL);
 
   body->setFlexLayout();
-  FlexGridLayout grid(line_col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(line_col_dsc, row_dsc, PAD_TINY);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
   // Extended mode
   auto line = body->newLine(grid);

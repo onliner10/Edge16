@@ -51,13 +51,13 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
 void RadioTrainerPage::build(Window* form)
 {
-  form->padAll(PAD_SMALL);
+  form->padAll(PAD_SMALL);  // ds-allow: trainer setup — outer page padding for a form of custom multi-control stick lines; not a single DS FormRow control.
 
   if (SLAVE_MODE()) {
     auto txt = new StaticText(form, rect_t{}, STR_SLAVE, COLOR_THEME_PRIMARY1_INDEX, FONT(L));
     txt->align(LV_ALIGN_CENTER);
   } else {
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer setup — column gap for the custom multi-column stick grid packing mode/chan/weight per line; not a single DS FormRow control.
     form->setFlexLayout();
 
     auto max_sticks = adcGetMaxInputs(ADC_INPUT_MAIN);
@@ -78,8 +78,8 @@ void RadioTrainerPage::build(Window* form)
 
 #if PORTRAIT
       line = form->newLine(grid);
-      line->padLeft(PAD_LARGE * 3 + PAD_MEDIUM);
-      line->padBottom(PAD_LARGE);
+      line->padLeft(PAD_LARGE * 3 + PAD_MEDIUM);  // ds-allow: trainer setup — portrait indentation of the wrapped continuation line under each stick row; not a single DS FormRow control.
+      line->padBottom(PAD_LARGE);  // ds-allow: trainer setup — portrait spacing after the wrapped continuation line under each stick row; not a single DS FormRow control.
 #endif
 
       LcdFlags flags = LEFT;
@@ -95,15 +95,15 @@ void RadioTrainerPage::build(Window* form)
 
     auto line = form->newLine(grid);
 #if PORTRAIT
-    line->padTop(PAD_LARGE);
+    line->padTop(PAD_LARGE);  // ds-allow: trainer setup — portrait spacing before the packed multiplier/calibration line; not a single DS FormRow control.
 #else
-    line->padTop(PAD_MEDIUM);
+    line->padTop(PAD_MEDIUM);  // ds-allow: trainer setup — landscape spacing before the packed multiplier/calibration line; not a single DS FormRow control.
 #endif
 
     // Trainer multiplier
     if (g_model.trainerData.mode == TRAINER_MODE_MASTER_TRAINER_JACK) {
       auto lbl = new StaticText(line, rect_t{}, STR_MULTIPLIER);
-      lbl->padRight(PAD_SMALL);
+      lbl->padRight(PAD_SMALL);  // ds-allow: trainer setup — gap between multiplier label and field packed on the same line; not a single DS FormRow control.
       lbl->setGridCell(LV_GRID_ALIGN_END, 0, 2, LV_GRID_ALIGN_CENTER, 0, 1);
 
       auto multiplier =
@@ -115,7 +115,7 @@ void RadioTrainerPage::build(Window* form)
 
 #if PORTRAIT
       line = form->newLine(grid);
-      line->padTop(PAD_LARGE);
+      line->padTop(PAD_LARGE);  // ds-allow: trainer setup — portrait spacing before the calibration button line; not a single DS FormRow control.
 #endif
     }
 

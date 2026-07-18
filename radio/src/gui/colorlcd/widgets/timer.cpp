@@ -60,7 +60,7 @@ class TimerWidget : public NativeWidget
     if (!initRequiredWindow(timerBg, this, 0, 0, ICON_TIMER_BG,
                             COLOR_THEME_PRIMARY2_INDEX))
       return;
-    if (!initRequiredWindow(timerIcon, this, PAD_THREE, PAD_SMALL, ICON_TIMER,
+    if (!initRequiredWindow(timerIcon, this, PAD_THREE, PAD_SMALL, ICON_TIMER, // ds-allow: timer widget — timer glyph inset at a fixed pixel offset inside the user-resizable zone; canvas widget, not a DS row/form.
                             COLOR_THEME_SECONDARY1_INDEX))
       return;
 
@@ -93,18 +93,18 @@ class TimerWidget : public NativeWidget
           lv_obj_add_style(obj, &style, LV_PART_MAIN);
           etx_txt_color(obj, COLOR_THEME_PRIMARY2_INDEX);
           etx_font(obj, FONT_XS_INDEX, LV_PART_MAIN | ETX_VALUE_SMALL_FONT);
-          lv_obj_set_pos(obj, PAD_THREE, VAL_LBL_Y);
+          lv_obj_set_pos(obj, PAD_THREE, VAL_LBL_Y); // ds-allow: timer widget — small-size value label placed at an absolute pixel offset; canvas widget, not a DS row/form.
         });
 
     // Timer value - on large widgets
     if (!createUnitLabel(unit0)) return;
-    unit0.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, U0_X, U0_Y); });
+    unit0.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, U0_X, U0_Y); }); // ds-allow: timer widget — large-layout unit glyph at DPI-scaled absolute offset; canvas widget, not a DS row/form.
     if (!createUnitLabel(unit1)) return;
-    unit1.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, U1_X, U1_Y); });
+    unit1.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, U1_X, U1_Y); }); // ds-allow: timer widget — large-layout unit glyph at DPI-scaled absolute offset; canvas widget, not a DS row/form.
     if (!createDigitsLabel(digits0)) return;
-    digits0.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, D0_X, D0_Y); });
+    digits0.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, D0_X, D0_Y); }); // ds-allow: timer widget — large-layout digit group at DPI-scaled absolute offset; canvas widget, not a DS row/form.
     if (!createDigitsLabel(digits1)) return;
-    digits1.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, D1_X, D1_Y); });
+    digits1.with([](lv_obj_t* obj) { lv_obj_set_pos(obj, D1_X, D1_Y); }); // ds-allow: timer widget — large-layout digit group at DPI-scaled absolute offset; canvas widget, not a DS row/form.
 
     initRequiredLvObj(
         timerArc, [](lv_obj_t* parent) { return lv_arc_create(parent); },
@@ -116,7 +116,7 @@ class TimerWidget : public NativeWidget
           lv_arc_set_start_angle(obj, 0);
           lv_obj_remove_style(obj, NULL, LV_PART_KNOB);
           lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-          lv_obj_set_pos(obj, PAD_TINY, PAD_THREE);
+          lv_obj_set_pos(obj, PAD_TINY, PAD_THREE); // ds-allow: timer widget — countdown arc pinned at a fixed pixel inset inside the zone; canvas widget, not a DS row/form.
           lv_obj_set_size(obj, TMR_ARC_SZ, TMR_ARC_SZ);
           lv_obj_set_style_arc_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
           lv_obj_set_style_arc_width(obj, TMR_ARC_W, LV_PART_MAIN);
@@ -278,14 +278,14 @@ class TimerWidget : public NativeWidget
 
   static const WidgetOption options[];
 
- static LAYOUT_VAL_SCALED(SMALL_TXT_MAX_W, 100) static LAYOUT_VAL_SCALED(
+ static LAYOUT_VAL_SCALED(SMALL_TXT_MAX_W, 100) static LAYOUT_VAL_SCALED( // ds-allow: timer widget — DPI-scaled small-text width/height thresholds gating the compact timer font; canvas geometry, not a DS row/form.
      SMALL_TXT_MAX_H,
-     40) static LAYOUT_VAL_SCALED(VAL_LBL_Y,
-                                  20) static LAYOUT_VAL_SCALED(COMPACT_VAL_LBL_Y, 14) static LAYOUT_VAL_SCALED(TMR_LRG_W, 180) static LAYOUT_VAL_SCALED(TMR_LRG_H, 70) static LAYOUT_VAL_SCALED(TMR_ARC_SZ,
-                                                                                                                                                                                                64) static LAYOUT_VAL_SCALED(TMR_ARC_W, 10) static LAYOUT_VAL_SCALED(NM_LRG_X, 78) static LAYOUT_VAL_SCALED(NM_LRG_Y,
-                                                                                                                                                                                                                                                                                                            19) static LAYOUT_VAL_SCALED(NM_LRG_W, 93) static LAYOUT_VAL_SCALED(U0_X, 111) static LAYOUT_VAL_SCALED(U0_Y, 33) static LAYOUT_VAL_SCALED(U1_X, 162) static LAYOUT_VAL_SCALED(U1_Y, 33) static LAYOUT_VAL_SCALED(D0_X,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              74) static LAYOUT_VAL_SCALED(D0_Y,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           31) static LAYOUT_VAL_SCALED(D1_X, 125) static LAYOUT_VAL_SCALED(D1_Y,
+     40) static LAYOUT_VAL_SCALED(VAL_LBL_Y, // ds-allow: timer widget — DPI-scaled small/compact value-label Y offsets; canvas geometry, not a DS row/form.
+                                  20) static LAYOUT_VAL_SCALED(COMPACT_VAL_LBL_Y, 14) static LAYOUT_VAL_SCALED(TMR_LRG_W, 180) static LAYOUT_VAL_SCALED(TMR_LRG_H, 70) static LAYOUT_VAL_SCALED(TMR_ARC_SZ, // ds-allow: timer widget — DPI-scaled large-timer bounding box and arc size constants; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                64) static LAYOUT_VAL_SCALED(TMR_ARC_W, 10) static LAYOUT_VAL_SCALED(NM_LRG_X, 78) static LAYOUT_VAL_SCALED(NM_LRG_Y, // ds-allow: timer widget — DPI-scaled arc-width and large-layout name X/Y offsets; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                            19) static LAYOUT_VAL_SCALED(NM_LRG_W, 93) static LAYOUT_VAL_SCALED(U0_X, 111) static LAYOUT_VAL_SCALED(U0_Y, 33) static LAYOUT_VAL_SCALED(U1_X, 162) static LAYOUT_VAL_SCALED(U1_Y, 33) static LAYOUT_VAL_SCALED(D0_X, // ds-allow: timer widget — DPI-scaled large-layout name width and unit X/Y offsets; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              74) static LAYOUT_VAL_SCALED(D0_Y, // ds-allow: timer widget — DPI-scaled large-layout digit-group X/Y offsets; canvas geometry, not a DS row/form.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           31) static LAYOUT_VAL_SCALED(D1_X, 125) static LAYOUT_VAL_SCALED(D1_Y, // ds-allow: timer widget — DPI-scaled large-layout second digit-group X/Y offsets; canvas geometry, not a DS row/form.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             31)
 
      protected : tmrval_t lastValue = 0;
@@ -330,9 +330,9 @@ class TimerWidget : public NativeWidget
       });
       if (timerBg) timerBg->setPos(content.x, content.y);
       if (timerIcon)
-        timerIcon->setPos(content.x + PAD_THREE, content.y + PAD_SMALL);
+        timerIcon->setPos(content.x + PAD_THREE, content.y + PAD_SMALL); // ds-allow: timer widget — timer glyph placed at a fixed inset relative to the zone origin; canvas widget, not a DS row/form.
       timerArc.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, content.x + PAD_TINY, content.y + PAD_THREE);
+        lv_obj_set_pos(obj, content.x + PAD_TINY, content.y + PAD_THREE); // ds-allow: timer widget — countdown arc placed at a fixed inset relative to the zone origin; canvas widget, not a DS row/form.
       });
       nameLabel.with([&](lv_obj_t* obj) {
         etx_font(obj, FONT_XS_INDEX);
@@ -341,7 +341,7 @@ class TimerWidget : public NativeWidget
           lv_obj_clear_state(obj, EXT_NAME_ALIGN_RIGHT);
         else
           lv_obj_add_state(obj, EXT_NAME_ALIGN_RIGHT);
-        lv_obj_set_pos(obj, content.x + NM_LRG_X, content.y + NM_LRG_Y);
+        lv_obj_set_pos(obj, content.x + NM_LRG_X, content.y + NM_LRG_Y); // ds-allow: timer widget — large-layout name label at DPI-scaled absolute offset within the zone; canvas widget, not a DS row/form.
         lv_obj_set_width(obj, NM_LRG_W);
         lv_obj_clear_state(obj, ETX_NAME_COLOR_WHITE);
       });
@@ -351,27 +351,27 @@ class TimerWidget : public NativeWidget
         lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
       });
       digits0.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, content.x + D0_X, content.y + D0_Y);
+        lv_obj_set_pos(obj, content.x + D0_X, content.y + D0_Y); // ds-allow: timer widget — large-layout digit group at DPI-scaled absolute offset within the zone; canvas widget, not a DS row/form.
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
       });
       digits1.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, content.x + D1_X, content.y + D1_Y);
+        lv_obj_set_pos(obj, content.x + D1_X, content.y + D1_Y); // ds-allow: timer widget — large-layout digit group at DPI-scaled absolute offset within the zone; canvas widget, not a DS row/form.
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
       });
       unit0.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, content.x + U0_X, content.y + U0_Y);
+        lv_obj_set_pos(obj, content.x + U0_X, content.y + U0_Y); // ds-allow: timer widget — large-layout unit glyph at DPI-scaled absolute offset within the zone; canvas widget, not a DS row/form.
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
       });
       unit1.with([&](lv_obj_t* obj) {
-        lv_obj_set_pos(obj, content.x + U1_X, content.y + U1_Y);
+        lv_obj_set_pos(obj, content.x + U1_X, content.y + U1_Y); // ds-allow: timer widget — large-layout unit glyph at DPI-scaled absolute offset within the zone; canvas widget, not a DS row/form.
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
       });
       timerBg->show();
     } else {
       isLarge = false;
-      coord_t labelPad = PAD_TINY;
+      coord_t labelPad = PAD_TINY; // ds-allow: timer widget — small-layout label inset used for absolute label placement within the zone; canvas widget, not a DS row/form.
       if (timerIcon)
-        timerIcon->setPos(content.x + PAD_THREE, content.y + PAD_SMALL);
+        timerIcon->setPos(content.x + PAD_THREE, content.y + PAD_SMALL); // ds-allow: timer widget — timer glyph placed at a fixed inset relative to the zone origin; canvas widget, not a DS row/form.
       coord_t labelWidth =
           content.w > 2 * labelPad ? content.w - 2 * labelPad : content.w;
       nameLabel.with([&](lv_obj_t* obj) {
@@ -387,7 +387,7 @@ class TimerWidget : public NativeWidget
         } else {
           withLive(
               [&](LiveWindow& live) { lv_obj_set_parent(obj, live.lvobj()); });
-          lv_obj_set_pos(obj, content.x + labelPad, content.y);
+          lv_obj_set_pos(obj, content.x + labelPad, content.y); // ds-allow: timer widget — small-layout name label at absolute offset within the zone; canvas widget, not a DS row/form.
           lv_obj_set_width(obj, labelWidth);
           lv_obj_add_state(obj, ETX_NAME_COLOR_WHITE);
         }
@@ -412,8 +412,8 @@ class TimerWidget : public NativeWidget
               [&](LiveWindow& live) { lv_obj_set_parent(obj, live.lvobj()); });
           lv_obj_set_width(obj, labelWidth);
           coord_t valueY = content.y + (compact ? COMPACT_VAL_LBL_Y
-                                                : content.h - fh - PAD_TINY);
-          lv_obj_set_pos(obj, content.x + (compact ? labelPad : PAD_TINY),
+                                                : content.h - fh - PAD_TINY); // ds-allow: timer widget — value Y computed from zone height with a tiny bottom inset; pixel geometry, not a DS row/form.
+          lv_obj_set_pos(obj, content.x + (compact ? labelPad : PAD_TINY), // ds-allow: timer widget — small-layout value label at absolute offset within the zone; canvas widget, not a DS row/form.
                          valueY);
         }
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);

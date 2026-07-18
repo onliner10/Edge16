@@ -37,12 +37,12 @@ class ChannelFailsafeBargraph : public Window
     addStyle(styles->border_thin, LV_PART_MAIN);
     addStyle(styles->border_color[COLOR_BLACK_INDEX], LV_PART_MAIN);
 
-    outputsBar = new OutputChannelBar(this, {0, 1, width() - PAD_TABLE_H, ChannelBar::BAR_HEIGHT},
+    outputsBar = new OutputChannelBar(this, {0, 1, width() - PAD_TABLE_H, ChannelBar::BAR_HEIGHT},  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
                                       channel, false, false);
     outputsBar->hide();
 
     failsafeBar = new ChannelBar(
-        this, {0, ChannelBar::BAR_HEIGHT + PAD_THREE, width() - PAD_TABLE_H, ChannelBar::BAR_HEIGHT}, channel,
+        this, {0, ChannelBar::BAR_HEIGHT + PAD_THREE, width() - PAD_TABLE_H, ChannelBar::BAR_HEIGHT}, channel,  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
         [=] { return g_model.failsafeChannels[channel]; },
         COLOR_THEME_WARNING_INDEX);
     failsafeBar->hide();
@@ -161,11 +161,11 @@ class ChannelFSCombo : public Window
   ChannelFSCombo(Window* parent, uint8_t ch, int vmin, int vmax) :
       Window(parent, rect_t{})
   {
-    padAll(PAD_TINY);
+    padAll(PAD_TINY);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
 
-    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);
+    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY, LV_SIZE_CONTENT);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
 
-    setStylePadColumn(PAD_TINY, 0);
+    setStylePadColumn(PAD_TINY, 0);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
     setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
 
     edit = new ChannelFailsafeEdit(this, ch, vmin, vmax);
@@ -198,9 +198,9 @@ FailSafePage::FailSafePage(uint8_t moduleIdx, Route route) : Page(ICON_STATS_ANA
 {
   header->setTitle(STR_FAILSAFESET);
 
-  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
+  body->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_ZERO);
+  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_ZERO);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
 
   auto btn = new TextButton(body, rect_t{0, 0, LV_PCT(100), 0}, STR_CHANNELS2FAILSAFE);
 
@@ -221,7 +221,7 @@ FailSafePage::FailSafePage(uint8_t moduleIdx, Route route) : Page(ICON_STATS_ANA
   for (int ch = start_ch; ch < end_ch; ch++) {
     // Channel name
     auto line = body->newLine(grid);
-    if (ch == start_ch) line->padTop(PAD_TINY);
+    if (ch == start_ch) line->padTop(PAD_TINY);  // ds-allow: custom failsafe - per-channel rows with an embedded output-channel bar graph at absolute offsets; not a DS list.
     const char* ch_label = getSourceString(MIXSRC_FIRST_CH + ch);
     new StaticText(line, rect_t{}, ch_label);
 

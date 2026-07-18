@@ -152,10 +152,10 @@ rect_t ViewMainDecoration::getWidgetsZone(bool showTopBar) const
   }
 
   if (showSliders || showTrims || showFM) {
-    x += PAD_LARGE;
-    y += PAD_LARGE;
-    w -= PAD_LARGE * 2;
-    bh += PAD_LARGE * 2;
+    x += PAD_LARGE; // ds-allow: main-view decoration insets the sliders/trims/FM HUD band by an absolute margin; not a DS surface
+    y += PAD_LARGE; // ds-allow: main-view decoration insets the sliders/trims/FM HUD band by an absolute margin; not a DS surface
+    w -= PAD_LARGE * 2; // ds-allow: main-view decoration insets the sliders/trims/FM HUD band by an absolute margin; not a DS surface
+    bh += PAD_LARGE * 2; // ds-allow: main-view decoration grows the sliders/trims/FM HUD band by an absolute margin; not a DS surface
   }
 
   h -= bh;

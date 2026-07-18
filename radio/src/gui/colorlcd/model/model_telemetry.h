@@ -36,7 +36,7 @@ class ModelTelemetryPage : public PageGroupItem
 
   void build(Window* window) override;
 
-  static LAYOUT_SIZE_SCALED(NUM_EDIT_W, 100, 65)
+  static LAYOUT_SIZE_SCALED(NUM_EDIT_W, 100, 65) // ds-allow: telemetry edit narrow NumberEdit width used to pack multiple fields per line at absolute offsets; not a DS FormRow metric
 
  protected:
   int lastKnownIndex = 0;

@@ -43,7 +43,7 @@ static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
 ModelHeliPage::ModelHeliPage(Route route):
   SubPage(ICON_MODEL_HELI, route, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENUHELISETUP)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);
+  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
   body->setFlexLayout();
 
   // Swash type
@@ -67,7 +67,7 @@ ModelHeliPage::ModelHeliPage(Route route):
 
   // Elevator weight
   auto w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);
+  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
   auto* elevWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.elevatorWeight));
   elevWeight->setDirectKeyboard(false);
@@ -81,7 +81,7 @@ ModelHeliPage::ModelHeliPage(Route route):
 
   // Aileron weight
   w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);
+  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
   auto* ailWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.aileronWeight));
   ailWeight->setDirectKeyboard(false);
@@ -95,7 +95,7 @@ ModelHeliPage::ModelHeliPage(Route route):
 
   // Collective weight
   w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);
+  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
   auto* colWeight = new NumberEdit(line, rect_t{}, -100, 100,
                  GET_SET_DEFAULT(g_model.swashR.collectiveWeight));
   colWeight->setDirectKeyboard(false);

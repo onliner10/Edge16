@@ -34,9 +34,9 @@ struct FMMatrix : public ButtonMatrix {
   bool isActive(uint8_t btn_id);
   void setTextAndState(uint8_t btn_id);
 
-  static LAYOUT_VAL_SCALED(FM_BTN_W, 48)
-  static LAYOUT_SIZE(FM_COLS, 5, 3)
-  static LAYOUT_SIZE(FM_ROWS, 2, 3)
+  static LAYOUT_VAL_SCALED(FM_BTN_W, 48)  // ds-allow: flight-mode matrix; FM toggle-button pixel width, absolute grid sizing not a DS token
+  static LAYOUT_SIZE(FM_COLS, 5, 3)  // ds-allow: flight-mode matrix; fixed column count per orientation, absolute grid sizing not a DS list
+  static LAYOUT_SIZE(FM_ROWS, 2, 3)  // ds-allow: flight-mode matrix; fixed row count per orientation, absolute grid sizing not a DS list
 };
 
 extern template struct FMMatrix<ExpoData>;

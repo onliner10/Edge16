@@ -46,14 +46,14 @@ class MainViewSlider : public Window
 #if defined(RADIO_PL18) || defined(RADIO_PL18EV) || defined(RADIO_PL18U)
   static constexpr coord_t SLIDER_SIZE = 136; // to fit 3 across bottom row
 #else
-  static LAYOUT_SIZE_SCALED_EVEN(SLIDER_SIZE, 160, 120)
+  static LAYOUT_SIZE_SCALED_EVEN(SLIDER_SIZE, 160, 120) // ds-allow: main-view HUD slider length constant; sliders are absolutely-positioned canvas HUD elements, not DS controls
 #endif
-  static LAYOUT_VAL_SCALED_ODD(SLIDER_ICON_SIZE, 15)
+  static LAYOUT_VAL_SCALED_ODD(SLIDER_ICON_SIZE, 15) // ds-allow: main-view HUD slider icon-size constant; absolutely-positioned canvas HUD element, not a DS control
   static constexpr coord_t SLIDER_BAR_SIZE = SLIDER_ICON_SIZE + 2;
-  static LAYOUT_VAL_SCALED(SLIDER_TICK_SPACING, 4)
+  static LAYOUT_VAL_SCALED(SLIDER_TICK_SPACING, 4) // ds-allow: main-view HUD slider tick-mask pixel pitch; canvas drawing constant, not a DS control
   static constexpr coord_t HORIZONTAL_SLIDERS_WIDTH = SLIDER_SIZE + SLIDER_BAR_SIZE;
   static constexpr coord_t VERTICAL_SLIDERS_HEIGHT = SLIDER_SIZE + SLIDER_BAR_SIZE;
-  static constexpr coord_t MASK_SHORT_DIM = SLIDER_ICON_SIZE - PAD_TINY;
+  static constexpr coord_t MASK_SHORT_DIM = SLIDER_ICON_SIZE - PAD_TINY; // ds-allow: main-view HUD slider tick-mask bitmap dimension; canvas drawing constant, not a DS control
   static constexpr coord_t MASK_LONG_DIM = SLIDER_SIZE + 1;
 
  protected:
@@ -90,8 +90,8 @@ class MainView6POS : public Window
 
   void onLiveCheckEvents(LiveWindow& live) override;
 
-  static LAYOUT_VAL_SCALED(MULTIPOS_W_SPACING, 12)
-  static LAYOUT_VAL_SCALED(MULTIPOS_SZ, 12)
+  static LAYOUT_VAL_SCALED(MULTIPOS_W_SPACING, 12) // ds-allow: main-view 6POS HUD label pitch; labels are absolutely positioned along the slider, not a DS control
+  static LAYOUT_VAL_SCALED(MULTIPOS_SZ, 12) // ds-allow: main-view 6POS HUD label box size; absolutely-positioned canvas HUD element, not a DS control
   static constexpr coord_t MULTIPOS_W = (XPOTS_MULTIPOS_COUNT + 1) * MULTIPOS_W_SPACING;
 
  protected:

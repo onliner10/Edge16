@@ -41,7 +41,7 @@ class ThemeColorPreview : public Window
   {
     setWindowFlag(NO_FOCUS);
 
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: theme editor — zero padding on the color-swatch strip so swatches abut; preview pane, not a DS list/form.
 #if LANDSCAPE
     setFlexLayout(LV_FLEX_FLOW_COLUMN, BOX_MARGIN);
 #else
@@ -56,9 +56,9 @@ class ThemeColorPreview : public Window
     setBoxWidth();
     int size = (boxWidth + BOX_MARGIN) * colorList.size() - BOX_MARGIN;
 #if LANDSCAPE
-    padTop((height() - size) / 2);
+    padTop((height() - size) / 2);  // ds-allow: theme editor — landscape vertical centering of the swatch column within the preview strip; not a DS list/form.
 #else
-    padLeft((width() - size) / 2);
+    padLeft((width() - size) / 2);  // ds-allow: theme editor — portrait horizontal centering of the swatch row within the preview strip; not a DS list/form.
 #endif
     for (auto color : colorList) {
       new ColorSwatch(this, {0, 0, boxWidth, boxWidth}, color.colorValue);
@@ -71,7 +71,7 @@ class ThemeColorPreview : public Window
     build();
   }
 
-  static LAYOUT_VAL_SCALED(MAX_BOX_WIDTH, 15)
+  static LAYOUT_VAL_SCALED(MAX_BOX_WIDTH, 15)  // ds-allow: theme editor — max swatch-box size in the color-swatch preview strip; not a DS list/form.
   static constexpr int BOX_MARGIN = 2;
 
  protected:
@@ -108,7 +108,7 @@ class ThemeDetailsDialog : public BaseDialog
       theme(theme),
       saveHandler(saveHandler)
   {
-    FlexGridLayout grid(d_col_dsc, row_dsc, PAD_TINY);
+    FlexGridLayout grid(d_col_dsc, row_dsc, PAD_TINY);  // ds-allow: theme editor — column gap for the theme-details dialog's custom name/author grid; not a single DS FormRow control.
 
     strAppend(name, this->theme.getName().c_str(), SELECTED_THEME_NAME_LEN);
     strAppend(author, this->theme.getAuthor().c_str(), ThemeFile::AUTHOR_LENGTH);
@@ -116,33 +116,33 @@ class ThemeDetailsDialog : public BaseDialog
 
     form.with([&](Window& formWindow) {
       auto line = formWindow.newLine(grid);
-      line->padAll(PAD_TINY);
+      line->padAll(PAD_TINY);  // ds-allow: theme editor — per-line padding on the name line of the theme-details dialog; not a single DS FormRow control.
 
       new StaticText(line, rect_t{}, STR_NAME);
       auto te = new TextEdit(line, rect_t{}, name, SELECTED_THEME_NAME_LEN);
       te->setGridCell(LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_CENTER, 0, 1);
 
       line = formWindow.newLine(grid);
-      line->padAll(PAD_TINY);
+      line->padAll(PAD_TINY);  // ds-allow: theme editor — per-line padding on the author line of the theme-details dialog; not a single DS FormRow control.
 
       new StaticText(line, rect_t{}, STR_AUTHOR);
       te = new TextEdit(line, rect_t{}, author, ThemeFile::AUTHOR_LENGTH);
       te->setGridCell(LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_CENTER, 0, 1);
 
-      FlexGridLayout grid2(b_col_dsc, row_dsc, PAD_TINY);
+      FlexGridLayout grid2(b_col_dsc, row_dsc, PAD_TINY);  // ds-allow: theme editor — column gap for the description/buttons sub-grid in the theme-details dialog; not a single DS FormRow control.
 
       line = formWindow.newLine(grid2);
-      line->padAll(PAD_TINY);
+      line->padAll(PAD_TINY);  // ds-allow: theme editor — per-line padding on the description label line of the theme-details dialog; not a single DS FormRow control.
 
       new StaticText(line, rect_t{}, STR_DESCRIPTION);
       line = formWindow.newLine(grid2);
-      line->padAll(PAD_TINY);
+      line->padAll(PAD_TINY);  // ds-allow: theme editor — per-line padding on the description text-edit line of the theme-details dialog; not a single DS FormRow control.
       te = new TextEdit(line, rect_t{}, info, ThemeFile::INFO_LENGTH);
       te->setGridCell(LV_GRID_ALIGN_STRETCH, 0, 2, LV_GRID_ALIGN_CENTER, 0, 1);
 
       line = formWindow.newLine(grid2);
-      line->padAll(PAD_TINY);
-      line->padTop(10);
+      line->padAll(PAD_TINY);  // ds-allow: theme editor — per-line padding on the cancel/save button row of the theme-details dialog; not a single DS FormRow control.
+      line->padTop(10);  // ds-allow: theme editor — extra top gap separating the button row from the description field; not a single DS FormRow control.
 
       auto button =
           new TextButton(line, rect_t{0, 0, lv_pct(30), 0}, STR_CANCEL, [=]() {
@@ -179,7 +179,7 @@ class ColorEditPage : public Page
  public:
   ColorEditPage(ThemeFile *theme, LcdColorIndex indexOfColor,
                 std::function<void()> updateHandler = nullptr) :
-      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),
+      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),  // ds-allow: theme editor — color-edit page built with small padding for a fixed list/editor/preview multi-pane split; not a DS list/form.
       _updateHandler(std::move(updateHandler)),
       _indexOfColor(indexOfColor),
       _theme(theme)
@@ -199,11 +199,11 @@ class ColorEditPage : public Page
     }
   }
 
-  static LAYOUT_SIZE_SCALED(COLOR_BOX_WIDTH, 45, 55)
-  static LAYOUT_VAL_SCALED(COLOR_BOX_HEIGHT, 30)
-  static LAYOUT_VAL_SCALED(HEX_STR_W, 95)
-  static LAYOUT_SIZE_SCALED(BUTTON_WIDTH, 75, 65)
-  static LAYOUT_SIZE(COLOR_LIST_SIZE, (LCD_W * 3) / 10, LCD_H / 2 - (PAD_LARGE * 3))
+  static LAYOUT_SIZE_SCALED(COLOR_BOX_WIDTH, 45, 55)  // ds-allow: theme editor — color-swatch box width in the fixed swatch+hex row; not a DS list/form.
+  static LAYOUT_VAL_SCALED(COLOR_BOX_HEIGHT, 30)  // ds-allow: theme editor — color-swatch box height in the fixed swatch+hex row; not a DS list/form.
+  static LAYOUT_VAL_SCALED(HEX_STR_W, 95)  // ds-allow: theme editor — hex-string field width beside the color swatch; not a DS list/form.
+  static LAYOUT_SIZE_SCALED(BUTTON_WIDTH, 75, 65)  // ds-allow: theme editor — save/cancel button width in the color-edit page; not a DS list/form.
+  static LAYOUT_SIZE(COLOR_LIST_SIZE, (LCD_W * 3) / 10, LCD_H / 2 - (PAD_LARGE * 3))  // ds-allow: theme editor — color-list pane size as viewport fraction in the fixed list/preview split; not a DS list/form.
 
  protected:
   std::function<void()> _updateHandler;
@@ -235,23 +235,23 @@ class ColorEditPage : public Page
 
   void buildBody(Window *form)
   {
-    form->padAll(PAD_SMALL);
+    form->padAll(PAD_SMALL);  // ds-allow: theme editor — color-edit body padding around the fixed list/editor/preview panes; not a DS list/form.
 #if LANDSCAPE
-    form->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
-    rect_t r = {0, 0, COLOR_LIST_SIZE, form->height() - 2 * PAD_SMALL};
+    form->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: theme editor — landscape row split placing the color list beside the editor/preview; not a DS list/form.
+    rect_t r = {0, 0, COLOR_LIST_SIZE, form->height() - 2 * PAD_SMALL};  // ds-allow: theme editor — landscape color-list pane rect sized as a viewport fraction; not a DS list/form.
 #else
-    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);
-    rect_t r = {0, 0, form->width() - 2 * PAD_SMALL, COLOR_LIST_SIZE};
+    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);  // ds-allow: theme editor — portrait column split stacking the color list above the editor/preview; not a DS list/form.
+    rect_t r = {0, 0, form->width() - 2 * PAD_SMALL, COLOR_LIST_SIZE};  // ds-allow: theme editor — portrait color-list pane rect sized as a viewport fraction; not a DS list/form.
 #endif
 
     Window *colForm = new Window(form, r);
-    colForm->padAll(PAD_ZERO);
-    colForm->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, r.w);
+    colForm->padAll(PAD_ZERO);  // ds-allow: theme editor — zero padding on the color-editor column that stacks the swatch row and editor pane; not a DS list/form.
+    colForm->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL, r.w);  // ds-allow: theme editor — column layout for the swatch row + color-editor pane; not a DS list/form.
 
 #if LANDSCAPE
-    r.w = form->width() - COLOR_LIST_SIZE - 3 * PAD_SMALL;
+    r.w = form->width() - COLOR_LIST_SIZE - 3 * PAD_SMALL;  // ds-allow: theme editor — landscape preview-pane width = viewport remaining after the color list; not a DS list/form.
 #else
-    r.h = form->height() - COLOR_LIST_SIZE - 3 * PAD_SMALL;
+    r.h = form->height() - COLOR_LIST_SIZE - 3 * PAD_SMALL;  // ds-allow: theme editor — portrait preview-pane height = viewport remaining after the color list; not a DS list/form.
 #endif
     _previewWindow = new PreviewWindow(form, r, _theme->getColorList());
 
@@ -259,10 +259,10 @@ class ColorEditPage : public Page
     r.h = COLOR_BOX_HEIGHT;
 
     Window *colBoxForm = new Window(colForm, r);
-    colBoxForm->padAll(PAD_ZERO);
-    colBoxForm->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);
+    colBoxForm->padAll(PAD_ZERO);  // ds-allow: theme editor — zero padding on the swatch+hex row so swatch and hex box abut; not a DS list/form.
+    colBoxForm->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_TINY);  // ds-allow: theme editor — row layout packing the color swatch beside the hex box; not a DS list/form.
 
-    r.h = colForm->height() - COLOR_BOX_HEIGHT - PAD_SMALL;
+    r.h = colForm->height() - COLOR_BOX_HEIGHT - PAD_SMALL;  // ds-allow: theme editor — color-editor pane height = column remaining after the swatch row; not a DS list/form.
 
     auto colorEntry = _theme->getColorEntryByIndex(_indexOfColor);
     uint32_t color = colorEntry ? colorEntry->colorValue : 0;
@@ -306,7 +306,7 @@ class ColorEditPage : public Page
 #endif
 
     // page tabs
-    rect_t r = {LCD_W - 2 * (BUTTON_WIDTH + PAD_SMALL + 1) - EdgeTxStyles::MENU_HEADER_HEIGHT, PAD_MEDIUM, BUTTON_WIDTH, 0};
+    rect_t r = {LCD_W - 2 * (BUTTON_WIDTH + PAD_SMALL + 1) - EdgeTxStyles::MENU_HEADER_HEIGHT, PAD_MEDIUM, BUTTON_WIDTH, 0};  // ds-allow: theme editor — RGB/HSV tab buttons positioned absolutely at the top-right of the color-edit header; not a DS list/form.
     _tabs.emplace_back(new TextButton(window, r, "RGB", [=]() {
       setActiveColorBar(0);
       return 1;
@@ -326,7 +326,7 @@ class ThemeEditPage : public Page
   explicit ThemeEditPage(
       ThemeFile *theme,
       std::function<void(ThemeFile &theme)> saveHandler = nullptr) :
-      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),
+      Page(ICON_RADIO_EDIT_THEME, Route{}, PAD_SMALL),  // ds-allow: theme editor — theme-edit page built with small padding for a fixed color-list beside preview-pane split; not a DS list/form.
       _theme(*theme),
       page(this),
       saveHandler(std::move(saveHandler))
@@ -380,7 +380,7 @@ class ThemeEditPage : public Page
 #endif
 
     // save and cancel
-    rect_t r = {LCD_W - (ColorEditPage::BUTTON_WIDTH + PAD_SMALL + 1) - EdgeTxStyles::MENU_HEADER_HEIGHT, PAD_MEDIUM, ColorEditPage::BUTTON_WIDTH, 0};
+    rect_t r = {LCD_W - (ColorEditPage::BUTTON_WIDTH + PAD_SMALL + 1) - EdgeTxStyles::MENU_HEADER_HEIGHT, PAD_MEDIUM, ColorEditPage::BUTTON_WIDTH, 0};  // ds-allow: theme editor — details button positioned absolutely at the top-right of the theme-edit header; not a DS list/form.
     new TextButton(window, r, STR_DETAILS, [=]() {
       new ThemeDetailsDialog(_theme, [=](ThemeFile t) {
         _theme.setAuthor(t.getAuthor());
@@ -398,13 +398,13 @@ class ThemeEditPage : public Page
 
   void buildBody(Window *form)
   {
-    form->padAll(PAD_SMALL);
+    form->padAll(PAD_SMALL);  // ds-allow: theme editor — theme-edit body padding around the fixed color-list and preview panes; not a DS list/form.
 #if LANDSCAPE
-    form->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
-    rect_t r = {0, 0, ColorEditPage::COLOR_LIST_SIZE, form->height() - 2 * PAD_SMALL};
+    form->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: theme editor — landscape row split placing the color list beside the preview pane; not a DS list/form.
+    rect_t r = {0, 0, ColorEditPage::COLOR_LIST_SIZE, form->height() - 2 * PAD_SMALL};  // ds-allow: theme editor — landscape color-list rect sized as a viewport fraction; not a DS list/form.
 #else
-    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);
-    rect_t r = {0, 0, form->width() - 2 * PAD_SMALL, ColorEditPage::COLOR_LIST_SIZE};
+    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);  // ds-allow: theme editor — portrait column split stacking the color list above the preview pane; not a DS list/form.
+    rect_t r = {0, 0, form->width() - 2 * PAD_SMALL, ColorEditPage::COLOR_LIST_SIZE};  // ds-allow: theme editor — portrait color-list rect sized as a viewport fraction; not a DS list/form.
 #endif
 
     _cList = new ColorList(form, r, _theme.getColorList());
@@ -412,9 +412,9 @@ class ThemeEditPage : public Page
     _cList->setPressHandler([=]() { editColorPage(); });
 
 #if LANDSCAPE
-    r.w = form->width() - ColorEditPage::COLOR_LIST_SIZE - 3 * PAD_SMALL;
+    r.w = form->width() - ColorEditPage::COLOR_LIST_SIZE - 3 * PAD_SMALL;  // ds-allow: theme editor — landscape preview-pane width = viewport remaining after the color list; not a DS list/form.
 #else
-    r.h = form->height() - ColorEditPage::COLOR_LIST_SIZE - 3 * PAD_SMALL;
+    r.h = form->height() - ColorEditPage::COLOR_LIST_SIZE - 3 * PAD_SMALL;  // ds-allow: theme editor — portrait preview-pane height = viewport remaining after the color list; not a DS list/form.
 #endif
     _previewWindow = new PreviewWindow(form, r, _theme.getColorList());
   }
@@ -596,13 +596,13 @@ void ThemeSetupPage::setupListbox(Window *window, rect_t r,
 
 void ThemeSetupPage::build(Window *window)
 {
-  window->padAll(PAD_SMALL);
+  window->padAll(PAD_SMALL);  // ds-allow: theme editor — theme-setup body padding around the fixed list/color-preview/carousel panes; not a DS list/form.
   pageWindow = window;
 
 #if LANDSCAPE
-  window->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);
+  window->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: theme editor — landscape row split placing theme list, color-preview strip and carousel side by side; not a DS list/form.
 #else
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_SMALL);  // ds-allow: theme editor — portrait column split stacking theme list, color-preview strip and carousel; not a DS list/form.
 #endif
 
   auto tp = ThemePersistance::instance();
@@ -617,9 +617,9 @@ void ThemeSetupPage::build(Window *window)
 
   // create listbox and setup menus
 #if LANDSCAPE
-  rect_t r = {0, 0, LIST_SIZE, window->height() - 2 * PAD_SMALL};
+  rect_t r = {0, 0, LIST_SIZE, window->height() - 2 * PAD_SMALL};  // ds-allow: theme editor — landscape theme-list pane rect sized as a viewport fraction; not a DS list/form.
 #else
-  rect_t r = {0, 0, window->width() - 2 * PAD_SMALL, LIST_SIZE};
+  rect_t r = {0, 0, window->width() - 2 * PAD_SMALL, LIST_SIZE};  // ds-allow: theme editor — portrait theme-list pane rect sized as a viewport fraction; not a DS list/form.
 #endif
   setupListbox(window, r, tp);
 
@@ -636,16 +636,16 @@ void ThemeSetupPage::build(Window *window)
   themeColorPreview->setWidth(r.w);
 
 #if LANDSCAPE
-  r.w = window->width() - LIST_SIZE - COLOR_PREVIEW_SIZE - 4 * PAD_SMALL;
-  r.h = window->height() - 2 * PAD_SMALL;
+  r.w = window->width() - LIST_SIZE - COLOR_PREVIEW_SIZE - 4 * PAD_SMALL;  // ds-allow: theme editor — landscape carousel/detail pane width = viewport remaining after the list and color-preview strip; not a DS list/form.
+  r.h = window->height() - 2 * PAD_SMALL;  // ds-allow: theme editor — landscape carousel/detail pane height spanning the page; not a DS list/form.
 #else
-  r.w = window->width() - 2 * PAD_SMALL;
-  r.h = window->height() - LIST_SIZE - COLOR_PREVIEW_SIZE - 4 * PAD_SMALL;
+  r.w = window->width() - 2 * PAD_SMALL;  // ds-allow: theme editor — portrait carousel/detail pane width spanning the page; not a DS list/form.
+  r.h = window->height() - LIST_SIZE - COLOR_PREVIEW_SIZE - 4 * PAD_SMALL;  // ds-allow: theme editor — portrait carousel/detail pane height = viewport remaining after the list and color-preview strip; not a DS list/form.
 #endif
 
   auto rw = new Window(window, r);
-  rw->padAll(PAD_ZERO);
-  rw->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO, r.w);
+  rw->padAll(PAD_ZERO);  // ds-allow: theme editor — zero padding on the right-hand detail pane holding the carousel and name/author text; not a DS list/form.
+  rw->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO, r.w);  // ds-allow: theme editor — column layout stacking the carousel and name/author text in the detail pane; not a DS list/form.
 
   r.h -= 2 * EdgeTxStyles::STD_FONT_HEIGHT;
 

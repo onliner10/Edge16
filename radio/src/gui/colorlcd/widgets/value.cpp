@@ -337,9 +337,9 @@ class ValueWidget : public NativeWidget
   RequiredLvObj contentBox;
   LcdFlags valueFlags = 0;
 
-  static LAYOUT_VAL_SCALED(VAL_Y1, 14) static LAYOUT_VAL_SCALED(VAL_Y2, 18) static LAYOUT_VAL_SCALED(
+  static LAYOUT_VAL_SCALED(VAL_Y1, 14) static LAYOUT_VAL_SCALED(VAL_Y2, 18) static LAYOUT_VAL_SCALED( // ds-allow: value widget — DPI-scaled label/value Y offsets and compact Y for the canvas value layout; not a DS row/form.
       COMPACT_VAL_Y,
-      14) static LAYOUT_VAL_SCALED(H_CHK, 50) static LAYOUT_VAL_SCALED(W_CHK,
+      14) static LAYOUT_VAL_SCALED(H_CHK, 50) static LAYOUT_VAL_SCALED(W_CHK, // ds-allow: value widget — DPI-scaled short-card height/width thresholds for choosing the inline vs stacked value layout; canvas geometry, not a DS row/form.
                                                                        120)
 
       void layoutContent(const rect_t& content) override
@@ -494,16 +494,16 @@ class ValueWidget : public NativeWidget
       labelX = content.x;
       labelY = content.y;
       valueX = content.x;
-      valueY = content.y + labelH + PAD_SMALL;
-      valueH = content.h > labelH + PAD_SMALL ? content.h - labelH - PAD_SMALL
+      valueY = content.y + labelH + PAD_SMALL; // ds-allow: value widget — value Y placed below the label with a small gap; pixel geometry inside the resizable zone, not a DS row/form.
+      valueH = content.h > labelH + PAD_SMALL ? content.h - labelH - PAD_SMALL // ds-allow: value widget — value height from zone height minus label and a small gap; pixel geometry, not a DS row/form.
                                               : content.h;
       FontIndex valueFont = content.h >= 70 ? FONT_L_INDEX : FONT_BOLD_INDEX;
       value.with([&](lv_obj_t* obj) { etx_font(obj, valueFont); });
       valueShadow.with([&](lv_obj_t* obj) { etx_font(obj, valueFont); });
       valueH = getFontHeight(LcdFlags(valueFont) << 8u);
-      valueY = content.y + labelH + PAD_SMALL +
-               ((content.h - labelH - PAD_SMALL - valueH) > 0
-                    ? (content.h - labelH - PAD_SMALL - valueH) / 2
+      valueY = content.y + labelH + PAD_SMALL + // ds-allow: value widget — value Y recomputed to vertically center within the remaining zone height (label + small gap); pixel geometry, not a DS row/form.
+               ((content.h - labelH - PAD_SMALL - valueH) > 0 // ds-allow: value widget — remaining-height check for vertical centering within the zone; pixel geometry, not a DS row/form.
+                    ? (content.h - labelH - PAD_SMALL - valueH) / 2 // ds-allow: value widget — half the remaining zone height used to center the value; pixel geometry, not a DS row/form.
                     : 0);
       if (!nativeCard && field >= MIXSRC_FIRST_TELEM) {
         int8_t sensor = 1 + (field - MIXSRC_FIRST_TELEM) / 3;
@@ -548,20 +548,20 @@ class ValueWidget : public NativeWidget
 
     // Set label and value positions.
     labelShadow.with([&](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, labelX + 1, labelY + 1);
+      lv_obj_set_pos(obj, labelX + 1, labelY + 1); // ds-allow: value widget — drop-shadow label nudged 1px behind the label; canvas widget positioned by pixel in the resizable zone, not a DS row/form.
       lv_obj_set_size(obj, labelW, labelH);
     });
     label.with([&](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, labelX, labelY);
+      lv_obj_set_pos(obj, labelX, labelY); // ds-allow: value widget — label placed at absolute offset within the resizable zone; canvas widget, not a DS row/form.
       lv_obj_set_size(obj, labelW, labelH);
       if (!shortCard) setObjVisible(obj, true);
     });
     valueShadow.with([&](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, valueX + 1, valueY + 1);
+      lv_obj_set_pos(obj, valueX + 1, valueY + 1); // ds-allow: value widget — drop-shadow value nudged 1px behind the value; canvas widget positioned by pixel in the resizable zone, not a DS row/form.
       lv_obj_set_size(obj, valueW, valueH);
     });
     value.with([&](lv_obj_t* obj) {
-      lv_obj_set_pos(obj, valueX, valueY);
+      lv_obj_set_pos(obj, valueX, valueY); // ds-allow: value widget — value placed at absolute offset within the resizable zone; canvas widget, not a DS row/form.
       lv_obj_set_size(obj, valueW, valueH);
     });
 

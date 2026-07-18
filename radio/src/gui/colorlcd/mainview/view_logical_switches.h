@@ -31,9 +31,9 @@ class LogicalSwitchesViewPage : public PageGroupItem
   LogicalSwitchesViewPage();
   LogicalSwitchesViewPage(const PageDef& pageDef);
 
-  static LAYOUT_ORIENTATION_SCALED(FOOTER_HEIGHT, 20, 40)
-  static LAYOUT_ORIENTATION(BTN_MATRIX_COL, 8, 6)
-  static constexpr coord_t BTN_WIDTH = (LCD_W - PAD_OUTLINE * 2) / BTN_MATRIX_COL - PAD_OUTLINE;
+  static LAYOUT_ORIENTATION_SCALED(FOOTER_HEIGHT, 20, 40) // ds-allow: LS monitor footer height constant for the absolutely-placed footer window; not a DS list
+  static LAYOUT_ORIENTATION(BTN_MATRIX_COL, 8, 6) // ds-allow: LS monitor button-matrix column count for absolute cell placement; not a DS list
+  static constexpr coord_t BTN_WIDTH = (LCD_W - PAD_OUTLINE * 2) / BTN_MATRIX_COL - PAD_OUTLINE; // ds-allow: LS monitor button-matrix cell width for absolute cell placement; not a DS list
 
  protected:
   void build(Window* window) override;

@@ -30,7 +30,7 @@ class RadioSetupPage: public PageGroupItem
 
   void build(Window * window) override;
 
-  static LAYOUT_ORIENTATION(BTN_COLS, 3, 2)
-  static LAYOUT_VAL_SCALED(BTN_H, 62)
-  static LAYOUT_VAL_SCALED(HATS_MODE_W, 120)
+  static LAYOUT_ORIENTATION(BTN_COLS, 3, 2)  // ds-allow: radio setup — column count for multi-column radio-setup button group; not a single DS FormRow control.
+  static LAYOUT_VAL_SCALED(BTN_H, 62)  // ds-allow: radio setup — fixed button height for multi-column button group; not a single DS FormRow control.
+  static LAYOUT_VAL_SCALED(HATS_MODE_W, 120)  // ds-allow: radio setup — fixed width to place '?' help button beside hats-mode field; not a single DS FormRow control.
 };

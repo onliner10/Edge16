@@ -43,12 +43,12 @@ class RadioCalibrationPage: public Page {
     void buildBody(Window * window);
     void setState();
 
-    static LAYOUT_VAL_SCALED(NXT_W, 80);
-    static constexpr coord_t NXT_X = LCD_W - NXT_W - PAD_LARGE * 4;
-    static LAYOUT_VAL_SCALED(AXIS_W, 80);
-    static constexpr coord_t AXIS_X = PAD_LARGE * 4;
-    static LAYOUT_VAL_SCALED(POTS_W, 80);
-    static constexpr coord_t POTS_X = AXIS_X + AXIS_W + PAD_LARGE;
+    static LAYOUT_VAL_SCALED(NXT_W, 80);  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
+    static constexpr coord_t NXT_X = LCD_W - NXT_W - PAD_LARGE * 4;  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
+    static LAYOUT_VAL_SCALED(AXIS_W, 80);  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
+    static constexpr coord_t AXIS_X = PAD_LARGE * 4;  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
+    static LAYOUT_VAL_SCALED(POTS_W, 80);  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
+    static constexpr coord_t POTS_X = AXIS_X + AXIS_W + PAD_LARGE;  // ds-allow: calibration screen geometry - button-bar widths/positions over the calibration canvas; not a DS form.
 };
 
 void startCalibration();

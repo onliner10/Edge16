@@ -72,7 +72,7 @@ class DateNumberEdit : public NumberEdit
     setEditTitle(editTitle);
   }
 
-  static LAYOUT_ORIENTATION(DT_EDT_W, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, LAYOUT_SCALE(52))
+  static LAYOUT_ORIENTATION(DT_EDT_W, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, LAYOUT_SCALE(52))  // ds-allow: radio setup — fixed width of each Y/M/D and H:M:S number field placed absolutely side by side in the date/time editor; not a single DS FormRow control.
 
  protected:
   int32_t lastValue;
@@ -90,7 +90,7 @@ class DateTimeWindow : public Window
   DateTimeWindow(Window* parent, const rect_t& rect) :
       Window(parent, rect)
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO);  // ds-allow: radio setup — zero padding on the date/time window whose Y/M/D and H:M:S fields are placed absolutely; not a single DS FormRow control.
     build();
   }
 
@@ -104,7 +104,7 @@ class DateTimeWindow : public Window
     }
   }
 
-  static constexpr coord_t DT_Y2 = PAD_TINY + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_MEDIUM;
+  static constexpr coord_t DT_Y2 = PAD_TINY + EdgeTxStyles::UI_ELEMENT_HEIGHT + PAD_MEDIUM;  // ds-allow: radio setup — y of the time row placed absolutely below the date row in the date/time editor; not a single DS FormRow control.
 
  protected:
   bool init = false;
@@ -142,8 +142,8 @@ class DateTimeWindow : public Window
     gettime(&m_tm);
 
     // Date
-    new StaticText(this, rect_t{PAD_TINY, PAD_TINY + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_DATE);
-    new DateNumberEdit(this, SubPage::EDT_X, PAD_TINY, 2023, 2037, false, STR_ROLLER_YEAR,
+    new StaticText(this, rect_t{PAD_TINY, PAD_TINY + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_DATE);  // ds-allow: radio setup — DATE label placed absolutely left of the year/month/day fields; not a single DS FormRow control.
+    new DateNumberEdit(this, SubPage::EDT_X, PAD_TINY, 2023, 2037, false, STR_ROLLER_YEAR,  // ds-allow: radio setup — year field placed absolutely at column 0 of the date row; not a single DS FormRow control.
         [=]() -> int32_t { return TM_YEAR_BASE + m_tm.tm_year; },
         [=](int32_t newValue) {
           m_tm.tm_year = newValue - TM_YEAR_BASE;
@@ -151,7 +151,7 @@ class DateTimeWindow : public Window
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, PAD_TINY, 1, 12, false, STR_ROLLER_MONTH,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, PAD_TINY, 1, 12, false, STR_ROLLER_MONTH,  // ds-allow: radio setup — month field placed absolutely at column 1 of the date row; not a single DS FormRow control.
         [=]() -> int32_t { return 1 + m_tm.tm_mon; },
         [=](int32_t newValue) {
           m_tm.tm_mon = newValue - 1;
@@ -159,7 +159,7 @@ class DateTimeWindow : public Window
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    day = new DateNumberEdit(this, SubPage::EDT_X + 2 * DateNumberEdit::DT_EDT_W + PAD_SMALL, PAD_TINY, 1, daysInMonth(), true, STR_ROLLER_DAY,
+    day = new DateNumberEdit(this, SubPage::EDT_X + 2 * DateNumberEdit::DT_EDT_W + PAD_SMALL, PAD_TINY, 1, daysInMonth(), true, STR_ROLLER_DAY,  // ds-allow: radio setup — day field placed absolutely at column 2 of the date row; not a single DS FormRow control.
         [=]() -> int32_t { return m_tm.tm_mday; },
         [=](int32_t newValue) {
           m_tm.tm_mday = newValue;
@@ -167,7 +167,7 @@ class DateTimeWindow : public Window
         });
 
     // Time
-    new StaticText(this, rect_t{PAD_TINY, DT_Y2 + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_TIME);
+    new StaticText(this, rect_t{PAD_TINY, DT_Y2 + PAD_MEDIUM, SubPage::EDT_X - PAD_TINY - PAD_SMALL, EdgeTxStyles::STD_FONT_HEIGHT}, STR_TIME);  // ds-allow: radio setup — TIME label placed absolutely left of the hour/min/sec fields; not a single DS FormRow control.
     new DateNumberEdit(this, SubPage::EDT_X, DT_Y2, 0, 23, true, STR_ROLLER_HOUR,
         [=]() -> int32_t { return m_tm.tm_hour; },
         [=](int32_t newValue) {
@@ -175,14 +175,14 @@ class DateTimeWindow : public Window
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, DT_Y2, 0, 59, true, STR_ROLLER_MINUTE,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W + PAD_TINY, DT_Y2, 0, 59, true, STR_ROLLER_MINUTE,  // ds-allow: radio setup — minute field placed absolutely at column 1 of the time row; not a single DS FormRow control.
         [=]() -> int32_t { return m_tm.tm_min; },
         [=](int32_t newValue) {
           m_tm.tm_min = newValue;
           SET_LOAD_DATETIME(&m_tm);
         });
 
-    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W * 2 + PAD_SMALL, DT_Y2, 0, 59, true, STR_ROLLER_SECOND,
+    new DateNumberEdit(this, SubPage::EDT_X + DateNumberEdit::DT_EDT_W * 2 + PAD_SMALL, DT_Y2, 0, 59, true, STR_ROLLER_SECOND,  // ds-allow: radio setup — second field placed absolutely at column 2 of the time row; not a single DS FormRow control.
         [=]() -> int32_t { return m_tm.tm_sec; },
         [=](int32_t newValue) {
           m_tm.tm_sec = newValue;
@@ -195,7 +195,7 @@ class ControlTextOverride : public StaticText
 {
  public:
   ControlTextOverride(Window* parent, coord_t x, coord_t y, FunctionsActive func) :
-        StaticText(parent, {x + XO, y + PAD_MEDIUM, 0, 0}, STR_SF_OVERRIDDEN, COLOR_THEME_WARNING_INDEX, FONT_SZ), func(func)
+        StaticText(parent, {x + XO, y + PAD_MEDIUM, 0, 0}, STR_SF_OVERRIDDEN, COLOR_THEME_WARNING_INDEX, FONT_SZ), func(func)  // ds-allow: radio setup — SF-override warning label placed absolutely at a fixed x-offset beside the switch field; not a single DS FormRow control.
   {
     hide();
   }
@@ -205,8 +205,8 @@ class ControlTextOverride : public StaticText
     show(isFunctionActive(func));
   }
 
-  static LAYOUT_SIZE(FONT_SZ, FONT(STD), FONT(XS))
-  static LAYOUT_ORIENTATION(XO, PAD_LARGE * 12, PAD_LARGE * 8)
+  static LAYOUT_SIZE(FONT_SZ, FONT(STD), FONT(XS))  // ds-allow: radio setup — font size for the SF-override warning label; not a single DS FormRow control.
+  static LAYOUT_ORIENTATION(XO, PAD_LARGE * 12, PAD_LARGE * 8)  // ds-allow: radio setup — x-offset placing the SF-override warning label beside the switch field; not a single DS FormRow control.
 
  protected:
   FunctionsActive func;
@@ -650,7 +650,7 @@ static void viewOption(Window* parent, coord_t x, coord_t y,
     std::string s(STR_MODEL);
     s += " - ";
     s += STR_ADCFILTERVALUES[modelOption];
-    new StaticText(parent, {x + ToggleSwitch::TOGGLE_W + PAD_MEDIUM, y + PAD_SMALL + 1, 0, 0}, s.c_str(), COLOR_THEME_SECONDARY1_INDEX);
+    new StaticText(parent, {x + ToggleSwitch::TOGGLE_W + PAD_MEDIUM, y + PAD_SMALL + 1, 0, 0}, s.c_str(), COLOR_THEME_SECONDARY1_INDEX);  // ds-allow: radio setup — ADC-filter model-override label placed absolutely beside the toggle on one line; not a single DS FormRow control.
   }
 }
 
@@ -1022,7 +1022,7 @@ const static SetupLineDef setupLines[] = {
     [](Window* parent, coord_t x, coord_t y) {
       new Choice(parent, {x, y, RadioSetupPage::HATS_MODE_W, 0}, STR_HATSOPT, HATSMODE_TRIMS_ONLY,
                 HATSMODE_SWITCHABLE, GET_SET_DEFAULT(g_eeGeneral.hatsMode));
-      new TextButton(parent, {x + RadioSetupPage::HATS_MODE_W + PAD_MEDIUM, y, 0, 0}, "?", [=]() {
+      new TextButton(parent, {x + RadioSetupPage::HATS_MODE_W + PAD_MEDIUM, y, 0, 0}, "?", [=]() {  // ds-allow: radio setup — '?' help button placed absolutely beside the hats-mode choice on one line; not a single DS FormRow control.
         new MessageDialog(STR_HATSMODE_KEYS, STR_HATSMODE_KEYS_HELP, "",
                           LEFT);
         return 0;
@@ -1072,7 +1072,7 @@ const static SetupLineDef setupLines[] = {
   {nullptr, nullptr},
 };
 
-RadioSetupPage::RadioSetupPage(const PageDef& pageDef) : PageGroupItem(pageDef, PAD_TINY) {}
+RadioSetupPage::RadioSetupPage(const PageDef& pageDef) : PageGroupItem(pageDef, PAD_TINY) {}  // ds-allow: radio setup — tiny inter-line padding for a page mixing the date/time editor, multi-column button group and setup lines; not a single DS FormRow control.
 
 #if VERSION_MAJOR > 2
 static bool hasShortcutKeys()
@@ -1114,11 +1114,11 @@ void RadioSetupPage::build(Window* window)
   Window * w;
 
   // Date & time picker including labels
-  w = new DateTimeWindow(window, {0, y, LCD_W - padding * 2, EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_TINY * 2 + PAD_MEDIUM});
+  w = new DateTimeWindow(window, {0, y, LCD_W - padding * 2, EdgeTxStyles::UI_ELEMENT_HEIGHT * 2 + PAD_TINY * 2 + PAD_MEDIUM});  // ds-allow: radio setup — date/time multi-field editor window sized to span the two absolutely-laid-out date and time rows; not a single DS FormRow control.
   y += w->height() + padding;
 
   // Sub-pages
-  w = new SetupButtonGroup(window, {0, y, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, radioSetupButtons, route(), BTN_H);
+  w = new SetupButtonGroup(window, {0, y, LCD_W - padding * 2, 0}, nullptr, BTN_COLS, PAD_TINY, radioSetupButtons, route(), BTN_H);  // ds-allow: radio setup — multi-column sub-page button group spanning the page width; not a single DS FormRow control.
   y += w->height() + padding;
 
   SetupLine::showLines(window, y, SubPage::EDT_X, padding, setupLines);

@@ -171,9 +171,9 @@ class HeaderDateTime : public Window
   void setDisplayWidth(coord_t width);
   void setTextAlign(lv_text_align_t align);
 
-  static LAYOUT_VAL_SCALED(HDR_DATE_WIDTH, 45)
-  static LAYOUT_VAL_SCALED(HDR_DATE_HEIGHT, 12)
-  static LAYOUT_VAL_SCALED(HDR_DATE_LINE2, 15)
+  static LAYOUT_VAL_SCALED(HDR_DATE_WIDTH, 45)  // ds-allow: theme manager - thumbnail date label geometry positioned absolutely on the theme card; canvas preview, not a DS row.
+  static LAYOUT_VAL_SCALED(HDR_DATE_HEIGHT, 12)  // ds-allow: theme manager - thumbnail date label geometry positioned absolutely on the theme card; canvas preview, not a DS row.
+  static LAYOUT_VAL_SCALED(HDR_DATE_LINE2, 15)  // ds-allow: theme manager - thumbnail date label geometry positioned absolutely on the theme card; canvas preview, not a DS row.
 
 protected:
   RequiredLvObj date;

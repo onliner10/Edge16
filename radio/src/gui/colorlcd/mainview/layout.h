@@ -189,8 +189,8 @@ class LayoutFactory
   // List of registered layout factories
   static std::list<const LayoutFactory*>& getRegisteredLayouts();
 
- static LAYOUT_ORIENTATION_SCALED(BM_W, 51,
-                                  22) static LAYOUT_ORIENTATION_SCALED(BM_H, 25,
+ static LAYOUT_ORIENTATION_SCALED(BM_W, 51, // ds-allow: layout-factory button-marker preview width for rendering the layout thumbnail at absolute coordinates; not a DS surface
+                                  22) static LAYOUT_ORIENTATION_SCALED(BM_H, 25, // ds-allow: layout-factory button-marker preview height for rendering the layout thumbnail at absolute coordinates; not a DS surface
                                                                        34)
 
      protected : const char* id;

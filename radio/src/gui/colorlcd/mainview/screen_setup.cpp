@@ -68,11 +68,11 @@ class LayoutChoice : public Button
 
   LayoutChoice(Window* parent, LayoutFactoryGetter getValue,
                LayoutFactorySetter setValue) :
-      Button(parent, {0, 0, LayoutFactory::BM_W + PAD_LARGE + PAD_SMALL, LayoutFactory::BM_H + PAD_LARGE + PAD_SMALL}),
+      Button(parent, {0, 0, LayoutFactory::BM_W + PAD_LARGE + PAD_SMALL, LayoutFactory::BM_H + PAD_LARGE + PAD_SMALL}), // ds-allow: layout-choice button sized to wrap the fixed BM_W/BM_H layout-preview canvas; not a DS control
       getValue(std::move(getValue)),
       setValue(std::move(setValue))
   {
-    padAll(PAD_ZERO);
+    padAll(PAD_ZERO); // ds-allow: layout-choice button zeroes padding so its layout-preview canvas fills the button; not a DS control
     withLive([&](LiveWindow& live) {
       canvas = createLayoutChoiceCanvas(live.lvobj());
     });
@@ -181,8 +181,7 @@ ScreenSetupPage::ScreenSetupPage(unsigned index, const PageDef& pageDef) :
 
 void ScreenSetupPage::build(Window* window)
 {
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);
-
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO); // ds-allow: layout-factory setup page stacks its custom zone/option rows with zero inter-row gap; not a DS list
   FlexGridLayout grid(line_col_dsc, line_row_dsc);
 
   // Layout choice...
