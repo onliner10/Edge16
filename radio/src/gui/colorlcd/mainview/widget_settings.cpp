@@ -211,13 +211,16 @@ WidgetSettings::WidgetSettings(Widget* w) :
         break;
 
       case WidgetOption::Choice:
+        // 0-based: stored value maps directly to the choice index (0..N-1),
+        // matching the Integer/Bool paths. (A previous -1/+1 offset here
+        // underflowed for the default/unset value 0 and had no live user.)
         new (std::nothrow) Choice(line, rect_t{}, opt->choiceValues, 0,
             opt->choiceValues.size() - 1,
             [=]() {
-              return widgetData->getUnsignedValue(optIdx) - 1;
+              return widgetData->getUnsignedValue(optIdx);
             },
             [=](uint32_t newValue) {
-              widgetData->setUnsignedValue(optIdx, newValue + 1);
+              widgetData->setUnsignedValue(optIdx, newValue);
               setWidgetStorageDirty(widget);
             });
         break;

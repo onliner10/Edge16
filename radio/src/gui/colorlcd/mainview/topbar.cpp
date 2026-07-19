@@ -282,7 +282,10 @@ coord_t TopBar::intrinsicZoneWidth(unsigned int index) const
   if (!strcmp(name, "Battery Monitor")) return TOPBAR_STATUS_WIDTH;
   if (!strcmp(name, "Volume")) return TOPBAR_VOLUME_WIDTH;
   if (!strcmp(name, "Internal GPS")) return TOPBAR_GPS_WIDTH;
-  if (!strcmp(name, "Radio Info")) return TOPBAR_LEGACY_STATUS_WIDTH;
+  // "Radio Info" has no live factory (removed as dead code; see
+  // widgets/radio_info.cpp) and can no longer be assigned to a zone, so its
+  // legacy width lookup was stale. Falls through to TOPBAR_STATUS_WIDTH for
+  // any stray persisted reference from a very old layout.
 
   return TOPBAR_STATUS_WIDTH;
 }

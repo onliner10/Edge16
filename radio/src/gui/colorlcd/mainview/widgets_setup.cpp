@@ -193,8 +193,16 @@ void SetupWidgetsPageSlot::addNewWidget()
     const auto& registered = WidgetFactory::getRegisteredWidgets();
     auto selectedSlot = slot;
 
+    // "Clock" and "Today" are superseded by "Date Time"'s Format option
+    // (Time-only / Date-only / Both) -- keep both factories registered so
+    // existing layouts still resolve and render, but only offer the merged
+    // "Date Time" widget for NEW placements. "Radio Info" has no live
+    // factory (removed as dead code); the check is a harmless no-op kept for
+    // forward compat with any stray persisted reference.
     auto isPickable = [](const WidgetFactory* factory) {
-      return strcmp(factory->getName(), "Radio Info") != 0;
+      const char* name = factory->getName();
+      return strcmp(name, "Radio Info") != 0 && strcmp(name, "Clock") != 0 &&
+             strcmp(name, "Today") != 0;
     };
 
     auto addWidgetLine = [&](const WidgetFactory* factory, int rawIndex) {

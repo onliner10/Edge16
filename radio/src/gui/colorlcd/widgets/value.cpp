@@ -28,6 +28,46 @@
 #define ETX_STATE_TELEM_STALE LV_STATE_USER_2
 #define ETX_STATE_LARGE_FONT LV_STATE_USER_3
 
+// A telemetry voltage sensor gets Warning/Critical ONLY when it is the
+// voltage source of an enabled battery monitor, reusing that monitor's
+// chemistry curve + warning bands (single source of truth). A sensor that no
+// monitor references gets NO state (Default) — never guess a battery
+// estimate. Stale data is rendered Muted by the caller, not here.
+//
+// External linkage (not static/anonymous-namespace): GaugeWidget (gauge.cpp)
+// reuses this exact rule for its numeric value text so a gauge fed by the
+// same battery-monitor-sourced sensor escalates identically to the Value
+// widget, without duplicating the chemistry-curve lookup.
+uint8_t telemetryVoltageStateLevel(int sensorIdx)
+{
+  for (int m = 0; m < MAX_BATTERY_MONITORS; m++) {
+    auto& config = g_model.batteryMonitors[m];
+    if (!config.enabled || config.sourceIndex - 1 != sensorIdx) continue;
+
+    uint8_t cells = config.cellCount;
+    BatteryType chem = (BatteryType)config.batteryType;
+    if (config.selectedPackSlot > 0) {
+      uint8_t slot = config.selectedPackSlot - 1;
+      if (slot < MAX_BATTERY_PACKS && g_eeGeneral.batteryPacks[slot].active) {
+        cells = g_eeGeneral.batteryPacks[slot].cellCount;
+        chem = (BatteryType)g_eeGeneral.batteryPacks[slot].batteryType;
+      }
+    }
+    if (cells == 0) return WIDGET_STATE_NORMAL;
+
+    auto& sensor = g_model.telemetrySensors[sensorIdx];
+    auto& item = telemetryItems[sensorIdx];
+    if (!sensor.isAvailable() || !item.isAvailable() || item.isOld())
+      return WIDGET_STATE_NORMAL;
+
+    int32_t cv = convertTelemetryValue(item.value, sensor.unit, sensor.prec,
+                                       UNIT_VOLTS, 2);
+    int pct = flightBatteryVoltageRemainingPercent(cv / cells, chem);
+    return flightBatteryRemainingWarningLevel(pct);
+  }
+  return WIDGET_STATE_NORMAL;
+}
+
 class ValueWidget : public NativeWidget
 {
  public:
@@ -119,53 +159,16 @@ class ValueWidget : public NativeWidget
     }
 
     if (field == MIXSRC_TX_VOLTAGE) {
-      // Warning at the radio "battery warning" voltage; Critical at the new
-      // radio-level "critical voltage" setting. Both in 0.1V units.
-      int32_t v = getValue(field);
-      if (g_eeGeneral.vBatCrit > 0 && v <= (int32_t)g_eeGeneral.vBatCrit)
-        return WIDGET_STATE_CRITICAL;
-      if (v <= (int32_t)g_eeGeneral.vBatWarn) return WIDGET_STATE_WARNING;
-      return WIDGET_STATE_NORMAL;
+      // Single source of truth: getTxBatteryAlarm() (edgetx.h) also drives
+      // the audio alarm (main.cpp checkBatteryAlarms) and the Radio Battery
+      // status widget, so all three can never disagree on the threshold.
+      // TXBATT_ALARM_NONE/WARNING/CRITICAL (0/1/2) matches WidgetStateLevel.
+      return getTxBatteryAlarm();
     }
 
     if (field >= MIXSRC_FIRST_TELEM)
       return telemetryVoltageStateLevel((field - MIXSRC_FIRST_TELEM) / 3);
 
-    return WIDGET_STATE_NORMAL;
-  }
-
-  // A telemetry voltage sensor gets Warning/Critical ONLY when it is the
-  // voltage source of an enabled battery monitor, reusing that monitor's
-  // chemistry curve + warning bands (single source of truth). A sensor that no
-  // monitor references gets NO state (Default) — never guess a battery
-  // estimate. Stale data is rendered Muted by the caller, not here.
-  uint8_t telemetryVoltageStateLevel(int sensorIdx)
-  {
-    for (int m = 0; m < MAX_BATTERY_MONITORS; m++) {
-      auto& config = g_model.batteryMonitors[m];
-      if (!config.enabled || config.sourceIndex - 1 != sensorIdx) continue;
-
-      uint8_t cells = config.cellCount;
-      BatteryType chem = (BatteryType)config.batteryType;
-      if (config.selectedPackSlot > 0) {
-        uint8_t slot = config.selectedPackSlot - 1;
-        if (slot < MAX_BATTERY_PACKS && g_eeGeneral.batteryPacks[slot].active) {
-          cells = g_eeGeneral.batteryPacks[slot].cellCount;
-          chem = (BatteryType)g_eeGeneral.batteryPacks[slot].batteryType;
-        }
-      }
-      if (cells == 0) return WIDGET_STATE_NORMAL;
-
-      auto& sensor = g_model.telemetrySensors[sensorIdx];
-      auto& item = telemetryItems[sensorIdx];
-      if (!sensor.isAvailable() || !item.isAvailable() || item.isOld())
-        return WIDGET_STATE_NORMAL;
-
-      int32_t cv = convertTelemetryValue(item.value, sensor.unit, sensor.prec,
-                                         UNIT_VOLTS, 2);
-      int pct = flightBatteryVoltageRemainingPercent(cv / cells, chem);
-      return flightBatteryRemainingWarningLevel(pct);
-    }
     return WIDGET_STATE_NORMAL;
   }
 

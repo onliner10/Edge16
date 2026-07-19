@@ -24,6 +24,10 @@
 #include "widget.h"
 #include "widget_palette.h"
 
+// Shared with value.cpp: the same battery-monitor-sourced-sensor state rule,
+// so a gauge fed by that sensor escalates identically to the Value widget.
+uint8_t telemetryVoltageStateLevel(int sensorIdx);
+
 class GaugeWidget : public NativeWidget
 {
  public:
@@ -237,6 +241,10 @@ class GaugeWidget : public NativeWidget
       if (stackCard) lv_obj_move_background(obj);
     });
     lastValue = -10000;
+    // The branches above reset the value text colour to the Default token;
+    // force refreshContent() (triggered by invalidateNativeRefresh() below)
+    // to unconditionally re-apply the state colour on top of it.
+    lastStateLevel = 255;
     invalidateNativeRefresh();
   }
 
@@ -244,6 +252,7 @@ class GaugeWidget : public NativeWidget
 
  protected:
   int16_t lastValue = -10000;
+  uint8_t lastStateLevel = 255;
   RequiredWindow<StaticText> sourceText;
   RequiredWindow<DynamicNumber<int16_t>> valueText;
   RequiredLvObj contentBox;
@@ -252,10 +261,30 @@ class GaugeWidget : public NativeWidget
   RequiredLvObj bar;
   RequiredLvObj valueOverlay;
 
+  // Reuses the exact Value-widget state-escalation rule (TX voltage via
+  // getTxBatteryAlarm(); a telemetry sensor that is the voltage source of an
+  // enabled Battery Monitor). Any other source stays Default -- never guess a
+  // state for a source with no configured threshold.
+  static uint8_t sourceStateLevel(mixsrc_t index)
+  {
+    if (index == MIXSRC_TX_VOLTAGE) return getTxBatteryAlarm();
+    if (index >= MIXSRC_FIRST_TELEM)
+      return telemetryVoltageStateLevel((index - MIXSRC_FIRST_TELEM) / 3);
+    return WIDGET_STATE_NORMAL;
+  }
+
+  mixsrc_t sourceIndex()
+  {
+    auto widgetData = getPersistentData();
+    return widgetData ? (mixsrc_t)widgetData->options[0].value.unsignedValue
+                      : 0;
+  }
+
   uint32_t contentRefreshKey() override
   {
     WidgetRefreshKey key;
     key.add((int32_t)getGuageValue());
+    key.add((int32_t)sourceStateLevel(sourceIndex()));
     return key.value();
   }
 
@@ -279,6 +308,24 @@ class GaugeWidget : public NativeWidget
         lv_label_set_text(obj, value.c_str());
         lv_obj_move_foreground(obj);
       });
+    }
+
+    // State-aware numeric value text colour only -- the fill bar keeps its
+    // fixed PAL_EMPHASIS colour (see layoutContent) unconditionally. Only on
+    // native cards, matching the Value widget (its legacy top-bar path never
+    // applies state colour either).
+    if (usesCardChrome()) {
+      uint8_t level = sourceStateLevel(sourceIndex());
+      if (level != lastStateLevel) {
+        lastStateLevel = level;
+        lv_color_t valColor = paletteStateTextColor(level);
+        valueText.withLive([&](LiveWindow& live) {
+          lv_obj_set_style_text_color(live.lvobj(), valColor, LV_PART_MAIN);
+        });
+        valueOverlay.with([&](lv_obj_t* obj) {
+          lv_obj_set_style_text_color(obj, valColor, LV_PART_MAIN);
+        });
+      }
     }
   }
 

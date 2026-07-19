@@ -924,5 +924,7 @@ class BatteryMonitorWidget : public NativeWidget
 const WidgetOption BatteryMonitorWidget::options[] = {
     {nullptr, WidgetOption::Bool}};
 
+// Persist-name ("Battery Monitor") kept unchanged for backward compat with
+// saved layouts; only the display name changes.
 BaseWidgetFactory<BatteryMonitorWidget> batteryMonitorWidget(
-    "Battery Monitor", BatteryMonitorWidget::options, "Battery Monitor");
+    "Battery Monitor", BatteryMonitorWidget::options, "Flight Battery");

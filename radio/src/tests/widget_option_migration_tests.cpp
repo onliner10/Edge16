@@ -199,4 +199,85 @@ TEST(WidgetOptionMigration, outputsWidgetMigratesUndersizedLegacyLayoutWithoutCr
   data->clear();
 }
 
+// ---------------------------------------------------------------------------
+// Date Time widget: the merged Format option (Time / Date / Both) is
+// APPENDED at index 1, after the retired index-0 Color placeholder, so a
+// layout saved before this option existed (just the 1-entry Deprecated
+// placeholder) keeps loading with Format defaulting to Both -- unchanged
+// rendering. Clock/Today stay registered factories (so old layouts that
+// used them still resolve) but are excluded from the Add-Widget picker in
+// widgets_setup.cpp in favour of the merged Date Time widget.
+TEST(WidgetOptionMigration, dateTimeWidgetFormatOptionAppendedAtEnd)
+{
+  const WidgetFactory* factory = WidgetFactory::getWidgetFactory("Date Time");
+  ASSERT_NE(factory, nullptr);
+  const WidgetOption* opts = factory->getDefaultOptions();
+
+  ASSERT_EQ(opts[0].type, WidgetOption::Deprecated);  // retired Color slot
+
+  ASSERT_EQ(opts[1].type, WidgetOption::Choice);
+  EXPECT_STREQ(opts[1].name, "Format");
+  EXPECT_EQ(opts[1].deflt.signedValue, 0);  // Both
+  EXPECT_EQ(opts[1].min.signedValue, 0);
+  EXPECT_EQ(opts[1].max.signedValue, 2);
+  // Labelled dropdown values, 0-based (matches the DateTimeFormat enum).
+  ASSERT_EQ(opts[1].choiceValues.size(), 3u);
+  EXPECT_STREQ(opts[1].choiceValues[0].c_str(), "Both");
+  EXPECT_STREQ(opts[1].choiceValues[1].c_str(), "Time");
+  EXPECT_STREQ(opts[1].choiceValues[2].c_str(), "Date");
+
+  // Old saved Date Time record: only the index-0 placeholder exists.
+  WidgetPersistentData data;
+  data.setType(0, WOV_Unsigned);
+  data.setUnsignedValue(0, 0);
+
+  int i = 0;
+  for (const WidgetOption* o = opts; o->name; o++, i++)
+    data.setDefault(i, o, false);
+
+  ASSERT_EQ(data.options.size(), 2u);
+  EXPECT_EQ(data.getType(1), WOV_Unsigned);  // Choice -> unsigned, no offset
+  EXPECT_EQ(data.getUnsignedValue(1), 0u);   // Both, unchanged behaviour
+
+  // Round-trip: Time (1) and Date (2) persist correctly (unsignedValue,
+  // matching the settings-UI Choice editor and the widget's own read path).
+  data.setUnsignedValue(1, 1);
+  EXPECT_EQ(data.getUnsignedValue(1), 1u);
+  data.setUnsignedValue(1, 2);
+  EXPECT_EQ(data.getUnsignedValue(1), 2u);
+
+  data.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Catalog cleanup: display-name renames must never touch the persist name
+// (first BaseWidgetFactory argument), since it keys storage lookups (saved
+// layouts, topbar zone-width lookup) -- only the user-facing display name
+// changes. RadioInfoWidget was unregistered dead code and has been removed
+// outright, so its old catalog name must no longer resolve to a factory.
+TEST(WidgetOptionMigration, displayNameRenamesKeepPersistNameStable)
+{
+  const WidgetFactory* txBattery =
+      WidgetFactory::getWidgetFactory("TX Battery");
+  ASSERT_NE(txBattery, nullptr);
+  EXPECT_STREQ(txBattery->getName(), "TX Battery");
+  EXPECT_STREQ(txBattery->getDisplayName(), "Radio Battery");
+
+  const WidgetFactory* batteryMonitor =
+      WidgetFactory::getWidgetFactory("Battery Monitor");
+  ASSERT_NE(batteryMonitor, nullptr);
+  EXPECT_STREQ(batteryMonitor->getName(), "Battery Monitor");
+  EXPECT_STREQ(batteryMonitor->getDisplayName(), "Flight Battery");
+
+  const WidgetFactory* link = WidgetFactory::getWidgetFactory("Link");
+  ASSERT_NE(link, nullptr);
+  EXPECT_STREQ(link->getName(), "Link");
+  EXPECT_STREQ(link->getDisplayName(), "Signal");
+}
+
+TEST(WidgetOptionMigration, radioInfoWidgetHasNoLiveFactory)
+{
+  EXPECT_EQ(WidgetFactory::getWidgetFactory("Radio Info"), nullptr);
+}
+
 #endif  // COLORLCD

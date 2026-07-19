@@ -28,6 +28,7 @@
 #include "layout.h"
 #include "theme_manager.h"
 #include "widget.h"
+#include "widget_palette.h"
 
 namespace
 {
@@ -138,6 +139,34 @@ void setStatusPartBorder(lv_obj_t* obj, LcdColorIndex color, coord_t width)
   });
 }
 
+// lv_color_t variants: state-aware colours come out of widget_palette.h as
+// runtime-computed (contrast-corrected) lv_color_t values, not fixed
+// LcdColorIndex table entries, so they cannot go through etx_solid_bg /
+// etx_border_color (which add a theme-indexed style object). Mirrors
+// etx_bg_color_from_flags' RGB_FLAG path: drop any previously-added indexed
+// style, then set the raw colour as a local style property.
+lv_color_t lvColorFromIndex(LcdColorIndex color)
+{
+  return makeLvColor(COLOR(color));
+}
+
+void setStatusPartColorLv(lv_obj_t* obj, lv_color_t color)
+{
+  withStatusPart(obj, [&](lv_obj_t* part) {
+    etx_remove_bg_color(part);
+    lv_obj_set_style_bg_color(part, color, LV_PART_MAIN);
+  });
+}
+
+void setStatusPartBorderLv(lv_obj_t* obj, lv_color_t color, coord_t width)
+{
+  withStatusPart(obj, [&](lv_obj_t* part) {
+    etx_remove_border_color(part);
+    lv_obj_set_style_border_color(part, color, LV_PART_MAIN);
+    lv_obj_set_style_border_width(part, width, LV_PART_MAIN);
+  });
+}
+
 void setStatusLabel(lv_obj_t* label, const char* text, LcdColorIndex color,
                     FontIndex font, coord_t x, coord_t y, coord_t w, coord_t h)
 {
@@ -171,9 +200,16 @@ uint8_t activeLinkBars(uint8_t rssi)
   return bars;
 }
 
-bool linkWarning(uint8_t rssi)
+// Two-tier RSSI escalation: Critical below rfAlarms.critical, Warning below
+// rfAlarms.warning, matching the audio-alarm bands in telemetry.cpp
+// (genericRssiCritical/genericRssiWarning). rssi == 0 means "no reading yet",
+// never a false Critical/Warning.
+uint8_t linkStateLevel(uint8_t rssi)
 {
-  return rssi > 0 && rssi < (uint8_t)g_model.rfAlarms.warning;
+  if (rssi == 0) return WIDGET_STATE_NORMAL;
+  if (rssi < (uint8_t)g_model.rfAlarms.critical) return WIDGET_STATE_CRITICAL;
+  if (rssi < (uint8_t)g_model.rfAlarms.warning) return WIDGET_STATE_WARNING;
+  return WIDGET_STATE_NORMAL;
 }
 
 uint8_t speakerVolumeLevel()
@@ -199,6 +235,48 @@ uint8_t speakerVolumePercent()
 #else
   return 0;
 #endif
+}
+
+// Shared single-line date/time text formatting, used by DateTextWidget
+// (Clock / Today factories) and by DateTimeWidget's Time-only / Date-only
+// Format option so the two never drift apart.
+enum class DateTextKind { Clock, Today };
+
+// DateTimeWidget's appended Format option (Time / Date / Both). Plain
+// unsigned values (not an enum class) since it is read straight out of the
+// persisted WidgetOptionValue's unsignedValue field, matching the convention
+// used elsewhere in this file (e.g. mixsrc_t option reads).
+enum DateTimeFormat : uint8_t {
+  DATETIME_FORMAT_BOTH = 0,
+  DATETIME_FORMAT_TIME = 1,
+  DATETIME_FORMAT_DATE = 2,
+};
+
+void formatDateText(char* text, size_t size, const struct gtm& time,
+                    DateTextKind kind)
+{
+  if (kind == DateTextKind::Clock) {
+    const TimerOptions timerOptions = {.options = SHOW_TIME};
+    getTimerString(text, getValue(MIXSRC_TX_TIME), timerOptions);
+    return;
+  }
+
+#if defined(TRANSLATIONS_CN) || defined(TRANSLATIONS_TW)
+  snprintf(text, size, "%02d-%02d", time.tm_mon + 1, time.tm_mday);
+#else
+  snprintf(text, size, "%d %s", time.tm_mday, STR_MONTHS[time.tm_mon]);
+#endif
+}
+
+bool dateTextShouldRefresh(DateTextKind kind, const struct gtm& time,
+                           const struct gtm& lastTime)
+{
+  if (kind == DateTextKind::Clock) {
+    return time.tm_min != lastTime.tm_min || time.tm_hour != lastTime.tm_hour;
+  }
+
+  return time.tm_mday != lastTime.tm_mday || time.tm_mon != lastTime.tm_mon ||
+         time.tm_year != lastTime.tm_year;
 }
 
 }  // namespace
@@ -300,14 +378,19 @@ class LinkStatusWidget : public Widget
     lastRSSI = rssi;
 
     bool topbar = isCompactTopBarWidget();
-    bool warning = linkWarning(rssi);
+    uint8_t level = linkStateLevel(rssi);
     uint8_t active = activeLinkBars(rssi);
-    LcdColorIndex activeColor =
-        warning ? COLOR_THEME_WARNING_INDEX : statusPrimaryColor(topbar);
-    LcdColorIndex mutedColor = statusMutedColor(topbar);
+    // Normal keeps the existing per-context primary colour; Warning/Critical
+    // escalate to the contrast-validated palette amber/red.
+    lv_color_t activeColor =
+        level == WIDGET_STATE_NORMAL
+            ? lvColorFromIndex(statusPrimaryColor(topbar))
+            : (topbar ? paletteTopbarStateTextColor(level)
+                     : paletteStateTextColor(level));
+    lv_color_t mutedColor = lvColorFromIndex(statusMutedColor(topbar));
 
     for (uint8_t i = 0; i < LINK_BARS; i += 1) {
-      setStatusPartColor(bars[i], i < active ? activeColor : mutedColor);
+      setStatusPartColorLv(bars[i], i < active ? activeColor : mutedColor);
     }
 
     if (value && !topbar) {
@@ -319,11 +402,13 @@ class LinkStatusWidget : public Widget
 
       FontIndex font = responsiveTextFont(height() - 2 * PAD_SMALL - // ds-allow: RSSI link-bars widget — value font sized to the zone height minus vertical insets; pixel geometry, not a DS row/form.
                                           EdgeTxStyles::STD_FONT_HEIGHT / 2);
-      setStatusLabel(
-          value, text,
-          warning ? COLOR_THEME_WARNING_INDEX : statusPrimaryColor(false), font,
-          lv_obj_get_x(value), lv_obj_get_y(value), lv_obj_get_width(value),
-          lv_obj_get_height(value));
+      setStatusLabel(value, text, statusPrimaryColor(false), font,
+                     lv_obj_get_x(value), lv_obj_get_y(value),
+                     lv_obj_get_width(value), lv_obj_get_height(value));
+      lv_color_t valueColor = level == WIDGET_STATE_NORMAL
+                                  ? lvColorFromIndex(statusPrimaryColor(false))
+                                  : paletteStateTextColor(level);
+      lv_obj_set_style_text_color(value, valueColor, LV_PART_MAIN);
     }
   }
 
@@ -334,7 +419,11 @@ class LinkStatusWidget : public Widget
   uint8_t lastRSSI = 255;
 };
 
-BaseWidgetFactory<LinkStatusWidget> linkStatusWidget("Link", nullptr, "Link");
+// Persist-name ("Link") kept unchanged for backward compat with saved
+// layouts; only the display name changes (it shows receiver RSSI/link, and
+// "Link" alone was ambiguous).
+BaseWidgetFactory<LinkStatusWidget> linkStatusWidget("Link", nullptr,
+                                                     "Signal");
 
 class TxBatteryStatusWidget : public Widget
 {
@@ -438,13 +527,17 @@ class TxBatteryStatusWidget : public Widget
   void onForeground() override
   {
     bool topbar = isCompactTopBarWidget();
-    bool warning = IS_TXBATT_WARNING() || txBatteryPercent(g_vbat100mV) < 30;
+    // Single source of truth: the same Warning/Critical decision that drives
+    // the audio alarm (checkBatteryAlarms) and the state-aware Value widget.
+    // TXBATT_ALARM_NONE/WARNING/CRITICAL (0/1/2) matches WidgetStateLevel, so
+    // it feeds the palette state-colour functions directly.
+    uint8_t level = getTxBatteryAlarm();
     uint8_t bars = GET_TXBATT_BARS(fillMaxW);
-    LcdColorIndex color =
-        warning ? COLOR_THEME_WARNING_INDEX : statusPrimaryColor(topbar);
+    lv_color_t color = topbar ? paletteTopbarStateTextColor(level)
+                              : paletteStateTextColor(level);
 
-    setStatusPartBorder(shell, color, 2);
-    setStatusPartColor(cap, color);
+    setStatusPartBorderLv(shell, color, 2);
+    setStatusPartColorLv(cap, color);
 
     if (bars != lastBattBars) {
       lastBattBars = bars;
@@ -452,7 +545,7 @@ class TxBatteryStatusWidget : public Widget
         lv_obj_set_size(fill, bars, fillH);
       }
     }
-    setStatusPartColor(fill, color);
+    setStatusPartColorLv(fill, color);
 
     if (pctLabel) {
       uint8_t pct = txBatteryPercent(g_vbat100mV);
@@ -488,9 +581,11 @@ class TxBatteryStatusWidget : public Widget
   uint8_t lastBattPct = 255;
 };
 
+// Persist-name ("TX Battery") kept unchanged for backward compat with saved
+// layouts; only the display name changes.
 BaseWidgetFactory<TxBatteryStatusWidget> txBatteryStatusWidget("TX Battery",
                                                                nullptr,
-                                                               "TX Battery");
+                                                               "Radio Battery");
 
 #if defined(AUDIO)
 
@@ -678,344 +773,12 @@ BaseWidgetFactory<VolumeStatusWidget> volumeStatusWidget("Volume", nullptr,
 
 #endif
 
-class RadioInfoWidget : public Widget
-{
- public:
-  RadioInfoWidget(const WidgetFactory* factory, Window* parent,
-                  const rect_t& rect, WidgetLocation location) :
-      Widget(factory, parent, rect, location)
-  {
-    bool compact = isCompactTopBarWidget();
-
-    // Logs
-    logsIcon = new (std::nothrow) StaticIcon(this, W_LOG_X, PAD_THREE, ICON_DOT, // ds-allow: radio-info top-bar widget — logs icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
-                                             COLOR_THEME_PRIMARY2_INDEX);
-    if (logsIcon) logsIcon->hide();
-
-    usbIcon = new (std::nothrow) StaticIcon(
-        this, W_USB_X, W_USB_Y, ICON_TOPMENU_USB, COLOR_THEME_PRIMARY2_INDEX);
-    if (usbIcon) usbIcon->hide();
-
-#if defined(AUDIO)
-    if (!compact) {
-      audioScale = new (std::nothrow)
-          StaticIcon(this, W_AUDIO_SCALE_X, PAD_TINY, ICON_TOPMENU_VOLUME_SCALE, // ds-allow: radio-info top-bar widget — audio-scale icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
-                     COLOR_THEME_SECONDARY2_INDEX);
-
-      for (int i = 0; i < 5; i += 1) {
-        audioVol[i] = new (std::nothrow) StaticIcon(
-            this, W_AUDIO_X, PAD_TINY, (EdgeTxIcon)(ICON_TOPMENU_VOLUME_0 + i), // ds-allow: radio-info top-bar widget — volume-level icon placed at a fixed pixel offset in the top bar; canvas widget, not a DS row/form.
-            COLOR_THEME_PRIMARY2_INDEX);
-        if (audioVol[i]) audioVol[i]->hide();
-      }
-      if (audioVol[0]) audioVol[0]->show();
-    }
-#endif
-
-    if (!compact) {
-      batteryIcon = new (std::nothrow)
-          StaticIcon(this, W_AUDIO_X, W_BATT_Y, ICON_TOPMENU_TXBATT,
-                     COLOR_THEME_PRIMARY2_INDEX);
-    }
-#if defined(USB_CHARGER)
-    if (!compact) {
-      batteryChargeIcon = new (std::nothrow)
-          StaticIcon(this, W_BATT_CHG_X, W_BATT_CHG_Y,
-                     ICON_TOPMENU_TXBATT_CHARGE, COLOR_THEME_PRIMARY2_INDEX);
-      if (batteryChargeIcon) batteryChargeIcon->hide();
-    }
-#endif
-
-    if (compact) {
-      withLive([&](LiveWindow& live) {
-        batteryShell = lv_obj_create(live.lvobj());
-        if (batteryShell) {
-          lv_obj_clear_flag(batteryShell, LV_OBJ_FLAG_CLICKABLE);
-          lv_obj_set_style_bg_opa(batteryShell, LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_border_width(batteryShell, 2, LV_PART_MAIN);
-          lv_obj_set_style_border_opa(batteryShell, LV_OPA_COVER, LV_PART_MAIN);
-          lv_obj_set_style_border_color(
-              batteryShell, makeLvColor(COLOR_THEME_PRIMARY2), LV_PART_MAIN);
-          lv_obj_set_style_radius(batteryShell, 2, LV_PART_MAIN);
-        }
-        batteryCap = lv_obj_create(live.lvobj());
-        if (batteryCap) {
-          lv_obj_clear_flag(batteryCap, LV_OBJ_FLAG_CLICKABLE);
-          etx_solid_bg(batteryCap, COLOR_THEME_PRIMARY2_INDEX);
-        }
-      });
-    }
-
-#if defined(INTERNAL_MODULE_PXX1) && defined(EXTERNAL_ANTENNA)
-    if (!compact) {
-      extAntenna = new (std::nothrow)
-          StaticIcon(this, W_RSSI_X - PAD_SMALL, 1, ICON_TOPMENU_ANTENNA, // ds-allow: radio-info top-bar widget — external-antenna icon placed just left of the RSSI cluster at a fixed offset; canvas widget, not a DS row/form.
-                     COLOR_THEME_PRIMARY2_INDEX);
-      if (extAntenna) extAntenna->hide();
-    }
-#endif
-
-    withLive([&](LiveWindow& live) {
-      batteryFill = lv_obj_create(live.lvobj());
-      if (batteryFill) {
-        lv_obj_set_style_bg_opa(batteryFill, LV_OPA_COVER, LV_PART_MAIN);
-      }
-    });
-    update();
-
-    // RSSI bars
-    withLive([&](LiveWindow& live) {
-      for (unsigned int i = 0; i < DIM(rssiBars); i++) {
-        rssiBars[i] = lv_obj_create(live.lvobj());
-        if (rssiBars[i]) {
-          etx_solid_bg(rssiBars[i], COLOR_THEME_SECONDARY2_INDEX);
-          etx_bg_color(rssiBars[i], COLOR_THEME_PRIMARY2_INDEX,
-                       LV_STATE_USER_1);
-        }
-      }
-    });
-
-    layoutStatus();
-    foreground();
-  }
-
-  void onUpdate() override
-  {
-    auto widgetData = getPersistentData();
-    if (!batteryFill) return;
-
-    layoutStatus();
-
-    // No colour options: fixed battery-level fills (high/mid/low).
-    (void)widgetData;
-    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0x4C, 0xAF, 0x50),
-                            LV_PART_MAIN);
-    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0xFF, 0xC1, 0x07),
-                            LV_STATE_USER_1);
-    etx_bg_color_from_flags(batteryFill, RGB2FLAGS(0xF4, 0x43, 0x36),
-                            LV_STATE_USER_2);
-  }
-
-  void onForeground() override
-  {
-    bool compact = isCompactTopBarWidget();
-
-    if (usbIcon) usbIcon->show(!compact && usbPlugged());
-    if (getSelectedUsbMode() == USB_UNSELECTED_MODE) {
-      if (usbIcon) usbIcon->setColor(COLOR_THEME_SECONDARY2_INDEX);
-    } else {
-      if (usbIcon) usbIcon->setColor(COLOR_THEME_PRIMARY2_INDEX);
-    }
-
-    if (logsIcon) {
-      logsIcon->show(!compact && !usbPlugged() &&
-                     isFunctionActive(FUNCTION_LOGS) && BLINK_ON_PHASE);
-    }
-
-#if defined(AUDIO)
-    /* Audio volume */
-    uint8_t vol = 4;
-    if (requiredSpeakerVolume == 0 || g_eeGeneral.beepMode == e_mode_quiet)
-      vol = 0;
-    else if (requiredSpeakerVolume < 7)
-      vol = 1;
-    else if (requiredSpeakerVolume < 13)
-      vol = 2;
-    else if (requiredSpeakerVolume < 19)
-      vol = 3;
-    if (vol != lastVol) {
-      if (audioVol[vol]) audioVol[vol]->show();
-      if (audioVol[lastVol]) audioVol[lastVol]->hide();
-      lastVol = vol;
-    }
-#endif
-
-#if defined(USB_CHARGER)
-    if (batteryChargeIcon) batteryChargeIcon->show(!compact && usbChargerLed());
-#endif
-
-#if defined(INTERNAL_MODULE_PXX1) && defined(EXTERNAL_ANTENNA)
-    if (extAntenna) {
-      extAntenna->show(!compact && isModuleXJT(INTERNAL_MODULE) &&
-                       isExternalAntennaEnabled());
-    }
-#endif
-
-    // Battery level
-    uint8_t bars = GET_TXBATT_BARS(batteryFillWidth());
-    if (bars != lastBatt) {
-      lastBatt = bars;
-      lv_obj_set_size(batteryFill, bars, batteryFillHeight());
-    }
-    uint8_t pct = txBatteryPercent(g_vbat100mV);
-    if (pct >= 60) {
-      lv_obj_clear_state(batteryFill, static_cast<lv_state_t>(LV_STATE_USER_1 | LV_STATE_USER_2));
-    } else if (pct >= 30) {
-      lv_obj_add_state(batteryFill, LV_STATE_USER_1);
-      lv_obj_clear_state(batteryFill, LV_STATE_USER_2);
-    } else {
-      lv_obj_clear_state(batteryFill, LV_STATE_USER_1);
-      lv_obj_add_state(batteryFill, LV_STATE_USER_2);
-    }
-
-    // RSSI
-    const uint8_t rssiBarsValue[] = {30, 40, 50, 60, 80};
-    uint8_t rssi = TELEMETRY_RSSI();
-    if (rssi != lastRSSI) {
-      lastRSSI = rssi;
-      for (unsigned int i = 0; i < DIM(rssiBarsValue); i++) {
-        if (!rssiBars[i]) continue;
-        if (rssi >= rssiBarsValue[i])
-          lv_obj_add_state(rssiBars[i], LV_STATE_USER_1);
-        else
-          lv_obj_clear_state(rssiBars[i], LV_STATE_USER_1);
-      }
-    }
-  }
-
-  static const WidgetOption options[];
-
-  static constexpr coord_t W_AUDIO_X = 0;
-  static LAYOUT_VAL_SCALED(W_AUDIO_SCALE_X, 15) static LAYOUT_VAL_SCALED( // ds-allow: radio-info top-bar widget — DPI-scaled audio-scale icon X for the top bar; canvas geometry, not a DS row/form.
-      W_USB_X, 32) static LAYOUT_VAL_SCALED(W_USB_Y, 5) static constexpr coord_t // ds-allow: radio-info top-bar widget — DPI-scaled USB icon X/Y (logs icon shares X) for the top bar; canvas geometry, not a DS row/form.
-      W_LOG_X = W_USB_X;
-  static LAYOUT_VAL_SCALED(W_RSSI_X, 37) static LAYOUT_VAL_SCALED(W_RSSI_BAR_W, // ds-allow: radio-info top-bar widget — DPI-scaled RSSI cluster X and main-view RSSI bar width; canvas geometry, not a DS row/form.
-                                                                  5) static LAYOUT_VAL_SCALED(W_RSSI_BAR_H, 36) static LAYOUT_VAL_SCALED(W_RSSI_BAR_SZ, 7) static LAYOUT_VAL_SCALED(W_BATT_Y, 25) static LAYOUT_VAL_SCALED(W_BATT_FILL_W, 20) static LAYOUT_VAL_SCALED(W_BATT_FILL_H, 10) static LAYOUT_VAL_SCALED(W_BATT_FILL_GRN, // ds-allow: radio-info top-bar widget — DPI-scaled main-view RSSI bar dims, battery Y and battery-fill width/height; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                   12) static LAYOUT_VAL_SCALED(W_BATT_FILL_ORA, 5) static LAYOUT_VAL_SCALED(W_BATT_HUD_X, // ds-allow: radio-info top-bar widget — DPI-scaled main-view battery fill green/orange thresholds and compact HUD X; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                             2) static LAYOUT_VAL_SCALED(W_BATT_HUD_W, // ds-allow: radio-info top-bar widget — DPI-scaled compact battery HUD shell width; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                                                         29) static LAYOUT_VAL_SCALED(W_BATT_HUD_H, 13) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_W, 25) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_H, 9) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_GRN, 14) static LAYOUT_VAL_SCALED(W_BATT_HUD_FILL_ORA, // ds-allow: radio-info top-bar widget — DPI-scaled compact battery HUD shell height and fill dims/green threshold; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  6) static LAYOUT_VAL_SCALED(W_BATT_CHG_X, // ds-allow: radio-info top-bar widget — DPI-scaled compact HUD orange fill threshold and battery-charge icon X; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              25) static LAYOUT_VAL_SCALED(W_BATT_CHG_Y, 23) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_W, // ds-allow: radio-info top-bar widget — DPI-scaled battery-charge icon Y and compact HUD RSSI bar width; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      5) static LAYOUT_VAL_SCALED(W_RSSI_HUD_BAR_SZ, // ds-allow: radio-info top-bar widget — DPI-scaled compact HUD RSSI bar step/size; canvas geometry, not a DS row/form.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  7)
-
-      coord_t batteryFillX() const
-  {
-    return isCompactTopBarWidget() ? W_BATT_HUD_X + 2 : W_AUDIO_X + 1;
-  }
-
-  coord_t batteryFillY() const
-  {
-    return isCompactTopBarWidget() ? batteryShellY() + 2 : W_BATT_Y + 1;
-  }
-
-  uint8_t batteryFillWidth() const
-  {
-    return isCompactTopBarWidget() ? W_BATT_HUD_FILL_W : W_BATT_FILL_W;
-  }
-
-  coord_t batteryFillHeight() const
-  {
-    return isCompactTopBarWidget() ? W_BATT_HUD_FILL_H : W_BATT_FILL_H;
-  }
-
-  uint8_t batteryGreenThreshold() const
-  {
-    return isCompactTopBarWidget() ? W_BATT_HUD_FILL_GRN : W_BATT_FILL_GRN;
-  }
-
-  uint8_t batteryOrangeThreshold() const
-  {
-    return isCompactTopBarWidget() ? W_BATT_HUD_FILL_ORA : W_BATT_FILL_ORA;
-  }
-
-  coord_t rssiX() const
-  {
-    if (!isCompactTopBarWidget()) return W_RSSI_X;
-
-    coord_t minX = W_BATT_HUD_X + W_BATT_HUD_W + PAD_MEDIUM; // ds-allow: radio-info top-bar widget — RSSI cluster min X kept clear of the battery HUD by a medium gap; pixel geometry, not a DS row/form.
-    coord_t alignX = width() - rssiClusterWidth();
-    return alignX > minX ? alignX : minX;
-  }
-
-  coord_t rssiBarWidth() const
-  {
-    return isCompactTopBarWidget() ? W_RSSI_HUD_BAR_W : W_RSSI_BAR_W;
-  }
-
-  coord_t rssiBarStep() const
-  {
-    return isCompactTopBarWidget() ? W_RSSI_HUD_BAR_SZ : W_RSSI_BAR_SZ;
-  }
-
-  coord_t rssiBarHeight() const
-  {
-    return isCompactTopBarWidget() ? height() - 2 * PAD_TINY : (coord_t)31; // ds-allow: radio-info top-bar widget — RSSI bar height in the compact top bar from zone height minus tiny insets; pixel geometry, not a DS row/form.
-  }
-
-  coord_t rssiBarBottom() const
-  {
-    return isCompactTopBarWidget() ? height() - PAD_TINY : W_RSSI_BAR_H; // ds-allow: radio-info top-bar widget — RSSI bar baseline in the compact top bar from zone height minus a tiny inset; pixel geometry, not a DS row/form.
-  }
-
- protected:
-  uint8_t lastVol = 0;
-  uint8_t lastBatt = 0;
-  uint8_t lastRSSI = 0;
-  StaticIcon* logsIcon = nullptr;
-  StaticIcon* usbIcon = nullptr;
-#if defined(AUDIO)
-  StaticIcon* audioScale = nullptr;
-  StaticIcon* audioVol[5] = {};
-#endif
-  StaticIcon* batteryIcon = nullptr;
-  lv_obj_t* batteryShell = nullptr;
-  lv_obj_t* batteryCap = nullptr;
-  lv_obj_t* batteryFill = nullptr;
-  lv_obj_t* rssiBars[5] = {nullptr};
-#if defined(USB_CHARGER)
-  StaticIcon* batteryChargeIcon = nullptr;
-#endif
-#if defined(INTERNAL_MODULE_PXX1) && defined(EXTERNAL_ANTENNA)
-  StaticIcon* extAntenna = nullptr;
-#endif
-
-  coord_t batteryShellY() const { return height() - W_BATT_HUD_H - PAD_TINY; } // ds-allow: radio-info top-bar widget — battery HUD shell Y anchored to the zone bottom minus a tiny inset; pixel geometry, not a DS row/form.
-
-  coord_t rssiClusterWidth() const
-  {
-    return 4 * rssiBarStep() + rssiBarWidth();
-  }
-
-  void layoutStatus()
-  {
-    if (batteryShell) {
-      lv_obj_set_pos(batteryShell, W_BATT_HUD_X, batteryShellY()); // ds-allow: radio-info top-bar widget — battery HUD shell positioned at an absolute offset; canvas widget, not a DS row/form.
-      lv_obj_set_size(batteryShell, W_BATT_HUD_W, W_BATT_HUD_H);
-    }
-    if (batteryCap) {
-      lv_obj_set_pos(batteryCap, W_BATT_HUD_X + W_BATT_HUD_W, // ds-allow: radio-info top-bar widget — battery HUD cap positioned against the shell at an absolute offset; canvas widget, not a DS row/form.
-                     batteryShellY() + 3);
-      lv_obj_set_size(batteryCap, 3, W_BATT_HUD_H - 6);
-    }
-    if (batteryFill) {
-      lv_obj_set_pos(batteryFill, batteryFillX(), batteryFillY()); // ds-allow: radio-info top-bar widget — battery HUD fill positioned inside the shell at an absolute offset; canvas widget, not a DS row/form.
-      lv_obj_set_size(batteryFill, batteryFillWidth(), batteryFillHeight());
-      lastBatt = 255;
-    }
-
-    coord_t rssiBh = rssiBarHeight();
-    const uint8_t rssiBarsHeight[] = {
-        (uint8_t)((rssiBh * 5 + 15) / 31), (uint8_t)((rssiBh * 10 + 15) / 31),
-        (uint8_t)((rssiBh * 15 + 15) / 31), (uint8_t)((rssiBh * 21 + 15) / 31),
-        (uint8_t)rssiBh};
-    for (unsigned int i = 0; i < DIM(rssiBars); i++) {
-      if (!rssiBars[i]) continue;
-      uint8_t height = rssiBarsHeight[i];
-      lv_obj_set_pos(rssiBars[i], rssiX() + i * rssiBarStep(), // ds-allow: radio-info top-bar widget — each RSSI bar positioned at an absolute offset within the cluster; canvas widget, not a DS row/form.
-                     rssiBarBottom() - height);
-      lv_obj_set_size(rssiBars[i], rssiBarWidth(), height);
-    }
-  }
-};
-
-const WidgetOption RadioInfoWidget::options[] = {
-    // Retired Color options kept as hidden placeholders for positional YAML compat.
-    {"", WidgetOption::Deprecated, 0},
-    {"", WidgetOption::Deprecated, 0},
-    {"", WidgetOption::Deprecated, 0},
-    {nullptr, WidgetOption::Bool}};
-
+// Combines the "Both" (HeaderDateTime, two lines) rendering this widget has
+// always had with single-line Time-only / Date-only modes that reuse the
+// exact DateTextWidget (Clock/Today) formatting helpers. The Format option is
+// APPENDED at index 1, after the retired index-0 Color placeholder, so
+// layouts saved before this option existed keep loading with Both (index 0
+// default) unchanged.
 class DateTimeWidget : public Widget
 {
  public:
@@ -1023,26 +786,78 @@ class DateTimeWidget : public Widget
                  const rect_t& rect, WidgetLocation location) :
       Widget(factory, parent, rect, location)
   {
-    coord_t x = isCompactTopBarWidget()
-                    ? TOPBAR_CONTENT_PAD
-                    : rect.w - HeaderDateTime::HDR_DATE_WIDTH - DT_XO;
-    coord_t dateTimeHeight =
-        HeaderDateTime::HDR_DATE_LINE2 + HeaderDateTime::HDR_DATE_HEIGHT + 2;
-    coord_t y = isCompactTopBarWidget()
-                    ? maxCoord((rect.h - dateTimeHeight) / 2, (coord_t)0)
-                    : PAD_THREE; // ds-allow: date-time widget — non-compact Y offset inset from the top of the zone; pixel geometry, not a DS row/form.
-    dateTime = new (std::nothrow) HeaderDateTime(this, x, y);
+    // Both children are always created and just show()/hide() per the
+    // current Format (re-read fresh in onUpdate() every time, not cached
+    // from construction) so an in-place Format edit via the widget's own
+    // Settings dialog -- which calls onUpdate() on this SAME live instance,
+    // not a fresh construction -- takes effect immediately.
+    dateTime = new (std::nothrow) HeaderDateTime(this, 0, 0);
+    initRequiredLvObj(
+        label,
+        [](lv_obj_t* parent) {
+          return etx_label_create(parent, FONT_XS_INDEX);
+        },
+        [](lv_obj_t* obj) { lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT); });
+
     update();
+    foreground();
   }
 
-  void onForeground() override { Widget::checkEvents(); }
+  void onForeground() override
+  {
+    if (format == DATETIME_FORMAT_BOTH) {
+      Widget::checkEvents();
+      return;
+    }
+
+    struct gtm time;
+    gettime(&time);
+    DateTextKind kind =
+        format == DATETIME_FORMAT_TIME ? DateTextKind::Clock : DateTextKind::Today;
+    if (textValid && !dateTextShouldRefresh(kind, time, lastTime)) return;
+
+    char text[16];
+    formatDateText(text, sizeof(text), time, kind);
+    label.with([&](lv_obj_t* obj) {
+      layoutSingleLineText(obj, text);
+      lv_label_set_text(obj, text);
+      lastTime = time;
+      textValid = true;
+    });
+  }
 
   void onUpdate() override
   {
     auto widgetData = getPersistentData();
+    format = DATETIME_FORMAT_BOTH;
+    if (widgetData) {
+      // WidgetOption::Integer round-trips via signedValue (matches
+      // GaugeWidget's Min/Max reads and the settings-UI NumberEdit editor).
+      uint8_t stored = (uint8_t)widgetData->options[1].value.signedValue;
+      if (stored == DATETIME_FORMAT_TIME || stored == DATETIME_FORMAT_DATE)
+        format = stored;
+    }
+
+    bool both = format == DATETIME_FORMAT_BOTH;
+    if (dateTime) dateTime->show(both);
+    label.with([&](lv_obj_t* obj) { setLvVisible(obj, !both); });
+
+    if (!both) {
+      // No colour option: use the theme ink (PRIMARY2), matching
+      // DateTextWidget's single-line layout.
+      const bool topbar = isCompactTopBarWidget();
+      const coord_t pad = topbar ? TOPBAR_CONTENT_PAD : PAD_SMALL; // ds-allow: date-time widget — content inset chosen by top-bar vs main-view mode; pixel geometry, not a DS row/form.
+      if (topbar) {
+        textBox = topbarContentBox(width(), height());
+      } else {
+        textBox = {pad, pad, width() > 2 * pad ? width() - 2 * pad : width(),
+                   height() > 2 * pad ? height() - 2 * pad : height()};
+      }
+      textValid = false;
+      return;
+    }
 
     // No colour option: use the theme ink (PRIMARY2).
-    (void)widgetData;
     if (!dateTime) return;
     dateTime->setColor(COLOR2FLAGS(COLOR_THEME_PRIMARY2_INDEX));
     bool compact = isCompactTopBarWidget();
@@ -1067,17 +882,50 @@ class DateTimeWidget : public Widget
   // Adjustment to make main view date/time align with model/radio settings
   // views
   static LAYOUT_VAL_SCALED(DT_XO, 1) // ds-allow: date-time widget — DPI-scaled X nudge aligning main-view date/time with the settings views; canvas geometry, not a DS row/form.
+
+ private:
+  void layoutSingleLineText(lv_obj_t* obj, const char* text)
+  {
+    const bool topbar = isCompactTopBarWidget();
+    FontIndex font = topbar ? chipTextFontForBox(text, textBox.w, textBox.h)
+                            : textFontForBox(text, textBox.w, textBox.h);
+    coord_t labelH = getFontHeight(LcdFlags(font) << 8u);
+    coord_t labelY = textBox.y + (textBox.h - labelH) / 2;
+
+    etx_font(obj, font);
+    etx_txt_color(obj, topbar ? statusPrimaryColor(topbar)
+                              : COLOR_THEME_PRIMARY2_INDEX);
+    lv_obj_set_style_text_align(
+        obj, topbar ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_pos(obj, textBox.x, labelY); // ds-allow: date-time widget — single-line text positioned at an absolute offset within the content box; canvas widget, not a DS row/form.
+    lv_obj_set_size(obj, textBox.w, labelH);
+  }
+
+  uint8_t format = DATETIME_FORMAT_BOTH;
+  RequiredLvObj label;
+  StatusContentBox textBox = {};
+  struct gtm lastTime = {};
+  bool textValid = false;
 };
 
 const WidgetOption DateTimeWidget::options[] = {
     {"", WidgetOption::Deprecated, 0},
+    // Format (Both/Time/Date) as a labelled dropdown, appended at the end so
+    // layouts persisted before this option existed default to index 0 = Both
+    // (unchanged behaviour). choiceValues supplies the labels; the stored
+    // value is 0-based (0=Both, 1=Time, 2=Date), matching DateTimeFormat.
+    // The value fields MUST be fully-braced WidgetOptionValue (via the macro),
+    // never bare ints: WidgetOptionValue's second member is a std::string, so
+    // a bare `0, 0, 2` would brace-elide a 0 into deflt.stringValue and build
+    // std::string from a null pointer constant, crashing at static-init.
+    {"Format", WidgetOption::Choice, WIDGET_OPTION_VALUE_SIGNED(0),
+     WIDGET_OPTION_VALUE_SIGNED(0), WIDGET_OPTION_VALUE_SIGNED(2), nullptr, {},
+     {"Both", "Time", "Date"}},
     {nullptr, WidgetOption::Bool}};
 
 BaseWidgetFactory<DateTimeWidget> DateTimeWidget("Date Time",
                                                  DateTimeWidget::options,
                                                  STR_DATE_TIME_WIDGET);
-
-enum class DateTextKind { Clock, Today };
 
 class DateTextWidget : public Widget
 {
@@ -1140,27 +988,12 @@ class DateTextWidget : public Widget
  private:
   bool shouldRefresh(const struct gtm& time) const
   {
-    if (kind == DateTextKind::Clock) {
-      return time.tm_min != lastTime.tm_min || time.tm_hour != lastTime.tm_hour;
-    }
-
-    return time.tm_mday != lastTime.tm_mday || time.tm_mon != lastTime.tm_mon ||
-           time.tm_year != lastTime.tm_year;
+    return dateTextShouldRefresh(kind, time, lastTime);
   }
 
   void formatText(char* text, size_t size, const struct gtm& time) const
   {
-    if (kind == DateTextKind::Clock) {
-      const TimerOptions timerOptions = {.options = SHOW_TIME};
-      getTimerString(text, getValue(MIXSRC_TX_TIME), timerOptions);
-      return;
-    }
-
-#if defined(TRANSLATIONS_CN) || defined(TRANSLATIONS_TW)
-    snprintf(text, size, "%02d-%02d", time.tm_mon + 1, time.tm_mday);
-#else
-    snprintf(text, size, "%d %s", time.tm_mday, STR_MONTHS[time.tm_mon]);
-#endif
+    formatDateText(text, size, time, kind);
   }
 
   void layoutText(lv_obj_t* obj, const char* text)
@@ -1264,3 +1097,9 @@ BaseWidgetFactory<InternalGPSWidget> InternalGPSWidget("Internal GPS", nullptr,
                                                        STR_INT_GPS_LABEL);
 
 #endif
+
+// Test hook: linkStateLevel() is anonymous-namespace-scoped (internal
+// linkage), so it is re-exposed here with external linkage for
+// widget_state_level_tests.cpp. Behaviour is identical to the private
+// helper -- no logic duplicated.
+uint8_t linkStateLevelForTest(uint8_t rssi) { return linkStateLevel(rssi); }
