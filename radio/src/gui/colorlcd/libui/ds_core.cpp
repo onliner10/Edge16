@@ -60,6 +60,14 @@ LcdColorIndex roleColor(TextRole role)
       return COLOR_THEME_WARNING_INDEX;
     case TextRole::Active:
       return COLOR_THEME_ACTIVE_INDEX;
+    case TextRole::Strong:
+      // Explicit (not a Body fall-through): Strong is deliberately the same
+      // ink as Body today — the theme palette has no distinct high-contrast
+      // "emphasis" text token to alias to without risking AAA contrast on
+      // some themes. The BOLD weight (see roleFont) is the reliable
+      // live-emphasis cue; giving Strong its own case keeps that a conscious
+      // choice instead of an accident of switch fall-through.
+      return COLOR_THEME_PRIMARY1_INDEX;
     default:
       return COLOR_THEME_PRIMARY1_INDEX;
   }
@@ -668,6 +676,12 @@ void Grid::Row::setCell(int col, const char* text, TextRole role)
   lv_obj_t* label = ensureCell(col, role);
   if (label) {
     lv_label_set_text(label, text ? text : "");
+    // Re-apply the font on EVERY call, not just at creation (ensureCell) —
+    // a cell that toggles e.g. Body <-> Strong across refreshes (the
+    // logical-switches "active operand" live cue) must have its rendered
+    // weight track the role every time, not get stuck at whatever role it
+    // first realized with.
+    etx_font(label, isHeader_ ? FONT_STD_INDEX : roleFont(role), LV_PART_MAIN);
     etx_txt_color(label, roleColor(role));
   }
 }
@@ -678,7 +692,19 @@ void Grid::Row::setCellSmall(int col, const char* text, bool small,
   lv_obj_t* label = ensureCell(col, role);
   if (label) {
     lv_label_set_text(label, text ? text : "");
-    etx_font(label, small ? FONT_XS_INDEX : FONT_STD_INDEX, LV_PART_MAIN);
+    // Strong wins over `small`: a live bold cue (e.g. the logical-switch
+    // "currently matches" operand highlight, which drives V1 through this
+    // small-font path) must still render bold even when the column also
+    // wants the small font to avoid overflow — otherwise Strong routed
+    // through setCellSmall would never be visible as bold.
+    FontIndex font;
+    if (isHeader_)
+      font = FONT_STD_INDEX;
+    else if (role == TextRole::Strong)
+      font = roleFont(role);  // bold
+    else
+      font = small ? FONT_XS_INDEX : FONT_STD_INDEX;
+    etx_font(label, font, LV_PART_MAIN);
     etx_txt_color(label, roleColor(role));
   }
 }

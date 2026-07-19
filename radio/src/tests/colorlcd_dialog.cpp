@@ -31,6 +31,7 @@ bool modelNameDialogEmptyConfirmKeepsAutoNameForTest();
 bool confirmDialogBlockingIgnoresOutsideTapForTest();
 bool messageDialogIsDismissibleForTest();
 bool dsDialogActionInvokesHandlerForTest();
+bool confirmDialogYesIsDestructiveWhenFlaggedForTest();
 
 // Confirming with a typed name (checkmark/OK) applies it, and the dialog
 // opens with its keyboard already showing and the auto-generated name as the
@@ -133,6 +134,26 @@ TEST(ColorDsDialog, ActionInvokesHandler)
   if (pid == 0) {
     alarm(2);
     _exit(dsDialogActionInvokesHandlerForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+// A destructive confirm (delete sensor/theme, receiver reset, ...) must not
+// present its irreversible YES as the visually-preferred Primary action (#8):
+// `destructive=true` routes YES onto ds::ButtonRole::Destructive, and a
+// confirm that does not ask for it stays Primary.
+TEST(ColorConfirmDialog, YesIsDestructiveWhenFlagged)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(confirmDialogYesIsDestructiveWhenFlaggedForTest() ? 0 : 1);
   }
 
   int status = 0;

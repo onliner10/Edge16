@@ -559,7 +559,8 @@ void ThemeSetupPage::displayThemeMenu(Window *window, ThemePersistance *tp)
             listBox->setNames(tp->getNames());
             currentTheme = min<int>(currentTheme, tp->getNames().size() - 1);
             listBox->setSelected(currentTheme);
-          });
+          },
+          /*cancelHandler=*/nullptr, /*destructive=*/true);
     });
   }
 }

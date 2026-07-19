@@ -1064,7 +1064,8 @@ void ModelTelemetryPage::build(Window* window)
                             for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
                               delTelemetryIndex(i);
                             }
-                          });
+                          },
+                          /*cancelHandler=*/nullptr, /*destructive=*/true);
         return 0;
       });
 #if TWOCOLBUTTONS

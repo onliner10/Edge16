@@ -98,13 +98,20 @@ class DynamicMessageDialog : public ds::Dialog
 class ConfirmDialog : public ds::Dialog
 {
  public:
+  // `destructive` (default false) routes the YES action onto
+  // ds::ButtonRole::Destructive instead of Primary -- a dangerous confirm
+  // (delete sensor/theme, receiver reset, ...) must not present its
+  // irreversible choice as the visually-preferred one. NO always stays
+  // Secondary.
   ConfirmDialog(const char* title, const char* message,
                 std::function<void(void)> confirmHandler,
-                std::function<void(void)> cancelHandler = nullptr);
+                std::function<void(void)> cancelHandler = nullptr,
+                bool destructive = false);
 
  protected:
   std::function<void(void)> confirmHandler;
   std::function<void(void)> cancelHandler;
+  ds::DSButton* yesButton = nullptr;  // exposed for test role assertions
 
   void onCancel() override;
 };

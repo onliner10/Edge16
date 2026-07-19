@@ -66,11 +66,27 @@ class OutputLineButton : public ListLineButton
 
   void onLineLoaded() override
   {
-    withLive([&](LiveWindow& live) {
-      dsRow = std::make_unique<ds::RowContent>(this, ds::RowSize::Compact);
-      refreshCachedText();
-      lv_obj_invalidate(live.lvobj());
-    });
+    if (!withLive([&](LiveWindow& live) {
+          dsRow = std::make_unique<ds::RowContent>(this, ds::RowSize::Compact);
+
+          // DESIGN SYSTEM: leading slot = at-a-glance reverse indicator.
+          // Reserved on every row (not just reversed ones) so the glyph
+          // always lands in the SAME column -- a reversed channel among up to
+          // 32 catches the eye by appearing in a predictable spot, the same
+          // "audit at a glance" reason the USB-joystick inversion marker uses
+          // this slot. Hidden/shown per-channel in refreshCachedText().
+          Window* slot = dsRow->leadingSlot();
+          if (!slot) return false;
+          revertIcon = new StaticText(
+              slot, rect_t{0, 0, LV_SIZE_CONTENT, LV_SIZE_CONTENT},
+              LV_SYMBOL_SHUFFLE);
+          if (!revertIcon || !revertIcon->isAvailable()) return false;
+
+          refreshCachedText();
+          lv_obj_invalidate(live.lvobj());
+          return true;
+        }))
+      return;
   }
 
   void onRefresh() override
@@ -116,6 +132,7 @@ class OutputLineButton : public ListLineButton
     setText(sourceText, getSourceString(MIXSRC_FIRST_CH + index));
 
     revertVisible = output->revert;
+    if (revertIcon) revertIcon->show(revertVisible);
 
     getValueOrGVarString(minText.data(), minText.size(), output->min, PREC1,
                          nullptr, -LIMITS_MIN_MAX_OFFSET, true);
@@ -128,10 +145,11 @@ class OutputLineButton : public ListLineButton
              output->symetrical ? " =" : CHAR_DELTA);
     curveValue = output->curve;
 
-    // DESIGN SYSTEM row content: title = channel/source name; trailing = the
-    // concise output travel range (min…max). Offset, center, the revert
-    // symbol, the live channel bar and the curve icon are intentionally
-    // relegated to the output editor (OutputEditWindow, opened by editOutput /
+    // DESIGN SYSTEM row content: leading = reverse indicator (safety-relevant,
+    // kept at a glance -- see onLineLoaded); title = channel/source name;
+    // trailing = the concise output travel range (min…max). Offset, center,
+    // the live channel bar and the curve icon are intentionally relegated to
+    // the output editor (OutputEditWindow, opened by editOutput /
     // RP_OUTPUT_EDIT) so more channels fit on this dense list.
     snprintf(trailingText, sizeof(trailingText), "%s  %s", minText.data(),
              maxText.data());
@@ -170,6 +188,7 @@ class OutputLineButton : public ListLineButton
   // never truncate: both operands plus the two-space separator and the NUL.
   char trailingText[sizeof(minText) + sizeof(maxText) + 3] = {};
   std::unique_ptr<ds::RowContent> dsRow;
+  StaticText* revertIcon = nullptr;  // leading-slot reverse (LV_SYMBOL_SHUFFLE) glyph
   Messaging refreshMsg;
 };
 

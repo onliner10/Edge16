@@ -252,4 +252,76 @@ TEST(DesignSystemGrid, ColumnsAlignFrozenStickyAndMeetTouchFloor)
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
 }
 
+// Regression for the logical-switches "active operand" live cue (#7): a Row
+// cell that toggles TextRole::Strong AFTER creation must re-render bold, not
+// stay stuck at whatever role/font it first realized with. ensureCell() only
+// picks the font once, at creation -- setCell()/setCellSmall() must
+// re-apply it on every call so a live refresh's role change actually shows.
+TEST(DesignSystemGrid, StrongRoleReappliesBoldFontOnEveryCellUpdate)
+{
+  std::vector<ds::Grid::Column> cols = {
+      ds::Grid::Column::Fixed(60, ds::CellAlign::Start),
+      ds::Grid::Column::Fixed(60, ds::CellAlign::Start),
+  };
+  auto* dlg = new (std::nothrow) GridDialog(cols);
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ds::Grid* grid = dlg->grid;
+  ASSERT_NE(grid, nullptr);
+  Window* host = dlg;
+
+  auto* row = grid->addRow();
+  ASSERT_NE(row, nullptr);
+
+  // Column 0: created Body, later flipped to Strong via setCell() -- the
+  // FUNC/V2/AND path in model_logical_switches.cpp.
+  row->setCell(0, "match", ds::TextRole::Body);
+  settle(host);
+  const lv_font_t* bodyFont =
+      lv_obj_get_style_text_font(row->cellObj(0), LV_PART_MAIN);
+
+  row->setCell(0, "match", ds::TextRole::Strong);
+  settle(host);
+  const lv_font_t* strongFont =
+      lv_obj_get_style_text_font(row->cellObj(0), LV_PART_MAIN);
+
+  EXPECT_NE(strongFont, bodyFont)
+      << "cell re-set with TextRole::Strong after creation did not switch to "
+         "the bold font";
+
+  // The bold font is whatever a fresh Strong-created label picks (roleFont) --
+  // check against a reference label rather than assuming a specific index.
+  // Parented directly on the active screen (NOT the row's grid container) so
+  // it does not perturb the row's own grid-cell layout.
+  lv_obj_t* reference = etx_label_create(lv_scr_act(), FONT_BOLD_INDEX);
+  ASSERT_NE(reference, nullptr);
+  const lv_font_t* boldFont =
+      lv_obj_get_style_text_font(reference, LV_PART_MAIN);
+  EXPECT_EQ(strongFont, boldFont)
+      << "Strong cell font is not the bold font";
+  lv_obj_del(reference);
+
+  // Column 1: the V1 path -- Strong routed through setCellSmall() with
+  // small=true must STILL render bold (Strong wins over the small request),
+  // not fall back to FONT_XS_INDEX.
+  row->setCellSmall(1, "match", /*small=*/true, ds::TextRole::Strong);
+  settle(host);
+  const lv_font_t* smallStrongFont =
+      lv_obj_get_style_text_font(row->cellObj(1), LV_PART_MAIN);
+  EXPECT_EQ(smallStrongFont, boldFont)
+      << "setCellSmall() with TextRole::Strong did not render bold";
+
+  // A non-Strong small cell keeps the small font -- proves the Strong
+  // override above is targeted, not a blanket font change.
+  row->setCellSmall(1, "match", /*small=*/true, ds::TextRole::Body);
+  settle(host);
+  const lv_font_t* smallBodyFont =
+      lv_obj_get_style_text_font(row->cellObj(1), LV_PART_MAIN);
+  EXPECT_NE(smallBodyFont, boldFont)
+      << "non-Strong setCellSmall() unexpectedly rendered bold";
+
+  host->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
 #endif  // COLORLCD && SIMU

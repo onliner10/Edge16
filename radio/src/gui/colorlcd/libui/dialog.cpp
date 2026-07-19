@@ -26,6 +26,7 @@
 #include "progress.h"
 #include "static.h"
 #include "textedit.h"
+#include "widget_palette.h"  // BTN_FILL_* / buttonFillLvColor -- ConfirmDialog destructive-role test hook
 
 #include <algorithm>
 #include <new>
@@ -182,7 +183,8 @@ void DynamicMessageDialog::onLiveClicked(LiveWindow&) { deleteLater(); }
 ConfirmDialog::ConfirmDialog(const char* title,
                              const char* message,
                              std::function<void(void)> confirmHandler,
-                             std::function<void(void)> cancelHandler) :
+                             std::function<void(void)> cancelHandler,
+                             bool destructive) :
     ds::Dialog(title, /*closeIfClickedOutside=*/false),
     confirmHandler(std::move(confirmHandler)),
     cancelHandler(std::move(cancelHandler))
@@ -192,16 +194,23 @@ ConfirmDialog::ConfirmDialog(const char* title,
   // the pilot must pick YES or NO, or press EXIT (-> onCancel -> cancel).
   if (message) body(message, ds::TextRole::Body, /*centered=*/true);
 
-  // DS action row: right-aligned, primary (confirm) rightmost. ds::Dialog owns
-  // the button spacing/sizing and auto-closes the dialog after the handler.
-  // Reference the members explicitly (the ctor params of the same name shadow
-  // them in this scope).
+  // DS action row: right-aligned, primary/destructive (confirm) rightmost.
+  // ds::Dialog owns the button spacing/sizing and auto-closes the dialog
+  // after the handler. Reference the members explicitly (the ctor params of
+  // the same name shadow them in this scope).
+  //
+  // A destructive confirm's YES uses ds::ButtonRole::Destructive (warning-
+  // colored) instead of Primary (bold filled accent), so an irreversible
+  // choice (delete sensor/theme, receiver reset, ...) never looks like the
+  // visually-preferred one. NO always stays Secondary -- the safe default.
   action(STR_NO, ds::ButtonRole::Secondary, [this]() {
     if (this->cancelHandler) this->cancelHandler();
   });
-  action(STR_YES, ds::ButtonRole::Primary, [this]() {
-    if (this->confirmHandler) this->confirmHandler();
-  });
+  yesButton = action(
+      STR_YES, destructive ? ds::ButtonRole::Destructive : ds::ButtonRole::Primary,
+      [this]() {
+        if (this->confirmHandler) this->confirmHandler();
+      });
 }
 
 void ConfirmDialog::onCancel()
@@ -529,6 +538,18 @@ class TestConfirmDialog : public ConfirmDialog
     withLive([&](LiveWindow& live) { onLiveClicked(live); });
   }
   void cancelForTest() { onCancel(); }
+  // Whether YES currently renders with the Destructive fill (see
+  // ds::DSButton / widget_palette BTN_FILL_*), as opposed to Primary.
+  bool yesIsDestructiveForTest() const
+  {
+    if (!yesButton) return false;
+    bool destructive = false;
+    yesButton->withLive([&](LiveWindow& live) {
+      lv_color_t fill = lv_obj_get_style_bg_color(live.lvobj(), LV_PART_MAIN);
+      destructive = lv_color_eq(fill, buttonFillLvColor(BTN_FILL_DESTRUCTIVE));
+    });
+    return destructive;
+  }
 };
 
 class TestMessageDialog : public MessageDialog
@@ -595,5 +616,29 @@ bool dsDialogActionInvokesHandlerForTest()
   btn->sendLvEvent(LV_EVENT_CLICKED);  // the click also deleteLater()s dlg
   MainWindow::instance()->runMainLoopTick();
   return ran;
+}
+
+// A destructive confirm's YES action renders with the Destructive fill
+// (warning-colored), not Primary -- an irreversible choice (delete
+// sensor/theme, receiver reset, ...) must never look like the
+// visually-preferred one (#8). A confirm that does NOT ask for `destructive`
+// stays Primary, unaffected.
+bool confirmDialogYesIsDestructiveWhenFlaggedForTest()
+{
+  auto* destructiveDlg = new (std::nothrow) TestConfirmDialog(
+      "Delete?", "All sensors", []() {}, nullptr, /*destructive=*/true);
+  if (!destructiveDlg || !destructiveDlg->isAvailable()) return false;
+  bool destructiveIsFlagged = destructiveDlg->yesIsDestructiveForTest();
+  destructiveDlg->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+
+  auto* benignDlg =
+      new (std::nothrow) TestConfirmDialog("Apply?", "Changes", []() {});
+  if (!benignDlg || !benignDlg->isAvailable()) return false;
+  bool benignStaysPrimary = !benignDlg->yesIsDestructiveForTest();
+  benignDlg->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+
+  return destructiveIsFlagged && benignStaysPrimary;
 }
 #endif

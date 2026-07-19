@@ -283,7 +283,7 @@ uint8_t ReceiverButton::pressMenu()
       new ConfirmDialog(STR_RECEIVER, STR_RECEIVER_DELETE, [=]() {
         moduleState[moduleIdx].mode = MODULE_MODE_RESET;
         removePXX2Receiver(moduleIdx, receiverIdx);
-      });
+      }, /*cancelHandler=*/nullptr, /*destructive=*/true);
       return 0;
     });
     menu->addLine(STR_RESET, [=]() {
@@ -294,7 +294,7 @@ uint8_t ReceiverButton::pressMenu()
       new ConfirmDialog(STR_RECEIVER, STR_RECEIVER_RESET, [=]() {
         moduleState[moduleIdx].mode = MODULE_MODE_RESET;
         removePXX2Receiver(moduleIdx, receiverIdx);
-      });
+      }, /*cancelHandler=*/nullptr, /*destructive=*/true);
       return 0;
     });
     menu->setCloseHandler(
