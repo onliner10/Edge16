@@ -29,6 +29,9 @@ bool modelSelectMissingImageLoadReportsWorkForTest();
 bool modelButtonClickHandlerMayDeleteButtonForTest();
 bool chosenModelNameSurvivesSimulatedTemplateLoadForTest();
 bool unchosenModelNameLeavesTemplateNameUntouchedForTest();
+bool modelPressOnUnfocusedModelOnlyFocusesForTest();
+bool modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest();
+bool modelPressOnFocusedModelQuickSelectsWhenEnabledForTest();
 
 TEST(ColorModelSelect, MissingThumbnailLoadCountsAsUiWork)
 {
@@ -72,6 +75,29 @@ TEST(ColorModelSelect, TypedNameSurvivesTemplateLoad)
 TEST(ColorModelSelect, UnappliedNameLeavesTemplateNameUntouched)
 {
   EXPECT_TRUE(unchosenModelNameLeavesTemplateNameUntouchedForTest());
+}
+
+// Safety regression: a single tap on a model card must never force-load it
+// with no confirmation. A NOT-yet-focused model only becomes focused --
+// regardless of the quick select setting -- it never loads.
+TEST(ColorModelSelect, PressOnUnfocusedModelOnlyFocuses)
+{
+  EXPECT_TRUE(modelPressOnUnfocusedModelOnlyFocusesForTest());
+}
+
+// With modelQuickSelect off (the default), pressing the already-focused
+// model must open the context menu (STR_SELECT_MODEL lives there), not load
+// the model directly.
+TEST(ColorModelSelect, PressOnFocusedModelOpensMenuWhenQuickSelectDisabled)
+{
+  EXPECT_TRUE(modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest());
+}
+
+// With modelQuickSelect on, pressing the already-focused model loads it
+// immediately, matching legacy/mono-LCD behavior.
+TEST(ColorModelSelect, PressOnFocusedModelQuickSelectsWhenEnabled)
+{
+  EXPECT_TRUE(modelPressOnFocusedModelQuickSelectsWhenEnabledForTest());
 }
 
 #endif

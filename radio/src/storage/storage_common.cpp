@@ -87,6 +87,35 @@ void preModelLoad()
   }
 }
 
+// Backfill candidate for Battery Critical when it is unset/invalid, clamped
+// so the result is ALWAYS strictly below vBatWarn (never equal), even when
+// vBatWarn sits at its own live-edit floor (30 = 3.0V). Split out from
+// postRadioSettingsLoad() so this invariant is unit-testable without
+// exercising the rest of post-load processing (backlight/serial/etc).
+static uint8_t computeBackfilledVBatCrit(uint8_t vBatWarn)
+{
+  constexpr int newVBatCritMin = 20; // 2.0V - matches the Battery Critical field floor
+  int crit = (int)vBatWarn - 3;
+  int critMax = (int)vBatWarn - 1;
+  if (crit < newVBatCritMin) crit = newVBatCritMin;
+  if (crit > critMax) crit = critMax;
+  return (uint8_t)crit;
+}
+
+#if defined(SIMU)
+// Regression coverage for the backfill floor bug: with the old
+// "crit = vBatWarn - 3, then floor at 30" logic, vBatWarn sitting at its own
+// floor (30 = 3.0V) produced crit == warn (30 == 30), silently inverting
+// alarm severity. The lowered floor (20 = 2.0V) must keep the result
+// strictly below vBatWarn even in this case.
+bool vBatCritBackfillStaysStrictlyBelowWarnAtFloorForTest()
+{
+  uint8_t warnFloor = 30;
+  uint8_t crit = computeBackfilledVBatCrit(warnFloor);
+  return crit < warnFloor;
+}
+#endif
+
 void postRadioSettingsLoad()
 {
 #if LCD_W == 128
@@ -119,11 +148,10 @@ void postRadioSettingsLoad()
 
   // Critical TX voltage: radios saved before this setting existed load it as 0.
   // Give them a sensible default below the warning voltage (kept in the valid
-  // 3.0-12.0V range and strictly below the warning) so it is always active.
+  // 2.0-12.0V range and strictly below the warning, never equal) so it is
+  // always active.
   if (g_eeGeneral.vBatCrit == 0 || g_eeGeneral.vBatCrit >= g_eeGeneral.vBatWarn) {
-    int crit = (int)g_eeGeneral.vBatWarn - 3;
-    if (crit < 30) crit = 30;
-    g_eeGeneral.vBatCrit = (uint8_t)crit;
+    g_eeGeneral.vBatCrit = computeBackfilledVBatCrit(g_eeGeneral.vBatWarn);
   }
 #if !defined(DEBUG)
   // clean up leftovers from a previous DEBUG config

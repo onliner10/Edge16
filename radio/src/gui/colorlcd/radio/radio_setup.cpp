@@ -406,8 +406,20 @@ class RadioAlarmsPage : public SubPage
 
     // Battery warning
     new ds::FormRow(form, STR_BATTERYWARNING, [](Window* slot) {
-      auto edit = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
-                                GET_SET_DEFAULT(g_eeGeneral.vBatWarn), PREC1);
+      auto edit = new NumberEdit(
+          slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
+          GET_DEFAULT(g_eeGeneral.vBatWarn),
+          [](int32_t newValue) {
+            g_eeGeneral.vBatWarn = newValue;
+            // Battery Critical must always stay strictly below Battery
+            // Warning, otherwise the alarm severities invert for the rest
+            // of the session (postRadioSettingsLoad only fixes this at boot).
+            if (g_eeGeneral.vBatCrit >= g_eeGeneral.vBatWarn) {
+              g_eeGeneral.vBatCrit = g_eeGeneral.vBatWarn - 1;
+            }
+            SET_DIRTY();
+          },
+          PREC1);
       edit->setSuffix("V");
       edit->setDirectKeyboard(false);
       edit->setEditTitle(STR_ROLLER_BATTERY_WARNING);
@@ -415,8 +427,20 @@ class RadioAlarmsPage : public SubPage
 
     // Battery critical (state-aware TX battery widget escalates to Critical here)
     new ds::FormRow(form, STR_BATTERYCRITICAL, [](Window* slot) {
-      auto edit = new NumberEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 30, 120,
-                                GET_SET_DEFAULT(g_eeGeneral.vBatCrit), PREC1);
+      auto edit = new NumberEdit(
+          slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 20, 120,
+          GET_DEFAULT(g_eeGeneral.vBatCrit),
+          [](int32_t newValue) {
+            // Keep strictly below Battery Warning; the lowered floor (20 =
+            // 2.0V) guarantees this is always reachable even when Battery
+            // Warning is at its own floor (30 = 3.0V).
+            if (newValue >= g_eeGeneral.vBatWarn) {
+              newValue = g_eeGeneral.vBatWarn - 1;
+            }
+            g_eeGeneral.vBatCrit = newValue;
+            SET_DIRTY();
+          },
+          PREC1);
       edit->setSuffix("V");
       edit->setDirectKeyboard(false);
       edit->setEditTitle(STR_ROLLER_BATTERY_CRITICAL);
@@ -774,6 +798,12 @@ class RadioManageModelsPage : public SubPage
     body->setFlexLayout();
     auto* list = new ds::List(body);
     auto* form = new ds::Card(list);
+
+    // Model quick select
+    new ds::FormRow(form, STR_MODEL_QUICK_SELECT, [](Window* slot) {
+      new ToggleSwitch(slot, rect_t{},
+                       GET_SET_DEFAULT(g_eeGeneral.modelQuickSelect));
+    });
 
     // Label single/multi select
     new ds::FormRow(form, STR_LABELS_SELECT, [this](Window* slot) {

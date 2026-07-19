@@ -14,6 +14,8 @@
 
 extern uint8_t g_vbat100mV;
 
+bool vBatCritBackfillStaysStrictlyBelowWarnAtFloorForTest();
+
 namespace {
 
 // Restore the touched globals so this fixture never leaks state into other
@@ -103,4 +105,14 @@ TEST(TxBatteryAlarm, noReadingSuppressesCritical)
   EXPECT_FALSE(IS_TXBATT_CRITICAL());
   EXPECT_TRUE(IS_TXBATT_WARNING());
   EXPECT_EQ(getTxBatteryAlarm(), TXBATT_ALARM_WARNING);
+}
+
+// Backfill floor regression: radios saved before vBatCrit existed load it as
+// 0 and postRadioSettingsLoad() backfills it from vBatWarn. When vBatWarn
+// sits at its own live-edit floor (30 = 3.0V), the backfilled value must
+// still land strictly below vBatWarn -- never equal to it, which would
+// silently invert alarm severity for the whole session.
+TEST(TxBatteryAlarm, backfillFloorStaysStrictlyBelowWarning)
+{
+  EXPECT_TRUE(vBatCritBackfillStaysStrictlyBelowWarnAtFloorForTest());
 }

@@ -270,6 +270,81 @@ bool modelButtonClickHandlerMayDeleteButtonForTest()
 
 //-----------------------------------------------------------------------------
 
+enum class ModelPressAction : uint8_t {
+  Focus,       // tapped model isn't focused yet: highlight only, don't load
+  QuickSelect, // tapped the already-focused model, quick select enabled: load it
+  OpenMenu,    // tapped the already-focused model, quick select disabled: menu
+};
+
+// Decides what a single tap on a model card should do. Split out so the
+// focus-vs-load / quick-select-vs-menu precedence is unit-testable without a
+// live ModelsPageBody, ModelCell wiring, or storage I/O. This is the fix for
+// a regression where every tap force-loaded a model with no confirmation,
+// ignoring g_eeGeneral.modelQuickSelect: a NOT-yet-focused model must only
+// become focused, and the already-focused model only loads immediately when
+// quick select is on -- otherwise the tap opens the context menu instead.
+static ModelPressAction decideModelPressAction(bool tappedModelIsFocused,
+                                               bool quickSelectEnabled)
+{
+  if (!tappedModelIsFocused) return ModelPressAction::Focus;
+  return quickSelectEnabled ? ModelPressAction::QuickSelect
+                            : ModelPressAction::OpenMenu;
+}
+
+#if defined(SIMU)
+// decideModelPressAction() backs the model-card press handler in
+// ModelsPageBody::update() below. Testing it directly -- rather than wiring
+// a live ModelsPageBody with real ModelCells routed through selectModel()'s
+// storage I/O and openMenu()'s live Menu window -- proves the
+// tap-vs-focus / quick-select-vs-menu precedence without flaky I/O, the same
+// way applyChosenModelNameData() is tested directly further down.
+bool modelPressOnUnfocusedModelOnlyFocusesForTest()
+{
+  auto saved = g_eeGeneral.modelQuickSelect;
+
+  g_eeGeneral.modelQuickSelect = 0;
+  bool focusesWhenDisabled =
+      decideModelPressAction(/*tappedModelIsFocused=*/false,
+                             g_eeGeneral.modelQuickSelect) ==
+      ModelPressAction::Focus;
+
+  g_eeGeneral.modelQuickSelect = 1;
+  bool focusesWhenEnabled =
+      decideModelPressAction(/*tappedModelIsFocused=*/false,
+                             g_eeGeneral.modelQuickSelect) ==
+      ModelPressAction::Focus;
+
+  g_eeGeneral.modelQuickSelect = saved;
+  return focusesWhenDisabled && focusesWhenEnabled;
+}
+
+bool modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest()
+{
+  auto saved = g_eeGeneral.modelQuickSelect;
+
+  g_eeGeneral.modelQuickSelect = 0;
+  bool opensMenu = decideModelPressAction(/*tappedModelIsFocused=*/true,
+                                          g_eeGeneral.modelQuickSelect) ==
+                   ModelPressAction::OpenMenu;
+
+  g_eeGeneral.modelQuickSelect = saved;
+  return opensMenu;
+}
+
+bool modelPressOnFocusedModelQuickSelectsWhenEnabledForTest()
+{
+  auto saved = g_eeGeneral.modelQuickSelect;
+
+  g_eeGeneral.modelQuickSelect = 1;
+  bool quickSelects = decideModelPressAction(/*tappedModelIsFocused=*/true,
+                                             g_eeGeneral.modelQuickSelect) ==
+                      ModelPressAction::QuickSelect;
+
+  g_eeGeneral.modelQuickSelect = saved;
+  return quickSelects;
+}
+#endif
+
 class ModelsPageBody : public Window
 {
  public:
@@ -333,8 +408,18 @@ class ModelsPageBody : public Window
 
       // Press Handler for Models
       button->setPressHandler([=]() -> uint8_t {
-        focusedModel = model;
-        selectModel(model);
+        switch (decideModelPressAction(model == focusedModel,
+                                       g_eeGeneral.modelQuickSelect)) {
+          case ModelPressAction::Focus:
+            focusedModel = model;
+            break;
+          case ModelPressAction::QuickSelect:
+            selectModel(model);
+            break;
+          case ModelPressAction::OpenMenu:
+            openMenu();
+            break;
+        }
         return model == modelslist.getCurrentModel();
       });
 
@@ -400,7 +485,8 @@ class ModelsPageBody : public Window
   {
     Menu *menu = new Menu();
     menu->setTitle(focusedModel->modelName);
-    if (focusedModel != modelslist.getCurrentModel()) {
+    if (g_eeGeneral.modelQuickSelect ||
+        focusedModel != modelslist.getCurrentModel()) {
       menu->addLine(STR_SELECT_MODEL, [=]() { selectModel(focusedModel); });
     }
     menu->addLine(STR_DUPLICATE_MODEL, [=]() { duplicateModel(focusedModel); });
@@ -531,7 +617,8 @@ class ModelsPageBody : public Window
           if (refreshLabels != nullptr) refreshLabels();
 
           update();
-        });
+        },
+        /*cancelHandler=*/nullptr, /*destructive=*/true);
   }
 
   void editLabels(ModelCell *model)
