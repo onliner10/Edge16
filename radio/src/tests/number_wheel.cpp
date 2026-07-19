@@ -533,3 +533,197 @@ TEST(NumberWheel, TouchCoarseAfterOvershootClampHasNoStaleFineAddend)
   wheel->deleteLater();
   MainWindow::instance()->runMainLoopTick();
 }
+
+// ---- Touch-path coarse-drag fine-preservation (precision-loss fix) ------
+//
+// The two tests above prove the touch path re-derives EVERY column's
+// selection from the canonical decomposition of the clamped stored value
+// whenever a drag overshoots.  That is correct when the FINE roller is the
+// one that overshot (canonical decomposition of vmax always has fine offset
+// 0, so resetting fine to 0 is the right answer -- TouchFineOvershoot...
+// above).  But applied the same way to a COARSE overshoot it has a bad side
+// effect: dragging the coarse roller up onto the grid-aligned top base
+// (== vmax) while the fine roller sits on a nonzero offset also composes
+// past vmax, and re-deriving from scratch silently wipes that fine offset --
+// then dragging coarse back down one step lands on "99.0" instead of the
+// user's "99.6", permanently losing the fine digit.  onRollerChanged() now
+// slides only the column that just moved (identified by the event's own
+// target) to the furthest index that keeps the composed value in range,
+// leaving every other column's selection untouched.  These tests prove the
+// coarse roller now behaves the same way: its reachable range is implicitly
+// capped by the current fine offset instead of resetting that offset.
+
+TEST(NumberWheel, TouchCoarseDragUpThroughCeilingPreservesFineOffset)
+{
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 936;  // 93.6
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto layout = NumberWheel::buildLayoutFor(edit);
+  ASSERT_TRUE(layout.split());
+  const auto& coarse = layout.columns[0];
+  const auto& fine = layout.columns[1];
+  int topCoarseIdx = (int)coarse.size() - 1;
+  int prevCoarseIdx = topCoarseIdx - 1;
+  ASSERT_EQ(coarse[topCoarseIdx].rawValue, 1000);
+  ASSERT_EQ(coarse[prevCoarseIdx].rawValue, 990);
+
+  auto startIdxs = NumberWheel::decomposeValue(layout, 936);
+  ASSERT_EQ(startIdxs.size(), 2u);
+  int fineIdx = startIdxs[1];
+  ASSERT_EQ(fine[fineIdx].rawValue, 6);  // fine roller starts on "+.6"
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(0), startIdxs[0]);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), fineIdx);
+
+  // Drag the coarse roller up one step at a time, all the way to (and one
+  // past) the ceiling.  At every step: the stored value must never exceed
+  // vmax, and the fine roller's own selection -- the user's ".6" -- must
+  // never move, since only the coarse roller was touched.
+  for (int idx = startIdxs[0] + 1; idx <= topCoarseIdx; idx++) {
+    wheel->touchRollerForTest(0, idx);
+    EXPECT_LE(modelVal, 1000) << "coarse idx " << idx;
+    EXPECT_EQ(wheel->getRollerSelectedForTest(1), fineIdx)
+        << "fine offset lost at coarse idx " << idx;
+  }
+
+  // The coarse roller could not reach the top base (1000 + ".6" would
+  // overshoot vmax), so it must have been clamped one row below it: composed
+  // value 99.6 (raw 996) -- not reset to 100.0, and not dropped to 99.0.
+  EXPECT_EQ(modelVal, 996);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(0), prevCoarseIdx);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), fineIdx);
+
+  // Explicitly repeat the exact steps from the bug report: drag coarse to
+  // the ceiling, then back down one -- must land on 99.6, not 99.0.
+  wheel->touchRollerForTest(0, topCoarseIdx);
+  EXPECT_EQ(modelVal, 996);
+  wheel->touchRollerForTest(0, prevCoarseIdx);
+  EXPECT_EQ(modelVal, 996);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), fineIdx);
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+}
+
+TEST(NumberWheel, TouchFineNoDeadPositionsBelowCeiling)
+{
+  // One coarse row below the vmax ceiling: every fine offset here is fully
+  // reachable (990 + up to +.9 = 999.9 <= vmax), so none of them should be
+  // clamped away -- unlike the top row, where only "+.0" is reachable.
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 990;  // 99.0
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto layout = NumberWheel::buildLayoutFor(edit);
+  ASSERT_TRUE(layout.split());
+  const auto& coarse = layout.columns[0];
+  const auto& fine = layout.columns[1];
+  int prevCoarseIdx = (int)coarse.size() - 2;
+  ASSERT_EQ(coarse[prevCoarseIdx].rawValue, 990);
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+  ASSERT_EQ(wheel->getRollerSelectedForTest(0), prevCoarseIdx);
+
+  std::vector<int> seen;
+  for (int i = 0; i < (int)fine.size(); i++) {
+    wheel->touchRollerForTest(1, i);
+    EXPECT_EQ(modelVal, 990 + i) << "fine idx " << i;
+    EXPECT_GE(modelVal, edit->getMin());
+    EXPECT_LE(modelVal, edit->getMax());
+    // Only the fine roller was touched -- coarse must stay put.
+    EXPECT_EQ(wheel->getRollerSelectedForTest(0), prevCoarseIdx);
+    for (int prior : seen) EXPECT_NE(prior, modelVal);
+    seen.push_back(modelVal);
+  }
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+}
+
+// ---- Rotary path: unaffected by the touch-path change above -------------
+//
+// onWheelEncoder() drives the hardware-encoder path.  It never goes through
+// onRollerChanged() -- lv_roller_set_selected() never emits
+// LV_EVENT_VALUE_CHANGED -- so it always computed its own clamped target and
+// re-derived every column's selection from it, independently of the touch-
+// path fix above.  These tests simulate a real encoder detent exactly the
+// way LVGL delivers it (see NumberWheel::rotateEncoderForTest) to confirm
+// that path is untouched: uniform per-detent steps, correct carry between
+// the coarse and fine columns, and exact clamping at the true vmax/vmin.
+
+TEST(NumberWheel, RotaryEncoderStepsCarryAndClampAtVmax)
+{
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 990;  // 99.0
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+  ASSERT_EQ(modelVal, 990);
+
+  // One detent moves the composed value by exactly one fineStepRaw (here 1
+  // raw unit, "0.1"), carrying from the fine column into the coarse column
+  // at the row boundary (99.9 -> 100.0), and clamps exactly at the true
+  // vmax.
+  for (int i = 1; i <= 10; i++) {
+    wheel->rotateEncoderForTest(1, LV_KEY_RIGHT);
+    EXPECT_EQ(modelVal, 990 + i) << "detent " << i;
+  }
+  EXPECT_EQ(modelVal, 1000);  // reached vmax exactly via the carry
+
+  // Further RIGHT detents at the ceiling (from either column's roller) must
+  // never push the stored value past vmax.
+  wheel->rotateEncoderForTest(1, LV_KEY_RIGHT);
+  EXPECT_EQ(modelVal, 1000);
+  wheel->rotateEncoderForTest(0, LV_KEY_RIGHT);
+  EXPECT_EQ(modelVal, 1000);
+
+  // LEFT detents step back down by the same fineStepRaw, carrying the other
+  // way at the row boundary.
+  for (int i = 1; i <= 10; i++) {
+    wheel->rotateEncoderForTest(1, LV_KEY_LEFT);
+    EXPECT_EQ(modelVal, 1000 - i) << "detent " << i;
+  }
+  EXPECT_EQ(modelVal, 990);
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+}
+
+TEST(NumberWheel, RotaryEncoderClampsAtVmin)
+{
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 4;  // 0.4
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+  ASSERT_EQ(modelVal, 4);
+
+  for (int i = 1; i <= 4; i++) {
+    wheel->rotateEncoderForTest(1, LV_KEY_LEFT);
+    EXPECT_EQ(modelVal, 4 - i) << "detent " << i;
+  }
+  EXPECT_EQ(modelVal, 0);  // reached the true vmin exactly
+
+  // Further LEFT detents must never push the stored value below vmin.
+  wheel->rotateEncoderForTest(1, LV_KEY_LEFT);
+  EXPECT_EQ(modelVal, 0);
+  wheel->rotateEncoderForTest(0, LV_KEY_LEFT);
+  EXPECT_EQ(modelVal, 0);
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+}

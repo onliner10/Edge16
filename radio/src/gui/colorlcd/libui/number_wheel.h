@@ -94,6 +94,17 @@ class NumberWheel : public ModalWindow
     return (col < rollers.size()) ? (int)lv_roller_get_selected(rollers[col])
                                    : -1;
   }
+  // Test-only accessor: simulate one hardware rotary-encoder detent exactly
+  // the way it is delivered to a focused roller -- an LV_EVENT_KEY event
+  // carrying the key code as its param -- so the assertions exercise the real
+  // onWheelEncoder() preprocess handler a physical encoder detent takes (it
+  // stops event processing itself, so the roller's own class handler and
+  // onRollerKey() never see the event, matching production behaviour).
+  void rotateEncoderForTest(size_t col, uint32_t key)
+  {
+    if (col >= rollers.size()) return;
+    lv_obj_send_event(rollers[col], LV_EVENT_KEY, &key);
+  }
 #endif
 
  protected:

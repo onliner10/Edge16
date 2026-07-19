@@ -698,11 +698,11 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
   if (!nw) return;
   // Re-entrancy guard: the normalization pass below (re-)calls
-  // lv_roller_set_selected() on every column.  That call never itself emits
-  // LV_EVENT_VALUE_CHANGED -- same property onWheelEncoder already relies on
-  // to silently re-select rollers -- so this should never actually re-enter,
-  // but bail out defensively anyway so it can never loop or fight an
-  // in-progress user drag.
+  // lv_roller_set_selected() on one or more columns.  That call never itself
+  // emits LV_EVENT_VALUE_CHANGED -- same property onWheelEncoder already
+  // relies on to silently re-select rollers -- so this should never actually
+  // re-enter, but bail out defensively anyway so it can never loop or fight
+  // an in-progress user drag.
   if (nw->normalizingSelection) return;
 
   // LVGL's roller widget calls lv_group_set_editing(g, false) in its own
@@ -714,26 +714,91 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   lv_obj_t* roller = static_cast<lv_obj_t*>(lv_event_get_target(e));
   lv_group_t* g = lv_obj_get_group(roller);
   if (g) lv_group_set_editing(g, true);
-  nw->applyCurrentSelection(true);
 
   // A touch drag on ONE column can compose past vmin/vmax without that
   // column knowing it -- e.g. a grid-aligned top coarse base already equals
   // vmax, so scrolling the fine roller to any nonzero offset composes past
-  // vmax and applyCurrentSelection() (via NumberEdit::setValue) just clamped
-  // the STORED value, leaving the fine roller's own selection stuck on the
-  // overshoot offset it was dragged to.  Left alone, that stale offset
-  // silently carries into the NEXT drag on a different column (e.g. dragging
-  // only the coarse roller down one step would then compose newCoarse +
-  // staleFine, landing on e.g. 99.7 instead of 99.0 -- a discontinuous jump
-  // the user never asked for).  Re-derive the canonical decomposition of the
-  // value that was ACTUALLY stored and re-select every roller from it --
-  // exactly what onWheelEncoder always does after computing a clamped target
-  // -- so touch scrolling can never leave a column's selection out of sync
-  // with the stored value.  Only touch columns whose index actually changed
-  // so an in-flight LVGL snap-to-place animation on the column the user just
-  // released isn't cut short by a no-op reselect.
+  // vmax, or dragging the coarse roller up onto that same top base while the
+  // fine roller sits on a nonzero offset overshoots the same way.  The naive
+  // fix -- always clamp the stored value then re-derive EVERY column's
+  // selection from the canonical decomposition of that clamped number, the
+  // way onWheelEncoder always does -- has a bad side effect when applied to a
+  // touch drag: the canonical decomposition of vmax always picks fine offset
+  // 0, so a coarse-only drag that overshoots silently WIPES a fine offset the
+  // user had dialled in (e.g. dragging coarse up through the ceiling with
+  // fine at "+.6" reset it to "+.0", and dragging coarse back down one step
+  // then landed on X9.0 instead of X9.6 -- the .6 was gone for good).
+  //
+  // Fix: identify the column that JUST moved (the event's own target) and,
+  // if the drag overshot, slide ONLY that column's own selection back to the
+  // furthest index that keeps the composed value in range -- leaving every
+  // OTHER column's selection, in particular the fine offset, untouched. This
+  // is the same "clamp the coarse roller's reachable range instead of
+  // resetting fine" behaviour applied symmetrically to whichever column the
+  // user is actually touching. Columns hold ascending rawValues that start at
+  // 0 (fine/minute/second offsets) or vmin (the coarse base column), so the
+  // changed column's own zero/vmin-ward end is always in range and sliding
+  // toward it can always find a fix by construction; the full
+  // re-decomposition fallback below exists only to stay provably safe even if
+  // that invariant is ever violated by an unusual layout.
+  bool handled = true;
   if (nw->layout.split() && nw->edit &&
       nw->rollers.size() == nw->layout.columns.size()) {
+    size_t changedCol = nw->rollers.size();
+    for (size_t c = 0; c < nw->rollers.size(); c++) {
+      if (nw->rollers[c] == roller) { changedCol = c; break; }
+    }
+
+    if (changedCol < nw->rollers.size()) {
+      int vmin = nw->edit->getMin();
+      int vmax = nw->edit->getMax();
+      int composed = nw->currentComposedValue();
+      if (composed < vmin || composed > vmax) {
+        const auto& col = nw->layout.columns[changedCol];
+        int curIdx = LV_CLAMP(
+            0, (int)lv_roller_get_selected(nw->rollers[changedCol]),
+            (int)col.size() - 1);
+        // Contribution of every OTHER column, held fixed while we search.
+        int otherSum = composed - col[curIdx].rawValue;
+        int best = -1;
+        if (composed > vmax) {
+          // Slide down: rawValue is ascending, so the first index below
+          // curIdx that composes in range is the furthest (largest) base
+          // reachable without exceeding vmax.
+          for (int i = curIdx - 1; i >= 0; i--) {
+            int v = otherSum + col[i].rawValue;
+            if (v >= vmin && v <= vmax) { best = i; break; }
+          }
+        } else {
+          // composed < vmin: slide up, symmetrically.
+          for (int i = curIdx + 1; i < (int)col.size(); i++) {
+            int v = otherSum + col[i].rawValue;
+            if (v >= vmin && v <= vmax) { best = i; break; }
+          }
+        }
+        if (best >= 0) {
+          nw->normalizingSelection = true;
+          lv_roller_set_selected(nw->rollers[changedCol], (uint32_t)best,
+                                  LV_ANIM_OFF);
+          nw->normalizingSelection = false;
+        } else {
+          handled = false;
+        }
+      }
+    }
+  }
+
+  // Commit the (now in-range, unless the fallback below still needs to run)
+  // composed value from the current roller selections.
+  nw->applyCurrentSelection(true);
+
+  if (!handled) {
+    // The changed column's own range could not bring the composed value back
+    // in range by itself -- should not happen given how columns are built,
+    // kept only so this stays provably safe regardless.
+    // applyCurrentSelection() above already clamped the STORED value via
+    // NumberEdit::setValue(); fall back to re-deriving every column's
+    // selection from that clamped value, exactly as before this change.
     int stored = nw->edit->getValue();
     auto idxs = decomposeValue(nw->layout, stored);
     nw->normalizingSelection = true;
