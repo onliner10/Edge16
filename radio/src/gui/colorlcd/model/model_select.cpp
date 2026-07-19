@@ -345,6 +345,89 @@ bool modelPressOnFocusedModelQuickSelectsWhenEnabledForTest()
 }
 #endif
 
+// ModelsList::addModel() memcpy()s the whole ModelCell -- including
+// modelName -- verbatim from the source model when duplicating (see
+// ModelsPageBody::duplicateModel() below), so a fresh duplicate renders
+// with the exact same name as the model it was copied from: two cards (and
+// later, an ambiguous delete confirm, since that dialog shows only the
+// name) with no way to tell them apart. Builds a distinguishing "<base> N"
+// name, picking the lowest N >= 2 that 'nameTaken' doesn't report as
+// already in use, and truncating the base so the suffix always fits within
+// LEN_MODEL_NAME. Free function (rather than inline in duplicateModel()) so
+// the naming logic is unit-testable without live ModelCell/storage I/O, the
+// same way decideModelPressAction() is tested directly above.
+static std::string buildDuplicateModelName(
+    const char *sourceName, std::function<bool(const char *)> nameTaken)
+{
+  char base[LEN_MODEL_NAME + 1];
+  strncpy(base, sourceName, LEN_MODEL_NAME);
+  base[LEN_MODEL_NAME] = '\0';
+  // Trim the trailing padding a fixed-length modelName buffer may carry.
+  for (int i = (int)strlen(base) - 1; i >= 0 && base[i] == ' '; i--)
+    base[i] = '\0';
+
+  for (unsigned suffixNum = 2; suffixNum < 1000; suffixNum++) {
+    char suffix[8];
+    snprintf(suffix, sizeof(suffix), " %u", suffixNum);
+    size_t suffixLen = strlen(suffix);
+    size_t maxBaseLen =
+        suffixLen < (size_t)LEN_MODEL_NAME ? LEN_MODEL_NAME - suffixLen : 0;
+    size_t baseLen = strlen(base);
+    if (baseLen > maxBaseLen) baseLen = maxBaseLen;
+
+    char candidate[LEN_MODEL_NAME + 1];
+    snprintf(candidate, sizeof(candidate), "%.*s%s", (int)baseLen, base,
+             suffix);
+
+    if (!nameTaken(candidate)) return std::string(candidate);
+  }
+
+  // Astronomically unlikely to be reached (999 collisions on one base name)
+  // -- fall back to the truncated base rather than looping forever.
+  return std::string(base);
+}
+
+#if defined(SIMU)
+// A duplicate must never render with the exact same name as its source --
+// that's the ambiguous-cards bug this replaces.
+bool buildDuplicateModelNameDiffersFromSourceForTest()
+{
+  std::string result =
+      buildDuplicateModelName("MODEL06", [](const char *) { return false; });
+  return !result.empty() && result != "MODEL06";
+}
+
+// Duplicating the same model twice must not produce two more
+// identically-named cards: when the first candidate suffix (" 2") is
+// already taken, the next free one (" 3") must be picked instead.
+bool buildDuplicateModelNameSkipsTakenSuffixForTest()
+{
+  std::string result = buildDuplicateModelName(
+      "MODEL06", [](const char *candidate) {
+        return std::string(candidate) == "MODEL06 2";
+      });
+  return result == "MODEL06 3";
+}
+
+// A max-length source name must still get a suffix -- the base is
+// truncated to make room, rather than the suffix being dropped (which would
+// silently reintroduce the original bug for long names).
+bool buildDuplicateModelNameTruncatesBaseToFitForTest()
+{
+  char maxName[LEN_MODEL_NAME + 1];
+  memset(maxName, 'A', LEN_MODEL_NAME);
+  maxName[LEN_MODEL_NAME] = '\0';
+
+  std::string result =
+      buildDuplicateModelName(maxName, [](const char *) { return false; });
+
+  bool fitsWithinLimit = result.size() <= (size_t)LEN_MODEL_NAME;
+  bool endsWithSuffix =
+      result.size() >= 2 && result.compare(result.size() - 2, 2, " 2") == 0;
+  return fitsWithinLimit && endsWithSuffix;
+}
+#endif
+
 class ModelsPageBody : public Window
 {
  public:
@@ -597,6 +680,26 @@ class ModelsPageBody : public Window
             auto new_model =
                 modelslist.addModel(duplicatedFilename, true, model);
             if (new_model) {
+              // addModel() copied modelName verbatim from 'model' -- give
+              // the duplicate a name that's actually distinguishable from
+              // its source (see buildDuplicateModelName) and persist the
+              // rename into labels.yml right away, same as any other
+              // labels.yml-visible edit in this window.
+              std::string dupName = buildDuplicateModelName(
+                  model->modelName, [&](const char *candidate) {
+                    for (auto cell : modelslist) {
+                      if (cell != new_model &&
+                          !strcmp(cell->modelName, candidate))
+                        return true;
+                    }
+                    return false;
+                  });
+              char dupNameBuf[LEN_MODEL_NAME + 1];
+              strncpy(dupNameBuf, dupName.c_str(), LEN_MODEL_NAME);
+              dupNameBuf[LEN_MODEL_NAME] = '\0';
+              new_model->setModelName(dupNameBuf);
+              modelslabels.setDirty(true);
+
               for (const auto &lbl : modelslabels.getLabelsByModel(model)) {
                 modelslabels.addLabelToModel(lbl, new_model);
               }
@@ -809,9 +912,12 @@ void ModelLabelsWindow::onPressPGDN() { onPressPG(true); }
 
 // Writes the pilot's typed name (if any) into g_model/the current
 // ModelCell. Split out from applyChosenModelName() so the name-precedence
-// logic is testable without touching storage I/O. A no-op when the pilot
-// didn't type anything (EXIT/cancel, or confirming an empty field): the
-// model keeps whichever name creation already produced.
+// logic is testable without touching storage I/O. ModelNameDialog reports
+// 'applied' whenever the field held real text when it closed -- via OK or
+// EXIT/RTN alike, since the model already exists and there is nothing to
+// "cancel" -- and this is a no-op only when it didn't: an untouched (or
+// emptied) field leaves the model on whichever name creation already
+// produced.
 static void applyChosenModelNameData(bool applied, const std::string& typedName)
 {
   if (!applied) return;

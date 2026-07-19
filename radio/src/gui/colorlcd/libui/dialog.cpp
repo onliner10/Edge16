@@ -378,12 +378,13 @@ ModelNameDialog::ModelNameDialog(
                                       LV_FLEX_ALIGN_SPACE_BETWEEN);
               });
 
-              // EXIT/cancel: never blocks creation, just keeps whatever
-              // name creation would otherwise have produced.
+              // EXIT/RTN: never blocks creation (the model already exists),
+              // and never discards typed text -- it commits whatever is
+              // currently in the field, exactly like OK.
               buildRequiredWindow<TextButton>(
                   [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_EXIT,
                   [=]() {
-                    finish(false);
+                    finish();
                     return 0;
                   });
 
@@ -391,7 +392,7 @@ ModelNameDialog::ModelNameDialog(
               buildRequiredWindow<TextButton>(
                   [](TextButton&) {}, &box, rect_t{0, 0, 96, 0}, STR_OK,
                   [=]() {
-                    finish(true);
+                    finish();
                     return 0;
                   });
             },
@@ -404,20 +405,24 @@ ModelNameDialog::ModelNameDialog(
   if (nameField) nameField->openNow();
 }
 
-void ModelNameDialog::finish(bool wantApply)
+void ModelNameDialog::finish()
 {
+  // The model already exists by the time this dialog is showing (see
+  // ModelLabelsWindow::newModel), so there's no "cancel" outcome to
+  // distinguish -- OK and EXIT/RTN both commit whatever is currently typed.
+  // Only a genuinely empty field (trailing padding/spaces trimmed) leaves
+  // 'applied' false, so the caller keeps whichever name creation already
+  // produced instead of writing a blank one.
   bool applied = false;
   std::string result;
 
-  if (wantApply) {
-    int len = fieldLen;
-    while (len > 0 &&
-          (edited[len - 1] == '\0' || edited[len - 1] == ' '))
-      len--;
-    if (len > 0) {
-      result.assign(edited, len);
-      applied = true;
-    }
+  int len = fieldLen;
+  while (len > 0 &&
+        (edited[len - 1] == '\0' || edited[len - 1] == ' '))
+    len--;
+  if (len > 0) {
+    result.assign(edited, len);
+    applied = true;
   }
 
   auto handler = doneHandler;
@@ -444,8 +449,8 @@ class TestModelNameDialog : public ModelNameDialog
     edited[sizeof(edited) - 1] = '\0';
   }
 
-  void pressOkForTest() { finish(true); }
-  void pressExitForTest() { finish(false); }
+  void pressOkForTest() { finish(); }
+  void pressExitForTest() { finish(); }
   bool keyboardOpenedForTest() const { return nameField != nullptr; }
   std::string hintForTest() const { return std::string(hint); }
 };
@@ -476,12 +481,14 @@ bool modelNameDialogAppliesTypedNameOnConfirmForTest()
   return keyboardOpened && hintIsAutoName && applied && result == "Test1";
 }
 
-// EXIT/cancel never blocks creation and never applies partially typed text
-// -- the caller is told to keep whatever name creation would otherwise have
-// produced.
-bool modelNameDialogKeepsAutoNameOnExitForTest()
+// EXIT/RTN never blocks creation (the model already exists) -- but unlike a
+// real cancel, it must not discard a typed name either: the model is
+// already there, so throwing away what the pilot just typed would silently
+// leave it stuck on the auto-generated default (e.g. "MODEL06"). EXIT
+// commits the current field exactly like OK.
+bool modelNameDialogAppliesTypedNameOnExitForTest()
 {
-  bool applied = true;
+  bool applied = false;
   std::string result = "unset";
 
   auto* dlg = new (std::nothrow) TestModelNameDialog(
@@ -491,15 +498,15 @@ bool modelNameDialogKeepsAutoNameOnExitForTest()
       });
   if (!dlg || !dlg->isAvailable()) return false;
 
-  dlg->typeForTest("ShouldBeIgnored");
+  dlg->typeForTest("Test1");
   dlg->pressExitForTest();
   MainWindow::instance()->runMainLoopTick();
 
-  return !applied && result.empty();
+  return applied && result == "Test1";
 }
 
 // Confirming with an empty field must not block or "apply" a blank name --
-// it degrades to the same outcome as EXIT.
+// it keeps the auto-generated default.
 bool modelNameDialogEmptyConfirmKeepsAutoNameForTest()
 {
   bool applied = true;
@@ -513,6 +520,27 @@ bool modelNameDialogEmptyConfirmKeepsAutoNameForTest()
   if (!dlg || !dlg->isAvailable()) return false;
 
   dlg->pressOkForTest();  // 'edited' left empty -- nothing typed
+  MainWindow::instance()->runMainLoopTick();
+
+  return !applied && result.empty();
+}
+
+// EXIT/RTN with nothing typed has nothing to commit -- it degrades to the
+// same outcome as an empty OK, keeping the auto-generated default rather
+// than applying a blank name.
+bool modelNameDialogEmptyExitKeepsAutoNameForTest()
+{
+  bool applied = true;
+  std::string result = "unset";
+
+  auto* dlg = new (std::nothrow) TestModelNameDialog(
+      "MODEL06", 7, [&](bool a, std::string n) {
+        applied = a;
+        result = n;
+      });
+  if (!dlg || !dlg->isAvailable()) return false;
+
+  dlg->pressExitForTest();  // 'edited' left empty -- nothing typed
   MainWindow::instance()->runMainLoopTick();
 
   return !applied && result.empty();

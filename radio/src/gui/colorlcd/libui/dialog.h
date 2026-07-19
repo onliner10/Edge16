@@ -145,12 +145,16 @@ class LabelDialog : public ModalWindow
 // null-terminated) auto-generated name shown as the placeholder hint; it is
 // never mutated by this dialog.
 //
-// doneHandler(applied, name) fires exactly once, whether confirmed or
-// cancelled:
-//  - Checkmark/OK with a non-empty typed name: applied=true, name=typed text.
-//  - EXIT/cancel, or OK with an empty field: applied=false, name="" -- the
-//    caller keeps whichever name creation would otherwise have produced.
-// Creation is never blocked on naming.
+// The model this dialog names already exists by the time it's shown (see
+// ModelLabelsWindow::newModel), so there is no "cancel creation" outcome --
+// only whether the typed text is applied. doneHandler(applied, name) fires
+// exactly once, however the dialog closes:
+//  - Checkmark/OK, or EXIT/RTN, with a non-empty typed name: applied=true,
+//    name=typed text. EXIT is a close action, not a discard -- whatever the
+//    pilot typed still wins.
+//  - Checkmark/OK, or EXIT/RTN, with an empty field: applied=false, name=""
+//    -- the caller keeps whichever name creation would otherwise have
+//    produced. Nothing was typed, so there is nothing to commit.
 class ModelNameDialog : public ModalWindow
 {
  public:
@@ -160,7 +164,7 @@ class ModelNameDialog : public ModalWindow
 
   static constexpr uint8_t MAX_NAME_LEN = 64;
 
-  void onCancel() override { finish(false); }
+  void onCancel() override { finish(); }
 
  protected:
   uint8_t fieldLen;
@@ -169,5 +173,5 @@ class ModelNameDialog : public ModalWindow
   std::function<void(bool, std::string)> doneHandler;
   TextEdit* nameField = nullptr;
 
-  void finish(bool wantApply);
+  void finish();
 };

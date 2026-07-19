@@ -32,6 +32,9 @@ bool unchosenModelNameLeavesTemplateNameUntouchedForTest();
 bool modelPressOnUnfocusedModelOnlyFocusesForTest();
 bool modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest();
 bool modelPressOnFocusedModelQuickSelectsWhenEnabledForTest();
+bool buildDuplicateModelNameDiffersFromSourceForTest();
+bool buildDuplicateModelNameSkipsTakenSuffixForTest();
+bool buildDuplicateModelNameTruncatesBaseToFitForTest();
 
 TEST(ColorModelSelect, MissingThumbnailLoadCountsAsUiWork)
 {
@@ -98,6 +101,29 @@ TEST(ColorModelSelect, PressOnFocusedModelOpensMenuWhenQuickSelectDisabled)
 TEST(ColorModelSelect, PressOnFocusedModelQuickSelectsWhenEnabled)
 {
   EXPECT_TRUE(modelPressOnFocusedModelQuickSelectsWhenEnabledForTest());
+}
+
+// Duplicate Model must never produce a card indistinguishable from its
+// source -- addModel() copies modelName verbatim, so duplicateModel() must
+// rename the copy itself.
+TEST(ColorModelSelect, DuplicateModelNameDiffersFromSource)
+{
+  EXPECT_TRUE(buildDuplicateModelNameDiffersFromSourceForTest());
+}
+
+// Duplicating the same model twice must not produce two more
+// identically-named cards: a taken suffix is skipped in favor of the next
+// free one.
+TEST(ColorModelSelect, DuplicateModelNameSkipsTakenSuffix)
+{
+  EXPECT_TRUE(buildDuplicateModelNameSkipsTakenSuffixForTest());
+}
+
+// A max-length model name still gets a disambiguating suffix -- the base is
+// truncated to make room instead of the suffix being silently dropped.
+TEST(ColorModelSelect, DuplicateModelNameTruncatesBaseToFit)
+{
+  EXPECT_TRUE(buildDuplicateModelNameTruncatesBaseToFitForTest());
 }
 
 #endif
