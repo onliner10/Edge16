@@ -203,8 +203,7 @@ void ModelCurvesPage::newCV(Window *window, bool presetCV)
 void ModelCurvesPage::plusPopup(Window *window)
 {
   Menu *menu = new Menu();
-  menu->setTitle(STR_NEW);
-  menu->addLine(STR_EDIT, [=]() { newCV(window, false); });
+  menu->addLine(STR_NEW, [=]() { newCV(window, false); });
   menu->addLine(STR_CURVE_PRESET, [=]() { newCV(window, true); });
 }
 
