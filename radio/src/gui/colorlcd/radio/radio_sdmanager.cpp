@@ -345,7 +345,11 @@ void RadioSdManagerPage::filePress(const char* path, const char* name,
       return;
     }
   }
-  fileAction(path, name, fullpath);
+  // Every other extension (firmware images, compiled scripts, model files,
+  // unknown types) has no lightweight tap action. The full context menu
+  // (copy/rename/delete/flash) is destructive and stays reachable via
+  // long-press only - see fileAction() / setFileLongPress() - so a plain tap
+  // must never open it.
 }
 
 void RadioSdManagerPage::fileAction(const char* path, const char* name,

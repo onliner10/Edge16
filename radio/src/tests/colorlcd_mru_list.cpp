@@ -97,3 +97,54 @@ TEST(MRUList, ClearEmptiesList)
 }
 
 #endif  // COLORLCD
+
+// Items 10 & 13: pickers built on top of MRUList (Choice::fillMenu,
+// SetupWidgetsPageSlot::addNewWidget) pin recent entries at the top behind a
+// "----------------" divider row. Two regressions in that pattern, exercised
+// end-to-end against the real Menu/Choice code (not reimplemented logic):
+//
+//  - a value pinned at the top must not also be emitted a second time in its
+//    natural position further down the list (#13);
+//  - the divider row itself carries no handler and must be a complete no-op
+//    on tap, not silently close the whole picker (#10).
+#if defined(COLORLCD) && defined(SIMU) && !GTEST_OS_WINDOWS
+
+#include <sys/wait.h>
+#include <unistd.h>
+
+bool menuDividerRowIsNonInteractiveForTest();
+bool choiceFillMenuSkipsPinnedValuesInFullListForTest();
+
+TEST(MRUList, DividerRowIsNonInteractive)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(menuDividerRowIsNonInteractiveForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(MRUList, ChoiceFillMenuSkipsPinnedValuesInFullList)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(choiceFillMenuSkipsPinnedValuesInFullListForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+#endif  // COLORLCD && SIMU && !GTEST_OS_WINDOWS

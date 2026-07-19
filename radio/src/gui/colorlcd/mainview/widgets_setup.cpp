@@ -216,6 +216,12 @@ void SetupWidgetsPageSlot::addNewWidget()
     int selected = -1;
     int row = 0;
 
+    // Raw indices already emitted in the pinned MRU block below, so the full
+    // catalog loop can skip them - a widget type pinned at the top must not
+    // also appear a second time in its natural position.
+    int pinnedRawIndexes[MRUList::CAPACITY];
+    int pinnedCount = 0;
+
     // Recently chosen widget types pinned at the top, visually separated.
     int recentsAdded = 0;
     for (uint8_t i = 0; i < widgetTypeRecent.size(); ++i) {
@@ -226,6 +232,7 @@ void SetupWidgetsPageSlot::addNewWidget()
       addWidgetLine(factory, rawIndex);
       if (cur && strcmp(cur, factory->getDisplayName()) == 0 && selected < 0)
         selected = row;
+      pinnedRawIndexes[pinnedCount++] = rawIndex;
       ++recentsAdded;
       ++row;
     }
@@ -234,11 +241,19 @@ void SetupWidgetsPageSlot::addNewWidget()
       ++row;
     }
 
-    // Full catalog, unchanged registration order.
+    // Full catalog, unchanged registration order, skipping anything already
+    // pinned above.
     int rawIndex = 0;
     for (const auto& reg : registered) {
       auto factory = &reg.get();
-      if (isPickable(factory)) {
+      bool alreadyPinned = false;
+      for (int p = 0; p < pinnedCount; ++p) {
+        if (pinnedRawIndexes[p] == rawIndex) {
+          alreadyPinned = true;
+          break;
+        }
+      }
+      if (isPickable(factory) && !alreadyPinned) {
         addWidgetLine(factory, rawIndex);
         if (cur && strcmp(cur, factory->getDisplayName()) == 0 && selected < 0)
           selected = row;

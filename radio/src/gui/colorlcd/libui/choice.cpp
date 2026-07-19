@@ -246,10 +246,16 @@ void Choice::fillMenu(Menu* menu, const FilterFct& filter)
   int selectedIx = -1;
   selectedIx0 = -1;
 
+  // Values already emitted in the pinned MRU block below, so the full-list
+  // loop can skip them - a value pinned at the top must not also appear a
+  // second time in its natural position.
+  int pinnedValues[MRUList::CAPACITY];
+  int pinnedCount = 0;
+
   // Most-recently-used boost (opt-in): pin recent choices at the top, visually
-  // separated by a divider. The full list below is emitted unchanged; each
-  // pinned line selects the very same value, so selection stays correct
-  // regardless of the extra rows.
+  // separated by a divider. The full list below skips any value pinned here,
+  // so each value has exactly one row; selection resolves to whichever row
+  // (pinned or natural) ends up on screen.
   if (recentList) {
     int recentsAdded = 0;
     for (uint8_t r = 0; r < recentList->size(); ++r) {
@@ -267,6 +273,8 @@ void Choice::fillMenu(Menu* menu, const FilterFct& filter)
       // Highlight the pinned copy of the current value so the menu opens showing
       // the recents at the top rather than scrolled to the full-list copy.
       if (value == i && selectedIx < 0) selectedIx = count;
+      if (i == 0 && selectedIx0 < 0) selectedIx0 = count;
+      pinnedValues[pinnedCount++] = i;
       ++recentsAdded;
       ++count;
     }
@@ -279,6 +287,14 @@ void Choice::fillMenu(Menu* menu, const FilterFct& filter)
   for (int i = vmin; i <= vmax; ++i) {
     if (filter && !filter(i)) continue;
     if (isValueAvailable && !isValueAvailable(inverted ? -i : i)) continue;
+    bool alreadyPinned = false;
+    for (int p = 0; p < pinnedCount; ++p) {
+      if (pinnedValues[p] == i) {
+        alreadyPinned = true;
+        break;
+      }
+    }
+    if (alreadyPinned) continue;
     if (textHandler) {
       menu->addLineBuffered(textHandler(i), [=]() { setValue(i); });
     } else if (unsigned(i - vmin) < values.size()) {
@@ -368,5 +384,53 @@ bool choiceLabelCreateFailureFailsClosedForTest()
             !choice->automationClickable();
   delete choice;
   return ok;
+}
+
+// Item 13: a value pinned in the MRU block must not also be emitted a
+// second time in its natural position further down the list.
+bool choiceFillMenuSkipsPinnedValuesInFullListForTest()
+{
+  static const char* const values[] = {"Zero", "One", "Two", "Three", "Four"};
+
+  int current = 2;  // "Two" - deliberately NOT one of the recent values
+  MRUList recent;
+  recent.touch(1);  // "One"
+  recent.touch(3);  // "Three", most recent -> pinned as [Three, One]
+
+  auto choice = new (std::nothrow) Choice(
+      MainWindow::instance(), rect_t{0, 0, 100, EdgeTxStyles::UI_ELEMENT_HEIGHT},
+      values, 0, 4, [&]() { return current; }, [&](int v) { current = v; });
+  if (!choice) return false;
+  choice->setRecentList(&recent);
+
+  auto menu = new (std::nothrow) Menu();
+  if (!menu) {
+    delete choice;
+    return false;
+  }
+
+  choice->fillMenu(menu);
+
+  // 2 pinned rows ("Three", "One") + 1 divider + the 5 full-list rows minus
+  // the 2 already pinned (3 left: "Zero", "Two", "Four") = 6 rows total,
+  // each value appearing exactly once.
+  bool countOk = menu->count() == 6;
+
+  int oneCount = 0, threeCount = 0;
+  for (unsigned i = 0; i < menu->count(); ++i) {
+    std::string text = menu->lineTextForTest(i);
+    if (text == "One") ++oneCount;
+    if (text == "Three") ++threeCount;
+  }
+  bool noDuplicates = oneCount == 1 && threeCount == 1;
+
+  // The current value ("Two") isn't pinned, so it must still resolve to a
+  // single, correctly-highlighted row down in the full list.
+  int sel = menu->selection();
+  bool selectionOk =
+      sel >= 0 && menu->lineTextForTest((unsigned)sel) == "Two";
+
+  delete choice;
+  return countOk && noDuplicates && selectionOk;
 }
 #endif

@@ -215,6 +215,12 @@ class MenuBody : public TableField
   {
     Menu* menu = getParentMenu();
     if (row < lines.size()) {
+      // Separator / label rows (e.g. the MRU divider) carry no handler and
+      // must stay non-interactive: no ack frame, no selection change, and
+      // critically no deleteLater() - a tap on them has to be a complete
+      // no-op instead of silently dismissing the picker.
+      if (!lines[row]->onPress) return;
+
       if (menu->isMultiple()) {
         withLive(
             [](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
@@ -304,6 +310,13 @@ class MenuBody : public TableField
 
   void onSelected(uint16_t row, uint16_t col) override { selectedIndex = row; }
 
+#if defined(SIMU)
+  std::string lineTextForTest(unsigned index) const
+  {
+    return index < lines.size() ? lines[index]->text : std::string();
+  }
+#endif
+
  protected:
   std::vector<MenuLine*> lines;
   int selectedIndex = 0;
@@ -379,6 +392,11 @@ class MenuContent
   virtual int selection() const { return -1; }
   virtual void setIndex(int index) {}
   virtual void updatePosition(MenuToolbar* toolbar) {}
+
+#if defined(SIMU)
+  virtual void pressRowForTest(unsigned row) {}
+  virtual std::string lineTextForTest(unsigned index) const { return {}; }
+#endif
 };
 
 class MissingMenuContent final : public MenuContent
@@ -472,6 +490,17 @@ class MenuWindowContent : public NavWindow, public MenuContent
   void onPressPGDN() override
   {
     Messaging::send(Messaging::MENU_CHANGE_FILTER, 1);
+  }
+#endif
+
+#if defined(SIMU)
+  void pressRowForTest(unsigned row) override
+  {
+    if (body) body->onPress((uint16_t)row, 0);
+  }
+  std::string lineTextForTest(unsigned index) const override
+  {
+    return body ? body->lineTextForTest(index) : std::string();
   }
 #endif
 
@@ -605,6 +634,15 @@ void Menu::onLiveCheckEvents(Window::LiveWindow& live)
 }
 
 #if defined(SIMU)
+void Menu::pressRowForTest(unsigned row) { content.pressRowForTest(row); }
+
+std::string Menu::lineTextForTest(unsigned index) const
+{
+  return content.lineTextForTest(index);
+}
+#endif
+
+#if defined(SIMU)
 bool menuIconCanvasCreateFailureStillAddsLineForTest()
 {
   auto menu = new Menu();
@@ -613,5 +651,40 @@ bool menuIconCanvasCreateFailureStillAddsLineForTest()
   menuForceIconCanvasCreateFailureForTest(false);
 
   return menu->count() == 1;
+}
+
+// A separator/label row (null onPress handler, e.g. the MRU divider - see
+// mru_list.h) must be a complete no-op on tap: no handler call, and
+// critically no deleteLater() of the whole menu (that was the "tapping the
+// divider silently closes the picker" bug). Drives the real
+// MenuBody::onPress() code path via pressRowForTest(), and uses a close
+// handler (fired only when deleteLater() actually runs) as the ground-truth
+// signal, rather than re-deriving it from window-lifecycle flags.
+bool menuDividerRowIsNonInteractiveForTest()
+{
+  bool normalPressed = false;
+  bool closed = false;
+
+  auto menu = new Menu();
+  menu->setCloseHandler([&]() { closed = true; });
+  menu->addLine("Normal", [&]() { normalPressed = true; });
+  menu->addLine("----------------", nullptr);
+  menu->updateLines();
+
+  // Row 1 is the separator: tapping it must change nothing.
+  menu->pressRowForTest(1);
+  bool dividerIsNoop = !normalPressed && !closed;
+
+  // Positive control: row 0 still behaves normally (handler runs, menu
+  // closes) - proves the guard didn't gut onPress() for real rows too.
+  // deleteLater() defers the close handler by two mutation cycles (see
+  // windowCloseHandlerRunsAfterDeferredCycleForTest in window.cpp), so it
+  // must be pumped before checking `closed`.
+  menu->pressRowForTest(0);
+  Window::runDeferredCloseHandlersForTest();
+  Window::runDeferredCloseHandlersForTest();
+  bool normalRowStillWorks = normalPressed && closed;
+
+  return dividerIsNoop && normalRowStillWorks;
 }
 #endif

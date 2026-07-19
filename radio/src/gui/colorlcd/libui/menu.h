@@ -91,6 +91,15 @@ class Menu : public ModalWindow
 
   bool isMultiple() const { return multiple; }
 
+#if defined(SIMU)
+  // Test-only white-box hooks (see colorlcd_mru_list.cpp): drive a row
+  // through the real MenuBody::onPress() code path, and read back a line's
+  // text, without exposing either on the production API. Compiled out of
+  // non-SIMU (device) builds.
+  void pressRowForTest(unsigned row);
+  std::string lineTextForTest(unsigned index) const;
+#endif
+
  protected:
   bool multiple;
   MenuContent& content;

@@ -22,6 +22,7 @@
 #include "file_browser.h"
 #include "lib_file.h"
 #include "fonts.h"
+#include "ui_feedback.h"
 
 #include <cstring>
 #include <list>
@@ -226,6 +227,12 @@ void FileBrowser::onSelected(uint16_t row, uint16_t col)
 void FileBrowser::onPress(uint16_t row, uint16_t col)
 {
   withLive([&](LiveWindow& live) {
+    // Force the pressed-row frame to the LCD now: the work below
+    // (f_chdir + refresh() for folders, or fileAction()/filePress() for
+    // files) is the slowest, most latency-prone list in the UI, and would
+    // otherwise leave the tap looking unacknowledged until it completes.
+    UiFeedback::ackFrame(live.lvobj());
+
     auto obj = live.lvobj();
     bool is_dir = lv_table_has_cell_ctrl(obj, row, col, CELL_CTRL_DIR);
     onPress(lv_table_get_cell_value(obj, row, col), is_dir);
