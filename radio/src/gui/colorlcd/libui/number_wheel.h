@@ -77,6 +77,25 @@ class NumberWheel : public ModalWindow
   std::string getName() const override { return "NumberWheel"; }
 #endif
 
+#if defined(SIMU)
+  // Test-only accessors: let a gtest simulate a touch-driven roller change
+  // exactly the way LVGL's roller release_handler() does it -- update the
+  // selected index, then emit LV_EVENT_VALUE_CHANGED -- so the assertions
+  // exercise the real onRollerChanged() path a finger drag takes, not a
+  // hand-rolled shortcut around it.
+  void touchRollerForTest(size_t col, int idx)
+  {
+    if (col >= rollers.size()) return;
+    lv_roller_set_selected(rollers[col], (uint32_t)idx, LV_ANIM_OFF);
+    lv_obj_send_event(rollers[col], LV_EVENT_VALUE_CHANGED, nullptr);
+  }
+  int getRollerSelectedForTest(size_t col) const
+  {
+    return (col < rollers.size()) ? (int)lv_roller_get_selected(rollers[col])
+                                   : -1;
+  }
+#endif
+
  protected:
   NumberEdit* edit = nullptr;
   std::vector<lv_obj_t*> rollers;  // all rollers, in column order
@@ -94,6 +113,14 @@ class NumberWheel : public ModalWindow
   // carrying across columns, so rotary resolution matches the finest column.
   int fineStepRaw = 1;
   std::string titleText;  // base edit title, used in title refresh
+  // Re-entrancy guard for the touch-path normalization pass in
+  // onRollerChanged(): lv_roller_set_selected() never itself emits
+  // LV_EVENT_VALUE_CHANGED (only a real press/release cycle does, via
+  // LVGL's release_handler()) so this should never actually re-enter, but
+  // guard explicitly so a future LVGL change -- or an indirect event bubble
+  // -- can never turn normalization into a feedback loop or fight an
+  // in-progress user drag.
+  bool normalizingSelection = false;
 
   void buildContent();
   lv_obj_t* buildRollerWidget(lv_obj_t* parent, lv_coord_t w,

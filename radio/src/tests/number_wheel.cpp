@@ -6,6 +6,7 @@
 
 #include "gtests.h"
 
+#include "mainwindow.h"
 #include "numberedit.h"
 #include "number_wheel.h"
 
@@ -437,4 +438,98 @@ TEST(NumberWheel, Prec2DuplicatesDeduped)
   for (size_t i = 1; i < opts.size(); i++) {
     EXPECT_NE(opts[i].second, opts[i - 1].second);
   }
+}
+
+// ---- Touch-path roller normalization (dead positions + stale-offset jump) --
+//
+// buildLayoutFor() appends a grid-aligned top coarse base (alignedTop = vmin
+// + ((vmax-vmin)/span)*span) whenever (vmax-vmin) is an exact multiple of the
+// coarse span -- true for this 0..1000 PREC1 field (same one exercised by
+// SplitTopBaseIsGridAligned above).  alignedTop == vmax there, so at that top
+// coarse row every nonzero fine offset composes PAST vmax.  The rotary path
+// (onWheelEncoder) is immune because it always decomposes its clamped target
+// and re-selects every roller; these tests prove the touch path
+// (onRollerChanged) now does the same normalization.
+
+TEST(NumberWheel, TouchFineOvershootAtTopNormalizesToZero)
+{
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 1000;
+  // Output Max field: 0..1000 PREC1 -> display 0.0..100.0.
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto layout = NumberWheel::buildLayoutFor(edit);
+  ASSERT_TRUE(layout.split());
+  int topCoarseIdx = (int)layout.columns[0].size() - 1;
+  ASSERT_EQ(layout.columns[0][topCoarseIdx].rawValue, 1000);
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+
+  // Opens on vmax (modelVal == 1000): coarse starts on the top base, fine on
+  // offset 0.
+  EXPECT_EQ(wheel->getRollerSelectedForTest(0), topCoarseIdx);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), 0);
+
+  // Touch-drag the fine roller alone to a nonzero offset ("+.5", raw 5).
+  // Composed = 1000 (top base) + 5 = 1005, past vmax -- pre-fix this was a
+  // dead position: setValue() clamped the stored value back to vmax but
+  // nothing corrected the fine roller's own selection, so it stayed pinned
+  // on "+.5" forever (every touch there silently no-oped, still played a
+  // confirm click).
+  wheel->touchRollerForTest(1, 5);
+
+  // setValue() clamps the stored value to vmax...
+  EXPECT_EQ(modelVal, 1000);
+  // ...and the fine roller must normalize back to offset 0 instead of
+  // staying stuck on the unreachable "+.5" position.
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), 0);
+  // The untouched coarse roller is left exactly where it was.
+  EXPECT_EQ(wheel->getRollerSelectedForTest(0), topCoarseIdx);
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
+}
+
+TEST(NumberWheel, TouchCoarseAfterOvershootClampHasNoStaleFineAddend)
+{
+  auto w = Window::makeLive<Window>(nullptr, rect_t{});
+  int modelVal = 1000;
+  auto* edit = new NumberEdit(w, rect_t{0, 0, 100, 30}, 0, 1000,
+                              [&]() { return modelVal; },
+                              [&](int v) { modelVal = v; }, PREC1);
+
+  auto layout = NumberWheel::buildLayoutFor(edit);
+  ASSERT_TRUE(layout.split());
+  int topCoarseIdx = (int)layout.columns[0].size() - 1;
+  int prevCoarseIdx = topCoarseIdx - 1;
+  ASSERT_EQ(layout.columns[0][prevCoarseIdx].rawValue, 990);
+
+  auto* wheel = new NumberWheel(edit);
+  ASSERT_NE(wheel, nullptr);
+
+  // Reproduce the overshoot clamp from the previous test: drag the fine
+  // roller to a nonzero offset while coarse sits on the grid-aligned top
+  // base (== vmax).  The fix normalizes fine back to offset 0 here -- that
+  // normalization is exactly what the rest of this test proves prevents the
+  // stale-offset jump below.
+  wheel->touchRollerForTest(1, 5);
+  ASSERT_EQ(modelVal, 1000);
+  ASSERT_EQ(wheel->getRollerSelectedForTest(1), 0);
+
+  // Now touch-drag ONLY the coarse roller down one step (100.0 -> 99.0).
+  // Pre-fix, the fine roller's selection was never re-synced after the
+  // overshoot clamp above, so it stayed at index 5 ("+.5") and this compose
+  // silently became 990 + 5 = 995 ("99.5") -- a discontinuous jump the user
+  // never asked for from a single coarse-only drag.
+  wheel->touchRollerForTest(0, prevCoarseIdx);
+
+  // Exact coarse value, no stale fine addend.
+  EXPECT_EQ(modelVal, 990);
+  EXPECT_EQ(wheel->getRollerSelectedForTest(1), 0);
+
+  wheel->deleteLater();
+  MainWindow::instance()->runMainLoopTick();
 }

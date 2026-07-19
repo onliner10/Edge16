@@ -697,6 +697,14 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
   auto* nw = static_cast<NumberWheel*>(lv_event_get_user_data(e));
   if (!nw) return;
+  // Re-entrancy guard: the normalization pass below (re-)calls
+  // lv_roller_set_selected() on every column.  That call never itself emits
+  // LV_EVENT_VALUE_CHANGED -- same property onWheelEncoder already relies on
+  // to silently re-select rollers -- so this should never actually re-enter,
+  // but bail out defensively anyway so it can never loop or fight an
+  // in-progress user drag.
+  if (nw->normalizingSelection) return;
+
   // LVGL's roller widget calls lv_group_set_editing(g, false) in its own
   // VALUE_CHANGED handler (runs before ours) whenever an encoder drives a
   // value change.  Re-assert editing=true so the next encoder rotation batch
@@ -707,6 +715,34 @@ void NumberWheel::onRollerChanged(lv_event_t* e)
   lv_group_t* g = lv_obj_get_group(roller);
   if (g) lv_group_set_editing(g, true);
   nw->applyCurrentSelection(true);
+
+  // A touch drag on ONE column can compose past vmin/vmax without that
+  // column knowing it -- e.g. a grid-aligned top coarse base already equals
+  // vmax, so scrolling the fine roller to any nonzero offset composes past
+  // vmax and applyCurrentSelection() (via NumberEdit::setValue) just clamped
+  // the STORED value, leaving the fine roller's own selection stuck on the
+  // overshoot offset it was dragged to.  Left alone, that stale offset
+  // silently carries into the NEXT drag on a different column (e.g. dragging
+  // only the coarse roller down one step would then compose newCoarse +
+  // staleFine, landing on e.g. 99.7 instead of 99.0 -- a discontinuous jump
+  // the user never asked for).  Re-derive the canonical decomposition of the
+  // value that was ACTUALLY stored and re-select every roller from it --
+  // exactly what onWheelEncoder always does after computing a clamped target
+  // -- so touch scrolling can never leave a column's selection out of sync
+  // with the stored value.  Only touch columns whose index actually changed
+  // so an in-flight LVGL snap-to-place animation on the column the user just
+  // released isn't cut short by a no-op reselect.
+  if (nw->layout.split() && nw->edit &&
+      nw->rollers.size() == nw->layout.columns.size()) {
+    int stored = nw->edit->getValue();
+    auto idxs = decomposeValue(nw->layout, stored);
+    nw->normalizingSelection = true;
+    for (size_t c = 0; c < nw->rollers.size() && c < idxs.size(); c++) {
+      if ((int)lv_roller_get_selected(nw->rollers[c]) != idxs[c])
+        lv_roller_set_selected(nw->rollers[c], idxs[c], LV_ANIM_OFF);
+    }
+    nw->normalizingSelection = false;
+  }
 }
 
 void NumberWheel::onWheelEncoder(lv_event_t* e)

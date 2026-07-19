@@ -30,10 +30,23 @@
 
 #include <new>
 
-// Per-side hit-area expansion for the category filter buttons.  36x32 visual +
-// 2*8 -> ~52x48 effective touch target (>= 48px), applied via ext_click_area so
-// nothing moves visually.  Scales with the display like the button width.
-static LAYOUT_VAL_SCALED(MENUS_TOOLBAR_HIT_EXPAND, 8)
+// Per-side hit-area expansion for the category filter buttons.  Buttons sit
+// on a (MENUS_TOOLBAR_BUTTON_WIDTH + PAD_SMALL) pitch -- 36 + 4 = 40 -- so the
+// true gap between two visible icons is exactly PAD_SMALL (4px).  Expanding
+// by more than half that gap per side overlaps into the NEXT button's own
+// visible icon; LVGL's reverse z-order hit test then resolves an edge tap to
+// that neighbour instead of the nearer button -- the opposite of "nearest
+// filter" this hit-area exists to provide.  Half the gap (PAD_SMALL/2 = 2px)
+// is the largest expansion that still fully closes the gap -- adjacent
+// buttons' expanded areas meet exactly at the midpoint, so a between-icon tap
+// still resolves to a button rather than falling through to the modal scrim
+// -- with zero icon-stealing.  Derived from PAD_SMALL itself (not a
+// separately scaled literal) so the halves stay exact on every screen size,
+// not just the TX16S reference one.  lv_obj_set_ext_click_area() applies the
+// same value on all four sides, which is correct here: the vertical row
+// pitch (UI_ELEMENT_HEIGHT + PAD_SMALL) uses the same PAD_SMALL gap, so the
+// single scalar closes row gaps identically without overlap either.
+static constexpr coord_t MENUS_TOOLBAR_HIT_EXPAND = PAD_SMALL / 2;
 
 #if defined(SIMU)
 static bool forceMenuToolbarLabelCreateFailure = false;
@@ -86,11 +99,13 @@ MenuToolbarButton::MenuToolbarButton(Window* parent, const rect_t& rect,
   });
 
   // The category filter icons are only MENUS_TOOLBAR_BUTTON_WIDTH (36) x
-  // UI_ELEMENT_HEIGHT (32) and tightly packed.  That is well below a usable
-  // touch target for field use (sun, gloves).  Extend the clickable area on
-  // every side so the effective target is >= 48px and the small gaps between
-  // adjacent icons resolve to the nearest filter instead of doing nothing (or,
-  // at the toolbar edge, letting a near-miss slip onto the dismiss scrim).
+  // UI_ELEMENT_HEIGHT (32) with just a PAD_SMALL (4px) gap between them --
+  // too tight for field use (sun, gloves).  Extend the clickable area by
+  // MENUS_TOOLBAR_HIT_EXPAND (half that gap) on every side so a tap that
+  // lands in the gap between two icons resolves to the nearest filter
+  // instead of doing nothing (or, at the toolbar edge, slipping onto the
+  // dismiss scrim) -- without eating into a neighbour's own icon, which
+  // would make an edge tap resolve to the WRONG (further) button instead.
   // ext_click_area only enlarges hit-testing, so the visual layout is
   // unchanged.
   withLive([](LiveWindow& live) {
