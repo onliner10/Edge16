@@ -55,6 +55,12 @@ class GVarNumberEdit : public Window
 
   static LAYOUT_VAL_SCALED(GV_BTN_W, 40)  // ds-allow: composite GVAR field; GV toggle-button width for the fixed-width NumberEdit + button pack, not a DS token
 
+#if defined(SIMU)
+  // Test-only: lets test code drive the GVAR dropdown the same way the
+  // menu selection handler does, without needing a full touch/menu sim.
+  Choice* getGvarFieldForTest() const { return gvar_field; }
+#endif
+
  protected:
   Choice* gvar_field = nullptr;
   NumberEdit* num_field = nullptr;
@@ -68,6 +74,15 @@ class GVarNumberEdit : public Window
   std::function<int32_t()> getValue;
   std::function<void(int32_t)> setValue;
   int32_t voffset;
+
+  // Raw numeric value cached when switching INTO GV mode, so it can be
+  // restored if the user switches back OUT of GV mode without actually
+  // picking a GVAR — otherwise the shared raw/GVAR storage silently loses
+  // the previously tuned raw value. Invalidated as soon as a GVAR is
+  // genuinely picked (see the gvar_field setValue handler), so the normal
+  // GET_GVAR/GET_GVAR_PREC1 conversion still applies for a real binding.
+  int32_t rawValueBeforeGVar = 0;
+  bool rawValueBeforeGVarValid = false;
 
   void update();
 
