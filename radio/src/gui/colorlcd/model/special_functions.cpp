@@ -61,6 +61,30 @@ static void presetNewFunctionData(CustomFunctionData* cfn)
   cfn->active = 1;
 }
 
+// CFN_RESET() has just zeroed this function's parameters, so whatever gets
+// auto-enabled next runs with those zeroed (often worst-case) defaults --
+// e.g. a zeroed FUNC_OVERRIDE_CHANNEL forces channel 1 to 0%, and a zeroed
+// FUNC_SET_FAILSAFE silently overwrites+persists g_model.failsafeChannels[]
+// (radio-wide, Global Functions included). Only functions whose entire
+// effect is audible/visual/haptic output are safe to auto-enable: they can
+// never move a servo, touch model/radio configuration, arm/bind, or persist
+// state, so zeroed parameters are at worst a no-op or a harmless beep/blink.
+// Anything not explicitly listed here defaults to unsafe.
+static bool isSafeToAutoEnableFunction(uint8_t func)
+{
+  switch (func) {
+    case FUNC_PLAY_SOUND:
+    case FUNC_PLAY_TRACK:
+    case FUNC_PLAY_VALUE:
+    case FUNC_VARIO:
+    case FUNC_HAPTIC:
+    case FUNC_BACKLIGHT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 // CFN_RESET() unconditionally clears 'active' whenever a function's type
 // changes (its accumulated state may not mean the same thing under a new
 // function, so re-arming automatically would be unsafe for an
@@ -70,13 +94,17 @@ static void presetNewFunctionData(CustomFunctionData* cfn)
 // still land disabled. Call this right after CFN_RESET(); it re-affirms
 // 'active' only for a slot that was completely unconfigured
 // (CustomFunctionData::isEmpty(), i.e. no switch yet) when its editor was
-// opened, so first-time setup in one sitting ends up enabled while
-// repurposing an existing configured function still requires an explicit
-// re-enable.
+// opened AND only for a function that's safe to fire unattended
+// (isSafeToAutoEnableFunction()), so first-time setup of an announce-only
+// function in one sitting ends up enabled, while picking a function that can
+// actually act on the aircraft/model/radio -- e.g. Override Channel, Set
+// Failsafe -- leaves the new slot disabled until the pilot explicitly
+// re-enables it, same as repurposing an existing configured function does.
 static void applyFunctionChangeActiveState(CustomFunctionData* cfn,
                                            bool wasEmptyOnOpen)
 {
-  if (wasEmptyOnOpen) cfn->active = 1;
+  cfn->active =
+      (wasEmptyOnOpen && isSafeToAutoEnableFunction(CFN_FUNC(cfn))) ? 1 : 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -690,13 +718,17 @@ void FunctionEditPage::buildBody(Window* form)
 
   // Was this slot completely unconfigured when this editor was opened? If
   // so, the pilot is setting it up for the first time in one sitting
-  // (assign a switch, then pick a function) and it should come out enabled
-  // per newSF()'s preset -- CFN_RESET() below unconditionally clears
-  // 'active' on every function-type change, which otherwise re-disables a
-  // brand new function the instant its actual function is chosen. That
-  // reset is still wanted when *editing an already-configured* function
-  // (repurposing it should force the pilot to re-confirm enable), so it
-  // only gets overridden here for genuinely new slots.
+  // (assign a switch, then pick a function) and, per newSF()'s preset, it
+  // should come out enabled again *if the picked function is safe to fire
+  // unattended* -- CFN_RESET() below unconditionally clears 'active' on
+  // every function-type change, which otherwise re-disables a brand new
+  // function the instant its actual function is chosen. That reset is still
+  // wanted when *editing an already-configured* function (repurposing it
+  // should force the pilot to re-confirm enable), and it's also still wanted
+  // for a brand new slot when the newly picked function can act on the
+  // aircraft/model/radio (see applyFunctionChangeActiveState() /
+  // isSafeToAutoEnableFunction()), so it only gets overridden here for
+  // genuinely new slots picking an announce-only function.
   const bool wasEmptyOnOpen = cfn->isEmpty();
 
   // Switch
@@ -1305,5 +1337,98 @@ bool functionChangeOnExistingSlotStillRequiresReenableForTest()
   applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
 
   return cfn.active == 0;
+}
+
+// Picking FUNC_OVERRIDE_CHANNEL on a brand new slot must NOT auto-enable it:
+// CFN_RESET() has just zeroed its parameters (channel 1, value 0%), so an
+// auto-enabled slot would start forcing that channel to 0% on the very next
+// mixer tick once the already-assigned switch matches. The pilot must
+// explicitly enable it after actually configuring the channel/value.
+bool firstTimeOverrideChannelPickStaysDisabledForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  presetNewFunctionData(&cfn);
+
+  const bool wasEmptyOnOpen = cfn.isEmpty();
+  if (!wasEmptyOnOpen) return false;  // sanity: preset must not set swtch
+
+  cfn.swtch = 1;
+
+  // Pilot picks "Override Channel" from the Function choice -- mirrors
+  // FunctionEditPage::buildBody()'s onChange handler exactly.
+  cfn.func = FUNC_OVERRIDE_CHANNEL;
+  CFN_RESET(&cfn);
+  applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
+
+  return cfn.active == 0;
+}
+
+// Picking FUNC_SET_FAILSAFE on a brand new slot must NOT auto-enable it
+// either: it's available on Global Functions too (radio-wide), and a zeroed,
+// auto-enabled instance would silently overwrite+persist
+// g_model.failsafeChannels[] the moment the switch matches.
+bool firstTimeSetFailsafePickStaysDisabledForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  presetNewFunctionData(&cfn);
+
+  const bool wasEmptyOnOpen = cfn.isEmpty();
+  if (!wasEmptyOnOpen) return false;  // sanity: preset must not set swtch
+
+  cfn.swtch = 1;
+  cfn.func = FUNC_SET_FAILSAFE;
+  CFN_RESET(&cfn);
+  applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
+
+  return cfn.active == 0;
+}
+
+// FUNC_PLAY_TRACK is announce-only (same class as the FUNC_PLAY_SOUND case
+// covered by firstTimeFunctionPickStaysEnabledForTest()) and must still come
+// out enabled when explicitly (re)picked on a brand new slot, confirming the
+// safe list isn't limited to just the preset's own default function.
+bool firstTimePlayTrackPickStaysEnabledForTest()
+{
+  CustomFunctionData cfn;
+  memset(&cfn, 0, sizeof(cfn));
+  presetNewFunctionData(&cfn);
+
+  const bool wasEmptyOnOpen = cfn.isEmpty();
+  if (!wasEmptyOnOpen) return false;  // sanity: preset must not set swtch
+
+  cfn.swtch = 1;
+  cfn.func = FUNC_PLAY_TRACK;
+  CFN_RESET(&cfn);
+  applyFunctionChangeActiveState(&cfn, wasEmptyOnOpen);
+
+  return cfn.active == 1;
+}
+
+// Direct classification check of isSafeToAutoEnableFunction() against the
+// full documented safe list and a representative sample of functions that
+// can move a servo, touch model/radio configuration, arm/bind, or persist
+// state -- all of which must be excluded.
+bool isSafeToAutoEnableFunctionClassificationForTest()
+{
+  const uint8_t safeFuncs[] = {FUNC_PLAY_SOUND, FUNC_PLAY_TRACK,
+                               FUNC_PLAY_VALUE, FUNC_VARIO,
+                               FUNC_HAPTIC,     FUNC_BACKLIGHT};
+  for (uint8_t func : safeFuncs) {
+    if (!isSafeToAutoEnableFunction(func)) return false;
+  }
+
+  const uint8_t dangerousFuncs[] = {
+      FUNC_OVERRIDE_CHANNEL, FUNC_TRAINER,     FUNC_INSTANT_TRIM,
+      FUNC_RESET,            FUNC_SET_TIMER,   FUNC_ADJUST_GVAR,
+      FUNC_VOLUME,           FUNC_SET_FAILSAFE, FUNC_RANGECHECK,
+      FUNC_BIND,             FUNC_TEST,        FUNC_PLAY_SCRIPT,
+      FUNC_LOGS,             FUNC_SET_SCREEN,  FUNC_RGB_LED};
+  for (uint8_t func : dangerousFuncs) {
+    if (isSafeToAutoEnableFunction(func)) return false;
+  }
+
+  return true;
 }
 #endif
