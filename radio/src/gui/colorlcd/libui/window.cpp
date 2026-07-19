@@ -1795,24 +1795,20 @@ SetupButtonGroup::SetupButtonGroup(Window* parent, const rect_t& rect,
   if (title) new Subtitle(this, title);
 
   int n = 0;
-  int remaining = size;
   coord_t yo = title ? EdgeTxStyles::STD_FONT_HEIGHT + PAD_TINY : 0;
   coord_t xw = buttonWidth + PAD_SMALL;
   coord_t xo = (width() - (cols * xw - PAD_SMALL)) / 2;
   coord_t x, y;
   for (int p = 0; p < size; p += 1) {
-    if (remaining < cols && (n % cols == 0)) {
-      coord_t space = ((cols - remaining) * xw) / (remaining + 1);
-      xw += space;
-      xo += space;
-    }
+    // A short final row stays left-aligned to the same columns as the full
+    // rows above (any empty slots fall on the right), rather than being
+    // re-centred as its own group -- which read as a visibly shifted row.
     x = xo + (n % cols) * xw;
     y = yo + (n / cols) * (btnHeight + PAD_MEDIUM);
 
     new (std::nothrow)
         SetupTextButton(this, {x, y, buttonWidth, btnHeight}, pages[p], parentRoute);
     n += 1;
-    remaining -= 1;
   }
 }
 
