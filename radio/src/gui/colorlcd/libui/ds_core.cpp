@@ -376,6 +376,269 @@ void FormRow::setLabel(const char* text)
 }
 
 // ---------------------------------------------------------------------------
+// FieldRow
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// One field sub-cell: the SAME 40% label / 60% control split as FormRow (it
+// reuses kFormCols), in a container that occupies one even top-level column.
+// Reusing kFormCols keeps a field's label/control x-aligned with a plain
+// FormRow, and its control-slot column clamped so the control clears the touch
+// floor. The one Window child the caller builds lands in the 60% control
+// column, exactly like FormRow.
+class FieldCell : public Window
+{
+ public:
+  FieldCell(Window* parent, const char* label) :
+      Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+  {
+    setWindowFlag(NO_FOCUS);  // the control is the focus target, not the cell
+    withLive([&](LiveWindow& live) {
+      lv_obj_t* obj = live.lvobj();
+      lv_obj_set_width(obj, LV_PCT(100));
+      lv_obj_set_height(obj, LV_SIZE_CONTENT);
+      lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+      lv_obj_set_style_min_width(obj, kTouchMin, LV_PART_MAIN);
+      lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(obj, kSpace2, LV_PART_MAIN);
+      lv_obj_set_layout(obj, LV_LAYOUT_GRID);
+      lv_obj_set_grid_dsc_array(obj, kFormCols, kFormRows);
+      lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+      labelObj = etx_label_create(obj, FONT_STD_INDEX);
+      if (labelObj) {
+        lv_label_set_text(labelObj, label ? label : "");
+        lv_label_set_long_mode(labelObj, LV_LABEL_LONG_DOT);
+        etx_txt_color(labelObj, COLOR_THEME_PRIMARY1_INDEX);
+        lv_obj_set_grid_cell(labelObj, LV_GRID_ALIGN_START, 0, 1,
+                             LV_GRID_ALIGN_CENTER, 0, 1);
+      }
+    });
+  }
+
+  lv_obj_t* label() const { return labelObj; }
+
+ protected:
+  bool addChild(Window* child) override
+  {
+    if (!Window::addChild(child)) return false;
+    // The field widget lands in the 60% control column, vertically centered,
+    // and is clamped to the 40 px touch floor so several fields on one line
+    // never shrink a control below a tappable width. (The label is a raw lv
+    // label, not a Window child, so the first — and only — Window child is the
+    // control.)
+    child->withLive([](Window::LiveWindow& live) {
+      lv_obj_t* obj = live.lvobj();
+      lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 1, LV_GRID_ALIGN_CENTER,
+                           0, 1);
+      lv_obj_set_style_min_width(obj, kTouchMin, LV_PART_MAIN);
+    });
+    return true;
+  }
+
+ private:
+  lv_obj_t* labelObj = nullptr;
+};
+
+}  // namespace
+
+FieldRow::FieldRow(Window* parent, const std::vector<Field>& fields) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
+{
+  setWindowFlag(NO_FOCUS);  // the controls are the focus targets, not the row
+
+  const int n = (int)fields.size();
+
+  // Even top-level columns: N equal fractions built once and handed by
+  // reference to LVGL, so field i lands at the same x — and spans the same
+  // width — in every FieldRow with N fields, independent of contents.
+  colDsc_.reserve(n + 1);
+  for (int i = 0; i < n; ++i) colDsc_.push_back(LV_GRID_FR(1));
+  colDsc_.push_back(LV_GRID_TEMPLATE_LAST);
+
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_width(obj, LV_PCT(100));
+    lv_obj_set_height(obj, LV_SIZE_CONTENT);
+    lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(obj, kSpace3, LV_PART_MAIN);  // between fields
+    lv_obj_set_layout(obj, LV_LAYOUT_GRID);
+    lv_obj_set_grid_dsc_array(obj, colDsc_.data(), kFormRows);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  });
+
+  cells_.reserve(n);
+  labels_.reserve(n);
+  highlightReady_.assign(n, false);
+
+  int col = 0;
+  for (const auto& f : fields) {
+    auto* cell = new (std::nothrow) FieldCell(this, f.label);
+    cells_.push_back(cell);
+    labels_.push_back(cell ? cell->label() : nullptr);
+    if (cell) {
+      cell->withLive([col](Window::LiveWindow& live) {
+        // STRETCH to fill the (even) column track, so every field container is
+        // the same width and its internal 40/60 split resolves identically.
+        lv_obj_set_grid_cell(live.lvobj(), LV_GRID_ALIGN_STRETCH, col, 1,
+                             LV_GRID_ALIGN_CENTER, 0, 1);
+      });
+      if (f.buildControl) f.buildControl(cell);
+    }
+    ++col;
+  }
+
+#if defined(SIMU)
+  setAutomationText(n > 0 && fields.begin()->label ? fields.begin()->label
+                                                   : "");
+#endif
+}
+
+void FieldRow::highlightField(int index, bool on)
+{
+  if (index < 0 || index >= (int)labels_.size()) return;
+  lv_obj_t* label = labels_[index];
+  if (!label) return;
+  if (on) {
+    // Install the active-fill + bold emphasis the first time this field is
+    // highlighted (a CHECKED-state style, exactly the treatment the legacy
+    // Min/Max range-end cue applied to its label), then latch the state on.
+    if (!highlightReady_[index]) {
+      etx_solid_bg(label, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
+      etx_font(label, FONT_BOLD_INDEX, LV_STATE_CHECKED);
+      highlightReady_[index] = true;
+    }
+    lv_obj_add_state(label, LV_STATE_CHECKED);
+  } else {
+    lv_obj_clear_state(label, LV_STATE_CHECKED);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FieldGroup
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// The wrapping control area of a FieldGroup: a ROW-flow box that WRAPS to the
+// next line, owning the inter-control gap (space-2) and wrapped-line gap
+// (space-1). Every control the caller flows into it is clamped to the 40 px
+// touch floor (min width AND height) so a small toggle or narrow edit stays a
+// tappable target even when several share the line. This is the DS-owned
+// replacement for the hand-rolled `Window` + `padAll` + `setFlexLayout(ROW)`
+// box the module option fields used.
+class WrapContent : public Window
+{
+ public:
+  explicit WrapContent(Window* parent) :
+      Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+  {
+    setWindowFlag(NO_FOCUS);  // the flowed controls are the focus targets
+    withLive([&](LiveWindow& live) {
+      lv_obj_t* obj = live.lvobj();
+      lv_obj_set_width(obj, LV_PCT(100));  // fill its (stretched) column cell
+      lv_obj_set_height(obj, LV_SIZE_CONTENT);
+      lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+      lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(obj, kSpace2, LV_PART_MAIN);  // between controls
+      lv_obj_set_style_pad_row(obj, kSpace1, LV_PART_MAIN);     // wrapped lines
+      lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_ROW_WRAP);
+      lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                            LV_FLEX_ALIGN_START);
+      lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+    });
+  }
+
+ protected:
+  bool addChild(Window* child) override
+  {
+    if (!Window::addChild(child)) return false;
+    // Touch floor: every flowed control taps as a >= 40x40 px target, so a bare
+    // toggle or a narrow edit is never shrunk below a tappable size by sharing
+    // the line with its neighbours.
+    child->withLive([](Window::LiveWindow& live) {
+      lv_obj_t* obj = live.lvobj();
+      lv_obj_set_style_min_width(obj, kTouchMin, LV_PART_MAIN);
+      lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+    });
+    return true;
+  }
+};
+
+}  // namespace
+
+FieldGroup::FieldGroup(Window* parent, const char* label,
+                       std::function<void(Window*)> buildContent) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
+{
+  setWindowFlag(NO_FOCUS);  // the controls are the focus targets, not the row
+
+  const bool hasLabel = label && label[0];
+
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_width(obj, LV_PCT(100));
+    lv_obj_set_height(obj, LV_SIZE_CONTENT);
+    lv_obj_set_style_min_height(obj, kTouchMin, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(obj, kSpace3, LV_PART_MAIN);
+    lv_obj_set_layout(obj, LV_LAYOUT_GRID);
+    // Same 40/60 template as FormRow, so a FieldGroup's label sits at the same x
+    // as the FormRows stacked around it. When there is no label the control area
+    // spans both columns for the full width.
+    lv_obj_set_grid_dsc_array(obj, kFormCols, kFormRows);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    if (hasLabel) {
+      labelObj = etx_label_create(obj, FONT_STD_INDEX);
+      if (labelObj) {
+        lv_label_set_text(labelObj, label);
+        lv_label_set_long_mode(labelObj, LV_LABEL_LONG_DOT);
+        etx_txt_color(labelObj, COLOR_THEME_PRIMARY1_INDEX);
+        lv_obj_set_grid_cell(labelObj, LV_GRID_ALIGN_START, 0, 1,
+                             LV_GRID_ALIGN_CENTER, 0, 1);
+      }
+    }
+  });
+
+  // The wrapping control area is the single direct Window child; its grid
+  // placement is set in addChild (col 1 when labelled, else spanning both).
+  content_ = new (std::nothrow) WrapContent(this);
+
+  if (buildContent && content_) buildContent(content_);
+
+#if defined(SIMU)
+  setAutomationText(hasLabel ? label : "");
+#endif
+}
+
+bool FieldGroup::addChild(Window* child)
+{
+  if (!Window::addChild(child)) return false;
+  // The content area (the ONLY direct Window child — the caller's controls are
+  // children of content_, not of the row) lands in the 60% control column, or
+  // spans the full width when the leading label is omitted.
+  const bool labelled = labelObj != nullptr;
+  child->withLive([labelled](Window::LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    if (labelled)
+      lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_STRETCH, 1, 1,
+                           LV_GRID_ALIGN_CENTER, 0, 1);
+    else
+      lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_STRETCH, 0, 2,
+                           LV_GRID_ALIGN_CENTER, 0, 1);
+  });
+  return true;
+}
+
+void FieldGroup::setLabel(const char* text)
+{
+  if (labelObj) lv_label_set_text(labelObj, text ? text : "");
+}
+
+// ---------------------------------------------------------------------------
 // Card
 // ---------------------------------------------------------------------------
 

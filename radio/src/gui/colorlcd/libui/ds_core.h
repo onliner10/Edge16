@@ -227,6 +227,133 @@ class FormRow : public Window
 };
 
 // ---------------------------------------------------------------------------
+// FieldRow — one settings-form line carrying N SIDE-BY-SIDE fields:
+//   [ label:control ][ label:control ][ ... ]   (N even columns)
+// The DS-native answer to the `FlexGridLayout` + multi-column `newLine`
+// boilerplate that per-item editors (output/mixer edit, module settings, …)
+// reach for when a line needs more than one control — e.g. a Min | Max range,
+// or two independent labelled fields (Inverted | Curve). Where ds::FormRow is
+// the single-field line, FieldRow is its multi-field sibling and reuses the
+// SAME 40% label / 60% control split PER FIELD, so a field's label and control
+// stay x-aligned with a plain FormRow above or below it.
+//
+// The top-level columns are EVEN and structural: field i lands at the same x in
+// every FieldRow built with the same field count (one shared, fixed-fraction
+// column template, the ds::Grid alignment guarantee). Each field's control slot
+// is clamped to the 40 px touch floor; the row owns its gaps (ds spacing
+// tokens), the 40 px min height, and vertical centering.
+//
+//   new ds::FieldRow(form, {
+//     {STR_MIN, [&](Window* slot) { minEdit = new NumberEdit(slot, ...); }},
+//     {STR_MAX, [&](Window* slot) { maxEdit = new NumberEdit(slot, ...); }},
+//   });
+//
+// The caller keeps its own control pointers (as with FormRow); each control is
+// the focus target and the row itself is inert.
+// ---------------------------------------------------------------------------
+
+class FieldRow : public Window
+{
+ public:
+  struct Field {
+    const char* label = nullptr;
+    std::function<void(Window* slot)> buildControl = nullptr;
+  };
+
+  FieldRow(Window* parent, const std::vector<Field>& fields);
+  FieldRow(Window* parent, std::initializer_list<Field> fields) :
+      FieldRow(parent, std::vector<Field>(fields))
+  {
+  }
+
+  int fieldCount() const { return (int)labels_.size(); }
+
+  // DS-owned "engaged" cue on field i's LABEL: an active fill + bold emphasis
+  // toggled on/off, mirroring ds::Grid highlightCell. Used for a live
+  // range-end highlight (e.g. Output edit lighting the Min/Max side the
+  // channel is currently pushed toward). The style is installed lazily on
+  // first use.
+  void highlightField(int index, bool on);
+
+#if defined(SIMU)
+  // Test hooks: the field container (to measure real column x/width against the
+  // 40 px floor and prove even, shared-template alignment) and its label (to
+  // assert the highlight toggles LV_STATE_CHECKED).
+  Window* fieldCellForTest(int i) const
+  {
+    return (i >= 0 && i < (int)cells_.size()) ? cells_[i] : nullptr;
+  }
+  lv_obj_t* labelForTest(int i) const
+  {
+    return (i >= 0 && i < (int)labels_.size()) ? labels_[i] : nullptr;
+  }
+#endif
+
+ private:
+  std::vector<Window*> cells_;         // one field container per column
+  std::vector<lv_obj_t*> labels_;      // each field's DS-owned label
+  std::vector<bool> highlightReady_;   // highlight style installed lazily
+  std::vector<lv_coord_t> colDsc_;     // stable address; LVGL keeps the pointer
+};
+
+// ---------------------------------------------------------------------------
+// FieldGroup — one settings-form line whose control side is a VARIABLE-COUNT,
+// WRAPPING box of small controls:
+//   [ label 40%? ][ control · control · control … (wraps) ]
+//
+// This is the shape ds::FieldRow (fixed N even columns, one sub-label PER field)
+// cannot express: the RF module-protocol "option boxes", where a single leading
+// label (Failsafe, Receiver, Mode, …) is followed by a row of N side-by-side
+// controls whose COUNT and identity depend on the protocol/subtype at runtime —
+// e.g. Receiver = [ ID | Bind | Range ], or [ ID | Bind ], or
+// [ ID | Bind | Range | Options ] — and which must WRAP to the next line when
+// they don't fit rather than overflow or clip. Those are the boxes screens
+// currently hand-roll as a `Window` + `padAll` + `setFlexLayout(ROW[_WRAP])`
+// (the `// ds-allow`ed FlexGridLayout boxes in module/*.cpp).
+//
+// Where to use which:
+//   * FormRow    — ONE control after the label.
+//   * FieldRow   — a FIXED number of INDEPENDENTLY-LABELLED fields in EVEN
+//                  columns (Min | Max), each its own label:control pair,
+//                  x-aligned across rows.
+//   * FieldGroup — a VARIABLE number of label-less controls flowed after ONE
+//                  optional leading label, WRAPPING when they overflow.
+//
+// The leading label reuses FormRow's 40% column so a FieldGroup's label stays
+// x-aligned with the FormRows above/below it; the control area is the 60%
+// column (or the full width when the label is omitted). The caller adds its own
+// controls into content() (as it did into the old hand-rolled box), keeping its
+// own pointers; each added control is clamped to the 40 px touch floor (min
+// width AND height) so a flowed toggle or narrow edit stays tappable, and the
+// group owns the inter-control gap, the wrapped-line gap and the 40 px min
+// height. The controls are the focus targets; the row itself is inert.
+//
+//   fsLine = new ds::FieldGroup(form, STR_FAILSAFE, [&](Window* box) {
+//     fsChoice = new FailsafeChoice(box, moduleIdx);  // Choice + optional btn
+//   });
+// ---------------------------------------------------------------------------
+
+class FieldGroup : public Window
+{
+ public:
+  FieldGroup(Window* parent, const char* label,
+             std::function<void(Window* content)> buildContent = nullptr);
+
+  void setLabel(const char* text);
+
+  // The wrapping control area — add the variable set of controls here (the
+  // caller keeps its own pointers, exactly as with the old hand-rolled box).
+  Window* content() { return content_; }
+
+ protected:
+  bool addChild(Window* child) override;
+
+ private:
+  lv_obj_t* labelObj = nullptr;
+  Window* content_ = nullptr;
+};
+
+// ---------------------------------------------------------------------------
 // Card — non-interactive grouping panel with an optional title, `space-2`
 // internal gap. Add the grouped content as children of the card. Absorbs ad-hoc
 // `Window` + `padAll` boxes.
