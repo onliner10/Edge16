@@ -29,9 +29,6 @@ bool modelSelectMissingImageLoadReportsWorkForTest();
 bool modelButtonClickHandlerMayDeleteButtonForTest();
 bool chosenModelNameSurvivesSimulatedTemplateLoadForTest();
 bool unchosenModelNameLeavesTemplateNameUntouchedForTest();
-bool modelPressOnUnfocusedModelOnlyFocusesForTest();
-bool modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest();
-bool modelPressOnFocusedModelQuickSelectsWhenEnabledForTest();
 bool buildDuplicateModelNameDiffersFromSourceForTest();
 bool buildDuplicateModelNameSkipsTakenSuffixForTest();
 bool buildDuplicateModelNameTruncatesBaseToFitForTest();
@@ -80,28 +77,12 @@ TEST(ColorModelSelect, UnappliedNameLeavesTemplateNameUntouched)
   EXPECT_TRUE(unchosenModelNameLeavesTemplateNameUntouchedForTest());
 }
 
-// Safety regression: a single tap on a model card must never force-load it
-// with no confirmation. A NOT-yet-focused model only becomes focused --
-// regardless of the quick select setting -- it never loads.
-TEST(ColorModelSelect, PressOnUnfocusedModelOnlyFocuses)
-{
-  EXPECT_TRUE(modelPressOnUnfocusedModelOnlyFocusesForTest());
-}
-
-// With modelQuickSelect off (the default), pressing the already-focused
-// model must open the context menu (STR_SELECT_MODEL lives there), not load
-// the model directly.
-TEST(ColorModelSelect, PressOnFocusedModelOpensMenuWhenQuickSelectDisabled)
-{
-  EXPECT_TRUE(modelPressOnFocusedModelOpensMenuWhenQuickSelectDisabledForTest());
-}
-
-// With modelQuickSelect on, pressing the already-focused model loads it
-// immediately, matching legacy/mono-LCD behavior.
-TEST(ColorModelSelect, PressOnFocusedModelQuickSelectsWhenEnabled)
-{
-  EXPECT_TRUE(modelPressOnFocusedModelQuickSelectsWhenEnabledForTest());
-}
+// Tap=select convention (a single tap on a model card fires its press handler
+// immediately, with no first-tap-just-focuses gate): the ModelButton
+// click->handler path is covered by the ModelButtonClickHandlerMayDeleteButton
+// test above and verified end-to-end in the sim. (Replaces the old
+// PressOnUnfocusedModelOnlyFocuses / PressOnFocusedModel* tests that pinned the
+// now-reverted focus-then-quickSelect-or-menu precedence.)
 
 // Duplicate Model must never produce a card indistinguishable from its
 // source -- addModel() copies modelName verbatim, so duplicateModel() must

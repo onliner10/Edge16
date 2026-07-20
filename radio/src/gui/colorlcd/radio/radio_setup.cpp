@@ -799,12 +799,6 @@ class RadioManageModelsPage : public SubPage
     auto* list = new ds::List(body);
     auto* form = new ds::Card(list);
 
-    // Model quick select
-    new ds::FormRow(form, STR_MODEL_QUICK_SELECT, [](Window* slot) {
-      new ToggleSwitch(slot, rect_t{},
-                       GET_SET_DEFAULT(g_eeGeneral.modelQuickSelect));
-    });
-
     // Label single/multi select
     new ds::FormRow(form, STR_LABELS_SELECT, [this](Window* slot) {
       new Choice(slot, rect_t{}, STR_LABELS_SELECT_MODE, 0, 1,
