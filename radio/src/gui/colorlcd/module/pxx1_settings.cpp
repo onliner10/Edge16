@@ -22,6 +22,7 @@
 #include "pxx1_settings.h"
 #include "choice.h"
 
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 
@@ -33,34 +34,33 @@ PXX1AntennaSettings::PXX1AntennaSettings(Window* parent,
                                          uint8_t moduleIdx) :
     Window(parent, rect_t{}), md(&g_model.moduleData[moduleIdx])
 {
-  FlexGridLayout grid(g);
   setFlexLayout();
-
-  auto line = newLine(grid);
-  new StaticText(line, rect_t{}, STR_ANTENNA);
 
   if (md->pxx.antennaMode == ANTENNA_MODE_PER_MODEL) {
     md->pxx.antennaMode = ANTENNA_MODE_INTERNAL;
     SET_DIRTY();
   }
 
-  auto antennaChoice = new Choice(
-      line, rect_t{}, STR_ANTENNA_MODES, ANTENNA_MODE_INTERNAL,
-      ANTENNA_MODE_EXTERNAL, GET_DEFAULT(md->pxx.antennaMode),
-      [=](int32_t antenna) -> void {
-        if (!isExternalAntennaEnabled() && (antenna == ANTENNA_MODE_EXTERNAL)) {
-          if (confirmationDialog(STR_ANTENNACONFIRM1, STR_ANTENNACONFIRM2)) {
+  // Antenna: a single label -> Choice line.
+  new ds::FormRow(this, STR_ANTENNA, [&](Window* slot) {
+    auto antennaChoice = new Choice(
+        slot, rect_t{}, STR_ANTENNA_MODES, ANTENNA_MODE_INTERNAL,
+        ANTENNA_MODE_EXTERNAL, GET_DEFAULT(md->pxx.antennaMode),
+        [=](int32_t antenna) -> void {
+          if (!isExternalAntennaEnabled() && (antenna == ANTENNA_MODE_EXTERNAL)) {
+            if (confirmationDialog(STR_ANTENNACONFIRM1, STR_ANTENNACONFIRM2)) {
+              md->pxx.antennaMode = antenna;
+              SET_DIRTY();
+            }
+          } else {
             md->pxx.antennaMode = antenna;
             SET_DIRTY();
+            checkExternalAntenna();
           }
-        } else {
-          md->pxx.antennaMode = antenna;
-          SET_DIRTY();
-          checkExternalAntenna();
-        }
-      });
+        });
 
-  antennaChoice->setAvailableHandler(
-      [=](int8_t mode) { return mode != ANTENNA_MODE_PER_MODEL; });
+    antennaChoice->setAvailableHandler(
+        [=](int8_t mode) { return mode != ANTENNA_MODE_PER_MODEL; });
+  });
 }
 #endif

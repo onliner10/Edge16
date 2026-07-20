@@ -23,9 +23,17 @@
 
 #include "window.h"
 #include "numberedit.h"
+#include "ds_core.h"
 
+// The PPM frame line's control side: PPM frame length + delay edits and a
+// polarity Choice, flowed side-by-side. It is embedded as the control (60%)
+// column of a labelled form line by BOTH callers — module_setup (inside a
+// ds::FormRow whose label is STR_PPMFRAME) and trainer_setup (inside a
+// FlexGridLayout line whose col-0 StaticText is STR_PPMFRAME) — so it carries
+// NO label of its own: a label-less ds::FieldGroup whose wrapping content area
+// owns the layout, gaps and touch floor.
 template <typename T>
-struct PpmFrameSettings : public Window {
+struct PpmFrameSettings : public ds::FieldGroup {
   private:
     NumberEdit* ppmFrameLenEditObject = nullptr;
 

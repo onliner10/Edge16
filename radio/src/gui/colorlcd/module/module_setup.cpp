@@ -32,6 +32,7 @@
 #include "getset_helpers.h"
 #include "messaging.h"
 #include "mixer_scheduler.h"
+#include "ds_core.h"
 #include "os/sleep.h"
 #include "ppm_settings.h"
 #include "storage/modelslist.h"
@@ -80,22 +81,22 @@ static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
                                      LV_GRID_TEMPLATE_LAST};
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
-struct FailsafeChoice : public Window {
-  FailsafeChoice(Window* parent, uint8_t moduleIdx) :
-      Window(parent, rect_t{}), moduleIdx(moduleIdx)
+// Failsafe option box contents: a mode Choice plus a "Set" button shown only
+// for FAILSAFE_CUSTOM. Flowed side-by-side into a ds::FieldGroup's content
+// area (which owns the layout, gaps and touch floor) rather than a hand-rolled
+// flex box, so this helper is no longer a Window itself.
+struct FailsafeChoice {
+  FailsafeChoice(Window* content, uint8_t moduleIdx) : moduleIdx(moduleIdx)
   {
-    padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-    setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
     auto md = &g_model.moduleData[moduleIdx];
-    new Choice(this, rect_t{}, STR_VFAILSAFE, 0, FAILSAFE_LAST,
+    new Choice(content, rect_t{}, STR_VFAILSAFE, 0, FAILSAFE_LAST,
               GET_DEFAULT(md->failsafeMode), [=](int32_t newValue) {
                 md->failsafeMode = newValue;
                 optsBtn->show(newValue == FAILSAFE_CUSTOM);
                 SET_DIRTY();
               });
 
-    optsBtn = new TextButton(this, rect_t{}, STR_SET, [=]() -> uint8_t {
+    optsBtn = new TextButton(content, rect_t{}, STR_SET, [=]() -> uint8_t {
       new FailSafePage(moduleIdx, Route{});
       return 0;
     });
@@ -126,7 +127,7 @@ class ModuleWindow : public Window
 
   void updateModule()
   {
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
+    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: shared grid handed to the protocol sub-settings windows (Crossfire/AFHDS/MPM/... in module/*.cpp) which still lay their own lines out with FlexGridLayout; their migration onto ds::FormRow/ds::FieldGroup is the follow-up. This page's own option boxes are now ds::FieldGroup / ds::FormRow.
     clear();
 
     modOpts = nullptr;
@@ -178,24 +179,24 @@ class ModuleWindow : public Window
   #endif
 
     // Channel Range
-    auto line = newLine(grid);
-    new StaticText(line, rect_t{}, STR_CHANNELRANGE);
-    chRange = new ModuleChannelRange(line, moduleIdx);
+    new ds::FormRow(this, STR_CHANNELRANGE, [&](Window* slot) {
+      chRange = new ModuleChannelRange(slot, moduleIdx);
+    });
 
     // Failsafe
-    fsLine = newLine(grid);
-    new StaticText(fsLine, rect_t{}, STR_FAILSAFE);
-    fsChoice = new FailsafeChoice(fsLine, moduleIdx);
+    fsLine = new ds::FieldGroup(this, STR_FAILSAFE, [&](Window* box) {
+      fsChoice = new FailsafeChoice(box, moduleIdx);
+    });
 
     // PPM modules
     if (isModulePPM(moduleIdx)) {
       // PPM frame
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_PPMFRAME);
-      auto obj = new PpmFrameSettings<PpmModule>(line, &md->ppm);
+      new ds::FormRow(this, STR_PPMFRAME, [&](Window* slot) {
+        auto obj = new PpmFrameSettings<PpmModule>(slot, &md->ppm);
 
-      // copy pointer to frame len edit object to channel range
-      chRange->setPpmFrameLenEditObject(obj->getPpmFrameLenEditObject());
+        // copy pointer to frame len edit object to channel range
+        chRange->setPpmFrameLenEditObject(obj->getPpmFrameLenEditObject());
+      });
     }
 
     // Generic module parameters
@@ -205,20 +206,16 @@ class ModuleWindow : public Window
                                         isModuleBindRangeAvailable(moduleIdx))) {
       // Is Reciever ID Unique
       if (isModuleModelIndexAvailable(moduleIdx)) {
-        auto line = newLine(grid);
-        new StaticText(line, rect_t{}, "");
-        idUnique = new StaticText(line, rect_t{}, "");
-        idUnique->textColor(COLOR_THEME_WARNING_INDEX, ETX_STATE_UNIQUE_ID_WARN);
-        updateIDStaticText(moduleIdx);
+        new ds::FormRow(this, "", [&](Window* slot) {
+          idUnique = new StaticText(slot, rect_t{}, "");
+          idUnique->textColor(COLOR_THEME_WARNING_INDEX, ETX_STATE_UNIQUE_ID_WARN);
+          updateIDStaticText(moduleIdx);
+        });
       }
 
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_RECEIVER);
-
-      auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
+      // Receiver: a variable set of controls (ID, and — when available — Bind /
+      // Range / Options) flowed and wrapped after the label.
+      new ds::FieldGroup(this, STR_RECEIVER, [&](Window* box) {
       // Model index
       auto modelId = &g_model.header.modelId[moduleIdx];
       rxID = new NumberEdit(box, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 0, getMaxRxNum(moduleIdx),
@@ -337,66 +334,62 @@ class ModuleWindow : public Window
         }
   #endif
       }
+      });  // Receiver ds::FieldGroup
     }
   #if defined(PXX2)
     else if (isModuleRFAccess(moduleIdx)) {
 
       // Register and Range buttons
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_MODULE);
-
-      auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_LARGE);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
-      registerButton = new TextButton(box, rect_t{}, STR_REGISTER);
-      registerButton->setPressHandler([=]() -> uint8_t {
-        new pxx2::RegisterDialog(moduleIdx);
-        return 0;
-      });
-
-      rangeButton = new TextButton(box, rect_t{}, STR_MODULE_RANGE);
-      rangeButton->setPressHandler([=]() -> uint8_t {
-        if (moduleState[moduleIdx].mode == MODULE_MODE_RANGECHECK) {
-          moduleState[moduleIdx].mode = MODULE_MODE_NORMAL;
+      new ds::FieldGroup(this, STR_MODULE, [&](Window* box) {
+        registerButton = new TextButton(box, rect_t{}, STR_REGISTER);
+        registerButton->setPressHandler([=]() -> uint8_t {
+          new pxx2::RegisterDialog(moduleIdx);
           return 0;
-        } else {
-          moduleState[moduleIdx].mode = MODULE_MODE_RANGECHECK;
-          startRSSIDialog();
-          return 1;
-        }
-      });
+        });
 
-      auto options = new TextButton(box, rect_t{}, LV_SYMBOL_SETTINGS);
-      options->setPressHandler([=]() {
-        new pxx2::ModuleOptions(moduleIdx);
-        return 0;
+        rangeButton = new TextButton(box, rect_t{}, STR_MODULE_RANGE);
+        rangeButton->setPressHandler([=]() -> uint8_t {
+          if (moduleState[moduleIdx].mode == MODULE_MODE_RANGECHECK) {
+            moduleState[moduleIdx].mode = MODULE_MODE_NORMAL;
+            return 0;
+          } else {
+            moduleState[moduleIdx].mode = MODULE_MODE_RANGECHECK;
+            startRSSIDialog();
+            return 1;
+          }
+        });
+
+        auto options = new TextButton(box, rect_t{}, LV_SYMBOL_SETTINGS);
+        options->setPressHandler([=]() {
+          new pxx2::ModuleOptions(moduleIdx);
+          return 0;
+        });
       });
 
       // Model index
-      line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_RECEIVER_NUM);
-      auto modelId = &g_model.header.modelId[moduleIdx];
-      auto* rxNumEdit = new NumberEdit(line, rect_t{}, 0, getMaxRxNum(moduleIdx),
-                    GET_SET_DEFAULT(*modelId));
-      rxNumEdit->setDirectKeyboard(false);
-      rxNumEdit->setEditTitle(STR_ROLLER_MODEL_ID);
+      new ds::FormRow(this, STR_RECEIVER_NUM, [&](Window* slot) {
+        auto modelId = &g_model.header.modelId[moduleIdx];
+        auto* rxNumEdit = new NumberEdit(slot, rect_t{}, 0, getMaxRxNum(moduleIdx),
+                      GET_SET_DEFAULT(*modelId));
+        rxNumEdit->setDirectKeyboard(false);
+        rxNumEdit->setEditTitle(STR_ROLLER_MODEL_ID);
+      });
     }
   #endif
 
     // R9M Power
     if (isModuleR9MNonAccess(moduleIdx)) {
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_RF_POWER);
-      rfPower = new Choice(line, rect_t{}, 0, 0, GET_SET_DEFAULT(md->pxx.power));
-      line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_MODULE_TELEMETRY);
-      new DynamicText(line, rect_t{}, [=]() {
-        if (modulePortHasRx(moduleIdx)) {
-          return std::string(STR_MODULE_TELEM_ON);
-        } else {
-          return std::string(STR_DISABLE_INTERNAL);
-        }
+      new ds::FormRow(this, STR_RF_POWER, [&](Window* slot) {
+        rfPower = new Choice(slot, rect_t{}, 0, 0, GET_SET_DEFAULT(md->pxx.power));
+      });
+      new ds::FormRow(this, STR_MODULE_TELEMETRY, [&](Window* slot) {
+        new DynamicText(slot, rect_t{}, [=]() {
+          if (modulePortHasRx(moduleIdx)) {
+            return std::string(STR_MODULE_TELEM_ON);
+          } else {
+            return std::string(STR_DISABLE_INTERNAL);
+          }
+        });
       });
     }
 
@@ -409,43 +402,38 @@ class ModuleWindow : public Window
         char* s = strAppend(label, STR_RECEIVER);
         strAppendUnsigned(s, receiverIdx + 1);
 
-        auto line = newLine(grid);
-        new StaticText(line, rect_t{}, label);
-        new pxx2::ReceiverButton(line, rect_t{}, moduleIdx, receiverIdx);
+        new ds::FormRow(this, label, [&](Window* slot) {
+          new pxx2::ReceiverButton(slot, rect_t{}, moduleIdx, receiverIdx);
+        });
       }
     }
   #endif
     // SBUS refresh rate
     if (isModuleSBUS(moduleIdx)) {
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, STR_REFRESHRATE);
-
-      auto box = new Window(line, rect_t{});
-      box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-      box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
-      auto edit = new NumberEdit(
-          box, rect_t{}, SBUS_MIN_PERIOD, SBUS_MAX_PERIOD,
-          GET_DEFAULT((int16_t)md->sbus.refreshRate * SBUS_STEPSIZE +
-                      SBUS_DEF_PERIOD),
-          SET_VALUE(md->sbus.refreshRate,
-                    (newValue - SBUS_DEF_PERIOD) / SBUS_STEPSIZE),
-          PREC1);
-      edit->setSuffix(STR_MS);
-      edit->setStep(SBUS_STEPSIZE);
-      edit->setDirectKeyboard(false);
-      edit->setEditTitle(STR_ROLLER_SBUS_REFRESH);
-      new Choice(box, rect_t{}, STR_SBUS_INVERSION_VALUES, 0, 1,
-                GET_SET_DEFAULT(md->sbus.noninverted));
+      new ds::FieldGroup(this, STR_REFRESHRATE, [&](Window* box) {
+        auto edit = new NumberEdit(
+            box, rect_t{}, SBUS_MIN_PERIOD, SBUS_MAX_PERIOD,
+            GET_DEFAULT((int16_t)md->sbus.refreshRate * SBUS_STEPSIZE +
+                        SBUS_DEF_PERIOD),
+            SET_VALUE(md->sbus.refreshRate,
+                      (newValue - SBUS_DEF_PERIOD) / SBUS_STEPSIZE),
+            PREC1);
+        edit->setSuffix(STR_MS);
+        edit->setStep(SBUS_STEPSIZE);
+        edit->setDirectKeyboard(false);
+        edit->setEditTitle(STR_ROLLER_SBUS_REFRESH);
+        new Choice(box, rect_t{}, STR_SBUS_INVERSION_VALUES, 0, 1,
+                  GET_SET_DEFAULT(md->sbus.noninverted));
+      });
   #if defined(RADIO_TX16S)
       new StaticText(this, rect_t{}, STR_WARN_5VOLTS);
   #endif
     }
 
     if (isModuleGhost(moduleIdx)) {
-      auto line = newLine(grid);
-      new StaticText(line, rect_t{}, "Raw 12 bits");
-      new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(md->ghost.raw12bits));
+      new ds::FormRow(this, "Raw 12 bits", [&](Window* slot) {
+        new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(md->ghost.raw12bits));
+      });
     }
 
     updateSubType();
@@ -773,28 +761,26 @@ ModulePage::ModulePage(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, 
 
   body->setFlexLayout();
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
-  // Module Type
-  auto line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_MODE);
-
-  auto box = new Window(line, rect_t{});
-  box->padAll(PAD_TINY);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-  box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: RF module setup - protocol option fields laid out in horizontal/wrap boxes (side-by-side controls) that ds::FormRow's single 40/60 label+control row can't express.
-
   ModuleData* md = &g_model.moduleData[moduleIdx];
-  auto moduleChoice =
-      new Choice(box, rect_t{}, STR_MODULE_PROTOCOLS, MODULE_TYPE_NONE,
-                 MODULE_TYPE_COUNT - 1, GET_DEFAULT(md->type));
 
-  moduleChoice->setAvailableHandler([=](int8_t moduleType) {
-    if (moduleType == MODULE_TYPE_NONE) return true;
-    return moduleIdx == INTERNAL_MODULE ? isInternalModuleAvailable(moduleType)
-                                        : isExternalModuleAvailable(moduleType);
+  // Module Type: the protocol Choice and its subtype Choice flow side-by-side
+  // (and wrap) after the MODE label.
+  Choice* moduleChoice = nullptr;
+  ModuleSubTypeChoice* subTypeChoice = nullptr;
+  new ds::FieldGroup(body, STR_MODE, [&](Window* box) {
+    moduleChoice =
+        new Choice(box, rect_t{}, STR_MODULE_PROTOCOLS, MODULE_TYPE_NONE,
+                   MODULE_TYPE_COUNT - 1, GET_DEFAULT(md->type));
+
+    moduleChoice->setAvailableHandler([=](int8_t moduleType) {
+      if (moduleType == MODULE_TYPE_NONE) return true;
+      return moduleIdx == INTERNAL_MODULE ? isInternalModuleAvailable(moduleType)
+                                          : isExternalModuleAvailable(moduleType);
+    });
+
+    subTypeChoice = new ModuleSubTypeChoice(box, moduleIdx);
   });
 
-  auto subTypeChoice = new ModuleSubTypeChoice(box, moduleIdx);
   auto moduleWindow = new ModuleWindow(body, moduleIdx);
 
   // This needs to be after moduleWindow has been created

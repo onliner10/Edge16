@@ -25,6 +25,7 @@
 
 #include "choice.h"
 #include "channel_bar.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "menu.h"
@@ -229,12 +230,6 @@ BindRxChoiceMenu::BindRxChoiceMenu(uint8_t moduleIdx,
   setCancelHandler([=]() { moduleState[moduleIdx].mode = MODULE_MODE_NORMAL; });
 }
 
-static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
-                                          LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t line_row_dsc[] = {LV_GRID_CONTENT,
-                                          LV_GRID_TEMPLATE_LAST};
-
 ReceiverButton::ReceiverButton(Window* parent, rect_t rect, uint8_t moduleIdx,
                                uint8_t receiverIdx) :
     TextButton(parent, rect, STR_BIND,
@@ -351,54 +346,49 @@ RegisterDialog::RegisterDialog(uint8_t moduleIdx) :
                LV_SIZE_CONTENT),
     moduleIdx(moduleIdx)
 {
-  FlexGridLayout grid(line_col_dsc, line_row_dsc);
   auto* modSetup = &(getPXX2ModuleSetupBuffer());
 
   form.with([&](Window& formWindow) {
     // Register ID
-    auto line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, STR_REG_ID);
-    reg_id = new ModelTextEdit(line, rect_t{}, g_model.modelRegistrationID,
-                               sizeof(g_model.modelRegistrationID));
+    new ds::FormRow(&formWindow, STR_REG_ID, [&](Window* slot) {
+      reg_id = new ModelTextEdit(slot, rect_t{}, g_model.modelRegistrationID,
+                                 sizeof(g_model.modelRegistrationID));
+    });
 
     // UID
-    line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, "UID");
-
-    uid = new NumberEdit(line, rect_t{}, 0, 2,
-                         GET_SET_DEFAULT(modSetup->registerLoopIndex));
-    uid->setDirectKeyboard(false);
-    uid->setEditTitle(STR_ROLLER_REGISTER_UID);
+    new ds::FormRow(&formWindow, "UID", [&](Window* slot) {
+      uid = new NumberEdit(slot, rect_t{}, 0, 2,
+                           GET_SET_DEFAULT(modSetup->registerLoopIndex));
+      uid->setDirectKeyboard(false);
+      uid->setEditTitle(STR_ROLLER_REGISTER_UID);
+    });
 
     // RX name
-    line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, STR_RX_NAME);
-
-    start();  // clears registration data buffer
-    rx_name = new ModelTextEdit(line, rect_t{}, modSetup->registerRxName,
-                                PXX2_LEN_RX_NAME);
-    rx_name->disable();
+    new ds::FormRow(&formWindow, STR_RX_NAME, [&](Window* slot) {
+      start();  // clears registration data buffer
+      rx_name = new ModelTextEdit(slot, rect_t{}, modSetup->registerRxName,
+                                  PXX2_LEN_RX_NAME);
+      rx_name->disable();
+    });
 
     // Status
-    // line = formWindow.newLine(grid);
-    // new StaticText(line, rect_t{}, STR_STATUS);
-    // status = new StaticText(line, rect_t{}, STR_WAITING_FOR_RX);
+    // new ds::FormRow(&formWindow, STR_STATUS, [&](Window* slot) {
+    //   status = new StaticText(slot, rect_t{}, STR_WAITING_FOR_RX);
+    // });
 
-    auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-    box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
+    // Cancel / Save actions flow (and wrap) in a label-less option box.
+    new ds::FieldGroup(&formWindow, nullptr, [&](Window* box) {
+      new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
+        this->deleteLater();
+        return 0;
+      });
 
-    new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
-      this->deleteLater();
-      return 0;
+      btn_ok = new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
+        modSetup->registerStep = REGISTER_RX_NAME_SELECTED;
+        return 0;
+      });
+      btn_ok->hide();
     });
-
-    btn_ok = new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
-      modSetup->registerStep = REGISTER_RX_NAME_SELECTED;
-      return 0;
-    });
-    btn_ok->hide();
   });
 
   setCloseHandler([=]() { moduleState[moduleIdx].mode = MODULE_MODE_NORMAL; });
@@ -539,97 +529,90 @@ void ModuleOptions::update()
       getPXX2ModuleOptions(modelId) &
       ((1 << MODULE_OPTION_EXTERNAL_ANTENNA) | (1 << MODULE_OPTION_POWER));
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-
   form.with([&](Window& formWindow) {
     formWindow.clear();
 
-    auto line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, STR_MODULE);
-    new StaticText(line, rect_t{}, getPXX2ModuleName(modelId));
+    // Module: label -> module name.
+    new ds::FormRow(&formWindow, STR_MODULE, [&](Window* slot) {
+      new StaticText(slot, rect_t{}, getPXX2ModuleName(modelId));
+    });
 
     if (!optionsAvailable) {
       // no options available
-      line = formWindow.newLine(grid);
-      new StaticText(line, rect_t{}, STR_NO_TX_OPTIONS);
+      new StaticText(&formWindow, rect_t{}, STR_NO_TX_OPTIONS);
     } else {
       // some options available
       if (optionsAvailable & (1 << MODULE_OPTION_EXTERNAL_ANTENNA)) {
-        line = formWindow.newLine(grid);
-        new StaticText(line, rect_t{}, STR_EXT_ANTENNA);
-        new ToggleSwitch(
-            line, rect_t{},
-            []() {
-              const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-              return hwSettings.moduleSettings.externalAntenna;
-            },
-            [&](uint8_t val) {
-              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-              hwSettings.moduleSettings.externalAntenna = val;
-            });
+        new ds::FormRow(&formWindow, STR_EXT_ANTENNA, [&](Window* slot) {
+          new ToggleSwitch(
+              slot, rect_t{},
+              []() {
+                const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+                return hwSettings.moduleSettings.externalAntenna;
+              },
+              [&](uint8_t val) {
+                auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+                hwSettings.moduleSettings.externalAntenna = val;
+              });
+        });
       }
 
       if (optionsAvailable & (1 << MODULE_OPTION_POWER)) {
         // TODO: use isTelemetryAvailable() to check if rebind is necessary
-        line = formWindow.newLine(grid);
-        new StaticText(line, rect_t{}, STR_POWER);
-        auto txPower = new Choice(
-            line, rect_t{}, 0, 30,
-            []() {
-              const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-              return hwSettings.moduleSettings.txPower;
-            },
-            [&](int val) {
-              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-              hwSettings.moduleSettings.txPower = val;
-              // state = MO_WriteSettings;
-            });
+        new ds::FormRow(&formWindow, STR_POWER, [&](Window* slot) {
+          auto txPower = new Choice(
+              slot, rect_t{}, 0, 30,
+              []() {
+                const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+                return hwSettings.moduleSettings.txPower;
+              },
+              [&](int val) {
+                auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+                hwSettings.moduleSettings.txPower = val;
+                // state = MO_WriteSettings;
+              });
 
-        txPower->setTextHandler([](int val) {
-          switch (val) {
-            case 10:
-              return std::string("10 mW");
-            case 14:
-              return std::string("25 mW");
-            case 20:
-              return std::string("100 mW");
-            case 23:
-              return std::string("200 mW");
-            case 27:
-              return std::string("500 mW");
-            case 30:
-              return std::string("1000 mW");
-            default:
-              return std::string("---");
-          }
-        });
+          txPower->setTextHandler([](int val) {
+            switch (val) {
+              case 10:
+                return std::string("10 mW");
+              case 14:
+                return std::string("25 mW");
+              case 20:
+                return std::string("100 mW");
+              case 23:
+                return std::string("200 mW");
+              case 27:
+                return std::string("500 mW");
+              case 30:
+                return std::string("1000 mW");
+              default:
+                return std::string("---");
+            }
+          });
 
-        txPower->setAvailableHandler([=](int val) {
-          const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-          return isPXX2PowerAvailable(hwSettings.modules[moduleIdx].information,
-                                      val);
+          txPower->setAvailableHandler([=](int val) {
+            const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+            return isPXX2PowerAvailable(hwSettings.modules[moduleIdx].information,
+                                        val);
+          });
         });
       }
     }
 
-    line = formWindow.newLine(grid);
-    new DynamicText(line, rect_t{}, [=]() { return statusText; });
+    new DynamicText(&formWindow, rect_t{}, [=]() { return statusText; });
 
-    line = formWindow.newLine(grid);
+    // Cancel / Save actions flow (and wrap) in a label-less option box.
+    new ds::FieldGroup(&formWindow, nullptr, [&](Window* box) {
+      new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
+        this->deleteLater();
+        return 0;
+      });
 
-    auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-    box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-
-    new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
-      this->deleteLater();
-      return 0;
-    });
-
-    new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
-      this->writeSettings();
-      return 0;
+      new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
+        this->writeSettings();
+        return 0;
+      });
     });
   });
 }
@@ -857,138 +840,134 @@ void RxOptions::update()
   uint8_t rxVariant = rxInfo.variant;
   uint8_t capabilities = rxInfo.capabilities;
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-
   form.with([&](Window& formWindow) {
-    auto line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, STR_RECEIVER);
-    new StaticText(line, rect_t{},
-                   g_model.moduleData[moduleIdx].pxx2.receiverName[receiverIdx]);
+    // Receiver: label -> receiver name.
+    new ds::FormRow(&formWindow, STR_RECEIVER, [&](Window* slot) {
+      new StaticText(slot, rect_t{},
+                     g_model.moduleData[moduleIdx].pxx2.receiverName[receiverIdx]);
+    });
 
     // PWM rate
-    line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{},
-                   isModuleR9MAccess(moduleIdx) ? "6.67ms PWM" : "7ms PWM");
-    new ToggleSwitch(
-        line, rect_t{},
-        []() {
-          auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-          return hwSettings.receiverSettings.pwmRate;
-        },
-        [](int val) {
-          auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-          hwSettings.receiverSettings.pwmRate = val;
-        });
-
-    // telemetry disabled
-    line = formWindow.newLine(grid);
-    new StaticText(line, rect_t{}, STR_TELEMETRY_DISABLED);
-    auto tele25mw = new ToggleSwitch(
-        line, rect_t{},
-        []() {
-          auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-          return hwSettings.receiverSettings.telemetryDisabled;
-        },
-        [](int val) {
-          auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-          hwSettings.receiverSettings.telemetryDisabled = val;
-        });
-
-    if (isModuleR9MAccess(moduleIdx) && rxVariant == PXX2_VARIANT_EU &&
-        hwSettings.moduleSettings.txPower > 14 /*25mW*/) {
-      // read only field in this case
-      tele25mw->disable();
-    }
-
-    if (capabilities & (1 << RECEIVER_CAPABILITY_TELEMETRY_25MW)) {
-      // telemetry 25 mW
-      line = formWindow.newLine(grid);
-      new StaticText(line, rect_t{}, "25mw Tele");
+    new ds::FormRow(&formWindow,
+                    isModuleR9MAccess(moduleIdx) ? "6.67ms PWM" : "7ms PWM",
+                    [&](Window* slot) {
       new ToggleSwitch(
-          line, rect_t{},
+          slot, rect_t{},
           []() {
             auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            return hwSettings.receiverSettings.telemetry25mw;
+            return hwSettings.receiverSettings.pwmRate;
           },
           [](int val) {
             auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            hwSettings.receiverSettings.telemetry25mw = val;
+            hwSettings.receiverSettings.pwmRate = val;
           });
+    });
+
+    // telemetry disabled
+    new ds::FormRow(&formWindow, STR_TELEMETRY_DISABLED, [&](Window* slot) {
+      auto tele25mw = new ToggleSwitch(
+          slot, rect_t{},
+          []() {
+            auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+            return hwSettings.receiverSettings.telemetryDisabled;
+          },
+          [](int val) {
+            auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+            hwSettings.receiverSettings.telemetryDisabled = val;
+          });
+
+      if (isModuleR9MAccess(moduleIdx) && rxVariant == PXX2_VARIANT_EU &&
+          hwSettings.moduleSettings.txPower > 14 /*25mW*/) {
+        // read only field in this case
+        tele25mw->disable();
+      }
+    });
+
+    if (capabilities & (1 << RECEIVER_CAPABILITY_TELEMETRY_25MW)) {
+      // telemetry 25 mW
+      new ds::FormRow(&formWindow, "25mw Tele", [&](Window* slot) {
+        new ToggleSwitch(
+            slot, rect_t{},
+            []() {
+              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              return hwSettings.receiverSettings.telemetry25mw;
+            },
+            [](int val) {
+              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              hwSettings.receiverSettings.telemetry25mw = val;
+            });
+      });
     }
 
     if (capabilities & ((1 << RECEIVER_CAPABILITY_FPORT) |
                         (1 << RECEIVER_CAPABILITY_FPORT2))) {
       // SPORT modes
-      line = formWindow.newLine(grid);
-      new StaticText(line, rect_t{}, STR_PROTOCOL);
-      auto sportModes = new Choice(
-          line, rect_t{}, STR_SPORT_MODES, 0, 2,
-          []() {
-            const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            const auto& rxSettings = hwSettings.receiverSettings;
-            return rxSettings.fport | (rxSettings.fport2 << 1);
-          },
-          [](int val) {
-            auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            auto& rxSettings = hwSettings.receiverSettings;
-            rxSettings.fport = val & 0x01;
-            rxSettings.fport2 = (val & 0x02) >> 1;
-          });
+      new ds::FormRow(&formWindow, STR_PROTOCOL, [&](Window* slot) {
+        auto sportModes = new Choice(
+            slot, rect_t{}, STR_SPORT_MODES, 0, 2,
+            []() {
+              const auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              const auto& rxSettings = hwSettings.receiverSettings;
+              return rxSettings.fport | (rxSettings.fport2 << 1);
+            },
+            [](int val) {
+              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              auto& rxSettings = hwSettings.receiverSettings;
+              rxSettings.fport = val & 0x01;
+              rxSettings.fport2 = (val & 0x02) >> 1;
+            });
 
-      sportModes->setAvailableHandler([=](int val) {
-        switch (val) {
-          case 1:  // FPORT
-            return (bool)(capabilities & (1 << RECEIVER_CAPABILITY_FPORT));
-          case 2:  // FPORT2
-            return (bool)(capabilities & (1 << RECEIVER_CAPABILITY_FPORT2));
-        }
-        return true;
+        sportModes->setAvailableHandler([=](int val) {
+          switch (val) {
+            case 1:  // FPORT
+              return (bool)(capabilities & (1 << RECEIVER_CAPABILITY_FPORT));
+            case 2:  // FPORT2
+              return (bool)(capabilities & (1 << RECEIVER_CAPABILITY_FPORT2));
+          }
+          return true;
+        });
       });
     }
 
     if (capabilities & (1 << RECEIVER_CAPABILITY_SBUS24)) {
-      line = formWindow.newLine(grid);
-      new StaticText(line, rect_t{}, STR_SBUS24);
-      new ToggleSwitch(
-          line, rect_t{},
-          []() {
-            auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            return hwSettings.receiverSettings.sbus24;
-          },
-          [](int val) {
-            auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            hwSettings.receiverSettings.sbus24 = val;
-          });
+      new ds::FormRow(&formWindow, STR_SBUS24, [&](Window* slot) {
+        new ToggleSwitch(
+            slot, rect_t{},
+            []() {
+              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              return hwSettings.receiverSettings.sbus24;
+            },
+            [](int val) {
+              auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
+              hwSettings.receiverSettings.sbus24 = val;
+            });
+      });
     }
 
     auto outputsCount =
         min<uint8_t>(16, hwSettings.receiverSettings.outputsCount);
     for (uint8_t i = 0; i < outputsCount; i++) {
-      line = formWindow.newLine(grid);
-      std::string i_str = std::to_string(i + 1);
-      new StaticText(line, rect_t{}, std::string(STR_PIN) + i_str);
-
+      std::string pinLabel = std::string(STR_PIN) + std::to_string(i + 1);
       uint8_t channels = sentModuleChannels(moduleIdx);
-      new OutputMappingChoice(line, capabilities, rxModelId, moduleIdx, channels,
-                              i);
+      new ds::FormRow(&formWindow, pinLabel.c_str(), [&](Window* slot) {
+        new OutputMappingChoice(slot, capabilities, rxModelId, moduleIdx,
+                                channels, i);
+      });
     }
 
-    line = formWindow.newLine(grid);
-    new DynamicText(line, rect_t{}, [=]() { return statusText; });
+    new DynamicText(&formWindow, rect_t{}, [=]() { return statusText; });
 
-    auto box = new Window(&formWindow, rect_t{});
-    box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
-    box->setStyleFlexMainPlace(LV_FLEX_ALIGN_SPACE_EVENLY, 0);
-    box->padAll(PAD_MEDIUM);  // ds-allow: ACCESS module settings - registration/bind option fields in horizontal/wrap boxes (side-by-side controls); not a single DS FormRow control.
+    // Cancel / Save actions flow (and wrap) in a label-less option box.
+    new ds::FieldGroup(&formWindow, nullptr, [&](Window* box) {
+      new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
+        this->deleteLater();
+        return 0;
+      });
 
-    new TextButton(box, rect_t{}, STR_CANCEL, [=]() -> int8_t {
-      this->deleteLater();
-      return 0;
-    });
-
-    new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
-      this->writeSettings();
-      return 0;
+      new TextButton(box, rect_t{}, STR_SAVE, [=]() -> int8_t {
+        this->writeSettings();
+        return 0;
+      });
     });
   });
 }

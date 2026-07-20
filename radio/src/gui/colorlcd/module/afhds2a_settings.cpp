@@ -22,48 +22,40 @@
 #include "afhds2a_settings.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "pulses/flysky.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
-class FSProtoOpts : public Window
-{
-  std::function<uint8_t()> _getMode;
-  std::function<void(uint8_t)> _setMode;
+// The two RX-option Choices (PPM/PWM pulse proto + SBUS/iBUS serial proto)
+// flowed side-by-side into a ds::FieldGroup's content area (which owns the
+// layout, gaps and touch floor), so this helper just builds them into the
+// group's content rather than being a Window itself.
+struct FSProtoOpts {
+  FSProtoOpts(Window* content, std::function<uint8_t()> getMode,
+              std::function<void(uint8_t)> setMode)
+  {
+    // PPM / PWM
+    new Choice(
+        content, rect_t{}, STR_FLYSKY_PULSE_PROTO, 0, 1,
+        [=]() -> int { return getMode() >> 1; },
+        [=](int v) {
+          setMode((getMode() & 1) | ((v & 1) << 1));
+          SET_DIRTY();
+        });
 
-public:
-  FSProtoOpts(Window* parent, std::function<uint8_t()> getMode,
-              std::function<void(uint8_t)> setMode);
+    // SBUS / iBUS
+    new Choice(
+        content, rect_t{}, STR_FLYSKY_SERIAL_PROTO, 0, 1,
+        [=]() -> int { return getMode() & 1; },
+        [=](int v) {
+          setMode((getMode() & 2) | (v & 1));
+          SET_DIRTY();
+        });
+  }
 };
-
-FSProtoOpts::FSProtoOpts(Window* parent, std::function<uint8_t()> getMode,
-                         std::function<void(uint8_t)> setMode) :
-  Window(parent, rect_t{}),
-  _getMode(std::move(getMode)),
-  _setMode(std::move(setMode))
-{
-  setFlexLayout(LV_FLEX_FLOW_ROW);
-
-  // PPM / PWM
-  new Choice(
-      this, rect_t{}, STR_FLYSKY_PULSE_PROTO, 0, 1,
-      [=]() -> int { return _getMode() >> 1; },
-      [=](int v) {
-        _setMode((_getMode() & 1) | ((v & 1) << 1));
-        SET_DIRTY();
-      });
-
-  // SBUS / iBUS
-  new Choice(
-      this, rect_t{}, STR_FLYSKY_SERIAL_PROTO, 0, 1,
-      [=]() -> int { return _getMode() & 1; },
-      [=](int v) {
-        _setMode((_getMode() & 2) | (v & 1));
-        SET_DIRTY();
-      });
-}
 
 AFHDS2ASettings::AFHDS2ASettings(Window* parent, const FlexGridLayout& g,
                                uint8_t moduleIdx) :
@@ -74,26 +66,22 @@ AFHDS2ASettings::AFHDS2ASettings(Window* parent, const FlexGridLayout& g,
 {
   setFlexLayout();
 
-  FormLine* line;
-
-  // RX options:
-  line = newLine(grid);
-  afhds2OptionsLabel = new StaticText(line, rect_t{}, STR_OPTIONS);
-
-  afhds2ProtoOpts = new FSProtoOpts(
-                                    line, [=]() { return md->flysky.mode; },
-                                    [=](uint8_t v) { md->flysky.mode = v; });
+  // RX options: the PPM/PWM + SBUS/iBUS Choices flowed after the OPTIONS label.
+  afhds2OptionsGroup = new ds::FieldGroup(this, STR_OPTIONS, [=](Window* content) {
+    FSProtoOpts(content, [=]() { return md->flysky.mode; },
+                [=](uint8_t v) { md->flysky.mode = v; });
+  });
 
 #if defined(RADIO_NV14_FAMILY)
-  line = newLine(grid);
   static const char* _rf_power[] = {"Default", "High"};
-  afhds2RFPowerText = new StaticText(line, rect_t{}, STR_MULTI_RFPOWER);
-  afhds2RFPowerChoice = new Choice(line, rect_t{}, _rf_power, 0, 1,
-                                   GET_DEFAULT(md->flysky.rfPower),
-                                   [=](int32_t newValue) -> void {
-                                     md->flysky.rfPower = newValue;
-                                     resetPulsesAFHDS2();
-                                   });
+  afhds2RFPowerLine = new ds::FormRow(this, STR_MULTI_RFPOWER, [=](Window* slot) {
+    afhds2RFPowerChoice = new Choice(slot, rect_t{}, _rf_power, 0, 1,
+                                     GET_DEFAULT(md->flysky.rfPower),
+                                     [=](int32_t newValue) -> void {
+                                       md->flysky.rfPower = newValue;
+                                       resetPulsesAFHDS2();
+                                     });
+  });
 #endif
 
   hideAFHDS2Options();
@@ -101,22 +89,18 @@ AFHDS2ASettings::AFHDS2ASettings(Window* parent, const FlexGridLayout& g,
 
 void AFHDS2ASettings::hideAFHDS2Options()
 {
-  afhds2OptionsLabel->hide();
-  afhds2ProtoOpts->hide();
+  afhds2OptionsGroup->hide();
 #if defined(RADIO_NV14_FAMILY)
-  afhds2RFPowerText->hide();
-  afhds2RFPowerChoice->hide();
+  afhds2RFPowerLine->hide();
 #endif
 }
 
 void AFHDS2ASettings::showAFHDS2Options()
 {
-  afhds2OptionsLabel->show();
-  afhds2ProtoOpts->show();
+  afhds2OptionsGroup->show();
 #if defined(RADIO_NV14_FAMILY)
   bool showRFPower = (getNV14RfFwVersion() >= 0x1000E);
-  afhds2RFPowerText->show(showRFPower);
-  afhds2RFPowerChoice->show(showRFPower);
+  afhds2RFPowerLine->show(showRFPower);
   if (showRFPower && (showRFPower != hasRFPower)) {
     hasRFPower = showRFPower;
     afhds2RFPowerChoice->update();

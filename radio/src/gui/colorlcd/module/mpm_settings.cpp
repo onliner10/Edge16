@@ -22,6 +22,7 @@
 #include "mpm_settings.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "io/multi_protolist.h"
@@ -31,16 +32,19 @@
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
-class MPMProtoOption : public FormLine {
+class MPMProtoOption : public ds::FieldGroup {
  public:
-  MPMProtoOption(Window* form, FlexGridLayout& layout) :
-      FormLine(form, layout)
+  // The protocol option field is one of Choice / NumberEdit / ToggleSwitch (only
+  // one visible at a time) plus an optional RSSI readout, flowed side-by-side
+  // into the FieldGroup's content (which owns the layout, gaps and touch floor;
+  // the RSSI's former padTop is absorbed by that layout). The leading label is
+  // protocol-dependent and set live in update(); it is built with a placeholder
+  // so the FieldGroup materializes its label column, then retargeted via
+  // setLabel() before the row is ever shown.
+  MPMProtoOption(Window* form) :
+      ds::FieldGroup(form, " ")
   {
-    label = new StaticText(this, rect_t{}, "");
-
-    auto box = new Window(this, rect_t{});
-    box->padAll(PAD_TINY);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
-    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_SMALL, LV_SIZE_CONTENT);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
+    Window* box = content();
 
     choice = new Choice(box, rect_t{}, 0, 0, nullptr);
     edit = new NumberEdit(box, rect_t{}, 0, 0, nullptr);
@@ -48,7 +52,6 @@ class MPMProtoOption : public FormLine {
     rssi = new DynamicNumber<uint16_t>(
         box, rect_t{}, [] { return (uint16_t)TELEMETRY_RSSI(); }, COLOR_THEME_PRIMARY1_INDEX, 0,
         getRxStatLabels()->label, getRxStatLabels()->unit);
-    rssi->padTop(PAD_SMALL);  // ds-allow: Multi-protocol module settings - option fields in horizontal boxes with an RSSI indicator; side-by-side controls, not a single DS FormRow.
   }
 
   void update(const MultiRfProtocols::RfProto* rfProto, ModuleData* md,
@@ -62,7 +65,7 @@ class MPMProtoOption : public FormLine {
     show();
 
     const char* title = getMultiOptionTitle(moduleIdx);
-    label->setText(title);
+    setLabel(title);
 
     choice->hide();
     edit->hide();
@@ -137,22 +140,19 @@ class MPMProtoOption : public FormLine {
   }
 
  protected:
-  StaticText* label;
   Choice* choice;
   NumberEdit* edit;
   ToggleSwitch* cb;
   DynamicNumber<uint16_t>* rssi;
 };
 
-struct MPMSubtype : public FormLine {
-  MPMSubtype(MultimoduleSettings* parent, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(parent, layout)
+struct MPMSubtype : public ds::FormRow {
+  MPMSubtype(MultimoduleSettings* parent, uint8_t moduleIdx) :
+      ds::FormRow(parent, STR_RF_PROTOCOL)
   {
     this->moduleIdx = moduleIdx;
     this->DSM2lastSubType = g_model.moduleData[this->moduleIdx].subType;
     this->DSM2autoUpdated = false;
-
-    new StaticText(this, rect_t{}, STR_RF_PROTOCOL);
 
     auto md = &g_model.moduleData[moduleIdx];
     choice = new Choice(
@@ -183,7 +183,7 @@ struct MPMSubtype : public FormLine {
 
   void onLiveCheckEvents(LiveWindow& live) override
   {
-    FormLine::onLiveCheckEvents(live);
+    Window::onLiveCheckEvents(live);
 
     //
     // DSM2: successful bind in auto mode changes DSM2 subType
@@ -209,12 +209,10 @@ struct MPMSubtype : public FormLine {
   bool DSM2autoUpdated;
 };
 
-struct MPMDSMCloned : public FormLine {
-  MPMDSMCloned(Window* form, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(form, layout)
+struct MPMDSMCloned : public ds::FormRow {
+  MPMDSMCloned(Window* form, uint8_t moduleIdx) :
+      ds::FormRow(form, STR_SUBTYPE)
   {
-    new StaticText(this, rect_t{}, STR_SUBTYPE);
-
     auto md = &g_model.moduleData[moduleIdx];
     choice = new Choice(this, rect_t{}, STR_MULTI_DSM_CLONE, 0, 1, 0, 0);
 
@@ -234,12 +232,10 @@ struct MPMDSMCloned : public FormLine {
   Choice* choice;
 };
 
-struct MPMServoRate : public FormLine {
-  MPMServoRate(Window* form, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(form, layout)
+struct MPMServoRate : public ds::FormRow {
+  MPMServoRate(Window* form, uint8_t moduleIdx) :
+      ds::FormRow(form, STR_MULTI_SERVOFREQ)
   {
-    new StaticText(this, rect_t{}, STR_MULTI_SERVOFREQ);
-
     auto md = &g_model.moduleData[moduleIdx];
     choice = new Choice(this, rect_t{}, STR_MULTI_DSM_OPTIONS, 0, 1, 0, 0);
 
@@ -259,12 +255,10 @@ struct MPMServoRate : public FormLine {
   Choice* choice;
 };
 
-struct MPMAutobind : public FormLine {
-  MPMAutobind(Window* form, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(form, layout)
+struct MPMAutobind : public ds::FormRow {
+  MPMAutobind(Window* form, uint8_t moduleIdx) :
+      ds::FormRow(form, STR_MULTI_AUTOBIND)
   {
-    new StaticText(this, rect_t{}, STR_MULTI_AUTOBIND);
-
     auto md = &g_model.moduleData[moduleIdx];
     cb = new ToggleSwitch(this, rect_t{},
                           GET_SET_DEFAULT(md->multi.autoBindMode));
@@ -276,12 +270,10 @@ struct MPMAutobind : public FormLine {
   ToggleSwitch* cb;
 };
 
-struct MPMChannelMap : public FormLine {
-  MPMChannelMap(Window* form, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(form, layout)
+struct MPMChannelMap : public ds::FormRow {
+  MPMChannelMap(Window* form, uint8_t moduleIdx) :
+      ds::FormRow(form, STR_DISABLE_CH_MAP)
   {
-    new StaticText(this, rect_t{}, STR_DISABLE_CH_MAP);
-
     auto md = &g_model.moduleData[moduleIdx];
     cb = new ToggleSwitch(this, rect_t{},
                           GET_SET_DEFAULT(md->multi.disableMapping));
@@ -302,13 +294,12 @@ struct MPMChannelMap : public FormLine {
 };
 
 MultimoduleSettings::MultimoduleSettings(Window* parent,
-                                         const FlexGridLayout& g,
+                                         const FlexGridLayout& /*g*/,
                                          uint8_t moduleIdx) :
     Window(parent, rect_t{}),
     md(&g_model.moduleData[moduleIdx]),
     moduleIdx(moduleIdx)
 {
-  FlexGridLayout grid(g);
   setFlexLayout();
 
   // TODO: needs to be placed differently
@@ -320,38 +311,38 @@ MultimoduleSettings::MultimoduleSettings(Window* parent,
   // }
 
   // Multimodule status
-  auto line = newLine(grid);
-  new StaticText(line, rect_t{}, STR_MODULE_STATUS);
-  new DynamicText(
-      line, rect_t{},
-      [=] {
-        char msg[64] = "";
-        getModuleStatusString(moduleIdx, msg);
-        return std::string(msg);
-      });
+  new ds::FormRow(this, STR_MODULE_STATUS, [=](Window* slot) {
+    new DynamicText(
+        slot, rect_t{},
+        [=] {
+          char msg[64] = "";
+          getModuleStatusString(moduleIdx, msg);
+          return std::string(msg);
+        });
+  });
 
-  st_line = new MPMSubtype(this, grid, moduleIdx);
+  st_line = new MPMSubtype(this, moduleIdx);
 
-  cl_line = new MPMDSMCloned(this, grid, moduleIdx);
-  opt_line = new MPMProtoOption(this, grid);
-  sr_line = new MPMServoRate(this, grid, moduleIdx);
-  ab_line = new MPMAutobind(this, grid, moduleIdx);
+  cl_line = new MPMDSMCloned(this, moduleIdx);
+  opt_line = new MPMProtoOption(this);
+  sr_line = new MPMServoRate(this, moduleIdx);
+  ab_line = new MPMAutobind(this, moduleIdx);
 
   // Low power mode
-  line = newLine(grid);
-  new StaticText(line, rect_t{}, STR_MULTI_LOWPOWER);
-  lp_mode =
-      new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(md->multi.lowPowerMode));
+  new ds::FormRow(this, STR_MULTI_LOWPOWER, [=](Window* slot) {
+    lp_mode =
+        new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(md->multi.lowPowerMode));
+  });
 
 #if defined(MANUFACTURER_FRSKY)
   // Disable telemetry
-  line = newLine(grid);
-  new StaticText(line, rect_t{}, STR_DISABLE_TELEM);
-  disable_telem = new ToggleSwitch(line, rect_t{},
-                                   GET_SET_DEFAULT(md->multi.disableTelemetry));
+  new ds::FormRow(this, STR_DISABLE_TELEM, [=](Window* slot) {
+    disable_telem = new ToggleSwitch(
+        slot, rect_t{}, GET_SET_DEFAULT(md->multi.disableTelemetry));
+  });
 #endif
 
-  cm_line = new MPMChannelMap(this, grid, moduleIdx);
+  cm_line = new MPMChannelMap(this, moduleIdx);
 
   // Ensure elements properly initalised
   update();

@@ -23,6 +23,7 @@
 
 #include "afhds3_options.h"
 #include "button.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 
@@ -51,41 +52,32 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
     md(&g_model.moduleData[moduleIdx]),
     grid(g)
 {
-  setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
-
-  FormLine* line;
+  setFlexLayout();
 
   // Status
-  line = newLine(grid);
-  afhds3StatusLabel = new StaticText(line, rect_t{}, STR_MODULE_STATUS);
-  afhds3StatusText = new DynamicText(line, rect_t{}, [=] {
-    char msg[64] = "";
-    getModuleStatusString(moduleIdx, msg);
-    return std::string(msg);
+  afhds3StatusLine = new ds::FormRow(this, STR_MODULE_STATUS, [=](Window* slot) {
+    new DynamicText(slot, rect_t{}, [=] {
+      char msg[64] = "";
+      getModuleStatusString(moduleIdx, msg);
+      return std::string(msg);
+    });
   });
 
-  // TYPE
-  line = newLine(grid);
-  afhds3TypeLabel =
-      new StaticText(line, rect_t{}, STR_TYPE);
+  // TYPE: phy-mode | region | Options button flowed after the TYPE label.
+  afhds3TypeGroup = new ds::FieldGroup(this, STR_TYPE, [=](Window* content) {
+    afhds3PhyMode =
+        new Choice(content, rect_t{}, _afhds3_phy_mode, 0,
+                   afhds3::PHYMODE_MAX, GET_SET_DEFAULT(md->afhds3.phyMode));
 
-  afhds3TypeForm = new Window(line, rect_t{});
-  afhds3TypeForm->padAll(PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
-  afhds3TypeForm->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_TINY);  // ds-allow: AFHDS3 settings - protocol type fields in a wrap box (side-by-side controls); not a single DS FormRow control.
-  afhds3TypeForm->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
+    afhds3Emi =
+        new Choice(content, rect_t{}, _afhds3_region, afhds3::LNK_ES_CE,
+                   afhds3::LNK_ES_FCC, GET_SET_DEFAULT(md->afhds3.emi));
 
-  afhds3PhyMode =
-      new Choice(afhds3TypeForm, rect_t{}, _afhds3_phy_mode, 0,
-                 afhds3::PHYMODE_MAX, GET_SET_DEFAULT(md->afhds3.phyMode));
-
-  afhds3Emi =
-      new Choice(afhds3TypeForm, rect_t{}, _afhds3_region, afhds3::LNK_ES_CE,
-                 afhds3::LNK_ES_FCC, GET_SET_DEFAULT(md->afhds3.emi));
-
-  new TextButton(afhds3TypeForm, rect_t{}, STR_MODULE_OPTIONS, [=]() {
-    afhds3::applyModelConfig(moduleIdx);
-    new AFHDS3_Options(moduleIdx, Route{});
-    return 0;
+    new TextButton(content, rect_t{}, STR_MODULE_OPTIONS, [=]() {
+      afhds3::applyModelConfig(moduleIdx);
+      new AFHDS3_Options(moduleIdx, Route{});
+      return 0;
+    });
   });
 
   bool hasPowerOption = false;
@@ -105,17 +97,17 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
   }
 
   if (hasPowerOption) {
-    line = newLine(grid);
     auto cfg = afhds3::getConfig(moduleIdx);
-    new StaticText(line, rect_t{}, STR_MULTI_RFPOWER);
-    afhds3RfPower = new Choice(
-        line, rect_t{}, STR_AFHDS3_POWERS, 0, maxPower,
-        GET_DEFAULT(md->afhds3.rfPower), [=](int32_t newValue) {
-          md->afhds3.rfPower = newValue;
-          cfg->others.dirtyFlag |= (uint32_t)1
-                                   << afhds3::DirtyConfig::DC_RX_CMD_TX_PWR;
-          SET_DIRTY();
-        });
+    new ds::FormRow(this, STR_MULTI_RFPOWER, [=](Window* slot) {
+      afhds3RfPower = new Choice(
+          slot, rect_t{}, STR_AFHDS3_POWERS, 0, maxPower,
+          GET_DEFAULT(md->afhds3.rfPower), [=](int32_t newValue) {
+            md->afhds3.rfPower = newValue;
+            cfg->others.dirtyFlag |= (uint32_t)1
+                                     << afhds3::DirtyConfig::DC_RX_CMD_TX_PWR;
+            SET_DIRTY();
+          });
+    });
   }
 
   hideAFHDS3Options();
@@ -123,18 +115,14 @@ AFHDS3Settings::AFHDS3Settings(Window* parent, const FlexGridLayout& g,
 
 void AFHDS3Settings::hideAFHDS3Options()
 {
-  afhds3StatusLabel->hide();
-  afhds3StatusText->hide();
-  afhds3TypeLabel->hide();
-  afhds3TypeForm->hide();
+  afhds3StatusLine->hide();
+  afhds3TypeGroup->hide();
 }
 
 void AFHDS3Settings::showAFHDS3Options()
 {
-  afhds3StatusLabel->show();
-  afhds3StatusText->show();
-  afhds3TypeLabel->show();
-  afhds3TypeForm->show();
+  afhds3StatusLine->show();
+  afhds3TypeGroup->show();
   afhds3PhyMode->update();
   afhds3Emi->update();
   if (moduleIdx == EXTERNAL_MODULE) {

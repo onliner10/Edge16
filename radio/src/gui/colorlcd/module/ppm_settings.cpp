@@ -29,14 +29,13 @@
 
 template <typename T>
 PpmFrameSettings<T>::PpmFrameSettings(Window* parent, T* ppm) :
-    Window(parent, rect_t{})
+    ds::FieldGroup(parent, nullptr)  // no label — the caller's line owns it
 {
-  padAll(PAD_TINY);  // ds-allow: PPM module settings - option fields in a box with a fixed pad; side-by-side controls, not a single DS FormRow.
-  setFlexLayout(LV_FLEX_FLOW_ROW);
+  Window* box = content();
 
   // PPM frame length
   auto edit = new NumberEdit(
-      this, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 125, 35 * PPM_STEP_SIZE + PPM_DEF_PERIOD,
+      box, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 125, 35 * PPM_STEP_SIZE + PPM_DEF_PERIOD,
       GET_DEFAULT(ppm->frameLength * PPM_STEP_SIZE + PPM_DEF_PERIOD),
       SET_VALUE(ppm->frameLength, (newValue - PPM_DEF_PERIOD) / PPM_STEP_SIZE),
       PREC1);
@@ -47,14 +46,14 @@ PpmFrameSettings<T>::PpmFrameSettings(Window* parent, T* ppm) :
   this->ppmFrameLenEditObject = edit;
 
   // PPM frame delay
-  edit = new NumberEdit(this, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 100, 800,
+  edit = new NumberEdit(box, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, 100, 800,
                         GET_DEFAULT(ppm->delay * 50 + 300),
                         SET_VALUE(ppm->delay, (newValue - 300) / 50));
   edit->setStep(50);
   edit->setSuffix(STR_US);
 
   // PPM Polarity
-  new Choice(this, rect_t{}, STR_PPM_POL, 0, 1, GET_SET_DEFAULT(ppm->pulsePol));
+  new Choice(box, rect_t{}, STR_PPM_POL, 0, 1, GET_SET_DEFAULT(ppm->pulsePol));
 }
 
 // explicit instantiation to make linker happy

@@ -30,7 +30,7 @@ struct ModuleData;
 class CrossfireSettings : public Window, public ModuleOptions
 {
   ModuleData* md;
-  StaticText *lblArmMode;
+  Window *armingGroup;
   Choice *choArmMode;
   SwitchChoice *choArmSwitch;
   uint8_t moduleIdx;

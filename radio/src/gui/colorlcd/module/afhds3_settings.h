@@ -34,10 +34,8 @@ class AFHDS3Settings : public Window, public ModuleOptions
   FlexGridLayout grid;
   tmr10ms_t lastRefresh = 0;
 
-  Window* afhds3StatusLabel = nullptr;
-  Window* afhds3StatusText = nullptr;
-  Window* afhds3TypeLabel = nullptr;
-  Window* afhds3TypeForm = nullptr;
+  Window* afhds3StatusLine = nullptr;
+  Window* afhds3TypeGroup = nullptr;
   Choice *afhds3PhyMode = nullptr;
   Choice *afhds3Emi = nullptr;
   Choice *afhds3RfPower = nullptr;

@@ -34,11 +34,10 @@ class AFHDS2ASettings : public Window, public ModuleOptions
   ModuleData* md;
   FlexGridLayout grid;
 
-  Window* afhds2OptionsLabel = nullptr;
-  Window* afhds2ProtoOpts = nullptr;
+  Window* afhds2OptionsGroup = nullptr;
 #if defined(RADIO_NV14_FAMILY)
   bool hasRFPower = false;
-  Window* afhds2RFPowerText = nullptr;
+  Window* afhds2RFPowerLine = nullptr;
   Choice* afhds2RFPowerChoice = nullptr;
 #endif
   void hideAFHDS2Options();

@@ -22,31 +22,28 @@
 #include "dsmp_settings.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "toggleswitch.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
 
-struct DSMPEnableAETR : public FormLine {
-  DSMPEnableAETR(Window* form, FlexGridLayout& layout, uint8_t moduleIdx) :
-      FormLine(form, layout)
+// Enable-AETR: a single label -> ToggleSwitch line (always shown for DSMP).
+struct DSMPEnableAETR {
+  DSMPEnableAETR(Window* form, uint8_t moduleIdx)
   {
-    new StaticText(this, rect_t{}, STR_DSMP_ENABLE_AETR);
-
     auto md = &g_model.moduleData[moduleIdx];
 
-    cb = new ToggleSwitch(this, rect_t{}, GET_SET_DEFAULT(md->dsmp.enableAETR));
+    new ds::FormRow(form, STR_DSMP_ENABLE_AETR, [&](Window* slot) {
+      cb = new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(md->dsmp.enableAETR));
+    });
   }
 
-  void update()
-  {
-    show();
-    cb->update();
-  }
+  void update() { cb->update(); }
 
  private:
-  ToggleSwitch* cb;
+  ToggleSwitch* cb = nullptr;
 };
 
 DSMPSettings::DSMPSettings(Window* parent,
@@ -56,21 +53,20 @@ DSMPSettings::DSMPSettings(Window* parent,
     md(&g_model.moduleData[moduleIdx]),
     moduleIdx(moduleIdx)
 {
-  FlexGridLayout grid(g);
   setFlexLayout();
 
-  // DSMP status
-  auto line = newLine(grid);
-  new StaticText(line, rect_t{}, STR_MODULE_STATUS);
-  new DynamicText(
-      line, rect_t{},
-      [=] {
-        char msg[64] = "";
-        getModuleStatusString(moduleIdx, msg);
-        return std::string(msg);
-      });
+  // DSMP status: label -> live status text.
+  new ds::FormRow(this, STR_MODULE_STATUS, [&](Window* slot) {
+    new DynamicText(
+        slot, rect_t{},
+        [=] {
+          char msg[64] = "";
+          getModuleStatusString(moduleIdx, msg);
+          return std::string(msg);
+        });
+  });
 
-  enableAETR_line = new DSMPEnableAETR(this, grid, moduleIdx);
+  enableAETR_line = new DSMPEnableAETR(this, moduleIdx);
 
   // Ensure elements properly initalised
   update();
