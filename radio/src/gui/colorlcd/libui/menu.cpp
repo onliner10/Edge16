@@ -32,7 +32,6 @@
 #include "menutoolbar.h"
 #include "static.h"
 #include "table.h"
-#include "ui_feedback.h"
 
 #if defined(SIMU)
 static bool forceMenuIconCanvasCreateFailure = false;
@@ -213,30 +212,24 @@ class MenuBody : public TableField
 
   void onPress(uint16_t row, uint16_t col) override
   {
+    // Instant tap feedback (pressed-frame ack + clear) is applied uniformly by
+    // the TableField choke-point in dispatchRowPress() before/after this runs,
+    // so menu rows do not ack individually - this method only carries the menu
+    // selection/navigation logic.
     Menu* menu = getParentMenu();
     if (row < lines.size()) {
       // Separator / label rows (e.g. the MRU divider) carry no handler and
-      // must stay non-interactive: no ack frame, no selection change, and
-      // critically no deleteLater() - a tap on them has to be a complete
-      // no-op instead of silently dismissing the picker.
+      // must stay non-interactive: no selection change and critically no
+      // deleteLater() - a tap on them has to be a complete no-op instead of
+      // silently dismissing the picker.
       if (!lines[row]->onPress) return;
 
       if (menu->isMultiple()) {
-        withLive(
-            [](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
-        if (selectedIndex == (int)row)
-          lines[row]->onPress();
-        else {
+        if (selectedIndex != (int)row)
           setIndex(row);
-          lines[row]->onPress();
-        }
-        withLive([](LiveWindow& live) {
-          lv_obj_clear_state(live.lvobj(), LV_STATE_PRESSED);
-        });
+        lines[row]->onPress();
       } else {
         auto onPress = lines[row]->onPress;
-        withLive(
-            [](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
         // delete menu first to avoid
         // focus issues with onPress()
         menu->deleteLater();

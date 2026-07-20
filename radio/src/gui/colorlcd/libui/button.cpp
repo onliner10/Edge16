@@ -220,6 +220,11 @@ bool ButtonBase::onLiveLongPress(Window::LiveWindow& live)
 
 void ButtonBase::onLiveClicked(Window::LiveWindow& live)
 {
+  // Single click choke-point for every button flavour (Button, TextButton,
+  // IconButton, CheckButton -> all route their press through onLivePress()).
+  // Acknowledge the tap on the LCD before running the handler so a button that
+  // starts heavy synchronous work never looks like a dropped tap. Any new
+  // button click path MUST ack here too.
   UiFeedback::ackFrame(live.lvobj());
 
   onLivePress(live);

@@ -27,6 +27,7 @@
 #include "lvgl/src/core/lv_obj_private.h"
 #include "lvgl/src/widgets/table/lv_table_private.h"
 #include "mainwindow.h"
+#include "ui_feedback.h"
 
 static bool area_intersects(const lv_area_t& a, const lv_area_t& b)
 {
@@ -117,7 +118,18 @@ void TableField::table_event(const lv_obj_class_t* class_p, lv_event_t* e)
               // Otherwise it's a click
               if (lv_group_get_editing((lv_group_t*)lv_obj_get_group(obj)) ||
                   indev_type == LV_INDEV_TYPE_POINTER) {
-                tf->onPress(row, col);
+                // Every list-row tap in the UI funnels through here:
+                // TableField is the base for menus, choice popups, the file
+                // browser and every design-system list/grid. Routing the
+                // press through dispatchRowPress() forces an instant "pressed"
+                // frame to the LCD before the (possibly slow) row handler
+                // runs, so a heavy screen never looks like a dropped tap.
+                // Because this is the single choke-point, every current and
+                // future TableField subclass inherits the feedback for free.
+                // Any new row-dispatch path added here MUST go through
+                // dispatchRowPress() too.
+                tf->dispatchRowPress(static_cast<uint16_t>(row),
+                                     static_cast<uint16_t>(col));
               } else {
                 tf->onClicked();
               }
@@ -327,6 +339,25 @@ int TableField::getSelected() const
   return -1;
 }
 
+void TableField::dispatchRowPress(uint16_t row, uint16_t col)
+{
+  // Design-system enforcement of instant tap feedback (see table_event and
+  // UiFeedback::ackFrame): acknowledge the press on the LCD *before* the row
+  // handler runs. If onPress() kicks off blocking work the pressed cell stays
+  // highlighted for its whole duration, which is exactly the sustained "your
+  // tap registered" cue we want on the heavy screens.
+  withLive([](LiveWindow& live) { UiFeedback::ackFrame(live.lvobj()); });
+
+  onPress(row, col);
+
+  // LVGL already released the press before dispatching the click event, so the
+  // forced pressed state must be cleared again once the handler returns
+  // (mirrors ButtonBase::onLiveClicked). withLive is a no-op if the handler
+  // tore the table down.
+  withLive(
+      [](LiveWindow& live) { lv_obj_clear_state(live.lvobj(), LV_STATE_PRESSED); });
+}
+
 bool TableField::onLiveLongPress(Window::LiveWindow&)
 {
   TRACE("LONG_PRESS");
@@ -433,6 +464,54 @@ bool tableFieldInvalidSelectionClearsWithoutScrollForTest()
   table->select(0, 0);
   table->select(99, 0);
   bool ok = table->getSelected() == -1;
+  delete table;
+  return ok;
+}
+
+// Every list-row tap must be acknowledged on the LCD *before* the row handler
+// runs (design-system instant-feedback rule). Drives the real centralized
+// dispatch (dispatchRowPress) and checks that, at the moment onPress() runs,
+// ackFrame() has already fired one extra time and the pressed state is set;
+// and that the forced pressed state is cleared once the handler returns.
+bool tableFieldRowPressAcksBeforeHandlerForTest()
+{
+  class ProbeTable : public TableField
+  {
+   public:
+    explicit ProbeTable(Window* parent) : TableField(parent, {0, 0, 100, 40})
+    {
+      setRowCount(2);
+    }
+
+    bool pressed = false;
+    bool pressedStateDuringHandler = false;
+    uint32_t ackCountDuringHandler = 0;
+
+    void onPress(uint16_t row, uint16_t) override
+    {
+      pressed = true;
+      ackCountDuringHandler = UiFeedback::ackFrameCountForTest();
+      pressedStateDuringHandler =
+          lv_obj_has_state(getLvObjForTest(), LV_STATE_PRESSED);
+    }
+  };
+
+  auto table = new (std::nothrow) ProbeTable(MainWindow::instance());
+  if (!table || !table->isAvailable()) {
+    delete table;
+    return false;
+  }
+
+  const uint32_t before = UiFeedback::ackFrameCountForTest();
+  table->dispatchRowPressForTest(0, 0);
+
+  const bool ackedBeforeHandler =
+      table->pressed && table->ackCountDuringHandler == before + 1 &&
+      table->pressedStateDuringHandler;
+  const bool clearedAfterHandler =
+      !lv_obj_has_state(table->getLvObjForTest(), LV_STATE_PRESSED);
+
+  bool ok = ackedBeforeHandler && clearedAfterHandler;
   delete table;
   return ok;
 }

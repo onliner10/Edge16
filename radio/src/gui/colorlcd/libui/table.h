@@ -62,6 +62,15 @@ class TableField : public Window
 
   static void table_event(const lv_obj_class_t* class_p, lv_event_t* e);
 
+#if defined(SIMU)
+  // Drives the real centralized row-press dispatch (ack -> onPress -> clear)
+  // exactly as a pointer tap would, without needing a live input device.
+  void dispatchRowPressForTest(uint16_t row, uint16_t col)
+  {
+    dispatchRowPress(row, col);
+  }
+#endif
+
  protected:
   bool autoedit = false;
   std::function<void()> longPressHandler = nullptr;
@@ -69,6 +78,10 @@ class TableField : public Window
   lv_group_t* oldGroup = nullptr;
 
   bool onLiveLongPress(LiveWindow&) override;
+
+  // Single choke-point for every row tap: acknowledges the press on the LCD
+  // before onPress() runs, then clears the forced pressed state afterwards.
+  void dispatchRowPress(uint16_t row, uint16_t col);
 
   void onDelete() override;
 

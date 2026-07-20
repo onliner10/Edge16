@@ -17,6 +17,10 @@ namespace
 {
 bool feedbackInProgress = false;
 
+#if defined(SIMU)
+uint32_t ackFrameCount = 0;
+#endif
+
 // Guards against a handler that itself pumps LVGL (and could otherwise
 // re-enter this while the forced refresh is still on the stack).
 bool forceRefreshGuarded()
@@ -32,9 +36,18 @@ bool forceRefreshGuarded()
 void UiFeedback::ackFrame(lv_obj_t* obj)
 {
   if (!obj) return;
+#if defined(SIMU)
+  ackFrameCount += 1;
+#endif
   lv_obj_add_state(obj, LV_STATE_PRESSED);
   forceRefreshGuarded();
 }
+
+bool UiFeedback::forceFrame() { return forceRefreshGuarded(); }
+
+#if defined(SIMU)
+uint32_t UiFeedback::ackFrameCountForTest() { return ackFrameCount; }
+#endif
 
 Window* UiFeedback::showBuildScrim(Window& parent, const rect_t& rect)
 {
