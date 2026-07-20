@@ -129,7 +129,7 @@ class CompatiblePackLine : public ListLineButton
   {
     setHeight(PACK_LINE_H);
     padAll(PAD_ZERO); // ds-allow: battery-monitor pack row (ListLineButton) zeroes padding to draw pack spec text at absolute offsets; not a plain DS list row
-    setWidth(ListLineButton::GRP_W);
+    setWidth(LV_PCT(100));  // flex to the ds::List content width (as SensorButton)
 
     setPressHandler([this]() -> uint8_t {
       togglePack();
@@ -277,12 +277,17 @@ void BatteryMonitorPage::build()
   // single matching sensor shows the binding as soon as the page opens.
   if (config->enabled) autoBindFlightBatterySensors(monitor);
 
-  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): each label/control settings line is a
-  // ds::FormRow (label 40% / control 60%, 40 px min, vertically centered). The
-  // DS owns the split and spacing; the caller only builds the control into the
-  // slot. Section headers, the compatible-pack list and the create button stay
-  // as-is (they are not label/control form lines).
-  new ds::FormRow(body, "Enabled", [=](Window* slot) {
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the page is composed exactly like the
+  // Timer form. A ds::List owns the page margins and inter-row gaps; the
+  // label/control settings lines are ds::FormRows (label 40% / control 60%,
+  // 40 px min, vertically centered) grouped in a borderless ds::Card. Section
+  // dividers are ds::SectionHeader. The compatible-pack list (live
+  // ListLineButton rows) and the create action live directly in the list, as
+  // they are not label/control form lines.
+  auto* list = new ds::List(body);
+  auto* form = new ds::Card(list);
+
+  new ds::FormRow(form, "Enabled", [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(config->enabled),
                       [=](int32_t newValue) {
                         config->enabled = newValue;
@@ -294,7 +299,7 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  new ds::FormRow(body, "Voltage Alert", [=](Window* slot) {
+  new ds::FormRow(form, "Voltage Alert", [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->voltAlertEnabled),
                       [=](int32_t newValue) {
@@ -304,7 +309,7 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  new ds::FormRow(body, "Capacity Alert", [=](Window* slot) {
+  new ds::FormRow(form, "Capacity Alert", [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->capAlertEnabled),
                       [=](int32_t newValue) {
@@ -314,7 +319,7 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  new ds::FormRow(body, "Capacity Estimate", [=](Window* slot) {
+  new ds::FormRow(form, "Capacity Estimate", [=](Window* slot) {
     new Choice(slot, rect_t{}, capacityEstimateCurveLabels,
                FLIGHT_BATTERY_CAPACITY_CURVE_CONSERVATIVE,
                FLIGHT_BATTERY_CAPACITY_CURVE_OPTIMISTIC,
@@ -327,7 +332,7 @@ void BatteryMonitorPage::build()
                });
   });
 
-  new ds::FormRow(body, "Flight Pack Status", [=](Window* slot) {
+  new ds::FormRow(form, "Flight Pack Status", [=](Window* slot) {
     new DynamicText(slot, rect_t{}, [=]() {
       char buf[64];
       auto state = flightBatterySessionState(monitor);
@@ -353,7 +358,7 @@ void BatteryMonitorPage::build()
   }
 
   if (hasActivePacks) {
-    setupLine("Compatible Batteries", nullptr);
+    new ds::SectionHeader(list, "Compatible Batteries");
 
     bool seen[MAX_BATTERY_PACKS] = {};
     for (uint8_t i = 0; i < MAX_BATTERY_PACKS; i++) {
@@ -368,31 +373,26 @@ void BatteryMonitorPage::build()
       }
 
       uint8_t slotIdx = i;
-      setupLine(nullptr, [=](Window* parent, coord_t, coord_t) {
-        new CompatiblePackLine(parent, monitor, slotIdx);
-      });
+      new CompatiblePackLine(list, monitor, slotIdx);
     }
   } else {
     // No packs exist yet: instead of a dead-end message, offer inline creation
     // that reuses the radio-level pack library editor.
-    setupLine("No batteries configured yet", nullptr);
+    new ds::SectionHeader(list, "No batteries configured yet");
   }
 
   if (!libraryFull) {
-    setupLine(nullptr, [=](Window* parent, coord_t x, coord_t y) {
-      new TextButton(parent,
-                     {x, y, LCD_W - x - PAD_LARGE, // ds-allow: battery-monitor 'Create battery' button sized to remaining body width at an absolute rect; not a DS form control
-                      EdgeTxStyles::UI_ELEMENT_HEIGHT},
-                     "Create battery", [this]() -> uint8_t {
+    new ds::DSButton(list, "Create battery", ds::ButtonRole::Secondary,
+                     [this]() -> uint8_t {
                        createBattery();
                        return 0;
                      });
-    });
   }
 
-  setupLine("Advanced Telemetry", nullptr);
+  new ds::SectionHeader(list, "Advanced Telemetry");
+  auto* advForm = new ds::Card(list);
 
-  new ds::FormRow(body, STR_VOLTAGE, [=](Window* slot) {
+  new ds::FormRow(advForm, STR_VOLTAGE, [=](Window* slot) {
     bool hasVoltageSensor = false;
     for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
       if (isBatteryMonitorVoltageSensor(i)) {
@@ -425,7 +425,7 @@ void BatteryMonitorPage::build()
     }
   });
 
-  new ds::FormRow(body, STR_CURRENTSENSOR, [=](Window* slot) {
+  new ds::FormRow(advForm, STR_CURRENTSENSOR, [=](Window* slot) {
     bool hasCurrentSensor = false;
     for (int i = 0; i < MAX_TELEMETRY_SENSORS; i++) {
       if (isBatteryMonitorCapacitySensor(i)) {
