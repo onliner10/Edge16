@@ -23,6 +23,7 @@
 
 #include "curve_param.h"
 #include "curveedit.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "fm_matrix.h"
@@ -43,15 +44,6 @@
     SET_DIRTY();                              \
   }
 
-#if LANDSCAPE
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(3), LV_GRID_FR(8),
-                                     LV_GRID_TEMPLATE_LAST};
-#else
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-#endif
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-
 class InputEditAdvanced : public Page
 {
  public:
@@ -61,47 +53,53 @@ class InputEditAdvanced : public Page
     header->setTitle(STR_MENUINPUTS);
     header->setTitle2(title2);
 
-    FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
     body->setFlexLayout();
 
     ExpoData* input = expoAddress(index);
 
+    // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the settings are a stack of DS
+    // form rows (label 40% / control 60%, 40 px min) grouped in a Card. The
+    // ds::List owns page margins and gaps; the DS owns the label/control
+    // split — no per-screen coordinates.
+    Window* list = new ds::List(body);
+    auto* form = new ds::Card(list);
+
     // Side
-    auto line = body->newLine(grid);
-    new StaticText(line, rect_t{}, STR_SIDE);
-    new Choice(
-        line, rect_t{}, STR_VCURVEFUNC, 1, 3,
-	        [=]() -> int16_t { return 4 - input->mode; },
-	        [=](int16_t newValue) {
-	          {
-	            MixerTaskLockGuard lock;
-	            input->mode = 4 - newValue;
-	          }
-	          Messaging::send(Messaging::CURVE_UPDATE);
-	          SET_DIRTY();
-	        });
+    new ds::FormRow(form, STR_SIDE, [=](Window* slot) {
+      new Choice(
+          slot, rect_t{}, STR_VCURVEFUNC, 1, 3,
+          [=]() -> int16_t { return 4 - input->mode; },
+          [=](int16_t newValue) {
+            {
+              MixerTaskLockGuard lock;
+              input->mode = 4 - newValue;
+            }
+            Messaging::send(Messaging::CURVE_UPDATE);
+            SET_DIRTY();
+          });
+    });
 
     // Trim
-    line = body->newLine(grid);
-    new StaticText(line, rect_t{}, STR_TRIM);
-	    const auto trimLast = TRIM_OFF + keysGetMaxTrims() - 1;
-	    auto c = new Choice(line, rect_t{}, -TRIM_OFF, trimLast,
-	                        GET_VALUE(-input->trimSource),
-	                        SET_INPUT_VALUE(input->trimSource, -newValue));
+    new ds::FormRow(form, STR_TRIM, [=](Window* slot) {
+      const auto trimLast = TRIM_OFF + keysGetMaxTrims() - 1;
+      auto c = new Choice(slot, rect_t{}, -TRIM_OFF, trimLast,
+                          GET_VALUE(-input->trimSource),
+                          SET_INPUT_VALUE(input->trimSource, -newValue));
 
-    uint16_t srcRaw = input->srcRaw;
-    c->setAvailableHandler([=](int value) {
-      return value != TRIM_ON || srcRaw <= MIXSRC_LAST_STICK;
-    });
-    c->setTextHandler([=](int value) -> std::string {
-      return getTrimSourceLabel(srcRaw, -value);
+      uint16_t srcRaw = input->srcRaw;
+      c->setAvailableHandler([=](int value) {
+        return value != TRIM_ON || srcRaw <= MIXSRC_LAST_STICK;
+      });
+      c->setTextHandler([=](int value) -> std::string {
+        return getTrimSourceLabel(srcRaw, -value);
+      });
     });
 
     // Flight modes
     if (modelFMEnabled()) {
-      line = body->newLine(grid);
-      new StaticText(line, rect_t{}, STR_FLMODE);
-      new FMMatrix<ExpoData>(line, rect_t{}, input);
+      new ds::FormRow(form, STR_FLMODE, [=](Window* slot) {
+        new FMMatrix<ExpoData>(slot, rect_t{}, input);
+      });
     }
   }
 };
@@ -167,97 +165,104 @@ bool InputEditWindow::openRoute(const Route& r, uint8_t depth)
 
 void InputEditWindow::buildBody(Window* form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
-  form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
+  form->setFlexLayout();
 
   ExpoData* input = expoAddress(index);
 
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the settings are a stack of DS form
+  // rows (label 40% / control 60%, 40 px min) grouped in a Card. The ds::List
+  // owns page margins and gaps; the DS owns the label/control split — no
+  // per-screen coordinates.
+  Window* list = new ds::List(form);
+  auto* card = new ds::Card(list);
+
   // Input Name
-  auto line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_INPUTNAME);
-  new ModelTextEdit(line, rect_t{}, g_model.inputNames[input->chn],
-                    LEN_INPUT_NAME,
-                    [=]() {
-                      setTitle();
-                    });
+  new ds::FormRow(card, STR_INPUTNAME, [=](Window* slot) {
+    new ModelTextEdit(slot, rect_t{}, g_model.inputNames[input->chn],
+                      LEN_INPUT_NAME,
+                      [=]() {
+                        setTitle();
+                      });
+  });
 
   // Line Name
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_EXPONAME);
-  new ModelTextEdit(line, rect_t{}, input->name, LEN_EXPOMIX_NAME);
+  new ds::FormRow(card, STR_EXPONAME, [=](Window* slot) {
+    new ModelTextEdit(slot, rect_t{}, input->name, LEN_EXPOMIX_NAME);
+  });
 
   // Source
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SOURCE);
-  auto src = new InputSource(line, input);
-  src->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
+  new ds::FormRow(card, STR_SOURCE, [=](Window* slot) {
+    auto src = new InputSource(slot, input);
+    src->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
+  });
 
   // Weight
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_WEIGHT);
-  auto gvar =
-	      new SourceNumberEdit(line, -100, 100, GET_DEFAULT(input->weight),
-	                           [=](int32_t newValue) {
-	                             {
-	                               MixerTaskLockGuard lock;
-	                               input->weight = newValue;
-	                             }
-	                             updatePreview = true;
-	                             SET_DIRTY();
-	                           }, MIXSRC_FIRST);
-  gvar->setSuffix("%");
-  gvar->setDefault(100);
-  gvar->setEditTitle(STR_ROLLER_INPUT_WEIGHT);
+  new ds::FormRow(card, STR_WEIGHT, [=](Window* slot) {
+    auto gvar =
+        new SourceNumberEdit(slot, -100, 100, GET_DEFAULT(input->weight),
+                             [=](int32_t newValue) {
+                               {
+                                 MixerTaskLockGuard lock;
+                                 input->weight = newValue;
+                               }
+                               updatePreview = true;
+                               SET_DIRTY();
+                             }, MIXSRC_FIRST);
+    gvar->setSuffix("%");
+    gvar->setDefault(100);
+    gvar->setEditTitle(STR_ROLLER_INPUT_WEIGHT);
+  });
 
   // Offset
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_OFFSET);
-	  gvar = new SourceNumberEdit(line, -100, 100,
-	                              GET_DEFAULT(input->offset), [=](int32_t newValue) {
-	                                {
-	                                  MixerTaskLockGuard lock;
-	                                  input->offset = newValue;
-	                                }
-	                                updatePreview = true;
-	                                SET_DIRTY();
-	                              }, MIXSRC_FIRST);
-  gvar->setSuffix("%");
-  gvar->setDefault(0);
-  gvar->setEditTitle(STR_ROLLER_INPUT_OFFSET);
+  new ds::FormRow(card, STR_OFFSET, [=](Window* slot) {
+    auto gvar = new SourceNumberEdit(slot, -100, 100,
+                                GET_DEFAULT(input->offset), [=](int32_t newValue) {
+                                  {
+                                    MixerTaskLockGuard lock;
+                                    input->offset = newValue;
+                                  }
+                                  updatePreview = true;
+                                  SET_DIRTY();
+                                }, MIXSRC_FIRST);
+    gvar->setSuffix("%");
+    gvar->setDefault(0);
+    gvar->setEditTitle(STR_ROLLER_INPUT_OFFSET);
+  });
 
   // Switch
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SWITCH);
-  new SwitchChoice(line, rect_t{}, SWSRC_FIRST_IN_MIXES, SWSRC_LAST_IN_MIXES,
-	                   GET_DEFAULT(input->swtch),
-	                   [=](int newValue) {
-	                     {
-	                       MixerTaskLockGuard lock;
-	                       input->swtch = newValue;
-	                     }
-	                     updatePreview = true;
-	                     SET_DIRTY();
-	                   });
+  new ds::FormRow(card, STR_SWITCH, [=](Window* slot) {
+    new SwitchChoice(slot, rect_t{}, SWSRC_FIRST_IN_MIXES, SWSRC_LAST_IN_MIXES,
+                     GET_DEFAULT(input->swtch),
+                     [=](int newValue) {
+                       {
+                         MixerTaskLockGuard lock;
+                         input->swtch = newValue;
+                       }
+                       updatePreview = true;
+                       SET_DIRTY();
+                     });
+  });
 
   // Curve
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_CURVE);
-  auto param =
-      new CurveParam(line, rect_t{}, &input->curve,
-	        [=](int32_t newValue) {
-	          {
-	            MixerTaskLockGuard lock;
-	            input->curve.value = newValue;
-	          }
-	          updatePreview = true;
-	          SET_DIRTY();
-	        }, MIXSRC_FIRST, input->srcRaw);
-  param->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
+  new ds::FormRow(card, STR_CURVE, [=](Window* slot) {
+    auto param =
+        new CurveParam(slot, rect_t{}, &input->curve,
+          [=](int32_t newValue) {
+            {
+              MixerTaskLockGuard lock;
+              input->curve.value = newValue;
+            }
+            updatePreview = true;
+            SET_DIRTY();
+          }, MIXSRC_FIRST, input->srcRaw);
+    param->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
+  });
 
-  line = form->newLine(grid);
-  line->padAll(PAD_LARGE);  // ds-allow: input edit - settings box plus an absolutely-positioned curve-preview panel; mixed canvas+form page, not a plain DS form.
-  auto btn =
-      new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
+  // Advanced settings — icon-only full-width navigation action (no label, so
+  // it isn't a label:control FormRow line); placed as the list's last item to
+  // keep it directly under the settings card, same as before.
+  auto btn = new TextButton(
+      list, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
         new InputEditAdvanced(this->input, index,
                             route().appended(RP_INPUT_ADVANCED, static_cast<int16_t>(index)));
         return 0;

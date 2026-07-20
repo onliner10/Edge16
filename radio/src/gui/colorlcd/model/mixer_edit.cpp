@@ -24,6 +24,7 @@
 #include "channel_bar.h"
 #include "curve_param.h"
 #include "curveedit.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
@@ -59,7 +60,7 @@ class MixerEditStatusBar : public Window
                             channel, true);
   }
 
-  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
+  static LAYOUT_SIZE_SCALED(MIX_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: mixer edit - margin constant for the fixed-width channel status bar embedded in the header; not a DS list element.
 
  protected:
   ComboChannelBar *channelBar;
@@ -67,7 +68,7 @@ class MixerEditStatusBar : public Window
 };
 
 MixEditWindow::MixEditWindow(int8_t channel, uint8_t index, Route route) :
-    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
+    Page(ICON_MODEL_MIXER, route), channel(channel), index(index)
 {
   buildBody(body);
   buildHeader(header);
@@ -94,80 +95,80 @@ bool MixEditWindow::openRoute(const Route& r, uint8_t depth)
   return true;
 }
 
-#if !NARROW_LAYOUT
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_FR(1), LV_GRID_FR(3),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-#else
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
-#endif
-
 void MixEditWindow::buildBody(Window *form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
   form->setFlexLayout();
 
   MixData *mix = mixAddress(index);
 
-  // Mix name
-  auto line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_NAME);
-  new ModelTextEdit(line, rect_t{}, mix->name, sizeof(mix->name));
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the mix settings form is a ds::List of
+  // ds::FormRow / ds::FieldRow lines grouped in a ds::Card. The List owns page
+  // margins and inter-row gaps; single-control lines are FormRows, the two
+  // side-by-side lines (weight/offset, switch/curve) are FieldRows. No
+  // per-screen grid template or coordinates.
+  Window* list = new ds::List(form);
+  auto* card = new ds::Card(list);
 
-  // Source
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SOURCE);
-  auto sourceChoice = new SourceChoice(line, rect_t{}, 0, MIXSRC_MODEL_ARMED,
-	                   GET_DEFAULT(mix->srcRaw),
-	                   SET_MIXER_DEFAULT(mix->srcRaw), true);
-  sourceChoice->setAvailableHandler([](int source) {
-    source = abs(source);
-    return source == MIXSRC_MODEL_ARMED ||
-           (source <= MIXSRC_LAST && isSourceAvailable(source));
+  // Mix name
+  new ds::FormRow(card, STR_NAME, [=](Window* slot) {
+    new ModelTextEdit(slot, rect_t{}, mix->name, sizeof(mix->name));
   });
 
-  // Weight
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_WEIGHT);
-  auto svar = new SourceNumberEdit(line, MIX_WEIGHT_MIN, MIX_WEIGHT_MAX,
-	                                   GET_DEFAULT(mix->weight),
-	                                   SET_MIXER_DEFAULT(mix->weight),
-	                                   MIXSRC_FIRST);
-  svar->setSuffix("%");
-  svar->setDefault(100);
-  svar->setEditTitle(STR_ROLLER_MIXER_WEIGHT);
+  // Source
+  new ds::FormRow(card, STR_SOURCE, [=](Window* slot) {
+    auto sourceChoice = new SourceChoice(slot, rect_t{}, 0, MIXSRC_MODEL_ARMED,
+                                         GET_DEFAULT(mix->srcRaw),
+                                         SET_MIXER_DEFAULT(mix->srcRaw), true);
+    sourceChoice->setAvailableHandler([](int source) {
+      source = abs(source);
+      return source == MIXSRC_MODEL_ARMED ||
+             (source <= MIXSRC_LAST && isSourceAvailable(source));
+    });
+  });
 
-  // Offset
-  new StaticText(line, rect_t{}, STR_OFFSET);
-  auto gvar = new SourceNumberEdit(line, MIX_OFFSET_MIN, MIX_OFFSET_MAX,
-	                                   GET_DEFAULT(mix->offset),
-	                                   SET_MIXER_DEFAULT(mix->offset),
-	                                   MIXSRC_FIRST);
-  gvar->setSuffix("%");
-  gvar->setDefault(0);
-  gvar->setEditTitle(STR_ROLLER_MIXER_OFFSET);
+  // Weight | Offset
+  new ds::FieldRow(
+      card,
+      {{STR_WEIGHT,
+        [=](Window* slot) {
+          auto svar = new SourceNumberEdit(slot, MIX_WEIGHT_MIN, MIX_WEIGHT_MAX,
+                                           GET_DEFAULT(mix->weight),
+                                           SET_MIXER_DEFAULT(mix->weight),
+                                           MIXSRC_FIRST);
+          svar->setSuffix("%");
+          svar->setDefault(100);
+          svar->setEditTitle(STR_ROLLER_MIXER_WEIGHT);
+        }},
+       {STR_OFFSET, [=](Window* slot) {
+          auto gvar = new SourceNumberEdit(slot, MIX_OFFSET_MIN, MIX_OFFSET_MAX,
+                                           GET_DEFAULT(mix->offset),
+                                           SET_MIXER_DEFAULT(mix->offset),
+                                           MIXSRC_FIRST);
+          gvar->setSuffix("%");
+          gvar->setDefault(0);
+          gvar->setEditTitle(STR_ROLLER_MIXER_OFFSET);
+        }}});
 
-  // Switch
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SWITCH);
-  new SwitchChoice(line, rect_t{}, SWSRC_FIRST_IN_MIXES, SWSRC_LAST_IN_MIXES,
-	                   GET_DEFAULT(mix->swtch),
-	                   SET_MIXER_DEFAULT(mix->swtch));
+  // Switch | Curve
+  new ds::FieldRow(
+      card,
+      {{STR_SWITCH,
+        [=](Window* slot) {
+          new SwitchChoice(slot, rect_t{}, SWSRC_FIRST_IN_MIXES,
+                           SWSRC_LAST_IN_MIXES, GET_DEFAULT(mix->swtch),
+                           SET_MIXER_DEFAULT(mix->swtch));
+        }},
+       {STR_CURVE, [=](Window* slot) {
+          new CurveParam(slot, rect_t{}, &mix->curve,
+                         SET_MIXER_DEFAULT(mix->curve.value), MIXSRC_FIRST,
+                         mix->srcRaw);
+        }}});
 
-  // Curve
-  new StaticText(line, rect_t{}, STR_CURVE);
-  new CurveParam(line, rect_t{}, &mix->curve,
-                 SET_MIXER_DEFAULT(mix->curve.value), MIXSRC_FIRST,
-                 mix->srcRaw);
-
-  line = form->newLine(grid);
-  line->padAll(PAD_LARGE);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
+  // Advanced settings — a full-width action button that opens the advanced
+  // page. Not a form field, so it sits in the list below the form card; the
+  // List owns its margins and gap.
   auto btn =
-      new TextButton(line, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
+      new TextButton(list, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
         new MixEditAdvanced(channel, index,
                             route().appended(RP_MIX_ADVANCED, static_cast<int16_t>(index)));
         return 0;

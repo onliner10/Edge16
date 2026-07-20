@@ -31,6 +31,10 @@
 
 class OutputEditStatusBar;
 
+namespace ds {
+class FieldRow;
+}
+
 class OutputEditWindow : public Page
 {
  public:
@@ -41,10 +45,9 @@ class OutputEditWindow : public Page
  protected:
   uint8_t channel;
   int value = 0;
-  StaticText *minText;
-  GVarNumberEdit* minEdit;
-  StaticText *maxText;
-  GVarNumberEdit* maxEdit;
+  ds::FieldRow* minMaxRow = nullptr;
+  GVarNumberEdit* minEdit = nullptr;
+  GVarNumberEdit* maxEdit = nullptr;
   OutputEditStatusBar *statusBar = nullptr;
 
   void onLiveCheckEvents(LiveWindow& live) override;

@@ -24,6 +24,7 @@
 #include "channel_bar.h"
 #include "curve_param.h"
 #include "curveedit.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
@@ -49,7 +50,7 @@ class OutputEditStatusBar : public Window
         channel, true);
   }
 
-  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: output edit - settings form plus a fixed-width channel status bar; multi-region page, not a plain DS FormRow list.
+  static LAYOUT_SIZE_SCALED(OUTPUT_EDIT_STATUS_BAR_MARGIN, 3, 0)  // ds-allow: output edit - margin constant for the fixed-width channel status bar embedded in the header; not a DS list element.
 
  protected:
   ComboChannelBar *channelBar;
@@ -75,20 +76,27 @@ void OutputEditWindow::onLiveCheckEvents(Window::LiveWindow& live)
 
     int chanVal = calcRESXto100(getRawChannelOutput(channel));
 
-    if (chanVal < -DEADBAND) {
-      minText->addState(ETX_STATE_MINMAX_HIGHLIGHT);
-      minEdit->addState(ETX_STATE_MINMAX_HIGHLIGHT);
-    } else {
-      minText->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
-      minEdit->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
-    }
+    bool minOn = chanVal < -DEADBAND;
+    bool maxOn = chanVal > DEADBAND;
 
-    if (chanVal > DEADBAND) {
-      maxText->addState(ETX_STATE_MINMAX_HIGHLIGHT);
-      maxEdit->addState(ETX_STATE_MINMAX_HIGHLIGHT);
-    } else {
-      maxText->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
-      maxEdit->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
+    // The field LABELS light up through the DS (active fill + bold); the EDITS
+    // go bold through their own ETX_STATE_MINMAX_HIGHLIGHT font — same combined
+    // cue as before, now with the DS owning the row geometry.
+    if (minMaxRow) {
+      minMaxRow->highlightField(0, minOn);
+      minMaxRow->highlightField(1, maxOn);
+    }
+    if (minEdit) {
+      if (minOn)
+        minEdit->addState(ETX_STATE_MINMAX_HIGHLIGHT);
+      else
+        minEdit->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
+    }
+    if (maxEdit) {
+      if (maxOn)
+        maxEdit->addState(ETX_STATE_MINMAX_HIGHLIGHT);
+      else
+        maxEdit->clearState(ETX_STATE_MINMAX_HIGHLIGHT);
     }
   }
 
@@ -104,30 +112,19 @@ void OutputEditWindow::buildHeader(Window *window)
       channel);
 }
 
-#if !NARROW_LAYOUT
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-#else
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(2), LV_GRID_FR(3),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
-#endif
-
 void OutputEditWindow::buildBody(Window *form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: output edit - settings form plus a fixed-width channel status bar; multi-region page, not a plain DS FormRow list.
   form->setFlexLayout();
 
   int limit = (g_model.extendedLimits ? LIMIT_EXT_MAX : LIMIT_STD_MAX);
   LimitData *output = limitAddress(channel);
 
-  // Name
-  auto line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_NAME);
-  new ModelTextEdit(line, rect_t{}, output->name, sizeof(output->name));
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): each limits line carries two controls
+  // laid out side-by-side, so it is a ds::FieldRow (two even 40%/60%
+  // label+control fields). The ds::List owns page margins and inter-row gaps;
+  // the ds::Card groups the lines. No per-screen coordinates or grid templates.
+  Window* list = new ds::List(form);
+  auto* card = new ds::Card(list);
 
   // In percent mode the default PREC1 formatting is used so the rotary
   // wheel's additive split layout stays available; the custom display
@@ -140,76 +137,85 @@ void OutputEditWindow::buildBody(Window *form)
     });
   };
 
-  // Offset
-  new StaticText(line, rect_t{}, STR_LIMITS_HEADERS_SUBTRIM);
-  auto off = new GVarNumberEdit(line, -LIMIT_STD_MAX, +LIMIT_STD_MAX,
-                                GET_SET_DEFAULT(output->offset), PREC1, 0, 0);
-  off->setFastStep(20);
-  off->setAccelFactor(16);
-  off->setEditTitle(STR_LIMITS_HEADERS_SUBTRIM);
-  usDisplayHandler(off);
+  // Name | Offset
+  new ds::FieldRow(
+      card,
+      {{STR_NAME,
+        [=](Window* slot) {
+          new ModelTextEdit(slot, rect_t{}, output->name,
+                            sizeof(output->name));
+        }},
+       {STR_LIMITS_HEADERS_SUBTRIM, [=](Window* slot) {
+          auto off =
+              new GVarNumberEdit(slot, -LIMIT_STD_MAX, +LIMIT_STD_MAX,
+                                 GET_SET_DEFAULT(output->offset), PREC1, 0, 0);
+          off->setFastStep(20);
+          off->setAccelFactor(16);
+          off->setEditTitle(STR_LIMITS_HEADERS_SUBTRIM);
+          usDisplayHandler(off);
+        }}});
 
-  // Min
-  line = form->newLine(grid);
-  minText = new StaticText(line, rect_t{}, STR_MIN);
-  minText->solidBg(COLOR_THEME_ACTIVE_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  minText->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  minEdit = new GVarNumberEdit(line, -limit, 0,
-                               GET_SET_DEFAULT(output->min), PREC1,
-                               -LIMIT_STD_MAX, -limit);
-  minEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  minEdit->setFastStep(20);
-  minEdit->setAccelFactor(16);
-  minEdit->setEditTitle(STR_MIN);
-  usDisplayHandler(minEdit);
+  // Min | Max — the field labels light up (highlightField, see
+  // onLiveCheckEvents) toward the side the channel is currently pushed, and the
+  // matching edit goes bold via its own ETX_STATE_MINMAX_HIGHLIGHT font.
+  minMaxRow = new ds::FieldRow(
+      card,
+      {{STR_MIN,
+        [=](Window* slot) {
+          minEdit = new GVarNumberEdit(slot, -limit, 0,
+                                       GET_SET_DEFAULT(output->min), PREC1,
+                                       -LIMIT_STD_MAX, -limit);
+          minEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
+          minEdit->setFastStep(20);
+          minEdit->setAccelFactor(16);
+          minEdit->setEditTitle(STR_MIN);
+          usDisplayHandler(minEdit);
+        }},
+       {STR_MAX, [=](Window* slot) {
+          maxEdit = new GVarNumberEdit(slot, 0, +limit,
+                                       GET_SET_DEFAULT(output->max), PREC1,
+                                       +LIMIT_STD_MAX, limit);
+          maxEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
+          maxEdit->setFastStep(20);
+          maxEdit->setAccelFactor(16);
+          maxEdit->setEditTitle(STR_MAX);
+          usDisplayHandler(maxEdit);
+        }}});
 
-  // Max
-  maxText = new StaticText(line, rect_t{}, STR_MAX);
-  maxText->solidBg(COLOR_THEME_ACTIVE_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  maxText->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  maxEdit = new GVarNumberEdit(line, 0, +limit,
-                               GET_SET_DEFAULT(output->max), PREC1,
-                               +LIMIT_STD_MAX, limit);
-  maxEdit->font(FONT_BOLD_INDEX, ETX_STATE_MINMAX_HIGHLIGHT);
-  maxEdit->setFastStep(20);
-  maxEdit->setAccelFactor(16);
-  maxEdit->setEditTitle(STR_MAX);
-  usDisplayHandler(maxEdit);
+  // Inverted | Curve
+  new ds::FieldRow(
+      card,
+      {{STR_INVERTED,
+        [=](Window* slot) {
+          new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(output->revert),
+                           [output, this](uint8_t newValue) {
+                             output->revert = newValue;
+                             SET_DIRTY();
+                           });
+        }},
+       {STR_CURVE, [=](Window* slot) {
+          new CurveChoice(slot, GET_SET_DEFAULT(output->curve),
+                          channel + MIXSRC_FIRST_CH);
+        }}});
 
-  // Direction
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_INVERTED);
-  new ToggleSwitch(line, rect_t{}, GET_DEFAULT(output->revert),
-                   [output, this](uint8_t newValue) {
-                     output->revert = newValue;
-                     SET_DIRTY();
-                   });
-
-  // Curve
-  new StaticText(line, rect_t{}, STR_CURVE);
-  new CurveChoice(line, GET_SET_DEFAULT(output->curve), channel + MIXSRC_FIRST_CH);
-
-  // PPM center
-  line = form->newLine(grid);
-  auto label = new StaticText(line, rect_t{}, STR_LIMITS_HEADERS_PPMCENTER);
-  label->setLongMode(LV_LABEL_LONG_WRAP);
-  label->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-
-  auto center = new NumberEdit(
-      line, rect_t{}, PPM_CENTER - PPM_CENTER_MAX, PPM_CENTER + PPM_CENTER_MAX,
-      GET_VALUE(output->ppmCenter + PPM_CENTER),
-      SET_VALUE(output->ppmCenter, newValue - PPM_CENTER));
-  center->setFastStep(20);
-  center->setAccelFactor(8);
-  center->setDefault(PPM_CENTER);
-  center->setDirectKeyboard(false);
-  center->setEditTitle(STR_LIMITS_HEADERS_PPMCENTER);
-
-  // Subtrims mode
-  label = new StaticText(line, rect_t{}, STR_LIMITS_HEADERS_SUBTRIMMODE);
-  label->setLongMode(LV_LABEL_LONG_WRAP);
-  label->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-
-  new Choice(line, rect_t{}, STR_SUBTRIMMODES, 0, 1,
-             GET_SET_DEFAULT(output->symetrical));
+  // PPM center | Subtrims mode
+  new ds::FieldRow(
+      card,
+      {{STR_LIMITS_HEADERS_PPMCENTER,
+        [=](Window* slot) {
+          auto center = new NumberEdit(
+              slot, rect_t{}, PPM_CENTER - PPM_CENTER_MAX,
+              PPM_CENTER + PPM_CENTER_MAX,
+              GET_VALUE(output->ppmCenter + PPM_CENTER),
+              SET_VALUE(output->ppmCenter, newValue - PPM_CENTER));
+          center->setFastStep(20);
+          center->setAccelFactor(8);
+          center->setDefault(PPM_CENTER);
+          center->setDirectKeyboard(false);
+          center->setEditTitle(STR_LIMITS_HEADERS_PPMCENTER);
+        }},
+       {STR_LIMITS_HEADERS_SUBTRIMMODE, [=](Window* slot) {
+          new Choice(slot, rect_t{}, STR_SUBTRIMMODES, 0, 1,
+                     GET_SET_DEFAULT(output->symetrical));
+        }}});
 }

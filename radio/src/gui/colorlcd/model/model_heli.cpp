@@ -21,6 +21,7 @@
 
 #include "model_heli.h"
 
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "numberedit.h"
@@ -28,78 +29,77 @@
 
 #define SET_DIRTY()     storageDirty(EE_MODEL)
 
-#if LANDSCAPE
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(2), LV_GRID_FR(1),
-                                     LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-#else
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
-#endif
-
 ModelHeliPage::ModelHeliPage(Route route):
   SubPage(ICON_MODEL_HELI, route, STR_MAIN_MENU_MODEL_SETTINGS, STR_MENUHELISETUP)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
   body->setFlexLayout();
 
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): swash type/ring are plain
+  // label+control lines (ds::FormRow); each swash channel packs a source
+  // picker and its weight side-by-side on one line, so those are
+  // ds::FieldRow (source | weight).
+  Window* list = new ds::List(body);
+  auto* card = new ds::Card(list);
+
   // Swash type
-  auto line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SWASHTYPE);
-  new Choice(line, rect_t{}, STR_VSWASHTYPE, 0, SWASH_TYPE_MAX,
-             GET_SET_DEFAULT(g_model.swashR.type));
+  new ds::FormRow(card, STR_SWASHTYPE, [=](Window* slot) {
+    new Choice(slot, rect_t{}, STR_VSWASHTYPE, 0, SWASH_TYPE_MAX,
+               GET_SET_DEFAULT(g_model.swashR.type));
+  });
 
   // Swash ring
-  line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SWASHRING);
-  auto* swashRing = new NumberEdit(line, rect_t{}, 0, 100, GET_SET_DEFAULT(g_model.swashR.value));
-  swashRing->setDirectKeyboard(false);
-  swashRing->setEditTitle(STR_ROLLER_SWASH_RING);
+  new ds::FormRow(card, STR_SWASHRING, [=](Window* slot) {
+    auto* swashRing = new NumberEdit(slot, rect_t{}, 0, 100,
+                                     GET_SET_DEFAULT(g_model.swashR.value));
+    swashRing->setDirectKeyboard(false);
+    swashRing->setEditTitle(STR_ROLLER_SWASH_RING);
+  });
 
-  // Elevator source
-  line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_ELEVATOR);
-  new SourceChoice(line, rect_t{}, 0, MIXSRC_LAST_CH,
-                   GET_SET_DEFAULT(g_model.swashR.elevatorSource));
+  // Elevator source | weight
+  new ds::FieldRow(
+      card,
+      {{STR_ELEVATOR,
+        [=](Window* slot) {
+          new SourceChoice(slot, rect_t{}, 0, MIXSRC_LAST_CH,
+                           GET_SET_DEFAULT(g_model.swashR.elevatorSource));
+        }},
+       {STR_WEIGHT, [=](Window* slot) {
+          auto* elevWeight = new NumberEdit(
+              slot, rect_t{}, -100, 100,
+              GET_SET_DEFAULT(g_model.swashR.elevatorWeight));
+          elevWeight->setDirectKeyboard(false);
+          elevWeight->setEditTitle(STR_ROLLER_ELEVATOR_WEIGHT);
+        }}});
 
-  // Elevator weight
-  auto w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
-  auto* elevWeight = new NumberEdit(line, rect_t{}, -100, 100,
-                 GET_SET_DEFAULT(g_model.swashR.elevatorWeight));
-  elevWeight->setDirectKeyboard(false);
-  elevWeight->setEditTitle(STR_ROLLER_ELEVATOR_WEIGHT);
+  // Aileron source | weight
+  new ds::FieldRow(
+      card,
+      {{STR_AILERON,
+        [=](Window* slot) {
+          new SourceChoice(slot, rect_t{}, 0, MIXSRC_LAST_CH,
+                           GET_SET_DEFAULT(g_model.swashR.aileronSource));
+        }},
+       {STR_WEIGHT, [=](Window* slot) {
+          auto* ailWeight = new NumberEdit(
+              slot, rect_t{}, -100, 100,
+              GET_SET_DEFAULT(g_model.swashR.aileronWeight));
+          ailWeight->setDirectKeyboard(false);
+          ailWeight->setEditTitle(STR_ROLLER_AILERON_WEIGHT);
+        }}});
 
-  // Aileron source
-  line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_AILERON);
-  new SourceChoice(line, rect_t{}, 0, MIXSRC_LAST_CH,
-                   GET_SET_DEFAULT(g_model.swashR.aileronSource));
-
-  // Aileron weight
-  w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
-  auto* ailWeight = new NumberEdit(line, rect_t{}, -100, 100,
-                 GET_SET_DEFAULT(g_model.swashR.aileronWeight));
-  ailWeight->setDirectKeyboard(false);
-  ailWeight->setEditTitle(STR_ROLLER_AILERON_WEIGHT);
-
-  // Collective source
-  line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_COLLECTIVE);
-  new SourceChoice(line, rect_t{}, 0, MIXSRC_LAST_CH,
-                   GET_SET_DEFAULT(g_model.swashR.collectiveSource));
-
-  // Collective weight
-  w = new StaticText(line, rect_t{}, STR_WEIGHT, COLOR_THEME_PRIMARY1_INDEX, RIGHT);
-  w->padRight(PAD_LARGE);  // ds-allow: heli mix form - each line packs a source picker plus a weight label+field (4-cell grid); ds::FormRow's single 40/60 label+control split can't express side-by-side fields.
-  auto* colWeight = new NumberEdit(line, rect_t{}, -100, 100,
-                 GET_SET_DEFAULT(g_model.swashR.collectiveWeight));
-  colWeight->setDirectKeyboard(false);
-  colWeight->setEditTitle(STR_ROLLER_COLLECTIVE_WEIGHT);
-
-
+  // Collective source | weight
+  new ds::FieldRow(
+      card,
+      {{STR_COLLECTIVE,
+        [=](Window* slot) {
+          new SourceChoice(slot, rect_t{}, 0, MIXSRC_LAST_CH,
+                           GET_SET_DEFAULT(g_model.swashR.collectiveSource));
+        }},
+       {STR_WEIGHT, [=](Window* slot) {
+          auto* colWeight = new NumberEdit(
+              slot, rect_t{}, -100, 100,
+              GET_SET_DEFAULT(g_model.swashR.collectiveWeight));
+          colWeight->setDirectKeyboard(false);
+          colWeight->setEditTitle(STR_ROLLER_COLLECTIVE_WEIGHT);
+        }}});
 }

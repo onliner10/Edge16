@@ -41,17 +41,10 @@ static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                           LV_GRID_FR(1), LV_GRID_FR(1),
                                           LV_GRID_TEMPLATE_LAST};
 
-static const lv_coord_t ch_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                        LV_GRID_FR(1), LV_GRID_FR(2),
-                                        LV_GRID_TEMPLATE_LAST};
-
 #else
 
 static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                           LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t ch_col_dsc[] = {LV_GRID_FR(2), LV_GRID_FR(3),
-                                        LV_GRID_TEMPLATE_LAST};
 
 #endif
 
@@ -186,7 +179,6 @@ class USBChannelEditWindow : public Page
 
   static LAYOUT_SIZE_SCALED(USBCH_EDIT_STATUS_BAR_WIDTH, 250, 160)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
   static LAYOUT_SIZE(USBCH_EDIT_RIGHT_MARGIN, 0, 3)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
-  static LAYOUT_SIZE(USBCH_COLS, 4, 2)  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
 
  protected:
   uint8_t channel;
@@ -249,80 +241,88 @@ class USBChannelEditWindow : public Page
 
   void buildBody(Window* form)
   {
-    FlexGridLayout grid(ch_col_dsc, row_dsc, PAD_TINY);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
-    form->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
+    form->setFlexLayout();
 
     USBJoystickChData* cch = usbJChAddress(channel);
 
-    auto line = form->newLine(grid);
+    // DESIGN SYSTEM (see DESIGN_SYSTEM.md): each settings line packs its
+    // field(s) side-by-side, so it's a ds::List + ds::Card of ds::FieldRow /
+    // ds::FormRow lines. The button/axis/sim sub-panels are mutually
+    // exclusive (see update()): the button panel is a whole Card that
+    // shows/hides as a unit (its two lines never toggle independently), while
+    // the axis/sim lines are each a bare ds::FormRow — itself a Window — so
+    // it can show/hide on its own without disturbing its sibling.
+    Window* list = new ds::List(form);
+    auto* card = new ds::Card(list);
 
-    new StaticText(line, rect_t{}, STR_USBJOYSTICK_CH_MODE);
-    new Choice(line, rect_t{}, STR_VUSBJOYSTICK_CH_MODE, 0, USBJOYS_CH_LAST,
-               GET_DEFAULT(cch->mode), SET_VALUE_WUPDATE(cch->mode));
+    // Mode | Inversion — both always visible, independent fields.
+    new ds::FieldRow(
+        card,
+        {{STR_USBJOYSTICK_CH_MODE,
+          [=](Window* slot) {
+            new Choice(slot, rect_t{}, STR_VUSBJOYSTICK_CH_MODE, 0,
+                       USBJOYS_CH_LAST, GET_DEFAULT(cch->mode),
+                       SET_VALUE_WUPDATE(cch->mode));
+          }},
+         {STR_USBJOYSTICK_CH_INVERSION, [=](Window* slot) {
+            new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(cch->inversion));
+          }}});
 
-#if NARROW_LAYOUT
-    line = form->newLine(grid);
-#endif
+    // Button-mode panel — visible only while cch->mode == USBJOYS_CH_BUTTON.
+    auto* btnModeCard = new ds::Card(list);
+    m_btnModeFrame = btnModeCard;
 
-    new StaticText(line, rect_t{}, STR_USBJOYSTICK_CH_INVERSION);
-    new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(cch->inversion));
+    new ds::FieldRow(
+        btnModeCard,
+        {{STR_USBJOYSTICK_CH_BTNMODE,
+          [=](Window* slot) {
+            new Choice(slot, rect_t{}, STR_VUSBJOYSTICK_CH_BTNMODE, 0,
+                       USBJOYS_BTN_MODE_LAST, GET_DEFAULT(cch->param),
+                       [=](int32_t newValue) {
+                         cch->param = newValue;
+                         if (cch->param == USBJOYS_BTN_MODE_SW_EMU)
+                           m_btnPosChoice->setValue(0);
+                         else if (cch->param == USBJOYS_BTN_MODE_DELTA)
+                           m_btnPosChoice->setValue(1);
+                         SET_DIRTY();
+                         this->update();
+                       });
+          }},
+         {STR_USBJOYSTICK_CH_SWPOS, [=](Window* slot) {
+            m_btnPosChoice =
+                new Choice(slot, rect_t{}, STR_VUSBJOYSTICK_CH_SWPOS, 0, 7,
+                          GET_DEFAULT(cch->switch_npos),
+                          SET_VALUE_WUPDATE(cch->switch_npos));
+          }}});
 
-    line = form->newLine(grid);
-    m_btnModeFrame = new Window(line, rect_t{});
-    m_btnModeFrame->setFlexLayout();
+    new ds::FormRow(btnModeCard, STR_USBJOYSTICK_CH_BTNNUM, [=](Window* slot) {
+      _BtnNumSel = new USBChannelButtonSel(slot, rect_t{}, channel,
+                                           SET_VALUE_WUPDATE(cch->btn_num));
+    });
 
-    line = m_btnModeFrame->newLine(grid);
-    new StaticText(line, rect_t{}, STR_USBJOYSTICK_CH_BTNMODE);
-    new Choice(line, rect_t{}, STR_VUSBJOYSTICK_CH_BTNMODE, 0,
-               USBJOYS_BTN_MODE_LAST, GET_DEFAULT(cch->param),
-               [=](int32_t newValue) {
-                 cch->param = newValue;
-                 if (cch->param == USBJOYS_BTN_MODE_SW_EMU)
-                   m_btnPosChoice->setValue(0);
-                 else if (cch->param == USBJOYS_BTN_MODE_DELTA)
-                   m_btnPosChoice->setValue(1);
-                 SET_DIRTY();
-                 this->update();
-               });
+    // Axis / simulation lines — mutually exclusive with the button panel and
+    // each other (exactly one is visible per cch->mode; see update()).
+    auto* card2 = new ds::Card(list);
 
-#if NARROW_LAYOUT
-    line = m_btnModeFrame->newLine(grid);
-#endif
+    m_axisModeLine =
+        new ds::FormRow(card2, STR_USBJOYSTICK_CH_AXIS, [=](Window* slot) {
+          new Choice(slot, rect_t{}, STR_VUSBJOYSTICK_CH_AXIS, 0,
+                     USBJOYS_AXIS_LAST, GET_DEFAULT(cch->param),
+                     SET_VALUE_WUPDATE(cch->param));
+        });
 
-    new StaticText(line, rect_t{}, STR_USBJOYSTICK_CH_SWPOS);
-    m_btnPosChoice = new Choice(line, rect_t{}, STR_VUSBJOYSTICK_CH_SWPOS, 0, 7,
-                                GET_DEFAULT(cch->switch_npos),
-                                SET_VALUE_WUPDATE(cch->switch_npos));
+    m_simModeLine =
+        new ds::FormRow(card2, STR_USBJOYSTICK_CH_SIM, [=](Window* slot) {
+          new Choice(slot, rect_t{}, STR_VUSBJOYSTICK_CH_SIM, 0,
+                     USBJOYS_SIM_LAST, GET_DEFAULT(cch->param),
+                     SET_VALUE_WUPDATE(cch->param));
+        });
 
-    line = m_btnModeFrame->newLine(grid);
-    new StaticText(line, rect_t{}, STR_USBJOYSTICK_CH_BTNNUM);
-#if NARROW_LAYOUT
-    line = m_btnModeFrame->newLine(grid);
-#endif
-    _BtnNumSel = new USBChannelButtonSel(line, rect_t{}, channel,
-                                         SET_VALUE_WUPDATE(cch->btn_num));
-
-    m_axisModeLine = form->newLine(grid);
-    new StaticText(m_axisModeLine, rect_t{}, STR_USBJOYSTICK_CH_AXIS);
-    new Choice(m_axisModeLine, rect_t{}, STR_VUSBJOYSTICK_CH_AXIS, 0,
-               USBJOYS_AXIS_LAST, GET_DEFAULT(cch->param),
-               SET_VALUE_WUPDATE(cch->param));
-
-    m_simModeLine = form->newLine(grid);
-    new StaticText(m_simModeLine, rect_t{}, STR_USBJOYSTICK_CH_SIM);
-    new Choice(m_simModeLine, rect_t{}, STR_VUSBJOYSTICK_CH_SIM, 0,
-               USBJOYS_SIM_LAST, GET_DEFAULT(cch->param),
-               SET_VALUE_WUPDATE(cch->param));
-
-    line = form->newLine(grid);
-    line->padTop(PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
-    line->padBottom(PAD_ZERO);  // ds-allow: USB-joystick - channel table plus a fixed-width status bar; multi-column channel grid, not a plain DS form.
-    collisionText =
-        new StaticText(line, rect_t{}, "",
-                       COLOR_THEME_PRIMARY2_INDEX, FONT(BOLD) | CENTERED);
+    // Collision banner — full-width status text, not a label:control field.
+    collisionText = new StaticText(  // ds-allow: USB-joystick channel edit - full-width collision status banner, not a label:control form field.
+        card2, {0, 0, LV_PCT(100), EdgeTxStyles::STD_FONT_HEIGHT}, "",
+        COLOR_THEME_PRIMARY2_INDEX, FONT(BOLD) | CENTERED);
     collisionText->bgColor(COLOR_THEME_WARNING_INDEX);
-    collisionText->setGridCell(LV_GRID_ALIGN_STRETCH, 0, USBCH_COLS,
-                               LV_GRID_ALIGN_CENTER, 0, 1);
 
     update();
   }

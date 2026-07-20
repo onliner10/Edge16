@@ -22,6 +22,7 @@
 #include "mixer_edit_adv.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "fm_matrix.h"
@@ -52,7 +53,7 @@
   }
 
 MixEditAdvanced::MixEditAdvanced(int8_t channel, uint8_t index, Route route) :
-    Page(ICON_MODEL_MIXER, route, PAD_MEDIUM), channel(channel), index(index)  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
+    Page(ICON_MODEL_MIXER, route), channel(channel), index(index)
 {
   std::string title2(getSourceString(MIXSRC_FIRST_CH + channel));
   header->setTitle(STR_MIXES);
@@ -61,145 +62,132 @@ MixEditAdvanced::MixEditAdvanced(int8_t channel, uint8_t index, Route route) :
   buildBody(body);
 }
 
-#if !NARROW_LAYOUT
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
-                                     LV_GRID_FR(1), LV_GRID_FR(1),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-#else
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(12), LV_GRID_FR(13),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
-#endif
-
 void MixEditAdvanced::buildBody(Window* form)
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: mixer edit - form plus a fixed-width channel status bar; multi-region page whose lines exceed a single DS FormRow control.
   form->setFlexLayout();
 
   MixData* mix = mixAddress(index);
 
-  // Advanced...
-  FormLine* line;
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the advanced mix settings are a
+  // ds::List of ds::FormRow / ds::FieldRow lines grouped in a ds::Card.
+  // Single-control lines (multiplex, flight modes, the delay/slow precision
+  // selectors) are FormRows; the paired lines (trim/warning, delay up/down,
+  // slow up/down) are FieldRows. Conditional lines (multiplex, flight modes)
+  // are still built only when their gate is satisfied, exactly as before.
+  Window* list = new ds::List(form);
+  auto* card = new ds::Card(list);
 
   // Multiplex
-	  if (index > 0 && mixAddress(index - 1)->destCh == channel) {
-	    line = form->newLine(grid);
-	    new StaticText(line, rect_t{}, STR_MULTPX);
-	    new Choice(line, rect_t{}, STR_VMLTPX, 0, 2,
-	               GET_DEFAULT(mix->mltpx), SET_MIXER_DEFAULT(mix->mltpx));
-	  }
+  if (index > 0 && mixAddress(index - 1)->destCh == channel) {
+    new ds::FormRow(card, STR_MULTPX, [=](Window* slot) {
+      new Choice(slot, rect_t{}, STR_VMLTPX, 0, 2, GET_DEFAULT(mix->mltpx),
+                 SET_MIXER_DEFAULT(mix->mltpx));
+    });
+  }
 
   // Flight modes
   if (modelFMEnabled()) {
-    line = form->newLine(grid);
-    new StaticText(line, rect_t{}, STR_FLMODE);
-    new FMMatrix<MixData>(line, rect_t{}, mix);
+    new ds::FormRow(card, STR_FLMODE, [=](Window* slot) {
+      new FMMatrix<MixData>(slot, rect_t{}, mix);
+    });
   }
 
-	  // Trim
-	  line = form->newLine(grid);
-	  new StaticText(line, rect_t{}, STR_TRIM);
-	  new ToggleSwitch(line, rect_t{}, GET_INVERTED(mix->carryTrim),
-	                   SET_MIXER_INVERTED(mix->carryTrim));
-
-	  // Warning
-	  new StaticText(line, rect_t{}, STR_MIXWARNING);
-	  auto edit = new NumberEdit(line, rect_t{}, 0, 3,
-	                             GET_DEFAULT(mix->mixWarn),
-	                             SET_MIXER_DEFAULT(mix->mixWarn));
-  edit->setZeroText(STR_OFF);
-  edit->setDirectKeyboard(false);
-  edit->setEditTitle(STR_ROLLER_MIX_WARNING);
+  // Trim | Warning
+  new ds::FieldRow(
+      card,
+      {{STR_TRIM,
+        [=](Window* slot) {
+          new ToggleSwitch(slot, rect_t{}, GET_INVERTED(mix->carryTrim),
+                           SET_MIXER_INVERTED(mix->carryTrim));
+        }},
+       {STR_MIXWARNING, [=](Window* slot) {
+          auto edit = new NumberEdit(slot, rect_t{}, 0, 3,
+                                     GET_DEFAULT(mix->mixWarn),
+                                     SET_MIXER_DEFAULT(mix->mixWarn));
+          edit->setZeroText(STR_OFF);
+          edit->setDirectKeyboard(false);
+          edit->setEditTitle(STR_ROLLER_MIX_WARNING);
+        }}});
 
   // Delay up/down precision
-#if !NARROW_LAYOUT
-  grid.setColSpan(2);
-#endif
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_MIX_DELAY_PREC);
-  new Choice(line, rect_t{}, &STR_VPREC[1], 0, 1,
-	             GET_DEFAULT(mix->delayPrec),
-	             [=](int newValue) {
-	              {
-	                MixerTaskLockGuard lock;
-	                mix->delayPrec = newValue;
-	              }
-	              delayUp->clearTextFlag(PREC2);
-	              delayUp->setTextFlag(newValue ? PREC2 : PREC1);
-	              delayUp->update();
-	              delayDn->clearTextFlag(PREC2);
-	              delayDn->setTextFlag(newValue ? PREC2 : PREC1);
-	              delayDn->update();
-	              SET_DIRTY();
-	             });
-#if !NARROW_LAYOUT
-  grid.setColSpan(1);
-#endif
+  new ds::FormRow(card, STR_MIX_DELAY_PREC, [=](Window* slot) {
+    new Choice(slot, rect_t{}, &STR_VPREC[1], 0, 1,
+               GET_DEFAULT(mix->delayPrec), [=](int newValue) {
+                 {
+                   MixerTaskLockGuard lock;
+                   mix->delayPrec = newValue;
+                 }
+                 delayUp->clearTextFlag(PREC2);
+                 delayUp->setTextFlag(newValue ? PREC2 : PREC1);
+                 delayUp->update();
+                 delayDn->clearTextFlag(PREC2);
+                 delayDn->setTextFlag(newValue ? PREC2 : PREC1);
+                 delayDn->update();
+                 SET_DIRTY();
+               });
+  });
 
-  // Delay up
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_DELAYUP);
-	  delayUp = new NumberEdit(line, rect_t{}, 0, DELAY_MAX,
-	                           GET_DEFAULT(mix->delayUp),
-	                           SET_MIXER_VALUE(mix->delayUp, newValue),
-	                           mix->delayPrec ? PREC2 : PREC1);
-  delayUp->setSuffix("s");
-  delayUp->setDirectKeyboard(false);
-  delayUp->setEditTitle(STR_ROLLER_DELAY_UP);
-
-  // Delay down
-  new StaticText(line, rect_t{}, STR_DELAYDOWN);
-	  delayDn = new NumberEdit(line, rect_t{}, 0, DELAY_MAX,
-	                           GET_DEFAULT(mix->delayDown),
-	                           SET_MIXER_VALUE(mix->delayDown, newValue),
-	                           mix->delayPrec ? PREC2 : PREC1);
-  delayDn->setSuffix("s");
-  delayDn->setDirectKeyboard(false);
-  delayDn->setEditTitle(STR_ROLLER_DELAY_DOWN);
+  // Delay up | Delay down
+  new ds::FieldRow(
+      card,
+      {{STR_DELAYUP,
+        [=](Window* slot) {
+          delayUp = new NumberEdit(slot, rect_t{}, 0, DELAY_MAX,
+                                   GET_DEFAULT(mix->delayUp),
+                                   SET_MIXER_VALUE(mix->delayUp, newValue),
+                                   mix->delayPrec ? PREC2 : PREC1);
+          delayUp->setSuffix("s");
+          delayUp->setDirectKeyboard(false);
+          delayUp->setEditTitle(STR_ROLLER_DELAY_UP);
+        }},
+       {STR_DELAYDOWN, [=](Window* slot) {
+          delayDn = new NumberEdit(slot, rect_t{}, 0, DELAY_MAX,
+                                   GET_DEFAULT(mix->delayDown),
+                                   SET_MIXER_VALUE(mix->delayDown, newValue),
+                                   mix->delayPrec ? PREC2 : PREC1);
+          delayDn->setSuffix("s");
+          delayDn->setDirectKeyboard(false);
+          delayDn->setEditTitle(STR_ROLLER_DELAY_DOWN);
+        }}});
 
   // Slow up/down precision
-#if !NARROW_LAYOUT
-  grid.setColSpan(2);
-#endif
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_MIX_SLOW_PREC);
-  new Choice(line, rect_t{}, &STR_VPREC[1], 0, 1,
-	             GET_DEFAULT(mix->speedPrec),
-	             [=](int newValue) {
-	              {
-	                MixerTaskLockGuard lock;
-	                mix->speedPrec = newValue;
-	              }
-	              slowUp->clearTextFlag(PREC2);
-	              slowUp->setTextFlag(newValue ? PREC2 : PREC1);
-	              slowUp->update();
-	              slowDn->clearTextFlag(PREC2);
-	              slowDn->setTextFlag(newValue ? PREC2 : PREC1);
-	              slowDn->update();
-	              SET_DIRTY();
-	             });
-#if !NARROW_LAYOUT
-  grid.setColSpan(1);
-#endif
+  new ds::FormRow(card, STR_MIX_SLOW_PREC, [=](Window* slot) {
+    new Choice(slot, rect_t{}, &STR_VPREC[1], 0, 1,
+               GET_DEFAULT(mix->speedPrec), [=](int newValue) {
+                 {
+                   MixerTaskLockGuard lock;
+                   mix->speedPrec = newValue;
+                 }
+                 slowUp->clearTextFlag(PREC2);
+                 slowUp->setTextFlag(newValue ? PREC2 : PREC1);
+                 slowUp->update();
+                 slowDn->clearTextFlag(PREC2);
+                 slowDn->setTextFlag(newValue ? PREC2 : PREC1);
+                 slowDn->update();
+                 SET_DIRTY();
+               });
+  });
 
-  // Slow up
-  line = form->newLine(grid);
-  new StaticText(line, rect_t{}, STR_SLOWUP);
-	  slowUp = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(mix->speedUp),
-	                          SET_MIXER_VALUE(mix->speedUp, newValue),
-	                          mix->speedPrec ? PREC2 : PREC1);
-  slowUp->setSuffix("s");
-  slowUp->setDirectKeyboard(false);
-  slowUp->setEditTitle(STR_ROLLER_SLOW_UP);
-
-  // Slow down
-  new StaticText(line, rect_t{}, STR_SLOWDOWN);
-	  slowDn = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(mix->speedDown),
-	                          SET_MIXER_VALUE(mix->speedDown, newValue),
-	                          mix->speedPrec ? PREC2 : PREC1);
-  slowDn->setSuffix("s");
-  slowDn->setDirectKeyboard(false);
-  slowDn->setEditTitle(STR_ROLLER_SLOW_DOWN);
+  // Slow up | Slow down
+  new ds::FieldRow(
+      card,
+      {{STR_SLOWUP,
+        [=](Window* slot) {
+          slowUp = new NumberEdit(slot, rect_t{}, 0, DELAY_MAX,
+                                  GET_DEFAULT(mix->speedUp),
+                                  SET_MIXER_VALUE(mix->speedUp, newValue),
+                                  mix->speedPrec ? PREC2 : PREC1);
+          slowUp->setSuffix("s");
+          slowUp->setDirectKeyboard(false);
+          slowUp->setEditTitle(STR_ROLLER_SLOW_UP);
+        }},
+       {STR_SLOWDOWN, [=](Window* slot) {
+          slowDn = new NumberEdit(slot, rect_t{}, 0, DELAY_MAX,
+                                  GET_DEFAULT(mix->speedDown),
+                                  SET_MIXER_VALUE(mix->speedDown, newValue),
+                                  mix->speedPrec ? PREC2 : PREC1);
+          slowDn->setSuffix("s");
+          slowDn->setDirectKeyboard(false);
+          slowDn->setEditTitle(STR_ROLLER_SLOW_DOWN);
+        }}});
 }
