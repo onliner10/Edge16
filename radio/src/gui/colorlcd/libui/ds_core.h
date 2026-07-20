@@ -227,15 +227,27 @@ class FormRow : public Window
 };
 
 // ---------------------------------------------------------------------------
-// Card — non-interactive grouping panel with an optional title. `space-3`
-// inset, `space-2` internal gap, subtle border + surface. Add the grouped
-// content as children of the card. Absorbs ad-hoc `Window` + `padAll` boxes.
+// Card — non-interactive grouping panel with an optional title, `space-2`
+// internal gap. Add the grouped content as children of the card. Absorbs ad-hoc
+// `Window` + `padAll` boxes.
+//
+// By DEFAULT a Card is a FORM/SETTINGS container: borderless and flush (no
+// inset, no surface). The enclosing ds::List already owns the page margins and
+// inter-row gaps, so a form group has nothing to separate it from the rest of
+// the page — a border there is visual noise and a second inset just wastes
+// width. This is the shape used by every settings form (Timer, Battery, Model
+// Setup, Radio Setup, …).
+//
+// Pass `bordered = true` for a GENUINELY SEPARATED card: `space-3` inset, a
+// subtle border + surface, so the grouping reads as a distinct raised panel
+// standing apart from its neighbours. Use it only when that separation is the
+// point.
 // ---------------------------------------------------------------------------
 
 class Card : public Window
 {
  public:
-  Card(Window* parent, const char* title = nullptr);
+  Card(Window* parent, const char* title = nullptr, bool bordered = false);
 
   // Children added to the card stack in its column, below the title.
   Window* content() { return this; }
@@ -353,7 +365,21 @@ class Grid : public Window
    private:
     lv_obj_t* rowObj_ = nullptr;
     std::vector<lv_obj_t*> cells_;  // one per column, realized lazily
+    // Last font/colour actually applied to each cell (as a plain uint8_t so the
+    // header stays free of font/colour enum includes). etx_font()/etx_txt_color()
+    // are expensive — each sweeps every shared style off the object before
+    // re-adding — so setCell()/setCellSmall() consult these to skip re-styling a
+    // cell whose resolved font/colour did not change. 0xFF == not yet applied.
+    std::vector<uint8_t> cellFont_;
+    std::vector<uint8_t> cellColor_;
+    // Whether a cell has had its active-flight-mode highlight background style
+    // installed yet. That style is only needed on the (few) cells that actually
+    // get highlighted, so it is installed lazily on first highlightCell() rather
+    // than on every cell at build. false == not installed.
+    std::vector<bool> highlightBg_;
     lv_obj_t* ensureCell(int col, TextRole role);
+    // Apply font/colour to a realized cell, but only the ones that changed.
+    void applyCellStyle(int col, lv_obj_t* label, uint8_t font, uint8_t color);
   };
 
   Grid(Window* parent, const std::vector<Column>& columns);

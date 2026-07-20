@@ -324,4 +324,121 @@ TEST(DesignSystemGrid, StrongRoleReappliesBoldFontOnEveryCellUpdate)
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
 }
 
+// Perf regression guard for the Global Variables screen load. setCell()/
+// setCellSmall() now skip the (expensive) font/colour re-styling when the
+// resolved font/colour is unchanged -- so a full GV x FM grid pays only ONE
+// styling pass per cell at build (not the second, redundant one right after
+// ensureCell) and text-only value refreshes cost nothing beyond the text. That
+// short-circuit must stay INVISIBLE: the resolved font must still track `small`
+// and role exactly. This drives the GVars value-cell path (setCellSmall, Body
+// role) through the small<->std transitions a live value refresh produces.
+TEST(DesignSystemGrid, CellStyleCacheStillTracksSmallAcrossRefreshes)
+{
+  std::vector<ds::Grid::Column> cols = {
+      ds::Grid::Column::Fixed(60, ds::CellAlign::Start),
+      ds::Grid::Column::Fill(40, ds::CellAlign::Center),
+  };
+  auto* dlg = new (std::nothrow) GridDialog(cols);
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ds::Grid* grid = dlg->grid;
+  ASSERT_NE(grid, nullptr);
+  Window* host = dlg;
+
+  // Reference labels for the two fonts the value path resolves to.
+  lv_obj_t* stdRef = etx_label_create(lv_scr_act(), FONT_STD_INDEX);
+  lv_obj_t* xsRef = etx_label_create(lv_scr_act(), FONT_XS_INDEX);
+  ASSERT_NE(stdRef, nullptr);
+  ASSERT_NE(xsRef, nullptr);
+  const lv_font_t* stdFont = lv_obj_get_style_text_font(stdRef, LV_PART_MAIN);
+  const lv_font_t* xsFont = lv_obj_get_style_text_font(xsRef, LV_PART_MAIN);
+  ASSERT_NE(stdFont, xsFont);
+
+  auto* row = grid->addRow();
+  ASSERT_NE(row, nullptr);
+
+  auto fontOf = [&]() {
+    return lv_obj_get_style_text_font(row->cellObj(1), LV_PART_MAIN);
+  };
+
+  // Build: a short value -> standard font.
+  row->setCellSmall(1, "10", /*small=*/false, ds::TextRole::Body);
+  settle(host);
+  EXPECT_EQ(fontOf(), stdFont) << "initial value cell not standard font";
+
+  // Value-only refresh, same role and small flag: the cache short-circuits the
+  // re-style, result must be identical.
+  row->setCellSmall(1, "12", /*small=*/false, ds::TextRole::Body);
+  settle(host);
+  EXPECT_EQ(fontOf(), stdFont) << "text-only refresh perturbed the font";
+
+  // An overflowing value flips small=true: the cache must detect the font
+  // change and re-apply the small font.
+  row->setCellSmall(1, "1000%", /*small=*/true, ds::TextRole::Body);
+  settle(host);
+  EXPECT_EQ(fontOf(), xsFont) << "small=true did not switch to the small font";
+
+  // Back to a short value: standard font again.
+  row->setCellSmall(1, "5", /*small=*/false, ds::TextRole::Body);
+  settle(host);
+  EXPECT_EQ(fontOf(), stdFont) << "small=false did not restore standard font";
+
+  lv_obj_del(stdRef);
+  lv_obj_del(xsRef);
+  host->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
+// Guards the lazy install of the current-flight-mode highlight background:
+// ensureCell() no longer paints the CHECKED-state background on every cell at
+// build (a load-time cost on a full GV x FM grid); highlightCell() installs it
+// on first use. The visible highlight must be unchanged, and a cell that is
+// never highlighted must stay unstyled.
+TEST(DesignSystemGrid, HighlightBackgroundInstalledLazilyOnFirstHighlight)
+{
+  std::vector<ds::Grid::Column> cols = {
+      ds::Grid::Column::Fixed(60, ds::CellAlign::Start),
+      ds::Grid::Column::Fill(40, ds::CellAlign::Center),
+  };
+  auto* dlg = new (std::nothrow) GridDialog(cols);
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ds::Grid* grid = dlg->grid;
+  ASSERT_NE(grid, nullptr);
+  Window* host = dlg;
+
+  auto* row = grid->addRow();
+  ASSERT_NE(row, nullptr);
+  row->setCell(0, "GV1");
+  row->setCellSmall(1, "10", /*small=*/false, ds::TextRole::Body);
+  settle(host);
+
+  // Before any highlight, the value cell draws no background.
+  EXPECT_EQ(lv_obj_get_style_bg_opa(row->cellObj(1), LV_PART_MAIN),
+            LV_OPA_TRANSP)
+      << "value cell had a background before being highlighted";
+
+  // Highlighting installs the CHECKED-state background and turns it on.
+  row->highlightCell(1, true);
+  settle(host);
+  EXPECT_EQ(lv_obj_get_style_bg_opa(row->cellObj(1), LV_PART_MAIN), LV_OPA_COVER)
+      << "highlighted cell did not paint its active background";
+
+  // The frozen name cell, never highlighted, stays unstyled -- the lazy install
+  // did not leak onto other cells.
+  EXPECT_EQ(lv_obj_get_style_bg_opa(row->cellObj(0), LV_PART_MAIN),
+            LV_OPA_TRANSP)
+      << "highlight leaked onto a non-highlighted cell";
+
+  // Clearing the highlight removes the boxed look again.
+  row->highlightCell(1, false);
+  settle(host);
+  EXPECT_EQ(lv_obj_get_style_bg_opa(row->cellObj(1), LV_PART_MAIN),
+            LV_OPA_TRANSP)
+      << "cleared highlight still painted a background";
+
+  host->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
 #endif  // COLORLCD && SIMU

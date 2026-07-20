@@ -379,7 +379,7 @@ void FormRow::setLabel(const char* text)
 // Card
 // ---------------------------------------------------------------------------
 
-Card::Card(Window* parent, const char* title) :
+Card::Card(Window* parent, const char* title, bool bordered) :
     Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
   setWindowFlag(NO_FOCUS);
@@ -388,13 +388,24 @@ Card::Card(Window* parent, const char* title) :
     lv_obj_set_width(obj, LV_PCT(100));
     lv_obj_set_height(obj, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(obj, kSpace3, LV_PART_MAIN);   // grouping inset
     lv_obj_set_style_pad_row(obj, kSpace2, LV_PART_MAIN);   // internal gap
-    lv_obj_set_style_radius(obj, kSpace1, LV_PART_MAIN);
-    lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN);
-    etx_border_color(obj, COLOR_THEME_SECONDARY2_INDEX, LV_PART_MAIN);
-    etx_solid_bg(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);  // surface
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    if (bordered) {
+      // Genuinely separated card: subtle border + surface, inset from its
+      // neighbours so the grouping reads as a distinct raised panel.
+      lv_obj_set_style_pad_all(obj, kSpace3, LV_PART_MAIN);  // grouping inset
+      lv_obj_set_style_radius(obj, kSpace1, LV_PART_MAIN);
+      lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN);
+      etx_border_color(obj, COLOR_THEME_SECONDARY2_INDEX, LV_PART_MAIN);
+      etx_solid_bg(obj, COLOR_THEME_PRIMARY2_INDEX, LV_PART_MAIN);  // surface
+    } else {
+      // Form/settings container (the common case): no border, no surface and no
+      // inset — the enclosing ds::List already owns the page margins, so the
+      // grouped rows sit flush with the rest of the page. There is nothing here
+      // to separate a border from.
+      lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+    }
 
     if (title) {
       titleObj = etx_label_create(obj, FONT_BOLD_INDEX);
@@ -601,6 +612,9 @@ Grid::Row::Row(Grid* grid, bool header, std::function<uint8_t()> onPress,
     isHeader_(header)
 {
   cells_.assign(grid->columnCount(), nullptr);
+  cellFont_.assign(grid->columnCount(), 0xFF);
+  cellColor_.assign(grid->columnCount(), 0xFF);
+  highlightBg_.assign(grid->columnCount(), false);
 
   setWidth(grid->totalW_);
   setHeight(header ? grid->headerH_ : grid->dataRowHeight());
@@ -663,12 +677,38 @@ lv_obj_t* Grid::Row::ensureCell(int col, TextRole role)
   lv_label_set_text(label, "");
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
   etx_txt_color(label, roleColor(role));
-  // Active-fill highlight (used for the current flight-mode column): a pure
-  // background change on the CHECKED state, exactly as the original did — the
-  // ink stays put so the highlighted cell reads as the same value, boxed.
-  etx_solid_bg(label, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
+  // The active-flight-mode highlight (a CHECKED-state background) is installed
+  // lazily by highlightCell(), not here: only a handful of cells are ever
+  // highlighted, and etx_solid_bg() is expensive (it sweeps every shared
+  // bg-colour style off the object), so paying it once per cell at build was
+  // pure load-time overhead on a full GV x FM grid.
+  // Record the font/colour this label was born with so the setCell/setCellSmall
+  // that follows (with the same role) skips a redundant second styling pass.
+  cellFont_[col] = (uint8_t)(isHeader_ ? FONT_STD_INDEX : roleFont(role));
+  cellColor_[col] = (uint8_t)roleColor(role);
   cells_[col] = label;
   return label;
+}
+
+void Grid::Row::applyCellStyle(int col, lv_obj_t* label, uint8_t font,
+                               uint8_t color)
+{
+  // etx_font()/etx_txt_color() are not cheap — each removes every shared
+  // font/colour style from the object before adding the new one. A cell that
+  // toggles e.g. Body <-> Strong across refreshes (the logical-switches "active
+  // operand" live cue) must have its rendered weight track the role, so we
+  // still re-apply whenever the resolved font/colour actually changes; but the
+  // common cases — the second styling pass every cell would take right after
+  // ensureCell() at build, and a text-only value refresh — become no-ops.
+  // Skipping them is invisible: the identical style is already on the object.
+  if (cellFont_[col] != font) {
+    etx_font(label, (FontIndex)font, LV_PART_MAIN);
+    cellFont_[col] = font;
+  }
+  if (cellColor_[col] != color) {
+    etx_txt_color(label, (LcdColorIndex)color);
+    cellColor_[col] = color;
+  }
 }
 
 void Grid::Row::setCell(int col, const char* text, TextRole role)
@@ -676,13 +716,8 @@ void Grid::Row::setCell(int col, const char* text, TextRole role)
   lv_obj_t* label = ensureCell(col, role);
   if (label) {
     lv_label_set_text(label, text ? text : "");
-    // Re-apply the font on EVERY call, not just at creation (ensureCell) —
-    // a cell that toggles e.g. Body <-> Strong across refreshes (the
-    // logical-switches "active operand" live cue) must have its rendered
-    // weight track the role every time, not get stuck at whatever role it
-    // first realized with.
-    etx_font(label, isHeader_ ? FONT_STD_INDEX : roleFont(role), LV_PART_MAIN);
-    etx_txt_color(label, roleColor(role));
+    applyCellStyle(col, label, isHeader_ ? FONT_STD_INDEX : roleFont(role),
+                   roleColor(role));
   }
 }
 
@@ -704,8 +739,7 @@ void Grid::Row::setCellSmall(int col, const char* text, bool small,
       font = roleFont(role);  // bold
     else
       font = small ? FONT_XS_INDEX : FONT_STD_INDEX;
-    etx_font(label, font, LV_PART_MAIN);
-    etx_txt_color(label, roleColor(role));
+    applyCellStyle(col, label, font, roleColor(role));
   }
 }
 
@@ -713,10 +747,19 @@ void Grid::Row::highlightCell(int col, bool on)
 {
   lv_obj_t* label = ensureCell(col, TextRole::Body);
   if (!label) return;
-  if (on)
+  if (on) {
+    // Install the highlight background the first time this cell is highlighted
+    // (see ensureCell): a pure background change on the CHECKED state, exactly
+    // as the original did — the ink stays put so the highlighted cell reads as
+    // the same value, boxed.
+    if (!highlightBg_[col]) {
+      etx_solid_bg(label, COLOR_THEME_ACTIVE_INDEX, LV_STATE_CHECKED);
+      highlightBg_[col] = true;
+    }
     lv_obj_add_state(label, LV_STATE_CHECKED);
-  else
+  } else {
     lv_obj_clear_state(label, LV_STATE_CHECKED);
+  }
 }
 
 void Grid::Row::setSpanningCell(const char* text, TextRole role)
