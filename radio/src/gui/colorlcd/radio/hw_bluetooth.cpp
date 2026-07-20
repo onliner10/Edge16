@@ -23,6 +23,7 @@
 
 #include "choice.h"
 #include "dialog.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "static.h"
@@ -30,84 +31,64 @@
 
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(3),
-                                     LV_GRID_TEMPLATE_LAST};
-
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-
 class BTDetailsDialog : public BaseDialog
 {
  public:
   BTDetailsDialog() : BaseDialog(STR_BLUETOOTH, true)
   {
-    FlexGridLayout grid(col_dsc, row_dsc);
+    // Read-only info lines: each a single labelled value -> ds::FormRow.
+    form.with([](Window& content) {
+      if (g_eeGeneral.bluetoothMode == BLUETOOTH_TELEMETRY) {
+        new ds::FormRow(&content, STR_BLUETOOTH_PIN_CODE, [](Window* slot) {
+          new StaticText(slot, rect_t{}, "000000");
+        });
+      }
 
-    if (g_eeGeneral.bluetoothMode == BLUETOOTH_TELEMETRY) {
-      auto line = form->newLine(grid);
-      new StaticText(line, rect_t{}, STR_BLUETOOTH_PIN_CODE);
-      new StaticText(line, rect_t{}, "000000");
-    }
-
-    // Local MAC
-    auto line = form->newLine(grid);
-    new StaticText(line, rect_t{}, STR_BLUETOOTH_LOCAL_ADDR);
-    new DynamicText(
-        line, rect_t{},
-        [=]() {
+      // Local MAC
+      new ds::FormRow(&content, STR_BLUETOOTH_LOCAL_ADDR, [](Window* slot) {
+        new DynamicText(slot, rect_t{}, []() {
           return std::string(bluetooth.localAddr[0] ? bluetooth.localAddr
                                                     : "---");
         });
+      });
 
-    // Remote MAC
-    line = form->newLine(grid);
-    new StaticText(line, rect_t{}, STR_BLUETOOTH_DIST_ADDR);
-    new DynamicText(
-        line, rect_t{},
-        [=]() {
+      // Remote MAC
+      new ds::FormRow(&content, STR_BLUETOOTH_DIST_ADDR, [](Window* slot) {
+        new DynamicText(slot, rect_t{}, []() {
           return std::string(bluetooth.distantAddr[0] ? bluetooth.distantAddr
                                                       : "---");
         });
+      });
+    });
   }
 };
 
 BluetoothConfigWindow::BluetoothConfigWindow(Window* parent, FlexGridLayout& grid)
 {
-  auto line = parent->newLine(grid);
-  line->padLeft(PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  new StaticText(line, rect_t{}, STR_MODE);
+  // Mode + settings shortcut: a Choice plus a settings button that shows only
+  // when Bluetooth is on -> ds::FieldGroup (variable-count option box).
+  new ds::FieldGroup(parent, STR_MODE, [=](Window* box) {
+    new Choice(
+        box, rect_t{}, STR_BLUETOOTH_MODES, BLUETOOTH_OFF, BLUETOOTH_TRAINER,
+        GET_DEFAULT(g_eeGeneral.bluetoothMode), [=](int value) {
+          g_eeGeneral.bluetoothMode = value;
+          settingsBtn->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
+          nameEdit->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
+        });
 
-  auto box = new Window(line, rect_t{});
-  box->padAll(PAD_TINY);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
+    settingsBtn =
+        new TextButton(box, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
+          new BTDetailsDialog();
+          return 0;
+        });
+    settingsBtn->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
+  });
 
-  new Choice(
-      box, rect_t{}, STR_BLUETOOTH_MODES, BLUETOOTH_OFF, BLUETOOTH_TRAINER,
-      GET_DEFAULT(g_eeGeneral.bluetoothMode), [=](int value) {
-        g_eeGeneral.bluetoothMode = value;
-        settingsBtn->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
-        nameEdit->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
-      });
-
-  settingsBtn =
-      new TextButton(box, rect_t{}, LV_SYMBOL_SETTINGS, [=]() -> uint8_t {
-        new BTDetailsDialog();
-        return 0;
-      });
-  settingsBtn->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
-
-  // BT radio name
-  nameEdit = parent->newLine(grid);
-  nameEdit->padLeft(PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  new StaticText(nameEdit, rect_t{}, STR_NAME);
-
-  box = new Window(nameEdit, rect_t{});
-  box->padAll(PAD_TINY);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, PAD_SMALL);  // ds-allow: hardware Bluetooth config - boxed side-by-side option fields (name/mode) with custom indentation; not a single DS FormRow control.
-  box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-  box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
-  new RadioTextEdit(box, rect_t{}, g_eeGeneral.bluetoothName,
-                    LEN_BLUETOOTH_NAME);
+  // BT radio name: single labelled control, whole row gated on mode being on
+  // (nameEdit->show below and from the mode Choice callback above).
+  nameEdit = new ds::FormRow(parent, STR_NAME, [=](Window* slot) {
+    new RadioTextEdit(slot, rect_t{}, g_eeGeneral.bluetoothName,
+                      LEN_BLUETOOTH_NAME);
+  });
   nameEdit->show(g_eeGeneral.bluetoothMode != BLUETOOTH_OFF);
 }

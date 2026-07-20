@@ -22,15 +22,11 @@
 #include "trainer_bluetooth.h"
 
 #include "dialog.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "menu.h"
 
 #define SET_DIRTY()     storageDirty(EE_MODEL)
-
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
 
 class BTDiscoverMenu : public Menu
 {
@@ -80,20 +76,26 @@ BluetoothTrainerWindow::BluetoothTrainerWindow(Window* parent) :
     Window(parent, rect_t{})
 {
   setFlexLayout();
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer Bluetooth config - form grid whose lines pair label with device-list/status controls; pre-DS form grid beyond a single DS FormRow control.
 
-  auto line = newLine(grid);
-  state = new StaticText(line, rect_t{}, "");
-  r_addr = new StaticText(line, rect_t{}, "");
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): connection state and remote address
+  // are two fixed, side-by-side controls on the one line — the state text
+  // itself stands in for a caption, so it is a ds::FieldRow with blank field
+  // captions rather than a labelled FormRow. Local address is a plain
+  // label->value FormRow. The bind/scan button line has no caption either, so
+  // it keeps the label column blank (matches the button-only lines elsewhere)
+  // to stay x-aligned with the rows above it.
+  new ds::FieldRow(this, {
+      {"", [=](Window* slot) { state = new StaticText(slot, rect_t{}, ""); }},
+      {"", [=](Window* slot) { r_addr = new StaticText(slot, rect_t{}, ""); }},
+  });
 
-  auto lclline = newLine(grid);
-  new StaticText(lclline, rect_t{}, STR_BLUETOOTH_LOCAL_ADDR);
-  new StaticText(lclline, rect_t{}, bluetooth.localAddr);
+  new ds::FormRow(this, STR_BLUETOOTH_LOCAL_ADDR, [=](Window* slot) {
+    new StaticText(slot, rect_t{}, bluetooth.localAddr);
+  });
 
-  btn_line = newLine(grid);
-  grid.nextCell();
-
-  btn = new TextButton(btn_line, rect_t{}, "");
+  btn_line = new ds::FormRow(this, "", [=](Window* slot) {
+    btn = new TextButton(slot, rect_t{}, "");
+  });
 }
 
 void BluetoothTrainerWindow::setMaster(bool master)

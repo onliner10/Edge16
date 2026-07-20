@@ -22,6 +22,7 @@
 #include "hw_intmodule.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "static.h"
@@ -34,58 +35,60 @@
 
 InternalModuleWindow::InternalModuleWindow(Window *parent, FlexGridLayout& grid)
 {
-  auto line = parent->newLine(grid);
-  line->padLeft(PAD_SMALL);  // ds-allow: hardware internal-module config - boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-  new StaticText(line, rect_t{}, STR_TYPE);
-  auto internalModule =
-      new Choice(line, rect_t{}, STR_MODULE_PROTOCOLS, MODULE_TYPE_NONE,
-                 MODULE_TYPE_COUNT - 1, GET_DEFAULT(g_eeGeneral.internalModule),
-                 [=](int type) { return setModuleType(type); });
+  // Type: single labelled control -> ds::FormRow.
+  new ds::FormRow(parent, STR_TYPE, [=](Window* slot) {
+    auto internalModule =
+        new Choice(slot, rect_t{}, STR_MODULE_PROTOCOLS, MODULE_TYPE_NONE,
+                   MODULE_TYPE_COUNT - 1, GET_DEFAULT(g_eeGeneral.internalModule),
+                   [=](int type) { return setModuleType(type); });
 
-  internalModule->setAvailableHandler(
-      [](int module) { return isInternalModuleSupported(module); });
+    internalModule->setAvailableHandler(
+        [](int module) { return isInternalModuleSupported(module); });
+  });
 
 #if defined(INTERNAL_MODULE_PXX1) && defined(EXTERNAL_ANTENNA)
-  ant_box = parent->newLine(grid);
-  ant_box->padLeft(PAD_SMALL);  // ds-allow: hardware internal-module config - boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-  new StaticText(ant_box, rect_t{}, STR_ANTENNA);
-  new Choice(
-      ant_box, rect_t{}, STR_ANTENNA_MODES, ANTENNA_MODE_INTERNAL,
-      ANTENNA_MODE_EXTERNAL, GET_DEFAULT(g_eeGeneral.antennaMode),
-      [](int antenna) {
-        if (!isExternalAntennaEnabled() &&
-            (antenna == ANTENNA_MODE_EXTERNAL ||
-             (antenna == ANTENNA_MODE_PER_MODEL &&
-              g_model.moduleData[INTERNAL_MODULE].pxx.antennaMode ==
-                  ANTENNA_MODE_EXTERNAL))) {
-          if (confirmationDialog(STR_ANTENNACONFIRM1, STR_ANTENNACONFIRM2)) {
+  // Antenna: single labelled control, whole row gated on module type
+  // (updateAntennaLine shows/hides ant_box).
+  ant_box = new ds::FormRow(parent, STR_ANTENNA, [=](Window* slot) {
+    new Choice(
+        slot, rect_t{}, STR_ANTENNA_MODES, ANTENNA_MODE_INTERNAL,
+        ANTENNA_MODE_EXTERNAL, GET_DEFAULT(g_eeGeneral.antennaMode),
+        [](int antenna) {
+          if (!isExternalAntennaEnabled() &&
+              (antenna == ANTENNA_MODE_EXTERNAL ||
+               (antenna == ANTENNA_MODE_PER_MODEL &&
+                g_model.moduleData[INTERNAL_MODULE].pxx.antennaMode ==
+                    ANTENNA_MODE_EXTERNAL))) {
+            if (confirmationDialog(STR_ANTENNACONFIRM1, STR_ANTENNACONFIRM2)) {
+              g_eeGeneral.antennaMode = antenna;
+              SET_DIRTY();
+            }
+          } else {
             g_eeGeneral.antennaMode = antenna;
+            checkExternalAntenna();
             SET_DIRTY();
           }
-        } else {
-          g_eeGeneral.antennaMode = antenna;
-          checkExternalAntenna();
-          SET_DIRTY();
-        }
-      });
+        });
+  });
 
   updateAntennaLine();
 #endif
 
 #if defined(CROSSFIRE)
-  br_box = parent->newLine(grid);
-  br_box->padLeft(PAD_SMALL);  // ds-allow: hardware internal-module config - boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-  new StaticText(br_box, rect_t{}, STR_BAUDRATE);
-  new Choice(
-      br_box, rect_t{}, STR_CRSF_BAUDRATE, 0, CROSSFIRE_MAX_INTERNAL_BAUDRATE,
-      [=]() {
-        return CROSSFIRE_STORE_TO_INDEX(g_eeGeneral.internalModuleBaudrate);
-      },
-      [=](int val) {
-        g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(val);
-        restartModule(INTERNAL_MODULE);
-        SET_DIRTY();
-      });
+  // Baudrate: single labelled control, whole row gated on Crossfire
+  // (updateBaudrateLine shows/hides br_box).
+  br_box = new ds::FormRow(parent, STR_BAUDRATE, [=](Window* slot) {
+    new Choice(
+        slot, rect_t{}, STR_CRSF_BAUDRATE, 0, CROSSFIRE_MAX_INTERNAL_BAUDRATE,
+        [=]() {
+          return CROSSFIRE_STORE_TO_INDEX(g_eeGeneral.internalModuleBaudrate);
+        },
+        [=](int val) {
+          g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(val);
+          restartModule(INTERNAL_MODULE);
+          SET_DIRTY();
+        });
+  });
 
   updateBaudrateLine();
 #endif

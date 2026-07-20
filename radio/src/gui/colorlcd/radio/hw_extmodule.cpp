@@ -22,6 +22,7 @@
 #include "hw_extmodule.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "static.h"
@@ -31,16 +32,14 @@
 #if defined(STM32F4)
 ExternalModuleWindow::ExternalModuleWindow(Window *parent, FlexGridLayout& grid)
 {
-  auto line = parent->newLine(grid);
-  line->padLeft(PAD_SMALL);  // ds-allow: hardware external-module config - boxed side-by-side option field with custom indentation; not a single DS FormRow control.
-
-  new StaticText(line, rect_t{}, STR_SAMPLE_MODE);
-
-  new Choice(line, rect_t{}, STR_SAMPLE_MODES, 0, UART_SAMPLE_MODE_MAX,
-             GET_DEFAULT(g_eeGeneral.uartSampleMode), [=](int modeValue) {
-               g_eeGeneral.uartSampleMode = modeValue;
-               SET_DIRTY();
-               restartModule(EXTERNAL_MODULE);
-             });
+  // Sample mode: single labelled control -> ds::FormRow.
+  new ds::FormRow(parent, STR_SAMPLE_MODE, [=](Window* slot) {
+    new Choice(slot, rect_t{}, STR_SAMPLE_MODES, 0, UART_SAMPLE_MODE_MAX,
+               GET_DEFAULT(g_eeGeneral.uartSampleMode), [=](int modeValue) {
+                 g_eeGeneral.uartSampleMode = modeValue;
+                 SET_DIRTY();
+                 restartModule(EXTERNAL_MODULE);
+               });
+  });
 }
 #endif

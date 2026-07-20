@@ -22,6 +22,7 @@
 #include "radio_trainer.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "hal/adc_driver.h"
@@ -93,44 +94,36 @@ void RadioTrainerPage::build(Window* form)
           COLOR_THEME_PRIMARY1_INDEX, flags);
     }
 
-    auto line = form->newLine(grid);
-#if PORTRAIT
-    line->padTop(PAD_LARGE);  // ds-allow: trainer setup — portrait spacing before the packed multiplier/calibration line; not a single DS FormRow control.
-#else
-    line->padTop(PAD_MEDIUM);  // ds-allow: trainer setup — landscape spacing before the packed multiplier/calibration line; not a single DS FormRow control.
-#endif
+    // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the multiplier/calibration
+    // settings below the per-stick calibration table are a stack of
+    // ds::FormRow (label 40% / control 60%, 40 px min) grouped in a Card.
+    // The ds::List owns the gap from the table above and the row spacing
+    // below — no per-screen coordinates. The per-stick table above keeps its
+    // own hand-rolled FlexGridLayout grid (column-aligned mode/chan/weight
+    // readout table) untouched; it is not a settings-form line.
+    Window* list = new ds::List(form);
+    auto* card = new ds::Card(list);
 
     // Trainer multiplier
     if (g_model.trainerData.mode == TRAINER_MODE_MASTER_TRAINER_JACK) {
-      auto lbl = new StaticText(line, rect_t{}, STR_MULTIPLIER);
-      lbl->padRight(PAD_SMALL);  // ds-allow: trainer setup — gap between multiplier label and field packed on the same line; not a single DS FormRow control.
-      lbl->setGridCell(LV_GRID_ALIGN_END, 0, 2, LV_GRID_ALIGN_CENTER, 0, 1);
-
-      auto multiplier =
-              new NumberEdit(line, rect_t{0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, -10, 40,
-                             GET_SET_DEFAULT(g_eeGeneral.PPM_Multiplier));
-      multiplier->setDisplayHandler(
-              [](int32_t value) { return formatNumberAsString(value + 10, PREC1); });
-      multiplier->setGridCell(LV_GRID_ALIGN_START, 2, 1, LV_GRID_ALIGN_CENTER, 0, 1);
-
-#if PORTRAIT
-      line = form->newLine(grid);
-      line->padTop(PAD_LARGE);  // ds-allow: trainer setup — portrait spacing before the calibration button line; not a single DS FormRow control.
-#endif
+      new ds::FormRow(card, STR_MULTIPLIER, [](Window* slot) {
+        auto multiplier = new NumberEdit(
+            slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, -10, 40,
+            GET_SET_DEFAULT(g_eeGeneral.PPM_Multiplier));
+        multiplier->setDisplayHandler([](int32_t value) {
+          return formatNumberAsString(value + 10, PREC1);
+        });
+      });
     }
 
     // Trainer calibration
-    auto btn = new TextButton(line, rect_t{}, STR_MENUCALIBRATION,
-                              [=]() -> uint8_t {
-                                memcpy(g_eeGeneral.trainer.calib, trainerInput,
-                                       sizeof(g_eeGeneral.trainer.calib));
-                                SET_DIRTY();
-                                return 0;
-                              });
-#if PORTRAIT
-    btn->setGridCell(LV_GRID_ALIGN_STRETCH, 1, 2, LV_GRID_ALIGN_CENTER, 0, 1);
-#else
-    btn->setGridCell(LV_GRID_ALIGN_START, 3, 2, LV_GRID_ALIGN_CENTER, 0, 1);
-#endif
+    new ds::FormRow(card, "", [](Window* slot) {
+      new TextButton(slot, rect_t{}, STR_MENUCALIBRATION, []() -> uint8_t {
+        memcpy(g_eeGeneral.trainer.calib, trainerInput,
+               sizeof(g_eeGeneral.trainer.calib));
+        SET_DIRTY();
+        return 0;
+      });
+    });
   }
 }

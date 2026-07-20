@@ -24,13 +24,12 @@
 #include "button.h"
 #include "channel_range.h"
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
-#include "form.h"
 #include "getset_helpers.h"
 #include "menu.h"
 #include "numberedit.h"
 #include "ppm_settings.h"
-#include "static.h"
 #include "textedit.h"
 
 #if defined(BLUETOOTH)
@@ -38,11 +37,6 @@
 #endif
 
 #define SET_DIRTY()     storageDirty(EE_MODEL)
-
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
-                                     LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT,
-                                     LV_GRID_TEMPLATE_LAST};
 
 class TrainerModuleWindow : public Window
 {
@@ -108,7 +102,6 @@ void TrainerModuleWindow::onLiveCheckEvents(Window::LiveWindow& live)
 
 void TrainerModuleWindow::update()
 {
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer slave form - grid lines pair a label with composite widgets (channel-range selector, PPM-frame settings); multi-control lines, not single DS FormRows.
   clear();
 
   auto td = &g_model.trainerData;
@@ -128,19 +121,24 @@ void TrainerModuleWindow::update()
 #endif
 
   if (td->mode == TRAINER_MODE_SLAVE) {
+    // DESIGN SYSTEM (see DESIGN_SYSTEM.md): each line pairs one label with
+    // one composite control (the channel-range selector, the PPM-frame
+    // settings widget) — a plain ds::FormRow per line. Their own internal
+    // layout (e.g. the per-channel calibration table inside the channel
+    // range selector) is untouched by this migration.
 
     // Channel range
-    auto line = newLine(grid);
-    new StaticText(line, rect_t{}, STR_CHANNELRANGE);
-    chRange = new TrainerChannelRange(line);
+    new ds::FormRow(this, STR_CHANNELRANGE, [=](Window* slot) {
+      chRange = new TrainerChannelRange(slot);
+    });
 
     // PPM frame
-    line = newLine(grid);
-    new StaticText(line, rect_t{}, STR_PPMFRAME);
-    auto obj = new PpmFrameSettings<TrainerModuleData>(line, td);
+    new ds::FormRow(this, STR_PPMFRAME, [=](Window* slot) {
+      auto obj = new PpmFrameSettings<TrainerModuleData>(slot, td);
 
-    // copy pointer to frame len edit object to channel range
-    chRange->setPpmFrameLenEditObject(obj->getPpmFrameLenEditObject());
+      // copy pointer to frame len edit object to channel range
+      chRange->setPpmFrameLenEditObject(obj->getPpmFrameLenEditObject());
+    });
   }
 }
 
@@ -151,15 +149,16 @@ TrainerPage::TrainerPage(Route route) : Page(ICON_MODEL_SETUP, route)
 
   body->setFlexLayout();
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: trainer setup page grid - renders the Mode label+Choice line then delegates to a TrainerModuleWindow sub-form; page-level grid, not a plain DS FormRow list.
-
-  auto line = body->newLine(grid);
-  new StaticText(line, rect_t{}, STR_MODE);
-
-  auto trainerChoice =
-      new Choice(line, rect_t{}, STR_VTRAINERMODES, 0, TRAINER_MODE_MAX(),
-                 GET_SET_DEFAULT(g_model.trainerData.mode));
-  trainerChoice->setAvailableHandler(isTrainerModeAvailable);
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the Mode line is a single
+  // label->control ds::FormRow; it delegates to a TrainerModuleWindow
+  // sub-form (rebuilt on mode change) below it.
+  Choice* trainerChoice = nullptr;
+  new ds::FormRow(body, STR_MODE, [&](Window* slot) {
+    trainerChoice =
+        new Choice(slot, rect_t{}, STR_VTRAINERMODES, 0, TRAINER_MODE_MAX(),
+                   GET_SET_DEFAULT(g_model.trainerData.mode));
+    trainerChoice->setAvailableHandler(isTrainerModeAvailable);
+  });
 
   auto trainerModule = new TrainerModuleWindow(body);
 

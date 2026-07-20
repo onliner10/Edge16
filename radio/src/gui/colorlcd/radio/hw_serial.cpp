@@ -22,6 +22,7 @@
 #include "hw_serial.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "static.h"
 #include "toggleswitch.h"
@@ -34,43 +35,36 @@ SerialConfigWindow::SerialConfigWindow(Window *parent, FlexGridLayout& grid)
     auto port = serialGetPort(port_nr);
     if (!port || !port->name) continue;
 
-    auto line = parent->newLine(grid);
-    (new StaticText(line, rect_t{}, port->name))->padLeft(PAD_SMALL);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-
-    auto box = new Window(line, rect_t{});
-    box->padAll(PAD_TINY);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-    box->setFlexLayout(LV_FLEX_FLOW_ROW, PAD_MEDIUM);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-    box->setStyleGridCellXAlign(LV_GRID_ALIGN_STRETCH, 0);
-    box->setStyleFlexCrossPlace(LV_FLEX_ALIGN_CENTER, 0);
-
-    auto aux = new Choice(
-        box, rect_t{}, STR_AUX_SERIAL_MODES, 0, UART_MODE_MAX,
-        [=]() { return serialGetMode(port_nr); },
-        [=](int value) {
-          serialSetMode(port_nr, value);
-          serialInit(port_nr, value);
-          SET_DIRTY();
-        });
-    aux->setAvailableHandler(
-        [=](int value) { return isSerialModeAvailable(port_nr, value); });
-
-    if (port->set_pwr != nullptr) {
-      new StaticText(box, rect_t{}, STR_AUX_SERIAL_PORT_POWER);
-      new ToggleSwitch(
-          box, rect_t{}, [=] { return serialGetPower(port_nr); },
-          [=](int8_t newValue) {
-            serialSetPower(port_nr, (bool)newValue);
+    // Per-port option box: a mode Choice, plus (only when the port supports it)
+    // a power label + toggle, flowed side-by-side after the port-name label ->
+    // ds::FieldGroup (variable-count wrapping control area).
+    new ds::FieldGroup(parent, port->name, [=](Window* box) {
+      auto aux = new Choice(
+          box, rect_t{}, STR_AUX_SERIAL_MODES, 0, UART_MODE_MAX,
+          [=]() { return serialGetMode(port_nr); },
+          [=](int value) {
+            serialSetMode(port_nr, value);
+            serialInit(port_nr, value);
             SET_DIRTY();
           });
-    }
+      aux->setAvailableHandler(
+          [=](int value) { return isSerialModeAvailable(port_nr, value); });
+
+      if (port->set_pwr != nullptr) {
+        new StaticText(box, rect_t{}, STR_AUX_SERIAL_PORT_POWER);
+        new ToggleSwitch(
+            box, rect_t{}, [=] { return serialGetPower(port_nr); },
+            [=](int8_t newValue) {
+              serialSetPower(port_nr, (bool)newValue);
+              SET_DIRTY();
+            });
+      }
+    });
 
     if (port_nr != SP_VCP) {
-        grid.setColSpan(2);
-        auto line = parent->newLine(grid);
-        line->padLeft(PAD_LARGE * 2);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-        line->padBottom(PAD_MEDIUM);  // ds-allow: hardware serial config - per-port boxed side-by-side option fields with custom indentation; not a single DS FormRow control.
-        new StaticText(line, rect_t{}, STR_TTL_WARNING, COLOR_THEME_WARNING_INDEX);
-        grid.setColSpan(1);
+      // TTL 3.3V warning caption for the port just added.
+      new StaticText(parent, rect_t{}, STR_TTL_WARNING,
+                     COLOR_THEME_WARNING_INDEX);
     }
   }
 }

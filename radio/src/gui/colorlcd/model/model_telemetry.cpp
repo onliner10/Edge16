@@ -72,8 +72,6 @@ static lv_obj_t* createFreshCanvas(lv_obj_t* parent)
 #endif
 
 // Overview grid variants
-static const lv_coord_t col_dsc[] = {LV_GRID_FR(14), LV_GRID_FR(6),
-                                     LV_GRID_TEMPLATE_LAST};
 #if TWOCOLBUTTONS
 static const lv_coord_t col_dsc4[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                       LV_GRID_TEMPLATE_LAST};
@@ -81,9 +79,6 @@ static const lv_coord_t col_dsc4[] = {LV_GRID_FR(1), LV_GRID_FR(1),
 static const lv_coord_t col_dsc4[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                       LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 #endif
-static const lv_coord_t col_dsc5[] = {LV_GRID_FR(5), LV_GRID_FR(4),
-                                      LV_GRID_FR(4), LV_GRID_FR(4),
-                                      LV_GRID_TEMPLATE_LAST};
 
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
@@ -1077,109 +1072,101 @@ void ModelTelemetryPage::build(Window* window)
                          1);
 #endif
 
-  FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY); // ds-allow: telemetry options form uses a fixed 2-column FlexGridLayout with PAD_TINY gutter; not composed from DS FormRows
+  // DESIGN SYSTEM: the telemetry option/RX-stat/vario sub-sections are plain
+  // label/control settings lines, so they are ds::FormRow (single control) or
+  // ds::FieldGroup (one label + a variable set of side-by-side controls) added
+  // directly to the flex body. The DS owns the 40/60 split and the touch floor;
+  // the sensor ds::List and its discover/delete actions above are untouched.
 
-  // Show instance IDs button
-  line = window->newLine(grid);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry 'show instance IDs' line indents its label under the sensors subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_SHOW_INSTANCE_ID);
-  new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(g_model.showInstanceIds));
+  // Show instance IDs
+  new ds::FormRow(window, STR_SHOW_INSTANCE_ID, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(g_model.showInstanceIds));
+  });
 
-  // Ignore instance button
-  line = window->newLine(grid);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry 'ignore instance' line indents its label under the sensors subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_IGNORE_INSTANCE);
-  new ToggleSwitch(line, rect_t{}, GET_SET_DEFAULT(g_model.ignoreSensorIds));
+  // Ignore instance
+  new ds::FormRow(window, STR_IGNORE_INSTANCE, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(g_model.ignoreSensorIds));
+  });
 
   // RX stat
   new Subtitle(window, getRxStatLabels()->label);
 
-  line = window->newLine(grid);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat low-alarm line indents its label under the RX-stat subtitle; manual padLeft on a label+NumberEdit line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_LOWALARM);
-  auto* lowAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
-                 GET_SET_DEFAULT(g_model.rfAlarms.warning));
-  lowAlarm->setDirectKeyboard(false);
-  lowAlarm->setEditTitle(STR_ROLLER_RF_LOW_ALARM);
+  new ds::FormRow(window, STR_LOWALARM, [=](Window* slot) {
+    auto* lowAlarm = new NumberEdit(slot, rect_t{}, 0, 100,
+                                    GET_SET_DEFAULT(g_model.rfAlarms.warning));
+    lowAlarm->setDirectKeyboard(false);
+    lowAlarm->setEditTitle(STR_ROLLER_RF_LOW_ALARM);
+  });
 
-  line = window->newLine(grid);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat critical-alarm line indents its label under the RX-stat subtitle; manual padLeft on a label+NumberEdit line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_CRITICALALARM);
-  auto* critAlarm = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, 0, 100,
-                 GET_SET_DEFAULT(g_model.rfAlarms.critical));
-  critAlarm->setDirectKeyboard(false);
-  critAlarm->setEditTitle(STR_ROLLER_RF_CRITICAL_ALARM);
+  new ds::FormRow(window, STR_CRITICALALARM, [=](Window* slot) {
+    auto* critAlarm = new NumberEdit(slot, rect_t{}, 0, 100,
+                                     GET_SET_DEFAULT(g_model.rfAlarms.critical));
+    critAlarm->setDirectKeyboard(false);
+    critAlarm->setEditTitle(STR_ROLLER_RF_CRITICAL_ALARM);
+  });
 
-  line = window->newLine(grid);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry RX-stat disable-alarm line indents its label under the RX-stat subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_DISABLE_ALARM);
-  new ToggleSwitch(line, rect_t{},
-                   GET_SET_DEFAULT(g_model.disableTelemetryWarning));
+  new ds::FormRow(window, STR_DISABLE_ALARM, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{},
+                     GET_SET_DEFAULT(g_model.disableTelemetryWarning));
+  });
 
   // Vario
   new Subtitle(window, STR_VARIO);
 
-  FlexGridLayout grid5(col_dsc5, row_dsc);
-
-  line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario source line indents its label under the Vario subtitle; manual padLeft on a multi-control line, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_SOURCE);
-  auto choice = new SourceChoice(
-      line, rect_t{}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
-      GET_DEFAULT(g_model.varioData.source
-                      ? MIXSRC_FIRST_TELEM + 3 * (g_model.varioData.source - 1)
-                      : MIXSRC_NONE),
-      SET_VALUE(g_model.varioData.source,
-                newValue == MIXSRC_NONE
-                    ? 0
-                    : (newValue - MIXSRC_FIRST_TELEM) / 3 + 1));
-  choice->setAvailableHandler([=](int16_t value) {
-    if (value == MIXSRC_NONE) return true;
-    if (value < MIXSRC_FIRST_TELEM) return false;
-    auto qr = div(value - MIXSRC_FIRST_TELEM, 3);
-    return qr.rem == 0 && isVarioSensorAvailable(qr.quot + 1);
+  new ds::FormRow(window, STR_SOURCE, [=](Window* slot) {
+    auto choice = new SourceChoice(
+        slot, rect_t{}, MIXSRC_NONE, MIXSRC_LAST_TELEM,
+        GET_DEFAULT(g_model.varioData.source
+                        ? MIXSRC_FIRST_TELEM + 3 * (g_model.varioData.source - 1)
+                        : MIXSRC_NONE),
+        SET_VALUE(g_model.varioData.source,
+                  newValue == MIXSRC_NONE
+                      ? 0
+                      : (newValue - MIXSRC_FIRST_TELEM) / 3 + 1));
+    choice->setAvailableHandler([=](int16_t value) {
+      if (value == MIXSRC_NONE) return true;
+      if (value < MIXSRC_FIRST_TELEM) return false;
+      auto qr = div(value - MIXSRC_FIRST_TELEM, 3);
+      return qr.rem == 0 && isVarioSensorAvailable(qr.quot + 1);
+    });
   });
 
-  line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario range line indents its label under the Vario subtitle; packs min+max NumberEdits, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_RANGE);
+  new ds::FieldGroup(window, STR_RANGE, [=](Window* box) {
+    auto vMin = new NumberEdit(box, rect_t{}, -17, 17,
+                               GET_SET_WITH_OFFSET(g_model.varioData.min, -10));
+    vMin->setAvailableHandler(
+        [](int val) { return val < g_model.varioData.max + 10; });
+    vMin->setDirectKeyboard(false);
+    vMin->setEditTitle(STR_ROLLER_VARIO_MIN);
 
-  auto vMin = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, -17, 17,
-                             GET_SET_WITH_OFFSET(g_model.varioData.min, -10));
-  vMin->setAvailableHandler(
-      [](int val) { return val < g_model.varioData.max + 10; });
-  vMin->setDirectKeyboard(false);
-  vMin->setEditTitle(STR_ROLLER_VARIO_MIN);
+    auto vMax = new NumberEdit(box, rect_t{}, -17, 17,
+                               GET_SET_WITH_OFFSET(g_model.varioData.max, 10));
+    vMax->setAvailableHandler(
+        [](int val) { return g_model.varioData.min - 10 < val; });
+    vMax->setDirectKeyboard(false);
+    vMax->setEditTitle(STR_ROLLER_VARIO_MAX);
+  });
 
-  auto vMax = new NumberEdit(line, {0, 0, NUM_EDIT_W, 0}, -17, 17,
-                             GET_SET_WITH_OFFSET(g_model.varioData.max, 10));
-  vMax->setAvailableHandler(
-      [](int val) { return g_model.varioData.min - 10 < val; });
-  vMax->setDirectKeyboard(false);
-  vMax->setEditTitle(STR_ROLLER_VARIO_MAX);
+  new ds::FieldGroup(window, STR_CENTER, [=](Window* box) {
+    auto cMin = new NumberEdit(
+        box, rect_t{}, -15, 15,
+        GET_SET_WITH_OFFSET(g_model.varioData.centerMin, -5), PREC1);
+    cMin->setAvailableHandler(
+        [](int val) { return val < g_model.varioData.centerMax + 5; });
+    cMin->setDirectKeyboard(false);
+    cMin->setEditTitle(STR_ROLLER_VARIO_CENTER_MIN);
 
-  line = window->newLine(grid5);
-  line->padLeft(PAD_LARGE); // ds-allow: telemetry vario center line indents its label under the Vario subtitle; packs center min/max NumberEdits, not a plain DS FormRow
-  new StaticText(line, rect_t{}, STR_CENTER);
+    auto cMax = new NumberEdit(
+        box, rect_t{}, -15, 15,
+        GET_SET_WITH_OFFSET(g_model.varioData.centerMax, 5), PREC1);
+    cMax->setAvailableHandler(
+        [](int val) { return g_model.varioData.centerMin - 5 < val; });
+    cMax->setDirectKeyboard(false);
+    cMax->setEditTitle(STR_ROLLER_VARIO_CENTER_MAX);
 
-  auto cMin = new NumberEdit(
-      line, rect_t{0, 0, NUM_EDIT_W, 0}, -15, 15,
-      GET_SET_WITH_OFFSET(g_model.varioData.centerMin, -5), PREC1);
-  cMin->setAvailableHandler(
-      [](int val) { return val < g_model.varioData.centerMax + 5; });
-  cMin->setDirectKeyboard(false);
-  cMin->setEditTitle(STR_ROLLER_VARIO_CENTER_MIN);
-
-  auto cMax = new NumberEdit(
-      line, rect_t{0, 0, NUM_EDIT_W, 0}, -15, 15,
-      GET_SET_WITH_OFFSET(g_model.varioData.centerMax, 5), PREC1);
-  cMax->setAvailableHandler(
-      [](int val) { return g_model.varioData.centerMin - 5 < val; });
-  cMax->setDirectKeyboard(false);
-  cMax->setEditTitle(STR_ROLLER_VARIO_CENTER_MAX);
-
-  new Choice(line, rect_t{}, STR_VVARIOCENTER, 0, 1,
-             GET_SET_DEFAULT(g_model.varioData.centerSilent));
+    new Choice(box, rect_t{}, STR_VVARIOCENTER, 0, 1,
+               GET_SET_DEFAULT(g_model.varioData.centerSilent));
+  });
 
   // Don't call this before the 'discover' button has been created
   buildSensorList(-1);

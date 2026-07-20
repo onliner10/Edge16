@@ -22,6 +22,7 @@
 #include "quick_menu_favorites.h"
 
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "pagegroup.h"
@@ -37,12 +38,20 @@ QMFavoritesPage::QMFavoritesPage(Route route):
 {
   auto qmPages = QuickMenu::menuPageNames(true);
 
+  // DESIGN SYSTEM: each favorite slot is a plain label (# n) -> single control
+  // (the page choice), i.e. a settings form — one ds::FormRow per slot, grouped
+  // in a ds::Card inside the page ds::List. The DS owns margins, the 40/60 split
+  // and the touch floor.
+  body->setFlexLayout();
+  auto* list = new ds::List(body);
+  auto* form = new ds::Card(list);
+
   for (int i = 0; i < MAX_QM_FAVORITES; i += 1) {
     char nm[50];
     strAppendUnsigned(strAppend(strAppend(nm, "#"), " "), i + 1);
-    setupLine(nm, [=](Window* parent, coord_t x, coord_t y) {
+    new ds::FormRow(form, nm, [=](Window* slot) {
           auto c = new (std::nothrow) QMPageChoice(
-              parent, {LCD_W / 4, y, LCD_W * 2 / 3, 0}, qmPages, QM_NONE, qmPages.size() - 1,
+              slot, rect_t{}, qmPages, QM_NONE, qmPages.size() - 1,
               [=]() -> int {
                 auto pg = g_eeGeneral.qmFavorites[i].shortcut;
                 if (pg < QM_APP)

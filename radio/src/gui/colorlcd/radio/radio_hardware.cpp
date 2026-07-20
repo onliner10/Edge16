@@ -21,6 +21,7 @@
 
 #include "radio_hardware.h"
 
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "hal/adc_driver.h"
@@ -56,7 +57,7 @@ static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
 static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 
 RadioHardwarePage::RadioHardwarePage(const PageDef& pageDef) :
-    PageGroupItem(pageDef, PAD_TINY)  // ds-allow: radio hardware — tiny inter-line padding for a form mixing packed battery-range lines and multi-column button groups; not a single DS FormRow control.
+    PageGroupItem(pageDef, PAD_TINY)  // ds-allow: radio hardware — tiny inter-section padding for a page mixing the DS settings list with multi-column hardware-module grids and nav-tile button groups; not a single DS FormRow control.
 {
   enableVBatBridge();
 }
@@ -93,75 +94,6 @@ class BatCalEdit : public NumberEdit
   }
 };
 
-const static SetupLineDef setupLines[] = {
-  {
-    // Batt meter range - Range 3.0v to 16v
-    STR_DEF(STR_BATTERY_RANGE),
-    [](Window* parent, coord_t x, coord_t y) {
-      auto batMin = new NumberEdit(
-          parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, -60 + 90, g_eeGeneral.vBatMax + 29 + 90,
-          GET_SET_WITH_OFFSET(g_eeGeneral.vBatMin, 90), PREC1);
-      batMin->setSuffix("V");
-      new StaticText(parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_SMALL, y + PAD_SMALL + 1, PAD_LARGE, EdgeTxStyles::STD_FONT_HEIGHT}, "-");  // ds-allow: radio hardware — '-' separator placed absolutely between the vBatMin/vBatMax fields on the battery-range line; not a single DS FormRow control.
-      auto batMax = new NumberEdit(
-          parent, {x + EdgeTxStyles::EDIT_FLD_WIDTH_NARROW + PAD_LARGE + PAD_SMALL, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, g_eeGeneral.vBatMin - 29 + 120, 40 + 120,  // ds-allow: radio hardware — vBatMax field placed absolutely after the separator on the battery-range line; not a single DS FormRow control.
-          GET_SET_WITH_OFFSET(g_eeGeneral.vBatMax, 120), PREC1);
-      batMax->setSuffix("V");
-
-      batMin->setSetValueHandler([=](int32_t newValue) {
-        g_eeGeneral.vBatMin = newValue - 90;
-        SET_DIRTY();
-        batMax->setMin(g_eeGeneral.vBatMin - 29 + 120);
-      });
-
-      batMax->setSetValueHandler([=](int32_t newValue) {
-        g_eeGeneral.vBatMax = newValue - 120;
-        SET_DIRTY();
-        batMin->setMax(g_eeGeneral.vBatMax + 29 + 90);
-      });
-    }
-  },
-  {
-    // Bat calibration
-    STR_DEF(STR_BATT_CALIB),
-    [](Window* parent, coord_t x, coord_t y) {
-      new BatCalEdit(parent, {x, y, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0});
-    }
-  },
-  {
-    // RTC Batt check enable
-    STR_DEF(STR_RTC_CHECK),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
-                       GET_SET_INVERTED(g_eeGeneral.disableRtcWarning));
-
-      // RTC Batt display
-      new DynamicNumber<uint16_t>(
-          parent,
-          {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y + PAD_SMALL + 1, 0, 0},  // ds-allow: radio hardware — RTC battery voltage readout placed absolutely beside the enable toggle on one line; not a single DS FormRow control.
-          [] { return getRTCBatteryVoltage(); }, COLOR_THEME_PRIMARY1_INDEX, PREC2,
-          "", "V");
-    }
-  },
-  {
-    // ADC filter
-    STR_DEF(STR_JITTER_FILTER),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0}, GET_SET_INVERTED(g_eeGeneral.noJitterFilter));
-    }
-  },
-#if defined(AUDIO_MUTE_GPIO)
-  {
-    // Mute audio
-    STR_DEF(STR_AUDIO_MUTE),
-    [](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0}, GET_SET_DEFAULT(g_eeGeneral.audioMuteEnable));
-    }
-  },
-#endif
-  {nullptr, nullptr},
-};
-
 const static PageButtonDef calibrationButtons[] = {
   {STR_DEF(STR_MENUCALIBRATION), [](Route r) { new RadioCalibrationPage(r); }},
   {STR_DEF(STR_STICKS), [](Route) { new HWInputDialog<HWSticks>(STR_STICKS); }},
@@ -184,9 +116,75 @@ const static PageButtonDef debugButtons[] = {
 
 void RadioHardwarePage::build(Window* window)
 {
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: radio hardware — column gap for a form mixing packed battery-range lines and multi-column button groups; not a single DS FormRow control.
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_TINY);  // ds-allow: radio hardware — column gap for a page mixing the DS settings list with multi-column hardware-module grids and nav-tile button groups; not a single DS FormRow control.
 
-  SetupLine::showLines(window, 0, SubPage::EDT_X, padding, setupLines);
+  // DESIGN SYSTEM (see DESIGN_SYSTEM.md): the plain hardware settings are a
+  // stack of ds::FormRow (label 40% / control 60%, 40 px min) grouped in a
+  // Card. The ds::List owns page margins and inter-row gaps; the DS owns the
+  // label/control split — no per-screen coordinates. The module-config
+  // sub-grids and nav-tile button groups below stay on their existing
+  // hand-rolled layout (they are not settings-form lines).
+  Window* list = new ds::List(window);
+  auto* form = new ds::Card(list);
+
+  // Batt meter range - Range 3.0v to 16v
+  new ds::FormRow(form, STR_BATTERY_RANGE, [=](Window* slot) {
+    auto* group = new Window(slot, rect_t{});
+    group->setFlexLayout(LV_FLEX_FLOW_ROW);
+
+    auto batMin = new NumberEdit(
+        group, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, -60 + 90, g_eeGeneral.vBatMax + 29 + 90,
+        GET_SET_WITH_OFFSET(g_eeGeneral.vBatMin, 90), PREC1);
+    batMin->setSuffix("V");
+    new StaticText(group, rect_t{}, "-");
+    auto batMax = new NumberEdit(
+        group, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0}, g_eeGeneral.vBatMin - 29 + 120, 40 + 120,
+        GET_SET_WITH_OFFSET(g_eeGeneral.vBatMax, 120), PREC1);
+    batMax->setSuffix("V");
+
+    batMin->setSetValueHandler([=](int32_t newValue) {
+      g_eeGeneral.vBatMin = newValue - 90;
+      SET_DIRTY();
+      batMax->setMin(g_eeGeneral.vBatMin - 29 + 120);
+    });
+
+    batMax->setSetValueHandler([=](int32_t newValue) {
+      g_eeGeneral.vBatMax = newValue - 120;
+      SET_DIRTY();
+      batMin->setMax(g_eeGeneral.vBatMax + 29 + 90);
+    });
+  });
+
+  // Bat calibration
+  new ds::FormRow(form, STR_BATT_CALIB, [](Window* slot) {
+    new BatCalEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0});
+  });
+
+  // RTC Batt check enable
+  new ds::FormRow(form, STR_RTC_CHECK, [](Window* slot) {
+    auto* group = new Window(slot, rect_t{});
+    group->setFlexLayout(LV_FLEX_FLOW_ROW);
+
+    new ToggleSwitch(group, rect_t{}, GET_SET_INVERTED(g_eeGeneral.disableRtcWarning));
+
+    // RTC Batt display
+    new DynamicNumber<uint16_t>(
+        group, rect_t{},
+        [] { return getRTCBatteryVoltage(); }, COLOR_THEME_PRIMARY1_INDEX, PREC2,
+        "", "V");
+  });
+
+  // ADC filter
+  new ds::FormRow(form, STR_JITTER_FILTER, [](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_SET_INVERTED(g_eeGeneral.noJitterFilter));
+  });
+
+#if defined(AUDIO_MUTE_GPIO)
+  // Mute audio
+  new ds::FormRow(form, STR_AUDIO_MUTE, [](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(g_eeGeneral.audioMuteEnable));
+  });
+#endif
 
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: radio hardware — column gap for the module-config sub-grids on the hardware page; not a single DS FormRow control.
 

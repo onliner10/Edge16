@@ -23,6 +23,7 @@
 
 #include "button_matrix.h"
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "getset_helpers.h"
@@ -200,50 +201,52 @@ PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route,
 {
   body->setFlexLayout();
 
+  // DESIGN SYSTEM: the plain preflight settings are DS form rows added directly
+  // to the flex body. The switch/pot warning ButtonMatrix grids further down
+  // keep their bespoke absolute layout (SetupLine wrappers) — they are matrix
+  // controls, not label/control form lines.
+
   // Display checklist
-  setupLine(STR_CHECKLIST,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
-                        GET_DEFAULT(g_model.displayChecklist),
-                        [=](uint8_t newValue) {
-                          g_model.displayChecklist = newValue;
-                          SET_DIRTY();
-                          interactive->enable(g_model.displayChecklist);
-                        });
-    });
+  new ds::FormRow(body, STR_CHECKLIST, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(g_model.displayChecklist),
+                     [=](uint8_t newValue) {
+                       g_model.displayChecklist = newValue;
+                       SET_DIRTY();
+                       interactive->enable(g_model.displayChecklist);
+                     });
+  });
 
   // Interactive checklist
-  setupLine(STR_CHECKLIST_INTERACTIVE,
-    [=](Window* parent, coord_t x, coord_t y) {
-      interactive = new ToggleSwitch(parent, {x, y, 0, 0}, GET_SET_DEFAULT(g_model.checklistInteractive));
-      interactive->enable(g_model.displayChecklist);
-    });
+  new ds::FormRow(body, STR_CHECKLIST_INTERACTIVE, [=](Window* slot) {
+    interactive =
+        new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(g_model.checklistInteractive));
+    interactive->enable(g_model.displayChecklist);
+  });
 
   // Throttle warning
-  setupLine(STR_THROTTLE_WARNING,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0},
-                      GET_INVERTED(g_model.disableThrottleWarning),
-                      [=](uint8_t newValue) {
-                        g_model.disableThrottleWarning = !newValue;
-                        SET_DIRTY();
-                        customThrottle->show(!g_model.disableThrottleWarning);
-                      });
-    });
+  new ds::FormRow(body, STR_THROTTLE_WARNING, [=](Window* slot) {
+    new ToggleSwitch(slot, rect_t{}, GET_INVERTED(g_model.disableThrottleWarning),
+                     [=](uint8_t newValue) {
+                       g_model.disableThrottleWarning = !newValue;
+                       SET_DIRTY();
+                       customThrottle->show(!g_model.disableThrottleWarning);
+                     });
+  });
 
-  // Custom Throttle warning (conditional on previous field)
-  customThrottle = setupLine(STR_CUSTOM_THROTTLE_WARNING,
-    [=](Window* parent, coord_t x, coord_t y) {
-      new ToggleSwitch(parent, {x, y, 0, 0}, GET_DEFAULT(g_model.enableCustomThrottleWarning),
-                      [=](uint8_t newValue) {
-                        g_model.enableCustomThrottleWarning = newValue;
-                        SET_DIRTY();
-                        customThrottleValue->show(g_model.enableCustomThrottleWarning);
-                      });
+  // Custom Throttle warning (toggle + gated value) — a gated option box, so a
+  // ds::FieldGroup: one label followed by the toggle and its value edit.
+  customThrottle = new ds::FieldGroup(body, STR_CUSTOM_THROTTLE_WARNING,
+    [=](Window* box) {
+      new ToggleSwitch(box, rect_t{}, GET_DEFAULT(g_model.enableCustomThrottleWarning),
+                       [=](uint8_t newValue) {
+                         g_model.enableCustomThrottleWarning = newValue;
+                         SET_DIRTY();
+                         customThrottleValue->show(g_model.enableCustomThrottleWarning);
+                       });
 
       // Custom Throttle warning value
-      customThrottleValue = new NumberEdit(parent, {x + ToggleSwitch::TOGGLE_W + PAD_SMALL, y, 0, 0}, -100, 100,  // ds-allow: preflight checks - switch/throttle/pot warning matrices sized/positioned absolutely with a custom throttle value field; matrix controls, not DS FormRows.
-                                          GET_SET_DEFAULT(g_model.customThrottleWarningPosition));
+      customThrottleValue = new NumberEdit(box, rect_t{}, -100, 100,
+                                           GET_SET_DEFAULT(g_model.customThrottleWarningPosition));
       customThrottleValue->setDirectKeyboard(false);
       customThrottleValue->setEditTitle(STR_ROLLER_THROTTLE_VALUE);
       customThrottleValue->show(g_model.enableCustomThrottleWarning);
@@ -266,16 +269,15 @@ PreflightChecks::PreflightChecks(Route route) : SubPage(ICON_MODEL_SETUP, route,
       }
     }
     if (pot_cnt > 0) {
-      setupLine(STR_POTWARNINGSTATE,
-        [=](Window* parent, coord_t x, coord_t y) {
-          new Choice(parent, {x, y, 0, 0}, STR_PREFLIGHT_POTSLIDER_CHECK,
-                      0, 2, GET_DEFAULT(g_model.potsWarnMode),
-                      [=](int newValue) {
-                        g_model.potsWarnMode = newValue;
-                        SET_DIRTY();
-                        potsWarnMatrix->show(g_model.potsWarnMode > 0);
-                      });
-        });
+      new ds::FormRow(body, STR_POTWARNINGSTATE, [=](Window* slot) {
+        new Choice(slot, rect_t{}, STR_PREFLIGHT_POTSLIDER_CHECK, 0, 2,
+                   GET_DEFAULT(g_model.potsWarnMode),
+                   [=](int newValue) {
+                     g_model.potsWarnMode = newValue;
+                     SET_DIRTY();
+                     potsWarnMatrix->show(g_model.potsWarnMode > 0);
+                   });
+      });
 
       // Pot warnings
       potsWarnMatrix = setupLine(nullptr,

@@ -23,6 +23,7 @@
 
 #include "button.h"
 #include "choice.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "pagegroup.h"
@@ -43,15 +44,15 @@ static bool hasKey(event_t event)
 #endif
 }
 
-void QMKeyShortcutsPage::addKey(event_t event, std::vector<std::string> qmPages, const char* nm)
+void QMKeyShortcutsPage::addKey(Window* parent, event_t event, std::vector<std::string> qmPages, const char* nm)
 {
   if (hasKey(event)) {
     extern uint16_t keyMapping(uint16_t event);
     event = keyMapping(event);
 
-    setupLine(nm, [=](Window* parent, coord_t x, coord_t y) {
+    new ds::FormRow(parent, nm, [=](Window* slot) {
           auto c = new (std::nothrow) QMPageChoice(
-              parent, {LCD_W / 4, y, LCD_W * 2 / 3, 0}, qmPages, QM_NONE, qmPages.size() - 1,
+              slot, rect_t{}, qmPages, QM_NONE, qmPages.size() - 1,
               [=]() -> int {
                 auto pg = g_eeGeneral.getKeyShortcut(event);
                 if (pg < QM_APP)
@@ -91,22 +92,32 @@ QMKeyShortcutsPage::QMKeyShortcutsPage(Route route):
 {
   auto qmPages = QuickMenu::menuPageNames(false);
 
-  setupLine(STR_SHORT_PRESS, nullptr);
-  addKey(EVT_KEY_BREAK(KEY_SYS), qmPages, "SYS");
-  addKey(EVT_KEY_BREAK(KEY_MODEL), qmPages, "MDL");
-  addKey(EVT_KEY_BREAK(KEY_TELE), qmPages, "TELE");
+  // DESIGN SYSTEM: each key row is a plain label (key name) -> single control
+  // (the shortcut page choice), i.e. a settings form. The two press groups are
+  // ds::SectionHeader dividers; the rows are ds::FormRow grouped in ds::Cards
+  // inside the page ds::List; the reset action is a ds::DSButton. The DS owns
+  // margins, the 40/60 split and the touch floor.
+  body->setFlexLayout();
+  auto* list = new ds::List(body);
 
-  setupLine(STR_LONG_PRESS, nullptr);
-  addKey(EVT_KEY_LONG(KEY_SYS), qmPages, "SYS");
-  addKey(EVT_KEY_LONG(KEY_MODEL), qmPages, "MDL");
-  addKey(EVT_KEY_LONG(KEY_TELE), qmPages, "TELE");
+  new ds::SectionHeader(list, STR_SHORT_PRESS);
+  auto* shortCard = new ds::Card(list);
+  addKey(shortCard, EVT_KEY_BREAK(KEY_SYS), qmPages, "SYS");
+  addKey(shortCard, EVT_KEY_BREAK(KEY_MODEL), qmPages, "MDL");
+  addKey(shortCard, EVT_KEY_BREAK(KEY_TELE), qmPages, "TELE");
 
-  new (std::nothrow) TextButton(body, {LV_PCT(10), y + PAD_LARGE, LV_PCT(80), 0}, STR_SF_RESET, // ds-allow: key-shortcuts reset button placed with percentage geometry on a bespoke page; not a DS FormRow
-                  [=]() {
-                    g_eeGeneral.defaultKeyShortcuts();
-                    SET_DIRTY();
-                    return 0;
-                  });
+  new ds::SectionHeader(list, STR_LONG_PRESS);
+  auto* longCard = new ds::Card(list);
+  addKey(longCard, EVT_KEY_LONG(KEY_SYS), qmPages, "SYS");
+  addKey(longCard, EVT_KEY_LONG(KEY_MODEL), qmPages, "MDL");
+  addKey(longCard, EVT_KEY_LONG(KEY_TELE), qmPages, "TELE");
+
+  new ds::DSButton(list, STR_SF_RESET, ds::ButtonRole::Secondary,
+                   [=]() -> uint8_t {
+                     g_eeGeneral.defaultKeyShortcuts();
+                     SET_DIRTY();
+                     return 0;
+                   });
 
   enableRefresh();
 }
