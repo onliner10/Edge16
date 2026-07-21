@@ -114,6 +114,34 @@ class SectionHeader : public Window
 };
 
 // ---------------------------------------------------------------------------
+// Caption — a non-interactive, single-line status/helper line that ANNOTATES
+// the row directly above it (e.g. a receiver-ID-uniqueness warning under the
+// field it validates). ds::List/ds::Card apply the SAME inter-row gap
+// (space-2) between every child, sized on the assumption that a row is a
+// full 40 px touch-floor target; building a caption as a bare FormRow
+// inherits that 40 px height for no reason (it isn't a focus target), so it
+// reads as a second, mostly-empty row and roughly triples the visual gap to
+// its neighbours instead of reading as an annotation. Caption sizes itself
+// to the text's own line height, keeping the SAME space-2 gap as every other
+// row so spacing stays uniform down the page. Place it immediately AFTER the
+// row it explains.
+//
+//   idUnique = ds::Caption(this, STR_MODELIDUNIQUE).text();
+//   idUnique->textColor(COLOR_THEME_WARNING_INDEX, ETX_STATE_UNIQUE_ID_WARN);
+// ---------------------------------------------------------------------------
+
+class Caption : public Window
+{
+ public:
+  explicit Caption(Window* parent, const char* text = "");
+
+  StaticText* text() { return text_; }
+
+ private:
+  StaticText* text_ = nullptr;
+};
+
+// ---------------------------------------------------------------------------
 // RowContent — DS slot layout inside an interactive row:
 //   [ leading slot? ][ title / subtitle ........ ][ trailing ]
 // Used directly by ListRow, and as the migration bridge for existing

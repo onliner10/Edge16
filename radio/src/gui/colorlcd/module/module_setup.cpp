@@ -204,15 +204,6 @@ class ModuleWindow : public Window
     // Bind and Range buttons
     if (!isModuleRFAccess(moduleIdx) && (isModuleModelIndexAvailable(moduleIdx) ||
                                         isModuleBindRangeAvailable(moduleIdx))) {
-      // Is Reciever ID Unique
-      if (isModuleModelIndexAvailable(moduleIdx)) {
-        new ds::FormRow(this, "", [&](Window* slot) {
-          idUnique = new StaticText(slot, rect_t{}, "");
-          idUnique->textColor(COLOR_THEME_WARNING_INDEX, ETX_STATE_UNIQUE_ID_WARN);
-          updateIDStaticText(moduleIdx);
-        });
-      }
-
       // Receiver: a variable set of controls (ID, and — when available — Bind /
       // Range / Options) flowed and wrapped after the label.
       new ds::FieldGroup(this, STR_RECEIVER, [&](Window* box) {
@@ -335,6 +326,17 @@ class ModuleWindow : public Window
   #endif
       }
       });  // Receiver ds::FieldGroup
+
+      // Receiver ID uniqueness: annotates the ID field above, not a control
+      // of its own. ds::Caption attaches with the same inter-row gap as any
+      // other row but doesn't force the 40 px touch floor, so it reads as
+      // the field's own status line instead of a second, mostly-empty row
+      // that inflates the gap to the next field.
+      if (isModuleModelIndexAvailable(moduleIdx)) {
+        idUnique = (new ds::Caption(this, ""))->text();
+        idUnique->textColor(COLOR_THEME_WARNING_INDEX, ETX_STATE_UNIQUE_ID_WARN);
+        updateIDStaticText(moduleIdx);
+      }
     }
   #if defined(PXX2)
     else if (isModuleRFAccess(moduleIdx)) {

@@ -144,6 +144,27 @@ SectionHeader::SectionHeader(Window* parent, const char* text) :
 }
 
 // ---------------------------------------------------------------------------
+// Caption
+// ---------------------------------------------------------------------------
+
+Caption::Caption(Window* parent, const char* text) :
+    Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
+{
+  withLive([&](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_style_pad_left(obj, kSpace3, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(obj, kSpace3, LV_PART_MAIN);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+  });
+  text_ = new StaticText(this, rect_t{0, 0, LV_PCT(100), 0}, text ? text : "",
+                         COLOR_THEME_SECONDARY1_INDEX);
+  text_->withLive([](Window::LiveWindow& live) {
+    lv_obj_set_height(live.lvobj(), LV_SIZE_CONTENT);
+    lv_obj_clear_flag(live.lvobj(), LV_OBJ_FLAG_CLICKABLE);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // RowContent
 // ---------------------------------------------------------------------------
 
