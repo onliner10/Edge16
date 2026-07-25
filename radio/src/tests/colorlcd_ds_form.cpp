@@ -196,6 +196,34 @@ lv_coord_t gapBetween(const Box& above, const Box& below)
   return lv_coord_t(below.y1 - (above.y1 + above.h));
 }
 
+// Hosts a FormRow and a FieldRow each carrying one control built at the
+// STANDARD control height (EdgeTxStyles::UI_ELEMENT_HEIGHT, 32 px) -- what a
+// ToggleSwitch/Choice/NumberEdit actually is -- so the touch floor can be
+// measured against the real production geometry rather than a zero-size stub.
+class TouchFloorDialog : public BaseDialog
+{
+ public:
+  Window* formCtrl = nullptr;
+  Window* fieldCtrl = nullptr;
+
+  explicit TouchFloorDialog(lv_coord_t ctrlH) : BaseDialog("TouchFloor", false)
+  {
+    form.with([&](Window& f) {
+      auto* list = new (std::nothrow) ds::List(&f);
+      auto* card = new (std::nothrow) ds::Card(list);
+      new (std::nothrow) ds::FormRow(card, "Toggle", [&](Window* s) {
+        formCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 52, ctrlH});
+      });
+      new (std::nothrow) ds::FieldRow(
+          card, {{"A",
+                  [&](Window* s) {
+                    fieldCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 52, ctrlH});
+                  }},
+                 {"B", [](Window* s) { new Window(s, rect_t{}); }}});
+    });
+  }
+};
+
 }  // namespace
 
 // ds::FieldGroup flows a VARIABLE number of controls left-to-right after its
@@ -402,6 +430,55 @@ TEST(DesignSystemForm, FieldRowHighlightTogglesActiveState)
   dlg->rowA->highlightField(0, false);
   EXPECT_FALSE(lv_obj_has_state(label0, LV_STATE_CHECKED))
       << "highlightField(false) did not clear the active state";
+
+  dlg->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
+// The DS promises a 40 px / 8 mm touch floor, but a FormRow/FieldRow sets
+// NO_FOCUS on itself -- the CONTROL is the tap target, and the standard control
+// height is 32 px. Reserving 40 px of row space around a 32 px control does not
+// make the control tappable to the floor; only its click box does. Assert the
+// effective touch box (drawn box + ext_click_area) clears the floor in both
+// containers, for a control built at the standard control height.
+TEST(DesignSystemForm, FormControlsMeetTheTouchFloor)
+{
+  const lv_coord_t floor = ds::rowHeight(ds::RowSize::OneLine);
+  const lv_coord_t ctrlH = EdgeTxStyles::UI_ELEMENT_HEIGHT;
+  ASSERT_LT(ctrlH, floor) << "premise: the standard control is under the floor";
+
+  auto* dlg = new (std::nothrow) TouchFloorDialog(ctrlH);
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ASSERT_NE(dlg->formCtrl, nullptr);
+  ASSERT_NE(dlg->fieldCtrl, nullptr);
+  settleAndLayout(dlg);
+
+  // Measure through lv_obj_get_click_area -- the exact area LVGL's own
+  // lv_obj_hit_test() consults -- rather than the drawn coords, so the test
+  // asserts what a finger can actually reach.
+  auto hitBox = [](Window* w) -> Box {
+    Box b;
+    if (!w) return b;
+    w->withLive([&](Window::LiveWindow& live) {
+      lv_area_t a;
+      lv_obj_get_click_area(live.lvobj(), &a);
+      b = {a.x1, a.y1, lv_coord_t(a.x2 - a.x1 + 1), lv_coord_t(a.y2 - a.y1 + 1)};
+    });
+    return b;
+  };
+
+  Box form = hitBox(dlg->formCtrl);
+  EXPECT_GE(form.h, floor) << "FormRow control hit box is " << form.h
+                           << " px tall, under the " << floor << " px floor";
+  EXPECT_GE(form.w, floor) << "FormRow control hit box is " << form.w
+                           << " px wide, under the " << floor << " px floor";
+
+  Box field = hitBox(dlg->fieldCtrl);
+  EXPECT_GE(field.h, floor) << "FieldRow control hit box is " << field.h
+                            << " px tall, under the " << floor << " px floor";
+  EXPECT_GE(field.w, floor) << "FieldRow control hit box is " << field.w
+                            << " px wide, under the " << floor << " px floor";
 
   dlg->deleteLater();
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();

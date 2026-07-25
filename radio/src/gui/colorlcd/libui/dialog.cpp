@@ -219,6 +219,14 @@ void ConfirmDialog::onCancel()
   if (cancelHandler) cancelHandler();
 }
 
+void confirmDestructive(const char* title, const char* object,
+                        std::function<void(void)> onConfirm)
+{
+  new (std::nothrow) ConfirmDialog(title, object, std::move(onConfirm),
+                                   /*cancelHandler=*/nullptr,
+                                   /*destructive=*/true);
+}
+
 //-----------------------------------------------------------------------------
 
 LabelDialog::LabelDialog(const char *label, int length, const char* title,

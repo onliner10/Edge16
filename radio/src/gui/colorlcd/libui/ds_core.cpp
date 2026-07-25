@@ -343,6 +343,26 @@ namespace {
 const lv_coord_t kFormCols[] = {LV_GRID_FR(2), LV_GRID_FR(3),
                                 LV_GRID_TEMPLATE_LAST};
 const lv_coord_t kFormRows[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
+
+// In a FormRow/FieldCell the CONTROL is the tap target -- the row sets NO_FOCUS
+// on itself so the label area is inert. But the standard control height is
+// EdgeTxStyles::UI_ELEMENT_HEIGHT (32 px), below the kTouchMin 8 mm floor, so
+// every toggle, choice and number field in a settings form was a sub-floor
+// target while the row around it merely *reserved* 40 px of space.
+//
+// The fix grows the control's CLICK box, not its drawn size: inflating the
+// widget itself would make every switch and dropdown visibly taller than the
+// design calls for, for a reason that has nothing to do with how it should
+// look. The expansion is exactly what closes the gap -- (40 - 32) / 2 = 4 px a
+// side -- which means it stops precisely at the row's own 40 px min-height and
+// can never bleed into the neighbouring row (rows are kSpace2 = 8 px apart).
+// Controls already at or above the floor are unaffected in practice: the extra
+// 4 px still lands inside the row that reserved the space for them.
+void expandControlToTouchFloor(lv_obj_t* obj)
+{
+  constexpr coord_t pad = (kTouchMin - EdgeTxStyles::UI_ELEMENT_HEIGHT) / 2;
+  if (pad > 0) lv_obj_set_ext_click_area(obj, pad);
+}
 }  // namespace
 
 FormRow::FormRow(Window* parent, const char* label,
@@ -387,6 +407,7 @@ bool FormRow::addChild(Window* child)
   child->withLive([](Window::LiveWindow& live) {
     lv_obj_set_grid_cell(live.lvobj(), LV_GRID_ALIGN_START, 1, 1,
                          LV_GRID_ALIGN_CENTER, 0, 1);
+    expandControlToTouchFloor(live.lvobj());
   });
   return true;
 }
@@ -454,6 +475,7 @@ class FieldCell : public Window
       lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 1, LV_GRID_ALIGN_CENTER,
                            0, 1);
       lv_obj_set_style_min_width(obj, kTouchMin, LV_PART_MAIN);
+      expandControlToTouchFloor(obj);
     });
     return true;
   }

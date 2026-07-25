@@ -105,7 +105,16 @@ void hapticQueue::event(uint8_t e)
 #endif
     if (e <= AU_ERROR)
       play(15, 3, PLAY_NOW);
-    else if (e <= AU_MIX_WARNING_3)
+    else if (e < AU_SPECIAL_SOUND_FIRST)
+      // Everything from AU_WARNING1 up to (but not including) the selectable
+      // special-sound palette buzzes the same way. This bound used to be
+      // AU_MIX_WARNING_3, which left a silent dead zone over the events that
+      // were appended after it -- AU_TIMER1/2/3_ELAPSED and, worst,
+      // AU_MODEL_ARMED / AU_MODEL_DISARMED. Arming is the moment the props can
+      // spin, and it was the one transition in the firmware that could never
+      // produce a buzz at any hapticMode setting. Bounding on the palette
+      // instead of on whatever happened to be last means future additions
+      // land inside the range by default rather than silently outside it.
       play(15, 3, PLAY_NOW);
     else if (e >= AU_SPECIAL_SOUND_LAST && empty()) {
       play(30, 10, 0);

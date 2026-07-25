@@ -116,6 +116,27 @@ class ConfirmDialog : public ds::Dialog
   void onCancel() override;
 };
 
+// The one way to gate an irreversible change to stored data.
+//
+// It exists because `destructive` is an optional trailing parameter of
+// ConfirmDialog, four arguments deep -- which means the DEFAULT for a raw
+// `new ConfirmDialog(title, msg, handler)` is the non-destructive styling, and
+// every site that forgets the flag silently presents an irreversible choice as
+// the visually-preferred one. Deleting a model and duplicating a model then
+// render as the same dialog, which trains the pilot to tap YES on both.
+//
+// Call this instead and the styling cannot be forgotten:
+//
+//   confirmDestructive(STR_DELETE, sensorName, [=]() { deleteSensor(idx); });
+//
+// `title`  the action, reusing the same string the menu item that led here
+//          used, so the dialog reads as a continuation of the tap.
+// `object` WHAT is at risk, named -- the model/sensor/file/line, not a
+//          restatement of the title. A confirm that cannot say what it is about
+//          to destroy is not worth showing.
+void confirmDestructive(const char* title, const char* object,
+                        std::function<void(void)> onConfirm);
+
 //-----------------------------------------------------------------------------
 
 class LabelDialog : public ModalWindow

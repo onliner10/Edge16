@@ -168,6 +168,19 @@ void FullScreenDialog::closeDialog()
 
 bool FullScreenDialog::onLiveLongPress(Window::LiveWindow&)
 {
+  // A long-press anywhere on the dialog dismisses it -- but ONLY when there is
+  // nothing to consent to. closeDialog() runs confirmHandler, so on a
+  // WARNING_TYPE_CONFIRM dialog this gesture used to count as "yes": the pilot
+  // long-presses a list row to open its context menu, taps a destructive item,
+  // and the confirm that appears is then accepted by the very next long-press
+  // -- and long-press is the app's universal "open the menu" reflex, so the
+  // second one comes naturally. Consent for an irreversible action has to be a
+  // deliberate press of the button that says what it does; here a long-press is
+  // simply swallowed and the dialog stays up.
+  if (type == WARNING_TYPE_CONFIRM) {
+    lv_indev_wait_release(lv_indev_get_act());
+    return false;
+  }
   closeDialog();
   lv_indev_wait_release(lv_indev_get_act());
   return false;
@@ -217,6 +230,38 @@ bool fullScreenDialogMessageLabelCreateFailureFailsClosedForTest()
             !dialog->automationClickable();
   delete dialog;
   return ok;
+}
+
+// A long-press on a CONFIRM dialog must NOT count as consent: the dialog stays
+// up and the confirm handler never runs.
+bool fullScreenConfirmIgnoresLongPressForTest()
+{
+  bool confirmed = false;
+  auto* dialog = new (std::nothrow)
+      FullScreenDialog(WARNING_TYPE_CONFIRM, "Confirm", "Message", "",
+                       [&confirmed]() { confirmed = true; });
+  if (!dialog) return false;
+
+  dialog->onLongPress();
+  const bool ok = !confirmed && dialog->isAvailable();
+  delete dialog;
+  return ok;
+}
+
+// ...while the same gesture on a plain ALERT still closes it -- long-press to
+// get rid of a notice is a real convenience and must not be lost. Observed via
+// the close handler firing, which is what closeDialog() does and what the
+// CONFIRM case must NOT do.
+bool fullScreenAlertStillDismissesOnLongPressForTest()
+{
+  bool closed = false;
+  auto* dialog = new (std::nothrow)
+      FullScreenDialog(WARNING_TYPE_ALERT, "Alert", "Message", STR_OK,
+                       [&closed]() { closed = true; });
+  if (!dialog) return false;
+
+  dialog->onLongPress();
+  return closed;
 }
 #endif
 
