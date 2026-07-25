@@ -1105,9 +1105,11 @@ void ModelTelemetryPage::build(Window* window)
     critAlarm->setEditTitle(STR_ROLLER_RF_CRITICAL_ALARM);
   });
 
-  new ds::FormRow(window, STR_DISABLE_ALARM, [=](Window* slot) {
+  // disableTelemetryWarning is stored negatively (1 = alarms disabled);
+  // invert so the switch reads ON when telemetry alarms are enabled.
+  new ds::FormRow(window, STR_TELEMETRY_ALARMS, [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{},
-                     GET_SET_DEFAULT(g_model.disableTelemetryWarning));
+                     GET_SET_INVERTED(g_model.disableTelemetryWarning));
   });
 
   // Vario

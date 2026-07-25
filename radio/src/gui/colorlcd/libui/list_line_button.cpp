@@ -611,7 +611,9 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
       char s[] = " ";
       s[0] = '0' + i;
       if (fm_modes & (1 << i)) {
-        label_dsc.color = lv_color_make(0x7f, 0x7f, 0x7f);
+        // Excluded from this line's flight modes: muted ink, same
+        // SECONDARY1 role as the icon's default (unchecked) recolour above.
+        label_dsc.color = makeLvColor(COLOR_THEME_SECONDARY1);
       } else {
         lv_area_t rect_area;
         rect_area.x1 = x;
@@ -619,7 +621,10 @@ void InputMixButtonBase::setFlightModes(uint16_t modes)
         rect_area.x2 = x + FM_W - 1;
         rect_area.y2 = PAD_THREE - 1;
         lv_draw_rect(&canvas_layer, &rect_dsc, &rect_area);
-        label_dsc.color = lv_color_white();
+        // Included: emphasised ink over the filled box, same PRIMARY1 role
+        // as the icon's checked recolour above -- not a fixed white, so it
+        // stays legible on every theme.
+        label_dsc.color = makeLvColor(COLOR_THEME_PRIMARY1);
       }
       lv_area_t text_area;
       text_area.x1 = x;

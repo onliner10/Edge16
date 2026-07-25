@@ -24,6 +24,7 @@
 #include "button_matrix.h"
 #include "channel_bar.h"
 #include "choice.h"
+#include "dialog.h"
 #include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
@@ -477,8 +478,11 @@ ModelUSBJoystickPage::ModelUSBJoystickPage(Route route) : Page(ICON_MODEL_USB, r
         Menu* menu = new Menu();
         menu->addLine(STR_EDIT, [=]() { editChannel(ch, btn); });
         menu->addLine(STR_CLEAR, [=]() {
-          memset(cch, 0, sizeof(USBJoystickChData));
-          SET_DIRTY();
+          std::string s(getSourceString(MIXSRC_FIRST_CH + ch));
+          confirmDestructive(STR_CLEAR, s.c_str(), [=]() {
+            memset(cch, 0, sizeof(USBJoystickChData));
+            SET_DIRTY();
+          });
         });
       }
       return 0;

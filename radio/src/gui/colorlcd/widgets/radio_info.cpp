@@ -55,11 +55,7 @@ coord_t clampCoord(coord_t value, coord_t low, coord_t high)
 
 FontIndex textFontForBox(const char* text, coord_t width, coord_t height)
 {
-  static const FontIndex candidates[] = {
-      FONT_XXL_INDEX,  FONT_LXL_INDEX, FONT_XL_INDEX, FONT_L_INDEX,
-      FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
-
-  for (auto font : candidates) {
+  for (auto font : kAutoFitFontLadder) {
     LcdFlags flags = LcdFlags(font) << 8u;
     if (getFontHeight(flags) <= height &&
         getTextWidth(text, 0, flags) <= width) {

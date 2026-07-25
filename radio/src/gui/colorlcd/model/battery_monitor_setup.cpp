@@ -287,7 +287,7 @@ void BatteryMonitorPage::build()
   auto* list = new ds::List(body);
   auto* form = new ds::Card(list);
 
-  new ds::FormRow(form, "Enabled", [=](Window* slot) {
+  new ds::FormRow(form, STR_ENABLE, [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{}, GET_DEFAULT(config->enabled),
                       [=](int32_t newValue) {
                         config->enabled = newValue;
@@ -299,7 +299,7 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  new ds::FormRow(form, "Voltage Alert", [=](Window* slot) {
+  new ds::FormRow(form, STR_VOLTAGE_ALERT, [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->voltAlertEnabled),
                       [=](int32_t newValue) {
@@ -309,7 +309,7 @@ void BatteryMonitorPage::build()
                       });
   });
 
-  new ds::FormRow(form, "Capacity Alert", [=](Window* slot) {
+  new ds::FormRow(form, STR_CAPACITY_ALERT, [=](Window* slot) {
     new ToggleSwitch(slot, rect_t{},
                      GET_DEFAULT(config->capAlertEnabled),
                       [=](int32_t newValue) {

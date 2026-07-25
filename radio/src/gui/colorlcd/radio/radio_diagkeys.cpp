@@ -236,7 +236,7 @@ class RadioKeyDiagsWindow : public Window
 void RadioKeyDiagsPage::buildHeader(Window *window)
 {
   header->setTitle(STR_HARDWARE);
-  header->setTitle2(STR_MENU_RADIO_SWITCHES);
+  header->setTitle2(STR_KEYS_BTN);
 }
 
 void RadioKeyDiagsPage::buildBody(Window *window)
@@ -245,7 +245,7 @@ void RadioKeyDiagsPage::buildBody(Window *window)
   new RadioKeyDiagsWindow(window, {0, 0, window->width(), window->height()});
 }
 
-RadioKeyDiagsPage::RadioKeyDiagsPage(Route route) : Page(ICON_MODEL_SETUP, route)
+RadioKeyDiagsPage::RadioKeyDiagsPage(Route route) : Page(ICON_RADIO_HARDWARE, route)
 {
   buildHeader(header);
   buildBody(body);

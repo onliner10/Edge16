@@ -25,6 +25,7 @@
 #include <new>
 
 #include "color_picker.h"
+#include "dialog.h"  // confirmDestructive
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "layout.h"
@@ -272,24 +273,31 @@ void ScreenSetupPage::build(Window* window)
     line = window->newLine(grid);
     Window* btn =
         new (std::nothrow) TextButton(line, rect_t{}, STR_REMOVE_SCREEN, [=]() -> uint8_t {
-          // Remove this screen from the model
-          g_model.removeScreenLayout(customScreenIndex);
+          // Removing a screen deletes every widget placed on it too, so name
+          // which one. The page already carries its own localized title
+          // (STR_MAIN_VIEW_n, via the PageDef that created it) -- use that
+          // rather than rebuilding "Screen N" from an untranslated literal.
+          const std::string screenName = getTitle();
+          confirmDestructive(STR_REMOVE_SCREEN, screenName.c_str(), [=]() {
+            // Remove this screen from the model
+            g_model.removeScreenLayout(customScreenIndex);
 
-          window->deferWindowMutation(
-              [=](Window& liveWindow, UiMutationToken& token) {
-                LayoutFactory::replaceCustomScreens(token);
+            window->deferWindowMutation(
+                [=](Window& liveWindow, UiMutationToken& token) {
+                  LayoutFactory::replaceCustomScreens(token);
 
-                // adjust index if last screen deleted
-                if (customScreens[customScreenIndex] == nullptr) customScreenIndex -= 1;
+                  // adjust index if last screen deleted
+                  if (customScreens[customScreenIndex] == nullptr) customScreenIndex -= 1;
 
-                PageGroup* menu = (PageGroup*)liveWindow.getParent();
-                // Reset to setup page to ensure screen properly updates.
-                menu->setCurrentTab(QuickMenu::pageIndex(QM_UI_SETUP));
-                // Reset to original (or adjusted screen)
-                menu->setCurrentTab(QuickMenu::pageIndex((QMPage)(QM_UI_SCREEN1 + customScreenIndex)));
+                  PageGroup* menu = (PageGroup*)liveWindow.getParent();
+                  // Reset to setup page to ensure screen properly updates.
+                  menu->setCurrentTab(QuickMenu::pageIndex(QM_UI_SETUP));
+                  // Reset to original (or adjusted screen)
+                  menu->setCurrentTab(QuickMenu::pageIndex((QMPage)(QM_UI_SCREEN1 + customScreenIndex)));
 
-                storageDirty(EE_MODEL);
-              });
+                  storageDirty(EE_MODEL);
+                });
+          });
           return 0;
     });
     if (btn) {

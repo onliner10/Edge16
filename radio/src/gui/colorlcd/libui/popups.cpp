@@ -45,12 +45,12 @@ static void _run_popup_dialog(const char* title, const char* msg,
 
 void POPUP_INFORMATION(const char* message)
 {
-  _run_popup_dialog("Message", message);
+  _run_popup_dialog(STR_INFORMATION, message);
 }
 
 void POPUP_WARNING(const char* message, const char* info)
 {
-  _run_popup_dialog("Warning", message, info);
+  _run_popup_dialog(STR_WARNING, message, info);
 }
 
 static const char* ui_popup_title = nullptr;
@@ -72,7 +72,7 @@ bool POPUP_WARNING_ON_UI_TASK(const char* message, const char* info)
   // if already in a popup, ignore call
   if (ui_popup_active) return false;
 
-  ui_popup_title = "Warning";
+  ui_popup_title = STR_WARNING;
   ui_popup_msg = message;
   ui_popup_info = info;
   ui_popup_active = true;

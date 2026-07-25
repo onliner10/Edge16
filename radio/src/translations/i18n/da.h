@@ -636,6 +636,7 @@
 #define TR_TIMER_LABEL                 "Tid"
 #define TR_THROTTLE_PERCENT_LABEL      "Gas %"
 #define TR_BATT_LABEL                  "Batteri"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 #define TR_MENUTORESET                 TR_ENTER " for nulstil"
 #define TR_PPM_TRAINER                 "TR"
@@ -685,6 +686,7 @@
 #define TR_MULTI_OPTION                TR("Tilvalg", "Tilvalg værdi")
 #define TR_MULTI_AUTOBIND              TR("Tilslut ka.", "Tilslut kanal")
 #define TR_DISABLE_CH_MAP              TR("% ka. kort", "Deaktiver kanal kort")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Akt. AETR", "Aktiver AETR")
 #define TR_DISABLE_TELEM               TR("% Telem.", "Deaktiver telemetri")
 #define TR_MULTI_LOWPOWER              TR("Lav strøm", "Lav strøm tilstand")
@@ -726,6 +728,9 @@
 #define TR_BATT_CALIB                  TR("Bat. kalib", "Batteri kalibering")
 #define TR_CURRENT_CALIB               "Aktuel kalib"
 #define TR_VOLTAGE                     TR("Spænding", "Spænding kilde")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "Vælg model"
 #define TR_MODELS                      "Modeller"
 #define TR_SELECT_MODE                 "Vælg tilstand"
@@ -796,6 +801,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Spectrum (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT       "Spectrum (INT)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SD kort fuldt"
@@ -805,6 +811,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "Inkompatibel"
 #define TR_WARNING                     "ADVARSEL"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "LAGER"
 #define TR_THROTTLE_UPPERCASE          "GAS"
 #define TR_ALARMSWARN                  "ALARMER"
@@ -961,6 +968,9 @@
 #define TR_EXTERNAL_MODULE             TR("Ext. module", "Eksternt modul")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTX kræver opgradering"
 #define TR_TELEMETRY_DISABLED          "Telem. deaktiveret"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "Flere tilvalg mulige"
 #define TR_NO_MODULE_INFORMATION       "Ingen modul information"
 #define TR_EXTERNALRF                  "Ekstern RF"
@@ -1082,6 +1092,7 @@
 #define TR_LOWALARM                    "Lav alarm"
 #define TR_CRITICALALARM               "Kritisk alarm"
 #define TR_DISABLE_ALARM               TR("Afkobl alarmer", "Afkobl telemetri alarmer")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "Popup"
 #define TR_MIN                         "Min"
 #define TR_MAX                         "Max"
@@ -1156,6 +1167,7 @@
 #define TR_SLIDERS_TRIMS             "Skyder+Trim"
 #define TR_SLIDERS                   "Skydere"
 #define TR_FLIGHT_MODE               "Flyve tilstand"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Ugyldig fil"
 #define TR_TIMER_SOURCE              "Tidtagning kilde"
 #define TR_SIZE                      "Størrelse"

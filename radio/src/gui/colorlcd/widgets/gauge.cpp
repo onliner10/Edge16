@@ -197,11 +197,9 @@ class GaugeWidget : public NativeWidget
     valueOverlay.with([&](lv_obj_t* obj) {
       setObjVisible(obj, stackCard);
       if (!stackCard) return;
-      static constexpr FontIndex valueFonts[] = {
-          FONT_XXL_INDEX, FONT_LXL_INDEX, FONT_XL_INDEX,   FONT_L_INDEX,
-          FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
-      FontIndex valueFont = fitTextFont("100%", content.w, barH, valueFonts,
-                                        DIM(valueFonts));
+      FontIndex valueFont = fitTextFont("100%", content.w, barH,
+                                        kAutoFitFontLadder,
+                                        DIM(kAutoFitFontLadder));
       coord_t valueH = getFontHeight(LcdFlags(valueFont) << 8u);
       coord_t valueY = barH > valueH ? (barH - valueH) / 2 : 0;
       etx_font(obj, valueFont);

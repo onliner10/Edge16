@@ -272,11 +272,13 @@ struct MPMAutobind : public ds::FormRow {
 
 struct MPMChannelMap : public ds::FormRow {
   MPMChannelMap(Window* form, uint8_t moduleIdx) :
-      ds::FormRow(form, STR_DISABLE_CH_MAP)
+      ds::FormRow(form, STR_CHANNEL_MAP)
   {
     auto md = &g_model.moduleData[moduleIdx];
+    // disableMapping is stored negatively (1 = mapping disabled); invert so
+    // the switch reads ON when channel mapping is enabled.
     cb = new ToggleSwitch(this, rect_t{},
-                          GET_SET_DEFAULT(md->multi.disableMapping));
+                          GET_SET_INVERTED(md->multi.disableMapping));
   }
 
   void update(const MultiRfProtocols::RfProto* rfProto)
@@ -335,10 +337,11 @@ MultimoduleSettings::MultimoduleSettings(Window* parent,
   });
 
 #if defined(MANUFACTURER_FRSKY)
-  // Disable telemetry
-  new ds::FormRow(this, STR_DISABLE_TELEM, [=](Window* slot) {
+  // Telemetry: disableTelemetry is stored negatively (1 = telemetry
+  // disabled); invert so the switch reads ON when telemetry is enabled.
+  new ds::FormRow(this, STR_MULTI_TELEMETRY, [=](Window* slot) {
     disable_telem = new ToggleSwitch(
-        slot, rect_t{}, GET_SET_DEFAULT(md->multi.disableTelemetry));
+        slot, rect_t{}, GET_SET_INVERTED(md->multi.disableTelemetry));
   });
 #endif
 

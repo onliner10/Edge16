@@ -109,6 +109,11 @@ void GVarNumberEdit::switchGVarMode()
 #endif
 }
 
+void GVarNumberEdit::setSuffix(const std::string& value)
+{
+  if (num_field) num_field->setSuffix(value);
+}
+
 void GVarNumberEdit::update()
 {
   bool has_focus = act_field && act_field->hasFocus();

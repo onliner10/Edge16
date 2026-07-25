@@ -21,6 +21,7 @@
 
 #include "model_mixer_scripts.h"
 
+#include "dialog.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
 #include "filechoice.h"
@@ -311,11 +312,18 @@ void ModelMixerScriptsPage::build(Window* window, int8_t focusIdx)
 
       if (runtimeData != nullptr) {
         menu->addLine(STR_DELETE, [=]() {
-          clearStruct(*sd);
-          clearStruct(*sio);
-          LUA_LOAD_MODEL_SCRIPTS();
-          storageDirty(EE_MODEL);
-          rebuild(window, idx);
+          // Name the script by its filename (present whenever runtimeData
+          // is non-null, i.e. the slot is in use); fall back to the
+          // "LUA<n>" slot label for the unlikely case it's somehow empty.
+          std::string s = sd->file[0] ? stringFromNtString(sd->file)
+                                      : "LUA" + std::to_string(idx + 1);
+          confirmDestructive(STR_DELETE, s.c_str(), [=]() {
+            clearStruct(*sd);
+            clearStruct(*sio);
+            LUA_LOAD_MODEL_SCRIPTS();
+            storageDirty(EE_MODEL);
+            rebuild(window, idx);
+          });
         });
         return 0;
       }

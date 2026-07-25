@@ -647,6 +647,7 @@
 #define TR_TIMER_LABEL                "타이머"
 #define TR_THROTTLE_PERCENT_LABEL     "스로틀 %"
 #define TR_BATT_LABEL                 "배터리"
+#define TR_SHARED_ALL_MODELS          "Used by any model"
 #define TR_SESSION                    "세션"
 #define TR_MENUTORESET                TR_ENTER " -> 초기화"
 #define TR_PPM_TRAINER                "TR"
@@ -704,6 +705,7 @@
 #define TR_MULTI_OPTION                 TR("옵션", "옵션 값")
 #define TR_MULTI_AUTOBIND               TR("바인드 채널", "채널에서 자동 바인딩")
 #define TR_DISABLE_CH_MAP               TR("채널 매핑 없음", "채널 매핑 비활성화")
+#define TR_CHANNEL_MAP                     "Channel Map"
 #define TR_DSMP_ENABLE_AETR             TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM                TR("텔레메트리 없음", "텔레메트리 비활성화")
 #define TR_MULTI_LOWPOWER               TR("저전력", "저전력 모드")
@@ -749,6 +751,9 @@
 #define TR_BATT_CALIB                   TR("배터리 보정", "배터리 전압 보정")
 #define TR_CURRENT_CALIB                "전류 보정"
 #define TR_VOLTAGE                      TR("전압", "전압 소스")
+#define TR_VOLTAGE_ALERT                   "Voltage Alert"
+#define TR_CAPACITY_ALERT                  "Capacity Alert"
+#define TR_CAPACITY                        "Capacity"
 #define TR_SELECT_MODEL                 "모델 선택"
 #define TR_MODELS                       "모델"
 #define TR_SELECT_MODE                  "모드 선택"
@@ -822,6 +827,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT          "스펙트럼 분석 (외부)"
 #define TR_SPECTRUM_ANALYSER_INT          "스펙트럼 분석 (내부)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                    "SD 카드가 가득 찼습니다"
@@ -833,6 +839,7 @@
 #define TR_INT_MULTI_SPEC                 "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                   "호환되지 않음"
 #define TR_WARNING                        "경고"
+#define TR_INFORMATION                    "Information"
 #define TR_STORAGE_WARNING                "저장소"
 #define TR_THROTTLE_UPPERCASE             "스로틀"
 #define TR_ALARMSWARN                     "알람"
@@ -998,6 +1005,9 @@
 #define TR_EXTERNAL_MODULE                TR("외장 모듈", "외부 RF 모듈")
 #define TR_EDGETX_UPGRADE_REQUIRED        "EdgeTX 업그레이드 필요"
 #define TR_TELEMETRY_DISABLED             "텔레메트리 비활성화됨"
+#define TR_TELEMETRY_25MW                 "25mw Tele"
+#define TR_PWM_RATE_667MS                 "6.67ms PWM"
+#define TR_PWM_RATE_7MS                   "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE         "추가 옵션 사용 가능"
 #define TR_NO_MODULE_INFORMATION          "모듈 정보 없음"
 #define TR_EXTERNALRF                     "외장 RF"
@@ -1125,6 +1135,7 @@
 #define TR_LOWALARM                       "저전압 경고"
 #define TR_CRITICALALARM                  "위험 경고"
 #define TR_DISABLE_ALARM                  TR("경고 끄기", "텔레메트리 경고 끄기")
+#define TR_TELEMETRY_ALARMS                  "Telemetry Alarms"
 #define TR_POPUP                          "팝업"
 #define TR_MIN                            "최소"
 #define TR_MAX                            "최대"
@@ -1201,6 +1212,7 @@
 #define TR_SLIDERS_TRIMS                "슬라이더 + 트림"
 #define TR_SLIDERS                      "슬라이더"
 #define TR_FLIGHT_MODE                  "비행 모드"
+#define TR_ALL_FLIGHT_MODES             "All flight modes"
 #define TR_INVALID_FILE                 "잘못된 파일"
 #define TR_TIMER_SOURCE                 "타이머 소스"
 #define TR_SIZE                         "크기"

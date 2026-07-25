@@ -849,7 +849,8 @@ void RxOptions::update()
 
     // PWM rate
     new ds::FormRow(&formWindow,
-                    isModuleR9MAccess(moduleIdx) ? "6.67ms PWM" : "7ms PWM",
+                    isModuleR9MAccess(moduleIdx) ? STR_PWM_RATE_667MS
+                                                  : STR_PWM_RATE_7MS,
                     [&](Window* slot) {
       new ToggleSwitch(
           slot, rect_t{},
@@ -863,17 +864,19 @@ void RxOptions::update()
           });
     });
 
-    // telemetry disabled
-    new ds::FormRow(&formWindow, STR_TELEMETRY_DISABLED, [&](Window* slot) {
+    // telemetry: receiverSettings.telemetryDisabled is stored negatively
+    // (1 = telemetry disabled); invert so the switch reads ON when
+    // telemetry is enabled.
+    new ds::FormRow(&formWindow, STR_MULTI_TELEMETRY, [&](Window* slot) {
       auto tele25mw = new ToggleSwitch(
           slot, rect_t{},
           []() {
             auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            return hwSettings.receiverSettings.telemetryDisabled;
+            return !hwSettings.receiverSettings.telemetryDisabled;
           },
           [](int val) {
             auto& hwSettings = getPXX2HardwareAndSettingsBuffer();
-            hwSettings.receiverSettings.telemetryDisabled = val;
+            hwSettings.receiverSettings.telemetryDisabled = !val;
           });
 
       if (isModuleR9MAccess(moduleIdx) && rxVariant == PXX2_VARIANT_EU &&
@@ -885,7 +888,7 @@ void RxOptions::update()
 
     if (capabilities & (1 << RECEIVER_CAPABILITY_TELEMETRY_25MW)) {
       // telemetry 25 mW
-      new ds::FormRow(&formWindow, "25mw Tele", [&](Window* slot) {
+      new ds::FormRow(&formWindow, STR_TELEMETRY_25MW, [&](Window* slot) {
         new ToggleSwitch(
             slot, rect_t{},
             []() {

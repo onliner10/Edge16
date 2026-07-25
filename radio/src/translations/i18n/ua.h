@@ -633,6 +633,7 @@
 #define TR_TIMER_LABEL                 "Таймер"
 #define TR_THROTTLE_PERCENT_LABEL      "Газ %"
 #define TR_BATT_LABEL                  "Battery"		/* use english */
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Сесія"
 #define TR_MENUTORESET                 TR_ENTER " для скидання"
 #define TR_PPM_TRAINER                 "TR"		/* use english */
@@ -681,6 +682,7 @@
 #define TR_MULTI_OPTION                TR("Опція", "Значення опції")
 #define TR_MULTI_AUTOBIND              TR("Прив'язка до кан.", "Прив'язка до каналу")
 #define TR_DISABLE_CH_MAP              TR("Викл. карту каналів", "Виключити карту каналів")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("Викл. телеметрії", "Виключити телеметрію")
 #define TR_MULTI_LOWPOWER              TR("Низька потужн.", "Режим низької потужності")
@@ -722,6 +724,9 @@
 #define TR_BATT_CALIB                  TR("Калібр.акум", "Калібрування акумулятора")
 #define TR_CURRENT_CALIB               "Калібровка струму"
 #define TR_VOLTAGE                     TR("Напруга", "Джерело напруги")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "Оберіть модель"
 #define TR_MODELS                      "Моделі"
 #define TR_SELECT_MODE                 "Оберіть режим"
@@ -792,6 +797,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Спектр (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT       "Спектр (INT)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SD карта повна"
@@ -801,6 +807,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"				/*need to be clarified by context*/
 #define TR_INCOMPATIBLE                "Несумісне"
 #define TR_WARNING                     "ПОПЕРЕДЖ."
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "СХОВИЩЕ"
 #define TR_THROTTLE_UPPERCASE          "ГАЗ"
 #define TR_ALARMSWARN                  "АВАРІЇ"
@@ -957,6 +964,9 @@
 #define TR_EXTERNAL_MODULE             TR("Зовн. модуль", "Зовнішній модуль")
 #define TR_EDGETX_UPGRADE_REQUIRED     "Потрібне оновлення EdgeTX"
 #define TR_TELEMETRY_DISABLED          "Телем. вимкнуто"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "Доступні додаткові опції"
 #define TR_NO_MODULE_INFORMATION       "Інформація по модулю відсутня"
 #define TR_EXTERNALRF                  "Зовнішній RF"
@@ -1078,6 +1088,7 @@
 #define TR_LOWALARM                    "Некритична аварія"
 #define TR_CRITICALALARM               "Критична аварія"
 #define TR_DISABLE_ALARM               TR("Вимкнути аварії", "Вимкнути аварії телеметрії")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "Всплив."
 #define TR_MIN                         "Min"
 #define TR_MAX                         "Max"
@@ -1152,6 +1163,7 @@
 #define TR_SLIDERS_TRIMS             "Повзунки+трими"
 #define TR_SLIDERS                   "Повзунки"
 #define TR_FLIGHT_MODE               "Режим польоту"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Невірний файл"
 #define TR_TIMER_SOURCE              "Джерело таймеру"
 #define TR_SIZE                      "Розмір"

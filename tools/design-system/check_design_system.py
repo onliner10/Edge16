@@ -45,6 +45,7 @@ ALLOWLIST_PREFIXES = (
 SOURCE_SUFFIXES = {".cpp", ".h"}
 
 FORBIDDEN = [
+    # --- spacing & position (ratcheted to 0) ---
     ("raw-pad", re.compile(r"lv_obj_set_style_pad\w*\s*\(")),
     ("raw-margin", re.compile(r"lv_obj_set_style_margin\w*\s*\(")),
     ("raw-pos", re.compile(r"lv_obj_set_pos\s*\(")),
@@ -53,6 +54,25 @@ FORBIDDEN = [
         r"\bPAD_(ZERO|TINY|SMALL|MEDIUM|LARGE|THREE|SCROLL|TABLE_V|TABLE_H|OUTLINE|BORDER)\b")),
     ("adhoc-scaled-const", re.compile(r"\bLAYOUT_(VAL|SIZE|ORIENTATION)\w*\s*\(")),
     ("layout-scale", re.compile(r"\bLAYOUT_SCALE\s*\(")),
+
+    # --- geometry & appearance -------------------------------------------
+    # Spacing was only ever half the story. A screen that can't set padding
+    # but CAN hand-compute a widget's size, align it by hand, or pick its own
+    # border and background is still deciding its own layout and its own
+    # colors -- the two things the DS and the theme token palette exist to
+    # own. These went untracked, so ~200 such calls accumulated invisibly in
+    # screen code while the spacing ratchet read a clean zero.
+    #
+    # They start at a recorded baseline rather than zero: the point is that
+    # they can now only go DOWN, and that a NEW screen cannot introduce one
+    # without either cleaning up elsewhere or writing a `ds-allow` reason
+    # that is itself counted and ratcheted.
+    ("raw-size", re.compile(r"lv_obj_set_(size|width|height)\s*\(")),
+    ("raw-align", re.compile(r"lv_obj_align(_to)?\s*\(")),
+    ("raw-border", re.compile(r"lv_obj_set_style_border_\w*\s*\(")),
+    ("raw-color", re.compile(
+        r"lv_obj_set_style_(bg_color|bg_opa|text_color)\s*\(|"
+        r"\blv_color_(hex|make|white|black)\s*\(")),
 ]
 
 ALLOW_RE = re.compile(r"//\s*ds-allow:\s*\S")

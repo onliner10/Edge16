@@ -32,6 +32,7 @@
 #define STR_ALIGN_LABEL currentLangStrings->STR_ALIGN_LABEL
 #define STR_ALIGN_VALUE currentLangStrings->STR_ALIGN_VALUE
 #define STR_ALIGNMENT currentLangStrings->STR_ALIGNMENT
+#define STR_ALL_FLIGHT_MODES currentLangStrings->STR_ALL_FLIGHT_MODES
 #define STR_ANADIAGS_CALIB currentLangStrings->STR_ANADIAGS_CALIB
 #define STR_ANADIAGS_FILTRAWDEV currentLangStrings->STR_ANADIAGS_FILTRAWDEV
 #define STR_ANADIAGS_MINMAX currentLangStrings->STR_ANADIAGS_MINMAX
@@ -46,6 +47,7 @@
 #define STR_AUX_SERIAL_PORT_POWER currentLangStrings->STR_AUX_SERIAL_PORT_POWER
 #define STR_BACKLIGHT_TIMER currentLangStrings->STR_BACKLIGHT_TIMER
 #define STR_BATT_LABEL currentLangStrings->STR_BATT_LABEL
+#define STR_SHARED_ALL_MODELS currentLangStrings->STR_SHARED_ALL_MODELS
 #define STR_BG_COLOR currentLangStrings->STR_BG_COLOR
 #define STR_BLANK_MODEL_INFO currentLangStrings->STR_BLANK_MODEL_INFO
 #define STR_BLANK_MODEL currentLangStrings->STR_BLANK_MODEL
@@ -83,6 +85,7 @@
 #define STR_FLASH_DEVICE currentLangStrings->STR_FLASH_DEVICE
 #define STR_FLIGHT_MODE currentLangStrings->STR_FLIGHT_MODE
 #define STR_GHOST_MODULE_CONFIG currentLangStrings->STR_GHOST_MODULE_CONFIG
+#define STR_RAW_12BITS currentLangStrings->STR_RAW_12BITS
 #define STR_GREEN currentLangStrings->STR_GREEN
 #define STR_GPS_FIX_NO currentLangStrings->STR_GPS_FIX_NO
 #define STR_GPS_FIX_YES currentLangStrings->STR_GPS_FIX_YES
@@ -522,7 +525,9 @@
 #define STR_DEVICE_WRONG_REQUEST currentLangStrings->STR_DEVICE_WRONG_REQUEST
 #define STR_DIGITAL_SERVO currentLangStrings->STR_DIGITAL_SERVO
 #define STR_DISABLE_ALARM currentLangStrings->STR_DISABLE_ALARM
+#define STR_TELEMETRY_ALARMS currentLangStrings->STR_TELEMETRY_ALARMS
 #define STR_DISABLE_CH_MAP currentLangStrings->STR_DISABLE_CH_MAP
+#define STR_CHANNEL_MAP currentLangStrings->STR_CHANNEL_MAP
 #define STR_DISABLE_INTERNAL currentLangStrings->STR_DISABLE_INTERNAL
 #define STR_DISABLE_TELEM currentLangStrings->STR_DISABLE_TELEM
 #define STR_DISCOVER_SENSORS currentLangStrings->STR_DISCOVER_SENSORS
@@ -987,6 +992,9 @@
 #define STR_SWITCHWARNING currentLangStrings->STR_SWITCHWARNING
 #define STR_SYNC currentLangStrings->STR_SYNC
 #define STR_TELEMETRY_DISABLED currentLangStrings->STR_TELEMETRY_DISABLED
+#define STR_TELEMETRY_25MW currentLangStrings->STR_TELEMETRY_25MW
+#define STR_PWM_RATE_667MS currentLangStrings->STR_PWM_RATE_667MS
+#define STR_PWM_RATE_7MS currentLangStrings->STR_PWM_RATE_7MS
 #define STR_TELEMETRY_NEWSENSOR currentLangStrings->STR_TELEMETRY_NEWSENSOR
 #define STR_TELEMETRY_SENSORS currentLangStrings->STR_TELEMETRY_SENSORS
 #define STR_TELEMETRY_TYPE currentLangStrings->STR_TELEMETRY_TYPE
@@ -1078,6 +1086,9 @@
 #define STR_VOICE_TAIWANESE currentLangStrings->STR_VOICE_TAIWANESE
 #define STR_VOICE_UKRAINIAN currentLangStrings->STR_VOICE_UKRAINIAN
 #define STR_VOLTAGE currentLangStrings->STR_VOLTAGE
+#define STR_VOLTAGE_ALERT currentLangStrings->STR_VOLTAGE_ALERT
+#define STR_CAPACITY_ALERT currentLangStrings->STR_CAPACITY_ALERT
+#define STR_CAPACITY currentLangStrings->STR_CAPACITY
 #define STR_VOLUME currentLangStrings->STR_VOLUME
 #define STR_VTRIM currentLangStrings->STR_VTRIM
 #define STR_WAITING_FOR_MODULE currentLangStrings->STR_WAITING_FOR_MODULE
@@ -1089,6 +1100,7 @@
 #define STR_WARN_MULTI_LOWPOWER currentLangStrings->STR_WARN_MULTI_LOWPOWER
 #define STR_WARN_RTC_BATTERY_LOW currentLangStrings->STR_WARN_RTC_BATTERY_LOW
 #define STR_WARNING currentLangStrings->STR_WARNING
+#define STR_INFORMATION currentLangStrings->STR_INFORMATION
 #define STR_WAV_VOLUME currentLangStrings->STR_WAV_VOLUME
 #define STR_WEIGHT currentLangStrings->STR_WEIGHT
 #define STR_WIDGET_FULLSCREEN currentLangStrings->STR_WIDGET_FULLSCREEN

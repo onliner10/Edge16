@@ -1,6 +1,36 @@
 {
   "comment": "Design-system guard ratchet. Counts may only go DOWN. See DESIGN_SYSTEM.md.",
-  "files": {},
+  "files": {
+    "colors.cpp": 1,
+    "controls/channel_bar.cpp": 3,
+    "controls/color_editor.cpp": 1,
+    "controls/color_list.cpp": 3,
+    "controls/color_picker.cpp": 2,
+    "controls/curve.cpp": 1,
+    "controls/sourcechoice.cpp": 1,
+    "controls/switchchoice.cpp": 1,
+    "controls/widget_palette.cpp": 1,
+    "layouts/layout1x6.cpp": 2,
+    "layouts/layout2x4.cpp": 4,
+    "lv_conf.h": 1,
+    "mainview/sliders.cpp": 2,
+    "mainview/trims.cpp": 2,
+    "mainview/view_main.cpp": 1,
+    "mainview/widget.cpp": 25,
+    "model/curveedit.cpp": 1,
+    "model/model_inputs_quicktune.cpp": 41,
+    "radio/radio_tools.cpp": 1,
+    "setup_menus/pagegroup.cpp": 9,
+    "standalone_lua.cpp": 4,
+    "themes/theme_manager.cpp": 4,
+    "widgets/battery_monitor_widget.cpp": 32,
+    "widgets/gauge.cpp": 10,
+    "widgets/outputs.cpp": 11,
+    "widgets/radio_info.cpp": 22,
+    "widgets/text.cpp": 2,
+    "widgets/timer.cpp": 7,
+    "widgets/value.cpp": 11
+  },
   "suppressions": {
     "boot_menu.cpp": 46,
     "controls/channel_bar.cpp": 11,
@@ -123,5 +153,5 @@
     "widgets/timer.cpp": 26,
     "widgets/value.cpp": 11
   },
-  "total": 0
+  "total": 206
 }

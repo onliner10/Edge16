@@ -22,6 +22,7 @@
 #include "special_functions.h"
 
 #include "choice.h"
+#include "dialog.h"
 #include "filechoice.h"
 #include "getset_helpers.h"
 #include "hal/adc_driver.h"
@@ -990,23 +991,41 @@ void FunctionsPage::build(Window* window)
         }
         if (isActive) {
           menu->addLine(STR_CLEAR, [=]() {
-            if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
-            memset(cfn, 0, sizeof(CustomFunctionData));
-            SET_DIRTY();
-            rebuild(window);
+            // Name the slot the same way its row does (SF<n>/GF<n> -
+            // <function label>). CLEAR empties this slot in place (function
+            // -> none, slot stays at index i) -- distinct from DELETE just
+            // below, which removes the slot and shifts later functions up.
+            // The dialog title (CLEAR vs DELETE) plus this object string
+            // together make it unambiguous which one was tapped.
+            std::string s = prefix + std::to_string(i + 1);
+            s += " - ";
+            s += funcGetLabel(CFN_FUNC(cfn));
+            confirmDestructive(STR_CLEAR, s.c_str(), [=]() {
+              if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
+              memset(cfn, 0, sizeof(CustomFunctionData));
+              SET_DIRTY();
+              rebuild(window);
+            });
           });
         }
         for (int j = i; j < MAX_SPECIAL_FUNCTIONS; j++) {
           if (!customFunctionData(j)->isEmpty()) {
             menu->addLine(STR_DELETE, [=]() {
-              if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
-              memmove(
-                  cfn, cfn + 1,
-                  (MAX_SPECIAL_FUNCTIONS - i - 1) * sizeof(CustomFunctionData));
-              memset(customFunctionData(MAX_SPECIAL_FUNCTIONS - 1), 0,
-                     sizeof(CustomFunctionData));
-              SET_DIRTY();
-              rebuild(window);
+              // Same naming as CLEAR above, for slot i -- DELETE removes
+              // this slot and shifts every later function up by one.
+              std::string s = prefix + std::to_string(i + 1);
+              s += " - ";
+              s += funcGetLabel(CFN_FUNC(cfn));
+              confirmDestructive(STR_DELETE, s.c_str(), [=]() {
+                if (CFN_FUNC(cfn) == FUNC_PLAY_SCRIPT) LUA_LOAD_MODEL_SCRIPTS();
+                memmove(
+                    cfn, cfn + 1,
+                    (MAX_SPECIAL_FUNCTIONS - i - 1) * sizeof(CustomFunctionData));
+                memset(customFunctionData(MAX_SPECIAL_FUNCTIONS - 1), 0,
+                       sizeof(CustomFunctionData));
+                SET_DIRTY();
+                rebuild(window);
+              });
             });
             break;
           }

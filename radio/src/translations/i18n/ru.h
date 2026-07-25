@@ -634,6 +634,7 @@
 #define TR_TIMER_LABEL                 "Таймер"
 #define TR_THROTTLE_PERCENT_LABEL      "Газ %"
 #define TR_BATT_LABEL                  "АКБ"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Сесия"
 #define TR_MENUTORESET                 TR_ENTER " Для сброса"
 #define TR_PPM_TRAINER                 "TR"
@@ -682,6 +683,7 @@
 #define TR_MULTI_OPTION                TR("Опция", "Знач опции")
 #define TR_MULTI_AUTOBIND              TR("Прив к кан", "Прив к кан")
 #define TR_DISABLE_CH_MAP              TR("Откл карту кан", "Откл карту кан")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("Без телеметрии", "Откл телем")
 #define TR_MULTI_LOWPOWER              TR("Низк потребл", "Низк потребл")
@@ -723,6 +725,9 @@
 #define TR_BATT_CALIB                  TR("Калибр АКБ", "Калибр АКБ")
 #define TR_CURRENT_CALIB               "Калибр тока"
 #define TR_VOLTAGE                     TR("Напряжение", "Напряжение")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "Выбор модели"
 #define TR_MODELS                      "Модели"
 #define TR_SELECT_MODE                 "Выбрать модель"
@@ -793,6 +798,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Спек анализ (Внеш)"
 #define TR_SPECTRUM_ANALYSER_INT       "Спек анализ (Внут)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SD карта заполнена"
@@ -802,6 +808,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "Несовмес"
 #define TR_WARNING                     "ВНИМАНИЕ"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "ПАМЯТЬ"
 #define TR_THROTTLE_UPPERCASE          "Газ"
 #define TR_ALARMSWARN                  "СИГНАЛЫ"
@@ -958,6 +965,9 @@
 #define TR_EXTERNAL_MODULE             TR("Внеш. Модуль", "Внеш Модуль")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTX требуется обновл"
 #define TR_TELEMETRY_DISABLED          "Телем. откл"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "Доступно больше опций"
 #define TR_NO_MODULE_INFORMATION       "Нет инфо о модуле"
 #define TR_EXTERNALRF                  "Внеш TX"
@@ -1079,6 +1089,7 @@
 #define TR_LOWALARM                    "Низкий сигнал"
 #define TR_CRITICALALARM               "Критич сигнал"
 #define TR_DISABLE_ALARM               TR("Откл сигналы", "Откл сигналы")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "Всплыв"
 #define TR_MIN                         "Мин"
 #define TR_MAX                         "Макс"
@@ -1153,6 +1164,7 @@
 #define TR_SLIDERS_TRIMS             "Тумблеры+Трим"
 #define TR_SLIDERS                   "Тумблеры"
 #define TR_FLIGHT_MODE               "Режим полета"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Недопустимый файл"
 #define TR_TIMER_SOURCE              "Источник таймера"
 #define TR_SIZE                      "Размер"

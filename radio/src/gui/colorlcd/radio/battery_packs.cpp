@@ -23,6 +23,7 @@
 
 #include "button.h"
 #include "choice.h"
+#include "dialog.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "numberedit.h"
@@ -201,7 +202,7 @@ BatteryPackEditBody::BatteryPackEditBody(BatteryPackEditWindow* page,
   cellsEdit->setEditTitle(STR_ROLLER_BATTERY_CELLS);
 
   auto capLine = newLine(grid);
-  new StaticText(capLine, rect_t{}, "Capacity");
+  new StaticText(capLine, rect_t{}, STR_CAPACITY);
   auto capEdit = new NumberEdit(capLine, rect_t{},
                                  MIN_BATTERY_PACK_CAPACITY_MAH, 30000,
                                  GET_DEFAULT(pack->capacity),
@@ -220,15 +221,25 @@ BatteryPackEditBody::BatteryPackEditBody(BatteryPackEditWindow* page,
 
   auto delLine = newLine(grid);
   new TextButton(delLine, rect_t{}, STR_DELETE, [=]() -> uint8_t {
-    invalidateFlightBatteryPackSlot(slot);
-    pack->active = 0;
-    uint16_t slotBit = (1u << slot);
-    for (uint8_t i = 0; i < MAX_BATTERY_MONITORS; i++) {
-      g_model.batteryMonitors[i].compatiblePackMask &= ~slotBit;
-    }
-    SET_DIRTY();
-    storageDirty(EE_MODEL);
-    page->deleteLater();
+    // Battery packs live in g_eeGeneral (radio-global), not per-model, so
+    // this pack may be in use by other models' battery monitors, not just
+    // the one currently open -- say so, since a deleted pack silently drops
+    // out of every monitor's compatible-pack mask.
+    char spec[64];
+    snprintf(spec, sizeof(spec), "%s %dS %dmAh - %s",
+             batteryTypeToString((BatteryType)pack->batteryType),
+             pack->cellCount, pack->capacity, STR_SHARED_ALL_MODELS);
+    confirmDestructive(STR_DELETE, spec, [=]() {
+      invalidateFlightBatteryPackSlot(slot);
+      pack->active = 0;
+      uint16_t slotBit = (1u << slot);
+      for (uint8_t i = 0; i < MAX_BATTERY_MONITORS; i++) {
+        g_model.batteryMonitors[i].compatiblePackMask &= ~slotBit;
+      }
+      SET_DIRTY();
+      storageDirty(EE_MODEL);
+      page->deleteLater();
+    });
     return 0;
   });
 #else

@@ -184,12 +184,26 @@ sub-floor target.
 **(c) CI guard.** `tools/design-system/check_design_system.py`:
 
 - Scans `radio/src/gui/colorlcd/**` **excluding the allowlisted DS layer**
-  (`libui/` — the only place raw styling may live) for forbidden patterns:
-  `lv_obj_set_style_pad*`, `lv_obj_set_style_margin*`, `lv_obj_set_pos(`,
-  `padAll/padTop/padBottom/padLeft/padRight(`, `PAD_ZERO/TINY/SMALL/MEDIUM/
-  LARGE/THREE/SCROLL/TABLE_*` tokens, `LAYOUT_VAL_SCALED`/`LAYOUT_SIZE*`/
-  `LAYOUT_ORIENTATION*` (new ad-hoc scaled constants), and `rect_t{` with a
-  nonzero literal origin (absolute positioning of content).
+  (`libui/` — the only place raw styling may live) for forbidden patterns, in
+  two categories:
+  - *spacing & position* — `lv_obj_set_style_pad*`, `lv_obj_set_style_margin*`,
+    `lv_obj_set_pos(`, `padAll/padTop/padBottom/padLeft/padRight(`,
+    `PAD_ZERO/TINY/SMALL/MEDIUM/LARGE/THREE/SCROLL/TABLE_*` tokens,
+    `LAYOUT_VAL_SCALED`/`LAYOUT_SIZE*`/`LAYOUT_ORIENTATION*` (new ad-hoc
+    scaled constants), and `rect_t{` with a nonzero literal origin (absolute
+    positioning of content). **Ratcheted to 0.**
+  - *geometry & appearance* — `lv_obj_set_size/width/height(`,
+    `lv_obj_align[_to](`, `lv_obj_set_style_border_*(`, and raw color
+    (`lv_obj_set_style_bg_color/bg_opa/text_color(`,
+    `lv_color_hex/make/white/black(`). Spacing was only ever half the story: a
+    screen that cannot set padding but can hand-compute a widget's size, align
+    it by hand, or pick its own border and background is still deciding its own
+    layout and its own colors — the two things the DS and the theme token
+    palette exist to own. Because this category went untracked, roughly 200
+    such calls accumulated in screen code while the spacing ratchet read a
+    clean zero. **Starts at a recorded baseline, not 0** — the point is that it
+    can now only go down, and a new screen cannot add one without either
+    cleaning up elsewhere or writing a counted `ds-allow` reason.
 - **Baseline ratchet** (`tools/design-system/ds_baseline.json`): per-file
   violation counts of the ~100 existing screens are recorded once. The build
   **fails** if any file's count rises above its baseline or a non-allowlisted

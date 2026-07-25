@@ -635,6 +635,7 @@
 #define TR_TIMER_LABEL                 "Časovač"
 #define TR_THROTTLE_PERCENT_LABEL      "Plyn %"
 #define TR_BATT_LABEL                  "Baterie"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Relace"
 
 #define TR_MENUTORESET                 TR_ENTER" >> Reset"
@@ -685,6 +686,7 @@
 #define TR_MULTI_OPTION                TR("Možnosti", "Hodnota")
 #define TR_MULTI_AUTOBIND              TR("Bind Ch.","Bind při zapnutí")
 #define TR_DISABLE_CH_MAP              TR("No Ch. map", "Vypnout mapování kanálů")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("No Telem", "Vypnout telemetrii")
 #define TR_MULTI_LOWPOWER              TR("Nízký výkon", "Režim nízkého výkonu")
@@ -720,6 +722,9 @@
 #define TR_BATT_CALIB                  "Kalib. bat."
 #define TR_CURRENT_CALIB               "+=\006Proud"
 #define TR_VOLTAGE                     "Napětí"
+#define TR_VOLTAGE_ALERT               "Voltage Alert"
+#define TR_CAPACITY_ALERT              "Capacity Alert"
+#define TR_CAPACITY                    "Capacity"
 #define TR_SELECT_MODEL                "Vyber model"
 #define TR_MODELS                      "Modely"
 #define TR_SELECT_MODE                 "Vybrat mód"
@@ -790,6 +795,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Spektální an. (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT       "Spektální an. (INT)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "Plná karta SD"
@@ -799,6 +805,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "Nekompatibilní"
 #define TR_WARNING                     "KONTROLA"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "ÚLOŽIŠTĚ"
 #define TR_THROTTLE_UPPERCASE          "PLYNU"
 #define TR_ALARMSWARN                  "ALARMU"
@@ -954,6 +961,9 @@
 #define TR_EXTERNAL_MODULE             "Externí modul"
 #define TR_EDGETX_UPGRADE_REQUIRED     TR("Aktualizujte EdgeTX", "Vyžadována aktualizace EdgeTX")
 #define TR_TELEMETRY_DISABLED          "Telem. zakázána"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      TR("Více možností", "Více dostupných možností")
 #define TR_NO_MODULE_INFORMATION       "Žádné info o modulu"
 #define TR_EXTERNALRF                  "Externí RF modul"
@@ -1080,6 +1090,7 @@
 #define TR_LOWALARM                    "Nízký Alarm"
 #define TR_CRITICALALARM               "Kritický Alarm"
 #define TR_DISABLE_ALARM               TR("Vypnout alarmy", "Vypnout alarmy telemetrie")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "Vyskočit"
 #define TR_MIN                         "Min"
 #define TR_MAX                         "Max"
@@ -1154,6 +1165,7 @@
 #define TR_SLIDERS_TRIMS             "Slidery+Trimy"
 #define TR_SLIDERS                   "Slidery"
 #define TR_FLIGHT_MODE               "Letový režim"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Neplatný soubor"
 #define TR_TIMER_SOURCE              "Časovač zdroj"
 #define TR_SIZE                      "Velikost"

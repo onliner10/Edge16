@@ -21,6 +21,7 @@
 
 #include "model_logical_switches.h"
 
+#include "dialog.h"
 #include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
@@ -176,7 +177,7 @@ class LogicalSwitchEditPage : public Page
           if (value < 0)
             return std::string("<<");
           else if (value == 0)
-            return std::string("--");
+            return std::string("---");
           else {
             return formatNumberAsString(lswTimerValue(cs->v2 + value), PREC1, 0,
                                         nullptr, "s");
@@ -624,9 +625,19 @@ void ModelLogicalSwitchesPage::build(Window* window)
             rebuild(window);
           });
         menu->addLine(STR_CLEAR, [=]() {
-          memset(ls, 0, sizeof(LogicalSwitchData));
-          storageDirty(EE_MODEL);
-          rebuild(window);
+          // Clearing a logical switch zeroes its whole struct (func ->
+          // LS_FUNC_NONE), i.e. it DELETES the switch -- any other logical
+          // switch/special function referencing it (by SWSRC index) silently
+          // breaks. Name it with its "L05"-style label plus its current
+          // function summary so the pilot can see exactly what disappears.
+          std::string s(getSwitchPositionName(SWSRC_FIRST_LOGICAL_SWITCH + i));
+          s += " - ";
+          s += STR_VCSWFUNC[ls->func];
+          confirmDestructive(STR_CLEAR, s.c_str(), [=]() {
+            memset(ls, 0, sizeof(LogicalSwitchData));
+            storageDirty(EE_MODEL);
+            rebuild(window);
+          });
         });
         return 0;
       };

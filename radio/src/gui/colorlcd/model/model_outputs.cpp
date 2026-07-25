@@ -134,12 +134,16 @@ class OutputLineButton : public ListLineButton
     revertVisible = output->revert;
     if (revertIcon) revertIcon->show(revertVisible);
 
+    // Matches the unit shown by the output editor (output_edit.cpp): "%" in
+    // the default percent mode, STR_US once ppmunit switches to raw µs.
+    const char* limitSuffix =
+        (g_eeGeneral.ppmunit == PPM_US) ? STR_US : "%";
     getValueOrGVarString(minText.data(), minText.size(), output->min, PREC1,
-                         nullptr, -LIMITS_MIN_MAX_OFFSET, true);
+                         limitSuffix, -LIMITS_MIN_MAX_OFFSET, true);
     getValueOrGVarString(maxText.data(), maxText.size(), output->max, PREC1,
-                         nullptr, +LIMITS_MIN_MAX_OFFSET, true);
+                         limitSuffix, +LIMITS_MIN_MAX_OFFSET, true);
     getValueOrGVarString(offsetText.data(), offsetText.size(), output->offset,
-                         PREC1, nullptr, 0, true);
+                         PREC1, limitSuffix, 0, true);
     snprintf(centerText.data(), centerText.size(), "%d%s",
              PPM_CENTER + output->ppmCenter,
              output->symetrical ? " =" : CHAR_DELTA);

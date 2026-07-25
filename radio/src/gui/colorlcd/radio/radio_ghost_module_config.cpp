@@ -113,7 +113,7 @@ RadioGhostModuleConfig::RadioGhostModuleConfig(uint8_t moduleIdx, Route route) :
 
 void RadioGhostModuleConfig::buildHeader(Window* window)
 {
-  header->setTitle("GHOST MODULE");
+  header->setTitle(STR_GHOST_MODULE_CONFIG);
 }
 
 void RadioGhostModuleConfig::buildBody(Window* window)

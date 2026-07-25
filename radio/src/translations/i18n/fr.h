@@ -636,6 +636,7 @@
 #define TR_TIMER_LABEL                 "Chrono"
 #define TR_THROTTLE_PERCENT_LABEL      "Gaz %"
 #define TR_BATT_LABEL                  "Batterie"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 
 #define TR_MENUTORESET                 TR_ENTER" pour RAZ"
@@ -685,6 +686,7 @@
 #define TR_MULTI_OPTION                TR("Option", "Option perso")
 #define TR_MULTI_AUTOBIND              TR("Bind voie", "Bind sur voie")
 #define TR_DISABLE_CH_MAP              TR("No Ch. map", "Désact. réorg. voies")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("Pas de Télém.", "Désact. Télémétrie")
 #define TR_MULTI_LOWPOWER              TR("Basse puis.", "Mode basse puiss.")
@@ -720,6 +722,9 @@
 #define TR_BATT_CALIB                  TR("Calib. batt", "Calib. batterie")
 #define TR_CURRENT_CALIB               "Calib. cour"
 #define TR_VOLTAGE                     TR("Tension","Source tension")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "Sélection Modèle"
 #define TR_MODELS                      "Modèles"
 #define TR_SELECT_MODE                 "Sélection mode"
@@ -790,6 +795,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       TR("Spectre (EXT)", "Analyseur Spectre (EXT)")
 #define TR_SPECTRUM_ANALYSER_INT       TR("Spectre (INT)", "Analyseur Spectre (INT)")
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SD carte pleine"
@@ -799,6 +805,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "Incompatible"
 #define TR_WARNING                     "ALERTE"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "STOCKAGE"
 #define TR_THROTTLE_UPPERCASE          "GAZ"
 #define TR_ALARMSWARN                  "SON"
@@ -954,6 +961,9 @@
 #define TR_EXTERNAL_MODULE             TR("Module ext.","Module externe")
 #define TR_EDGETX_UPGRADE_REQUIRED     "Màj EdgeTX nécessaire"
 #define TR_TELEMETRY_DISABLED          "Télém. désactivée"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "Autres options disponibles"
 #define TR_NO_MODULE_INFORMATION       "Pas d'info Module"
 #define TR_EXTERNALRF                  "HF externe"
@@ -1080,6 +1090,7 @@
 #define TR_LOWALARM                    "Alarme basse"
 #define TR_CRITICALALARM               "Alarme critique"
 #define TR_DISABLE_ALARM               TR("Désact. alarme", "Désact. alarme télém.")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "Popup"
 #define TR_MIN                         "Min"
 #define TR_MAX                         "Max"
@@ -1154,6 +1165,7 @@
 #define TR_SLIDERS_TRIMS             "Curseurs+Trims"
 #define TR_SLIDERS                   "Curseurs"
 #define TR_FLIGHT_MODE               "Mode de vol"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Fichier invalide"
 #define TR_TIMER_SOURCE              "Source Chrono"
 #define TR_SIZE                      "Taille"

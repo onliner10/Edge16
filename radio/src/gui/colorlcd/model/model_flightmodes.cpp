@@ -187,6 +187,7 @@ class FlightModeEdit : public Page
     new StaticText(line, rect_t{}, STR_FADEIN);
     auto* fadeInEdit = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeIn),
                    SET_VALUE(p_fm->fadeIn, newValue), PREC1);
+    fadeInEdit->setSuffix("s");
     fadeInEdit->setDirectKeyboard(false);
     fadeInEdit->setEditTitle(STR_ROLLER_FADE_IN);
 
@@ -195,6 +196,7 @@ class FlightModeEdit : public Page
     new StaticText(line, rect_t{}, STR_FADEOUT);
     auto* fadeOutEdit = new NumberEdit(line, rect_t{}, 0, DELAY_MAX, GET_DEFAULT(p_fm->fadeOut),
                    SET_VALUE(p_fm->fadeOut, newValue), PREC1);
+    fadeOutEdit->setSuffix("s");
     fadeOutEdit->setDirectKeyboard(false);
     fadeOutEdit->setEditTitle(STR_ROLLER_FADE_OUT);
 

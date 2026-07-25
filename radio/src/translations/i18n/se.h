@@ -637,6 +637,7 @@
 #define TR_TIMER_LABEL                  "Timer"
 #define TR_THROTTLE_PERCENT_LABEL       "Gas %"
 #define TR_BATT_LABEL                   "Batteri"
+#define TR_SHARED_ALL_MODELS            "Used by any model"
 #define TR_SESSION                      "Session"
 #define TR_MENUTORESET                  TR_ENTER " nollar"
 #define TR_PPM_TRAINER                  "TR"
@@ -685,6 +686,7 @@
 #define TR_MULTI_OPTION                 TR("Alternativ", "Alternativets värde")
 #define TR_MULTI_AUTOBIND               TR("Bind ka.","Parkoppla via kanal")
 #define TR_DISABLE_CH_MAP               TR("Mappa ej KA", "Inaktivera kanalmappning")
+#define TR_CHANNEL_MAP                     "Channel Map"
 #define TR_DSMP_ENABLE_AETR             TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM                TR("Ej telem.", "Inaktivera telemetri")
 #define TR_MULTI_LOWPOWER               TR("Låg effekt", "Lågeffektläge")
@@ -721,6 +723,9 @@
 #define TR_BATT_CALIB                   TR("Kalib. batt." ,"Kalibrera batteri")
 #define TR_CURRENT_CALIB                "Kalib. ström"
 #define TR_VOLTAGE                      "Volt"
+#define TR_VOLTAGE_ALERT                "Voltage Alert"
+#define TR_CAPACITY_ALERT               "Capacity Alert"
+#define TR_CAPACITY                     "Capacity"
 #define TR_SELECT_MODEL                 "Välj modell"
 #define TR_MODELS                       "Modeller"
 #define TR_SELECT_MODE                  "Välj läge"
@@ -791,6 +796,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT        "Spektrum (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT        "Spektrum (INT)"
 #define TR_GHOST_MODULE_CONFIG          "Konfig Ghostmodul"
+#define TR_RAW_12BITS                   "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR            "GPS modellokalisering"
 #define TR_REFRESH                      "Uppdatera"
 #define TR_SDCARD_FULL                  "SD-kortet fullt"
@@ -800,6 +806,7 @@
 #define TR_INT_MULTI_SPEC               "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                 "Inkompatibel"
 #define TR_WARNING                      "VARNING"
+#define TR_INFORMATION                  "Information"
 #define TR_STORAGE_WARNING              "LAGRINGS-"
 #define TR_THROTTLE_UPPERCASE           "GAS-"
 #define TR_ALARMSWARN                   "ALARM"
@@ -957,6 +964,9 @@
 #define TR_EXTERNAL_MODULE              TR("Ext. modul","Extern modul")
 #define TR_EDGETX_UPGRADE_REQUIRED      "EdgeTX behöver uppgraderas"
 #define TR_TELEMETRY_DISABLED           "Telem. inaktiverad"
+#define TR_TELEMETRY_25MW               "25mw Tele"
+#define TR_PWM_RATE_667MS               "6.67ms PWM"
+#define TR_PWM_RATE_7MS                 "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE       "Fler alternativ finns"
 #define TR_NO_MODULE_INFORMATION        "Modulinformation saknas"
 #define TR_EXTERNALRF                   "Extern radiomodul"
@@ -1085,6 +1095,7 @@
 #define TR_LOWALARM                     "Lågalarm"
 #define TR_CRITICALALARM                "Kritiskt alarm"
 #define TR_DISABLE_ALARM                TR("Inaktivera alarm", "Inaktivera telemetrialarm")
+#define TR_TELEMETRY_ALARMS                "Telemetry Alarms"
 #define TR_POPUP                        "Popup"
 #define TR_MIN                          "Min"
 #define TR_MAX                          "Max"
@@ -1162,6 +1173,7 @@
 #define TR_SLIDERS_TRIMS                "Reglage+Trimmar"
 #define TR_SLIDERS                      "Reglage"
 #define TR_FLIGHT_MODE                  "Flygläge"
+#define TR_ALL_FLIGHT_MODES             "All flight modes"
 #define TR_INVALID_FILE                 "Ogiltig fil"
 #define TR_TIMER_SOURCE                 "Timerkälla"
 #define TR_SIZE                         "Storlek"

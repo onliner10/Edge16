@@ -130,11 +130,18 @@ void OutputEditWindow::buildBody(Window *form)
   // wheel's additive split layout stays available; the custom display
   // handler is only installed for the µs unit, whose x128/25 scaling cannot
   // be represented by additive fine offsets (those fields keep the keypad).
-  auto usDisplayHandler = [](GVarNumberEdit* fld) {
-    if (g_eeGeneral.ppmunit != PPM_US) return;
-    fld->setDisplayHandler([](int value) {
-      return formatNumberAsString(value * 128 / 25, PREC1);
-    });
+  // Each mode gets its own unit suffix: "%" for the default percent
+  // formatting, STR_US baked into the µs display handler (a plain suffix
+  // would be ignored once a display handler takes over rendering).
+  auto applyLimitSuffix = [](GVarNumberEdit* fld) {
+    if (g_eeGeneral.ppmunit == PPM_US) {
+      fld->setDisplayHandler([](int value) {
+        return formatNumberAsString(value * 128 / 25, PREC1, 0, nullptr,
+                                    STR_US);
+      });
+    } else {
+      fld->setSuffix("%");
+    }
   };
 
   // Name | Offset
@@ -152,7 +159,7 @@ void OutputEditWindow::buildBody(Window *form)
           off->setFastStep(20);
           off->setAccelFactor(16);
           off->setEditTitle(STR_LIMITS_HEADERS_SUBTRIM);
-          usDisplayHandler(off);
+          applyLimitSuffix(off);
         }}});
 
   // Min | Max — the field labels light up (highlightField, see
@@ -169,7 +176,7 @@ void OutputEditWindow::buildBody(Window *form)
           minEdit->setFastStep(20);
           minEdit->setAccelFactor(16);
           minEdit->setEditTitle(STR_MIN);
-          usDisplayHandler(minEdit);
+          applyLimitSuffix(minEdit);
         }},
        {STR_MAX, [=](Window* slot) {
           maxEdit = new GVarNumberEdit(slot, 0, +limit,
@@ -179,7 +186,7 @@ void OutputEditWindow::buildBody(Window *form)
           maxEdit->setFastStep(20);
           maxEdit->setAccelFactor(16);
           maxEdit->setEditTitle(STR_MAX);
-          usDisplayHandler(maxEdit);
+          applyLimitSuffix(maxEdit);
         }}});
 
   // Inverted | Curve

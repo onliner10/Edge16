@@ -433,7 +433,7 @@ class ModuleWindow : public Window
     }
 
     if (isModuleGhost(moduleIdx)) {
-      new ds::FormRow(this, "Raw 12 bits", [&](Window* slot) {
+      new ds::FormRow(this, STR_RAW_12BITS, [&](Window* slot) {
         new ToggleSwitch(slot, rect_t{}, GET_SET_DEFAULT(md->ghost.raw12bits));
       });
     }

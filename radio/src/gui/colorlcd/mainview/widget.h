@@ -153,6 +153,17 @@ struct WidgetOption {
 
 //-----------------------------------------------------------------------------
 
+// Shared "shrink to fit" font ladder: try progressively smaller fonts until
+// one fits the available box. Used by Widget::responsiveTextFont(),
+// NativeWidget::fitCardStackValue(), the radio_info.cpp status widgets'
+// textFontForBox(), and GaugeWidget's stacked-card value font -- hoisted
+// here so a future change to the ladder can't silently diverge between
+// widgets. Contents/ordering are intentionally unchanged from the four
+// call sites this replaces.
+inline constexpr FontIndex kAutoFitFontLadder[] = {
+    FONT_XXL_INDEX,  FONT_LXL_INDEX, FONT_XL_INDEX, FONT_L_INDEX,
+    FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
+
 class Widget : public ButtonBase
 {
  public:

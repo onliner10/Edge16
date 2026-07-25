@@ -22,6 +22,7 @@
 #include "model_gvars.h"
 
 #include "choice.h"
+#include "dialog.h"
 #include "ds_core.h"
 #include "edgetx.h"
 #include "etx_lv_theme.h"
@@ -505,11 +506,20 @@ void ModelGVarsPage::build(Window* window)
       Menu* menu = new Menu();
       menu->addLine(STR_EDIT, [=]() { onEdit(); });
       menu->addLine(STR_CLEAR, [=]() {
-        for (auto& flightMode : g_model.flightModeData) {
-          flightMode.gvars[index] = 0;
-        }
-        storageDirty(EE_MODEL);
-        publishModelGVarsChanged();
+        // Clear zeroes this GVar in EVERY flight mode at once, not just the
+        // one currently shown/selected -- the object string must say so, or
+        // a pilot clearing what they think is one flight mode's value loses
+        // all MAX_FLIGHT_MODES of them.
+        std::string s(getGVarString(index));
+        s += " - ";
+        s += STR_ALL_FLIGHT_MODES;
+        confirmDestructive(STR_CLEAR, s.c_str(), [=]() {
+          for (auto& flightMode : g_model.flightModeData) {
+            flightMode.gvars[index] = 0;
+          }
+          storageDirty(EE_MODEL);
+          publishModelGVarsChanged();
+        });
       });
       return 0;
     };

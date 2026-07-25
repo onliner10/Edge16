@@ -631,6 +631,7 @@
 #define TR_TIMER_LABEL                 "Timer"
 #define TR_THROTTLE_PERCENT_LABEL      "油门 %"
 #define TR_BATT_LABEL                  "电池"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 #define TR_MENUTORESET                 TR_ENTER " to 重置"
 #define TR_PPM_TRAINER                 "TR"
@@ -680,6 +681,7 @@
 #define TR_MULTI_OPTION                TR("选项值", "选项值")
 #define TR_MULTI_AUTOBIND              TR("对频通道", "通道控制对频")
 #define TR_DISABLE_CH_MAP              TR("禁用通道映射", "禁用通道重映射")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("禁用回传", "禁用回传")
 #define TR_MULTI_LOWPOWER              TR("低功率", "低功率模式")
@@ -721,6 +723,9 @@
 #define TR_BATT_CALIB                  TR("电池校准", "电池电压校准")
 #define TR_CURRENT_CALIB               "电流校准"
 #define TR_VOLTAGE                     TR("电压源", "电压来源")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "选择模型"
 #define TR_MODELS                      "个模型"
 #define TR_SELECT_MODE                 "选择模式"
@@ -791,6 +796,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "频谱仪 (外置)"
 #define TR_SPECTRUM_ANALYSER_INT       "频谱仪 (内置)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "刷新"
 #define TR_SDCARD_FULL                 "SD卡已满"
@@ -800,6 +806,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "不兼容"
 #define TR_WARNING                     "警告"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "存储"
 #define TR_THROTTLE_UPPERCASE          "油门"
 #define TR_ALARMSWARN                  "警告"
@@ -956,6 +963,9 @@
 #define TR_EXTERNAL_MODULE             TR("外置发射", "外置发射")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTX需要升级"
 #define TR_TELEMETRY_DISABLED          "禁用回传"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "更多可用选项"
 #define TR_NO_MODULE_INFORMATION       "无模块信息"
 #define TR_EXTERNALRF                  "外置发射"
@@ -1077,6 +1087,7 @@
 #define TR_LOWALARM                    "信号弱报警"
 #define TR_CRITICALALARM               "信号极弱报警"
 #define TR_DISABLE_ALARM               TR("禁止回传报警", "禁止回传报警")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "弹窗提示"
 #define TR_MIN                         "最小"
 #define TR_MAX                         "最大"
@@ -1151,6 +1162,7 @@
 #define TR_SLIDERS_TRIMS             "滑块和微调"
 #define TR_SLIDERS                   "滑块"
 #define TR_FLIGHT_MODE               "飞行模式"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "无效的文件"
 #define TR_TIMER_SOURCE              "计时器选择"
 #define TR_SIZE                      "尺寸"

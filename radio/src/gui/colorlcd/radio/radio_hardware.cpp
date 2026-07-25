@@ -125,10 +125,16 @@ void RadioHardwarePage::build(Window* window)
   // sub-grids and nav-tile button groups below stay on their existing
   // hand-rolled layout (they are not settings-form lines).
   Window* list = new ds::List(window);
-  auto* form = new ds::Card(list);
+
+  // Battery range + calibration are a single topic; group them under one
+  // header and separate the unrelated clock/RF-timing/audio rows below.
+  // STR_BATT_LABEL, not STR_BATTERY: the latter is ALL CAPS ("BATTERY") and
+  // would be the only shouting section header on the page.
+  new ds::SectionHeader(list, STR_BATT_LABEL);
+  auto* battForm = new ds::Card(list);
 
   // Batt meter range - Range 3.0v to 16v
-  new ds::FormRow(form, STR_BATTERY_RANGE, [=](Window* slot) {
+  new ds::FormRow(battForm, STR_BATTERY_RANGE, [=](Window* slot) {
     auto* group = new Window(slot, rect_t{});
     group->setFlexLayout(LV_FLEX_FLOW_ROW);
 
@@ -156,9 +162,11 @@ void RadioHardwarePage::build(Window* window)
   });
 
   // Bat calibration
-  new ds::FormRow(form, STR_BATT_CALIB, [](Window* slot) {
+  new ds::FormRow(battForm, STR_BATT_CALIB, [](Window* slot) {
     new BatCalEdit(slot, {0, 0, EdgeTxStyles::EDIT_FLD_WIDTH_NARROW, 0});
   });
+
+  auto* form = new ds::Card(list);
 
   // RTC Batt check enable
   new ds::FormRow(form, STR_RTC_CHECK, [](Window* slot) {
@@ -189,21 +197,21 @@ void RadioHardwarePage::build(Window* window)
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: radio hardware — column gap for the module-config sub-grids on the hardware page; not a single DS FormRow control.
 
 #if defined(HARDWARE_INTERNAL_MODULE)
-  new Subtitle(window, STR_INTERNALRF);
+  new ds::SectionHeader(window, STR_INTERNALRF);
   new InternalModuleWindow(window, grid);
 #endif
 
 #if defined(HARDWARE_EXTERNAL_MODULE) && defined(STM32F4)
-  new Subtitle(window, STR_EXTERNALRF);
+  new ds::SectionHeader(window, STR_EXTERNALRF);
   new ExternalModuleWindow(window, grid);
 #endif
 
 #if defined(BLUETOOTH)
-  new Subtitle(window, STR_BLUETOOTH);
+  new ds::SectionHeader(window, STR_BLUETOOTH);
   new BluetoothConfigWindow(window, grid);
 #endif
 
-  new Subtitle(window, STR_AUX_SERIAL_MODE);
+  new ds::SectionHeader(window, STR_AUX_SERIAL_MODE);
   new SerialConfigWindow(window, grid);
 
   // Calibration

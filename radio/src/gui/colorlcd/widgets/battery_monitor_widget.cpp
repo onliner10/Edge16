@@ -250,20 +250,31 @@ class BatteryMonitorWidget : public NativeWidget
     snprintf(buf, len, "%d.%02u%s", cv / 100, (unsigned)(cv % 100), suffix);
   }
 
-  static lv_color_t fillColorForRemaining(uint8_t pct)
+  // State-aware token: was an independent red->orange->green gradient keyed
+  // off remainingPct with a fixed 50% midpoint, disconnected from the
+  // Warning/Critical bands the rest of the widget escalates on (configured
+  // via flightBatteryRemainingWarningLevel(): Normal >=36%, Warning 21-35%,
+  // Critical <=20%). E.g. at 45% remaining the pack is fully Normal by those
+  // bands, but the old gradient (pct < 50) mixed 90% of the way to red --
+  // painting a near-critical-looking bar for a battery that is fine. Mapped
+  // onto the same three WidgetStateLevel bands as
+  // percentLabel/statusPill/statusLabel/card cue so the fill always agrees
+  // with the rest of the card; Normal uses the Positive role (the "all
+  // good" green the old gradient's high end meant) rather than the neutral
+  // Default ink. What is lost: the smooth continuous colour ramp across
+  // 0..100% becomes a 3-step change at the pilot's configured thresholds --
+  // a deliberate trade, since a smooth ramp that can't agree with the real
+  // alarm bands is misleading, not informative.
+  static lv_color_t fillColorForRemaining(uint8_t level)
   {
-    if (pct > 100) pct = 100;
-
-    const lv_color_t red = lv_color_make(220, 45, 45);
-    const lv_color_t orange = lv_color_make(255, 160, 0);
-    const lv_color_t green = lv_color_make(40, 190, 70);
-
-    if (pct < 50) {
-      return lv_color_mix(orange, red, uint8_t(uint16_t(pct) * 255 / 50));
+    switch (level) {
+      case WIDGET_STATE_CRITICAL:
+        return paletteLvColor(PAL_CRITICAL);
+      case WIDGET_STATE_WARNING:
+        return paletteLvColor(PAL_WARNING);
+      default:
+        return paletteLvColor(PAL_POSITIVE);
     }
-
-    return lv_color_mix(green, orange,
-                        uint8_t(uint16_t(pct - 50) * 255 / 50));
   }
 
   void setVis(lv_obj_t* obj, bool vis) { setObjVisible(obj, vis); }
@@ -843,16 +854,16 @@ class BatteryMonitorWidget : public NativeWidget
     consumedLabel.with(
         [&](lv_obj_t* obj) { lv_label_set_text(obj, d.consumedStr); });
 
-    // Delta text + color
+    // Delta text + color. State-aware token: same Warning/Critical
+    // escalation as percentLabel below, driven by the cell-delta level
+    // (was COLOR_RED_INDEX -- a FIXED, non-theme colour -- for Critical
+    // sitting alongside the theme-token COLOR_THEME_WARNING_INDEX for
+    // Warning in the same conditional; both meant "delta severity", so both
+    // now come from the palette).
     deltaLabel.with([&](lv_obj_t* obj) {
       lv_label_set_text(obj, d.deltaStr);
-      if (d.deltaLevel == 2)
-        etx_txt_color(obj, COLOR_RED_INDEX);
-      else if (d.deltaLevel == 1)
-        etx_txt_color(obj, COLOR_THEME_WARNING_INDEX);
-      else
-        lv_obj_set_style_text_color(obj, lv_color_make(68, 92, 112),
-                                    LV_PART_MAIN);
+      lv_obj_set_style_text_color(obj, paletteStateTextColor(d.deltaLevel),
+                                  LV_PART_MAIN);
     });
 
     // Percent text (always update in case position changed)
@@ -875,25 +886,21 @@ class BatteryMonitorWidget : public NativeWidget
     // Redundant, non-colour structural cue on the whole card (border + tint).
     setCardStateCue(d.warningLevel);
 
+    // State-aware token: was three hand-rolled raw-RGB pastel fills; the same
+    // paletteStateCardTint() already used one line above (setCardStateCue)
+    // for the whole-card cue covers exactly this "status pill background"
+    // case.
     statusPill.with([&](lv_obj_t* obj) {
-      if (d.warningLevel == 2)
-        lv_obj_set_style_bg_color(obj, lv_color_make(255, 229, 229),
-                                  LV_PART_MAIN);
-      else if (d.warningLevel == 1)
-        lv_obj_set_style_bg_color(obj, lv_color_make(255, 238, 196),
-                                  LV_PART_MAIN);
-      else
-        lv_obj_set_style_bg_color(obj, lv_color_make(226, 238, 247),
-                                  LV_PART_MAIN);
+      lv_obj_set_style_bg_color(obj, paletteStateCardTint(d.warningLevel),
+                                LV_PART_MAIN);
     });
+    // State-aware token: same rationale as deltaLabel above -- was
+    // COLOR_RED_INDEX (fixed) for Critical next to COLOR_THEME_WARNING_INDEX
+    // (theme token) for Warning in the same conditional, both meaning "pack
+    // severity", now both palette-derived and consistent with percentLabel.
     statusLabel.with([&](lv_obj_t* obj) {
-      if (d.warningLevel == 2)
-        etx_txt_color(obj, COLOR_RED_INDEX);
-      else if (d.warningLevel == 1)
-        etx_txt_color(obj, COLOR_THEME_WARNING_INDEX);
-      else
-        lv_obj_set_style_text_color(obj, lv_color_make(24, 57, 84),
-                                    LV_PART_MAIN);
+      lv_obj_set_style_text_color(obj, paletteStateTextColor(d.warningLevel),
+                                  LV_PART_MAIN);
     });
 
     // Update bar only when data changes
@@ -913,7 +920,7 @@ class BatteryMonitorWidget : public NativeWidget
 
       fill.with([&](lv_obj_t* obj) {
         lv_obj_set_size(obj, fillW, barH);
-        lv_obj_set_style_bg_color(obj, fillColorForRemaining(d.remainingPct),
+        lv_obj_set_style_bg_color(obj, fillColorForRemaining(d.warningLevel),
                                   LV_PART_MAIN);
         lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
       });

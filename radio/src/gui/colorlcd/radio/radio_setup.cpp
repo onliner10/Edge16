@@ -355,7 +355,7 @@ const static SetupLineDef varioPageSetupLines[] = {
           SET_VALUE(g_eeGeneral.varioRepeat,
                     (newValue - VARIO_REPEAT_ZERO) / 10));
       edit->setStep(10);
-      edit->setSuffix("ms");
+      edit->setSuffix(STR_MS);
       edit->setDirectKeyboard(false);
       edit->setEditTitle(STR_ROLLER_VARIO_REPEAT);
     }

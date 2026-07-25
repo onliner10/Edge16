@@ -117,7 +117,7 @@ void RadioCustSwitchesDiagsPage::buildBody(Window *window)
 }
 
 RadioCustSwitchesDiagsPage::RadioCustSwitchesDiagsPage(Route route) :
-    Page(ICON_MODEL_SETUP, route)
+    Page(ICON_RADIO_HARDWARE, route)
 {
   buildHeader(header);
   buildBody(body);

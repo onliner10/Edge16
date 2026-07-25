@@ -602,40 +602,50 @@ class ModelsPageBody : public Window
                  sizeof(duplicatedFilename));
           if (findNextFileIndex(duplicatedFilename, LEN_MODEL_FILENAME,
                                 MODELS_PATH)) {
-            sdCopyFile(model->modelFilename, MODELS_PATH, duplicatedFilename,
-                       MODELS_PATH);
-            // Make a new model which is a copy of the selected one, set the
-            // same labels
-            auto new_model =
-                modelslist.addModel(duplicatedFilename, true, model);
-            if (new_model) {
-              // addModel() copied modelName verbatim from 'model' -- give
-              // the duplicate a name that's actually distinguishable from
-              // its source (see buildDuplicateModelName) and persist the
-              // rename into labels.yml right away, same as any other
-              // labels.yml-visible edit in this window.
-              std::string dupName = buildDuplicateModelName(
-                  model->modelName, [&](const char *candidate) {
-                    for (auto cell : modelslist) {
-                      if (cell != new_model &&
-                          !strcmp(cell->modelName, candidate))
-                        return true;
-                    }
-                    return false;
-                  });
-              char dupNameBuf[LEN_MODEL_NAME + 1];
-              strncpy(dupNameBuf, dupName.c_str(), LEN_MODEL_NAME);
-              dupNameBuf[LEN_MODEL_NAME] = '\0';
-              new_model->setModelName(dupNameBuf);
-              modelslabels.setDirty(true);
+            // sdCopyFile() returns nullptr on success, an already-localized
+            // error message otherwise -- a full SD card must not look like a
+            // successful duplicate. Skip addModel() on failure: the file was
+            // never actually written, so listing it would point at a model
+            // that doesn't exist on disk.
+            const char* error = sdCopyFile(model->modelFilename, MODELS_PATH,
+                                           duplicatedFilename, MODELS_PATH);
+            if (error) {
+              POPUP_WARNING(error, duplicatedFilename);
+            } else {
+              // Make a new model which is a copy of the selected one, set the
+              // same labels
+              auto new_model =
+                  modelslist.addModel(duplicatedFilename, true, model);
+              if (new_model) {
+                // addModel() copied modelName verbatim from 'model' -- give
+                // the duplicate a name that's actually distinguishable from
+                // its source (see buildDuplicateModelName) and persist the
+                // rename into labels.yml right away, same as any other
+                // labels.yml-visible edit in this window.
+                std::string dupName = buildDuplicateModelName(
+                    model->modelName, [&](const char *candidate) {
+                      for (auto cell : modelslist) {
+                        if (cell != new_model &&
+                            !strcmp(cell->modelName, candidate))
+                          return true;
+                      }
+                      return false;
+                    });
+                char dupNameBuf[LEN_MODEL_NAME + 1];
+                strncpy(dupNameBuf, dupName.c_str(), LEN_MODEL_NAME);
+                dupNameBuf[LEN_MODEL_NAME] = '\0';
+                new_model->setModelName(dupNameBuf);
+                modelslabels.setDirty(true);
 
-              for (const auto &lbl : modelslabels.getLabelsByModel(model)) {
-                modelslabels.addLabelToModel(lbl, new_model);
+                for (const auto &lbl : modelslabels.getLabelsByModel(model)) {
+                  modelslabels.addLabelToModel(lbl, new_model);
+                }
               }
+              update();
             }
-            update();
           } else {
             TRACE("ModelsListError: Invalid File");
+            POPUP_WARNING(STR_INVALID_FILE, model->modelName);
           }
         });
   }
@@ -709,13 +719,21 @@ class ModelsPageBody : public Window
           snprintf(templatePath, FF_MAX_LFN, "%s%c%s", persFolder, '/',
                    modelName);
           if (isFileAvailable(templatePath)) {
-            new ConfirmDialog(STR_FILE_EXISTS, STR_ASK_OVERWRITE, [=] {
-              sdCopyFile(model->modelFilename, MODELS_PATH, modelName,
-                         persFolder);
+            // Overwriting an existing template IS destroying data -- name the
+            // file that's about to be clobbered instead of the generic
+            // STR_ASK_OVERWRITE, which never said which one.
+            confirmDestructive(STR_FILE_EXISTS, modelName, [=] {
+              // sdCopyFile() returns nullptr on success, an already-localized
+              // error message (STR_SDCARD_ERROR / STR_NO_SDCARD) otherwise --
+              // a full SD card must not look like a successful save.
+              const char* error = sdCopyFile(model->modelFilename,
+                                             MODELS_PATH, modelName, persFolder);
+              if (error) POPUP_WARNING(error, modelName);
             });
           } else {
-            sdCopyFile(model->modelFilename, MODELS_PATH, modelName,
-                       persFolder);
+            const char* error = sdCopyFile(model->modelFilename, MODELS_PATH,
+                                           modelName, persFolder);
+            if (error) POPUP_WARNING(error, modelName);
           }
         });
   }
@@ -1136,7 +1154,7 @@ void ModelLabelsWindow::buildBody(Window *window)
         });
         menu->addLine(STR_DELETE_LABEL, [=]() {
           auto labelToDelete = labels[selected];
-          new ConfirmDialog(
+          confirmDestructive(
               STR_DELETE_LABEL, labelToDelete.c_str(), [=]() {
                 auto deldialog =
                     new ProgressDialog(STR_DELETE_LABEL, [=]() {});

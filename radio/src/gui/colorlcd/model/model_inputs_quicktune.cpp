@@ -28,6 +28,7 @@
 
 #include "button.h"
 #include "choice.h"
+#include "dialog.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "hal/rotary_encoder.h"
@@ -914,8 +915,13 @@ void ModelInputsPage::openOutputQuickMenu(uint8_t channel)
     edit->setCloseHandler([=]() { rebuildFromModel(); });
   });
   menu->addLine(STR_RESET, [=]() {
-    resetOutputLimits(channel);
-    rebuildFromModel();
+    // Wipes this channel's output min/max/offset/centre/curve in one tap --
+    // name the channel so the confirm reads as a continuation of the tap
+    // rather than a generic "Reset".
+    confirmDestructive(STR_RESET, quickOutputLabel(channel).c_str(), [=]() {
+      resetOutputLimits(channel);
+      rebuildFromModel();
+    });
   });
 }
 

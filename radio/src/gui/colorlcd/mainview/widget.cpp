@@ -216,14 +216,10 @@ static coord_t responsive_text_padding(coord_t height)
 
 FontIndex Widget::responsiveTextFont(coord_t height)
 {
-  static const FontIndex candidates[] = {
-      FONT_XXL_INDEX,  FONT_LXL_INDEX, FONT_XL_INDEX, FONT_L_INDEX,
-      FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
-
   coord_t pad = responsive_text_padding(height);
   coord_t contentHeight = height > 2 * pad ? height - 2 * pad : height;
 
-  for (auto font : candidates) {
+  for (auto font : kAutoFitFontLadder) {
     LcdFlags flags = LcdFlags(font) << 8u;
     if (getFontHeight(flags) <= contentHeight) {
       return font;
@@ -472,12 +468,9 @@ FontIndex NativeWidget::fitCardStackValue(const char* text, const rect_t& rect,
     titleH = usableH / 2;
   coord_t valueH = usableH > titleH ? usableH - titleH : 1;
 
-  static constexpr FontIndex valueFonts[] = {
-      FONT_XXL_INDEX, FONT_LXL_INDEX, FONT_XL_INDEX,   FONT_L_INDEX,
-      FONT_BOLD_INDEX, FONT_STD_INDEX, FONT_XS_INDEX, FONT_XXS_INDEX};
   if (!text || text[0] == '\0') text = "0000";
-  FontIndex valueFont =
-      fitTextFont(text, rect.w, valueH, valueFonts, DIM(valueFonts));
+  FontIndex valueFont = fitTextFont(text, rect.w, valueH, kAutoFitFontLadder,
+                                    DIM(kAutoFitFontLadder));
   coord_t valueFontH = getFontHeight(LcdFlags(valueFont) << 8u);
   coord_t valueY = titleH + gap;
   if (valueH > valueFontH) valueY += (valueH - valueFontH) / 2;

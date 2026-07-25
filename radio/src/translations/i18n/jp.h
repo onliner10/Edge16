@@ -631,6 +631,7 @@
 #define TR_TIMER_LABEL                 "Timer"
 #define TR_THROTTLE_PERCENT_LABEL      "Throttle %"
 #define TR_BATT_LABEL                  "Battery"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 #define TR_MENUTORESET                 TR_ENTER " リセット"
 #define TR_PPM_TRAINER                 "TR"
@@ -679,6 +680,7 @@
 #define TR_MULTI_OPTION                TR("Option", "オプション値")
 #define TR_MULTI_AUTOBIND              TR("Bind Ch.", "チャンネルバインド")
 #define TR_DISABLE_CH_MAP              TR("No Ch. map", "CHマップ無効")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("No Telem", "テレメトリー無効")
 #define TR_MULTI_LOWPOWER              TR("Low power", "低出力モード")
@@ -720,6 +722,9 @@
 #define TR_BATT_CALIB                  TR("Batt. calib", "バッテリー\nキャリブレーション")
 #define TR_CURRENT_CALIB               "現在のキャリブレーション"
 #define TR_VOLTAGE                     TR("Voltage", "電圧ソース")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "モデル選択"
 #define TR_MODELS                      "モデル"
 #define TR_SELECT_MODE                 "モード選択"
@@ -790,6 +795,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "スペクトラム\n(外部)"
 #define TR_SPECTRUM_ANALYSER_INT       "スペクトラム\n(内部)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SDカード空き容量なし"
@@ -799,6 +805,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "非対応"
 #define TR_WARNING                     "警告"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "ストレージ"
 #define TR_THROTTLE_UPPERCASE          "THROTTLE"
 #define TR_ALARMSWARN                  "アラーム"
@@ -955,6 +962,9 @@
 #define TR_EXTERNAL_MODULE             TR("Ext. module", "外部モジュール")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTXアップグレードが必要です"
 #define TR_TELEMETRY_DISABLED          "テレメトリー無効"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "その他のオプション"
 #define TR_NO_MODULE_INFORMATION       "モジュール情報なし"
 #define TR_EXTERNALRF                  "外部RFモジュール"
@@ -1076,6 +1086,7 @@
 #define TR_LOWALARM                    "微弱時のアラーム"
 #define TR_CRITICALALARM               "極微弱警告アラーム"
 #define TR_DISABLE_ALARM               TR("Disable alarms", "テレメトリーアラーム無効")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "ポップアップ"
 #define TR_MIN                         "最小"
 #define TR_MAX                         "最大"
@@ -1150,6 +1161,7 @@
 #define TR_SLIDERS_TRIMS             "スライダー＋トリム"
 #define TR_SLIDERS                   "スライダー"
 #define TR_FLIGHT_MODE               "飛行モード"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "無効なファイル"
 #define TR_TIMER_SOURCE              "タイマーソース"
 #define TR_SIZE                      "サイズ"

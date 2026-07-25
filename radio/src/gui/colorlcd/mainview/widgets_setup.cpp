@@ -22,6 +22,7 @@
 #include "widgets_setup.h"
 
 #include "libui/mru_list.h"
+#include "dialog.h"  // confirmDestructive
 #include "menu.h"
 #include "myeeprom.h"
 #include "storage/storage.h"
@@ -46,16 +47,20 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
     topBarSetupPage(topBarSetupPage),
     slot(WidgetSlotIndex{slotIndex})
 {
+  // Tap = primary action, long-press = context menu, everywhere (see
+  // RadioSdManagerPage::filePress()/fileAction() for the same rule applied
+  // to SD files). A widget with no options still owns Move Left/Move
+  // Right/Remove Widget, reachable only through openWidgetMenu() below -- a
+  // tap must never fall back to opening it.
   setPressHandler([this]() -> uint8_t {
     auto container = currentContainer();
     if (!container) return 0;
 
     auto widget = container->getWidget(this->slot.asUnsigned());
     if (widget) {
-      if (widget->hasOptions())
-        new (std::nothrow) WidgetSettings(widget);
-      else
-        openWidgetMenu();
+      if (widget->hasOptions()) new (std::nothrow) WidgetSettings(widget);
+      // else: no lightweight tap action for this widget -- do nothing,
+      // rather than opening the destructive menu on a tap.
     } else {
       addNewWidget();
     }
@@ -67,11 +72,10 @@ SetupWidgetsPageSlot::SetupWidgetsPageSlot(Window* parent, const rect_t& rect,
     auto container = currentContainer();
     if (!container) return 0;
 
-    if (container->getWidget(this->slot.asUnsigned())) {
-      openWidgetMenu();
-    } else {
-      addNewWidget();
-    }
+    // Empty slot: nothing to move/remove/settings, and adding a widget is
+    // the tap's job (see setPressHandler above) -- long-press does nothing
+    // here rather than duplicating the primary action.
+    if (container->getWidget(this->slot.asUnsigned())) openWidgetMenu();
 
     return 0;
   });
@@ -130,11 +134,23 @@ void SetupWidgetsPageSlot::openWidgetMenu()
       auto container = currentContainer();
       if (!container) return;
 
-      container->removeWidget(this->slot.asUnsigned());
-      if (this->topBarSetupPage) {
-        static_cast<TopBar*>(container)->load();
-        this->topBarSetupPage->refreshSlots(this->slot.asUnsigned());
-      }
+      auto widget = container->getWidget(this->slot.asUnsigned());
+      const char* widgetName =
+          widget ? widget->getFactory()->getDisplayName() : "";
+
+      confirmDestructive(STR_REMOVE_WIDGET, widgetName, [this]() {
+        // Re-fetch container/widget rather than reusing what was captured
+        // above -- this only runs once the pilot answers, and removeWidget()
+        // below must act on whatever is actually in the slot then.
+        auto container = currentContainer();
+        if (!container) return;
+
+        container->removeWidget(this->slot.asUnsigned());
+        if (this->topBarSetupPage) {
+          static_cast<TopBar*>(container)->load();
+          this->topBarSetupPage->refreshSlots(this->slot.asUnsigned());
+        }
+      });
     });
   });
 }

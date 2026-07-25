@@ -635,6 +635,7 @@
 #define TR_TIMER_LABEL                 "שעון"
 #define TR_THROTTLE_PERCENT_LABEL      "מצערת %"
 #define TR_BATT_LABEL                  "סוללה"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 #define TR_MENUTORESET                 TR_ENTER " to reset"
 #define TR_PPM_TRAINER                 "TR"
@@ -683,6 +684,7 @@
 #define TR_MULTI_OPTION                TR("Option", "Option value")
 #define TR_MULTI_AUTOBIND              TR("Bind Ch.", "צימוד על ערוץ")
 #define TR_DISABLE_CH_MAP              TR("No Ch. map", "השבתת מיפוי ערוצים")
+#define TR_CHANNEL_MAP                    "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("No Telem", "השבתת טלמטריה")
 #define TR_MULTI_LOWPOWER              TR("Low power", "מצב מתח נמוך")
@@ -724,6 +726,9 @@
 #define TR_BATT_CALIB                  TR("Batt. calib", "כיול מתח סוללה ידני")
 #define TR_CURRENT_CALIB               "Current calib"
 #define TR_VOLTAGE                     TR("Voltage", "Voltage source")
+#define TR_VOLTAGE_ALERT                  "Voltage Alert"
+#define TR_CAPACITY_ALERT                 "Capacity Alert"
+#define TR_CAPACITY                       "Capacity"
 #define TR_SELECT_MODEL                "בחירת מודל"
 #define TR_MODELS                      "מודלים"
 #define TR_SELECT_MODE                 "בחירת מצב"
@@ -794,6 +799,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Spectrum (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT       "Spectrum (INT)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "רעננן"
 #define TR_SDCARD_FULL                 "הכרטיס מלא"
@@ -803,6 +809,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "לא תואם"
 #define TR_WARNING                     "אזהרה"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "איחסון"
 #define TR_THROTTLE_UPPERCASE          "מצערת"
 #define TR_ALARMSWARN                  "התראות"
@@ -959,6 +966,9 @@
 #define TR_EXTERNAL_MODULE             TR("Ext. module", "מודול חיצוני")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTX upgrade required"
 #define TR_TELEMETRY_DISABLED          "Telem. disabled"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "More options available"
 #define TR_NO_MODULE_INFORMATION       "No module information"
 #define TR_EXTERNALRF                  "מודול חיצוני"
@@ -1080,6 +1090,7 @@
 #define TR_LOWALARM                    "התראה נמוכה"
 #define TR_CRITICALALARM               "התראה קריטית"
 #define TR_DISABLE_ALARM               TR("ביטול התראות", "ביטול התראות טלמטריה")
+#define TR_TELEMETRY_ALARMS               "Telemetry Alarms"
 #define TR_POPUP                       "התראות"
 #define TR_MIN                         "מינימום"
 #define TR_MAX                         "מקסימום"
@@ -1154,6 +1165,7 @@
 #define TR_SLIDERS_TRIMS             "Sliders+Trims"
 #define TR_SLIDERS                   "סליידרים"
 #define TR_FLIGHT_MODE               "מצב טיסה"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Invalid File"
 #define TR_TIMER_SOURCE              "מקור השעון"
 #define TR_SIZE                      "גודל"

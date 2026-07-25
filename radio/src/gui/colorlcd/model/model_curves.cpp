@@ -23,6 +23,7 @@
 
 #include "button.h"
 #include "curveedit.h"
+#include "dialog.h"
 #include "edgetx.h"
 #include "menu.h"
 #include "page.h"
@@ -257,9 +258,19 @@ void ModelCurvesPage::build(Window *window)
           button->update();
         });
         menu->addLine(STR_CLEAR, [=]() {
-          curveClear(index);
-          storageDirty(EE_MODEL);
-          rebuild(window);
+          // Name the curve the same way its own thumbnail title does (CV<n>
+          // [:name]), so the confirm reads as a continuation of the tap.
+          char buf[32];
+          char* s = strAppendStringWithIndex(buf, STR_CV, index + 1);
+          if (g_model.curves[index].name[0]) {
+            s = strAppend(s, ":");
+            strAppend(s, g_model.curves[index].name, LEN_CURVE_NAME);
+          }
+          confirmDestructive(STR_CLEAR, buf, [=]() {
+            curveClear(index);
+            storageDirty(EE_MODEL);
+            rebuild(window);
+          });
         });
         return 0;
       });

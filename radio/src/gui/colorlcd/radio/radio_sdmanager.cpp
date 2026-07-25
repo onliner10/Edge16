@@ -292,17 +292,39 @@ void RadioSdManagerPage::dirAction(const char* path, const char* name,
     std::string extension("");
     if (ext) extension = ext;
 
+    // `name` points into the file browser's static/table-owned buffers (see
+    // file_browser.cpp), which are only guaranteed stable for the duration
+    // of this synchronous call -- copy it before it's used from the
+    // LabelDialog save callback, which fires later.
+    std::string oldName(name);
+
     new LabelDialog(fname.c_str(), maxNameLength, STR_RENAME_FILE, [=](std::string label) {
       label += extension;
-      f_rename((const TCHAR *)name, (const TCHAR *)label.c_str());
+      if (f_rename((const TCHAR *)oldName.c_str(), (const TCHAR *)label.c_str()) != FR_OK)
+        POPUP_WARNING(STR_SDCARD_ERROR);
       browser->refresh();
     });
   });
   menu->addLine(STR_DELETE_FILE, [=]() {
-    if (f_unlink(fullpath) != FR_OK) {
-      new MessageDialog(STR_DELETE_FILE, STR_DEL_DIR_NOT_EMPTY);
-    }
-    browser->refresh();
+    // `name`/`fullpath` are reused buffers owned by the file browser (see
+    // file_browser.cpp) -- copy them now so the confirmDestructive callback,
+    // which only runs once the pilot answers, isn't reading through a
+    // pointer the browser may have overwritten by then.
+    std::string folderName(name);
+    std::string folderPath(fullpath);
+    confirmDestructive(STR_DELETE_FILE, folderName.c_str(), [=]() {
+      FRESULT result = f_unlink(folderPath.c_str());
+      if (result == FR_DENIED) {
+        // FR_DENIED is FatFs' code for "directory not empty" (also read-only
+        // object / current dir, but those don't apply to a folder reachable
+        // through this browser) -- only this result earns the specific
+        // message; anything else is a generic SD failure.
+        POPUP_WARNING(STR_DELETE_ERROR, STR_DEL_DIR_NOT_EMPTY);
+      } else if (result != FR_OK) {
+        POPUP_WARNING(STR_DELETE_ERROR, SDCARD_ERROR(result));
+      }
+      browser->refresh();
+    });
   });
 }
 
@@ -314,15 +336,18 @@ void RadioSdManagerPage::viewTextFile(const char* path, const char* name,
     const int fileLength = file.obj.objsize;
     f_close(&file);
 
+    // Opening a file to view it can't destroy anything, so this is
+    // informational only -- a single-button notice for large files (which
+    // may take a moment to load), not a Yes/No decision. A Yes/No gate here
+    // would train the pilot to tap through it reflexively, which undermines
+    // the real destructive confirmations elsewhere in this page.
     if (fileLength > WARN_FILE_LENGTH) {
       char buf[64];
       sprintf(buf, " %s %dkB. %s", STR_FILE_SIZE, fileLength / 1024,
               STR_FILE_OPEN);
-      new ConfirmDialog(STR_WARNING, buf,
-                        [=] { new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER); });
-    } else {
-      new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER);
+      POPUP_INFORMATION(buf);
     }
+    new ViewTextWindow(path, name, ICON_RADIO_SD_MANAGER);
   }
 }
 
@@ -523,12 +548,38 @@ void RadioSdManagerPage::fileAction(const char* path, const char* name,
                                 CLIPBOARD_PATH_LEN);
         destNamePtr = destFileName;
       }
-      sdCopyFile(clipboard.data.sd.filename, clipboard.data.sd.directory,
-                  destNamePtr, lfn);
-      clipboard.type = CLIPBOARD_TYPE_NONE;
 
+      // `lfn` is a reused static buffer and destNamePtr may point into the
+      // stack-local destFileName -- both are gone once this lambda returns,
+      // so copy everything the (possibly deferred, if confirmDestructive is
+      // shown) paste needs before touching the SD card.
+      std::string srcFilename(clipboard.data.sd.filename);
+      std::string srcDir(clipboard.data.sd.directory);
+      std::string destName(destNamePtr);
+      std::string destDir(lfn);
+
+      auto doPaste = [=]() {
+        const char* err = sdCopyFile(srcFilename.c_str(), srcDir.c_str(),
+                                     destName.c_str(), destDir.c_str());
+        if (err) POPUP_WARNING(err);
+        clipboard.type = CLIPBOARD_TYPE_NONE;
         browser->refresh();
-      });
+      };
+
+      // sdCopyFile() (radio/src/sdcard.cpp) opens the destination with
+      // FA_CREATE_ALWAYS, which truncates an existing file with no warning.
+      // Mirror its own dest-path build (srcdir/name) here to check first.
+      char destPath[2 * CLIPBOARD_PATH_LEN + 1];
+      char* tmp = strAppend(destPath, destDir.c_str(), CLIPBOARD_PATH_LEN);
+      *tmp++ = '/';
+      strAppend(tmp, destName.c_str(), CLIPBOARD_PATH_LEN);
+
+      if (isFileAvailable(destPath)) {
+        confirmDestructive(STR_PASTE, destName.c_str(), doPaste);
+      } else {
+        doPaste();
+      }
+    });
   }
   menu->addLine(STR_RENAME_FILE, [=]() {
     uint8_t nameLength;
@@ -543,18 +594,31 @@ void RadioSdManagerPage::fileAction(const char* path, const char* name,
     std::string extension("");
     if (ext) extension = ext;
 
+    // See the folder-rename comment in dirAction(): `name` is a file
+    // browser-owned buffer, only valid for this synchronous call.
+    std::string oldName(name);
+
     new LabelDialog(fname.c_str(), maxNameLength, STR_RENAME_FILE, [=](std::string label) {
       label += extension;
-      f_rename((const TCHAR *)name, (const TCHAR *)label.c_str());
+      if (f_rename((const TCHAR *)oldName.c_str(), (const TCHAR *)label.c_str()) != FR_OK)
+        POPUP_WARNING(STR_SDCARD_ERROR);
       browser->refresh();
     });
   });
   menu->addLine(STR_DELETE_FILE, [=]() {
-    f_unlink(fullpath);
-    browser->refresh();
-    loadPreview = 0;
-    preview->setFile(nullptr);
-    loading->hide();
+    // `name`/`fullpath` are reused file-browser buffers -- copy before the
+    // confirmDestructive callback (which only runs once the pilot answers)
+    // reads them.
+    std::string fileName(name);
+    std::string filePath(fullpath);
+    confirmDestructive(STR_DELETE_FILE, fileName.c_str(), [=]() {
+      FRESULT result = f_unlink(filePath.c_str());
+      if (result != FR_OK) POPUP_WARNING(STR_DELETE_ERROR, SDCARD_ERROR(result));
+      browser->refresh();
+      loadPreview = 0;
+      preview->setFile(nullptr);
+      loading->hide();
+    });
   });
 }
 

@@ -355,9 +355,24 @@ const static SetupLineDef trimsSetupLines[] = {
     nullptr,
     [](Window* parent, coord_t x, coord_t y) {
       new TextButton(parent, {PAD_TINY, y, LCD_W - PAD_MEDIUM * 2, 0}, STR_RESET_BTN, []() -> uint8_t { // ds-allow: reset-trims button sized to full line width at an absolute rect; button line, not a plain DS FormRow control
-        for (auto &fm : g_model.flightModeData) memclear(&fm.trim, sizeof(fm.trim));
-        SET_DIRTY();
-        AUDIO_WARNING1();
+        // Wipes trims for EVERY flight mode on this model in one tap -- say so,
+        // or "Reset" sitting under a Trims section reads as if it only touches
+        // the current flight mode.
+        // strnlen, not sizeof: header.name is a fixed-size buffer that is NOT
+        // guaranteed null-terminated, but it is usually SHORTER than the
+        // buffer. Taking sizeof() pulls the padding NULs into the string, and
+        // everything appended after that lands past an embedded NUL -- so
+        // c_str() would silently truncate the scope away and the dialog would
+        // read just "MODEL01".
+        const char* name = g_model.header.name;
+        std::string object(name, strnlen(name, sizeof(g_model.header.name)));
+        object += " - ";
+        object += STR_ALL_FLIGHT_MODES;
+        confirmDestructive(STR_RESET_BTN, object.c_str(), []() {
+          for (auto &fm : g_model.flightModeData) memclear(&fm.trim, sizeof(fm.trim));
+          SET_DIRTY();
+          AUDIO_WARNING1();
+        });
         return 0;
       });
     }

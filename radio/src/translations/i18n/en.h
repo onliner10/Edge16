@@ -632,6 +632,7 @@
 #define TR_TIMER_LABEL                 "Timer"
 #define TR_THROTTLE_PERCENT_LABEL      "Throttle %"
 #define TR_BATT_LABEL                  "Battery"
+#define TR_SHARED_ALL_MODELS           "Used by any model"
 #define TR_SESSION                     "Session"
 #define TR_MENUTORESET                 TR_ENTER " to reset"
 #define TR_PPM_TRAINER                 "TR"
@@ -672,7 +673,7 @@
   #define TR_RECEIVER_NUM              TR("RxNum", "Receiver No.")
   #define TR_RECEIVER                  "Receiver"
 #define TR_MULTI_RFTUNE                TR("Freq tune", "RF Freq. fine tune")
-#define TR_MULTI_RFPOWER               "RF power"
+#define TR_MULTI_RFPOWER               "RF Power"
 #define TR_MULTI_WBUS                  "Output"
 #define TR_MULTI_TELEMETRY             "Telemetry"
 #define TR_MULTI_VIDFREQ               TR("Vid. freq.", "Video frequency")
@@ -681,6 +682,7 @@
 #define TR_MULTI_OPTION                TR("Option", "Option value")
 #define TR_MULTI_AUTOBIND              TR("Bind Ch.", "Bind on channel")
 #define TR_DISABLE_CH_MAP              TR("No Ch. map", "Disable Ch. map")
+#define TR_CHANNEL_MAP                 "Channel Map"
 #define TR_DSMP_ENABLE_AETR            TR("Enb. AETR", "Enable AETR")
 #define TR_DISABLE_TELEM               TR("No Telem", "Disable Telemetry")
 #define TR_MULTI_LOWPOWER              TR("Low power", "Low power mode")
@@ -722,6 +724,9 @@
 #define TR_BATT_CALIB                  TR("Batt. calib", "Battery calibration")
 #define TR_CURRENT_CALIB               "Current calib"
 #define TR_VOLTAGE                     TR("Voltage", "Voltage source")
+#define TR_VOLTAGE_ALERT               "Voltage Alert"
+#define TR_CAPACITY_ALERT              "Capacity Alert"
+#define TR_CAPACITY                    "Capacity"
 #define TR_SELECT_MODEL                "Select model"
 #define TR_MODELS                      "Models"
 #define TR_SELECT_MODE                 "Select mode"
@@ -792,6 +797,7 @@
 #define TR_SPECTRUM_ANALYSER_EXT       "Spectrum (EXT)"
 #define TR_SPECTRUM_ANALYSER_INT       "Spectrum (INT)"
 #define TR_GHOST_MODULE_CONFIG         "Ghost module config"
+#define TR_RAW_12BITS                  "Raw 12 bits"
 #define TR_GPS_MODEL_LOCATOR           "GPS model locator"
 #define TR_REFRESH                     "Refresh"
 #define TR_SDCARD_FULL                 "SD card full"
@@ -801,6 +807,7 @@
 #define TR_INT_MULTI_SPEC              "stm-opentx-noinv"
 #define TR_INCOMPATIBLE                "Incompatible"
 #define TR_WARNING                     "WARNING"
+#define TR_INFORMATION                 "Information"
 #define TR_STORAGE_WARNING             "STORAGE"
 #define TR_THROTTLE_UPPERCASE          "THROTTLE"
 #define TR_ALARMSWARN                  "ALARMS"
@@ -957,6 +964,9 @@
 #define TR_EXTERNAL_MODULE             TR("Ext. module", "External module")
 #define TR_EDGETX_UPGRADE_REQUIRED     "EdgeTX upgrade required"
 #define TR_TELEMETRY_DISABLED          "Telem. disabled"
+#define TR_TELEMETRY_25MW              "25mw Tele"
+#define TR_PWM_RATE_667MS              "6.67ms PWM"
+#define TR_PWM_RATE_7MS                "7ms PWM"
 #define TR_MORE_OPTIONS_AVAILABLE      "More options available"
 #define TR_NO_MODULE_INFORMATION       "No module information"
 #define TR_EXTERNALRF                  "External RF"
@@ -1078,6 +1088,7 @@
 #define TR_LOWALARM                    "Low alarm"
 #define TR_CRITICALALARM               "Critical alarm"
 #define TR_DISABLE_ALARM               TR("Disable alarms", "Disable telemetry alarms")
+#define TR_TELEMETRY_ALARMS            "Telemetry Alarms"
 #define TR_POPUP                       "Popup"
 #define TR_MIN                         "Min"
 #define TR_MAX                         "Max"
@@ -1152,6 +1163,7 @@
 #define TR_SLIDERS_TRIMS             "Sliders+Trims"
 #define TR_SLIDERS                   "Sliders"
 #define TR_FLIGHT_MODE               "Flight mode"
+#define TR_ALL_FLIGHT_MODES          "All flight modes"
 #define TR_INVALID_FILE              "Invalid File"
 #define TR_TIMER_SOURCE              "Timer source"
 #define TR_SIZE                      "Size"
@@ -1167,7 +1179,7 @@
 #define TR_PANEL1_BACKGROUND         "Panel1 background"
 #define TR_PANEL2_BACKGROUND         "Panel2 background"
 #define TR_PANEL_BACKGROUND          "Background"
-#define TR_PANEL_COLOR               "  Color"
+#define TR_PANEL_COLOR               "Color"
 #define TR_WIDGET_GAUGE              "Gauge"
 #define TR_WIDGET_MODEL_IMAGE        "Model picture"
 #define TR_WIDGET_MODEL_NAME         "Model name"
@@ -1213,7 +1225,7 @@
 #define TR_CELLSENSOR                  "Cell sensor"
 #define TR_GPSSENSOR                   "GPS sensor"
 #define TR_GYRO                        "Gyro"
-#define TR_CURRENTSENSOR               "Sensor"
+#define TR_CURRENTSENSOR               "Current sensor"
 #define TR_AUTOOFFSET                  "Auto Offset"
 #define TR_ONLYPOSITIVE                "Positive"
 #define TR_FILTER                      "Filter"
@@ -1223,7 +1235,7 @@
 #define TR_DISCOVER_SENSORS            "Discover new"
 #define TR_STOP_DISCOVER_SENSORS       "Stop"
 #define TR_DELETE_ALL_SENSORS          "Delete all"
-#define TR_CONFIRMDELETE               "Really " LCDW_128_LINEBREAK "delete all ?"
+#define TR_CONFIRMDELETE               "Really " LCDW_128_LINEBREAK "delete all?"
 #define TR_SELECT_WIDGET               "Select widget"
 #define TR_WIDGET_FULLSCREEN           "Full screen"
 #define TR_REMOVE_WIDGET               "Remove widget"
@@ -1243,7 +1255,7 @@
 #define TR_MENU_HELI                   CHAR_CYC "Cyclic"
 #define TR_MENU_TRIMS                  CHAR_TRIM "Trims"
 #define TR_MENU_SWITCHES               CHAR_SWITCH "Switches"
-#define TR_MENU_LOGICAL_SWITCHES       CHAR_SWITCH "Logical switches"
+#define TR_MENU_LOGICAL_SWITCHES       CHAR_SWITCH "Logical Switches"
 #define TR_MENU_TRAINER                CHAR_TRAINER "Trainer"
 #define TR_MENU_CHANNELS               CHAR_CHANNEL "Channels"
 #define TR_MENU_GVARS                  CHAR_SLIDER "GVars"
@@ -1380,8 +1392,8 @@
 #define TR_VUSBJOYSTICK_CH_SIM_8       "Dpad"
 #define TR_USBJOYSTICK_CH_INVERSION    "Inversion"
 #define TR_USBJOYSTICK_CH_BTNNUM       "Button no."
-#define TR_USBJOYSTICK_BTN_COLLISION   "!Button no. collision!"
-#define TR_USBJOYSTICK_AXIS_COLLISION  "!Axis collision!"
+#define TR_USBJOYSTICK_BTN_COLLISION   "Button no. collision!"
+#define TR_USBJOYSTICK_AXIS_COLLISION  "Axis collision!"
 #define TR_USBJOYSTICK_CIRC_COUTOUT    TR("Circ. cut", "Circular cutout")
 #define TR_VUSBJOYSTICK_CIRC_COUTOUT_1 "None"
 #define TR_VUSBJOYSTICK_CIRC_COUTOUT_2 "X-Y, Z-rX"

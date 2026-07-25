@@ -400,13 +400,17 @@ void ModelMixesPage::deleteMix(uint8_t index)
     s += std::to_string(mixLineNumber(index));
   }
 
-  if (confirmationDialog(STR_DELETE_MIX_LINE, s.c_str())) {
+  // Was a blocking confirmationDialog() -- heavier full-screen treatment than
+  // deleting an entire MODEL gets. confirmDestructive is the canonical gate
+  // for destroying stored data and is asynchronous: everything that must run
+  // only on confirmation moves into the lambda.
+  confirmDestructive(STR_DELETE_MIX_LINE, s.c_str(), [=]() {
     _copyMode = 0;
     _copySrc = nullptr;
 
     ::deleteMix(index);
     rebuildFromModel(focusAfterMixDelete(index));
-  }
+  });
 }
 
 void ModelMixesPage::pasteMix(uint8_t dst_idx, uint8_t channel)

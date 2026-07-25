@@ -44,6 +44,7 @@ class GVarNumberEdit : public Window
   static constexpr int32_t NO_DEFAULT = INT32_MIN;
 
   void switchGVarMode();
+  void setSuffix(const std::string& value);
 
   void setFastStep(int value) { num_field->setFastStep(value); }
   void setAccelFactor(int value) { num_field->setAccelFactor(value); }
