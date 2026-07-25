@@ -162,6 +162,40 @@ Box winBox(Window* w)
   return b;
 }
 
+// Hosts the shape that produced the reported spacing bug: a form where an
+// inline status line sits between two ordinary fields. Built with ds::Caption,
+// the status line must NOT behave like a third field.
+class CaptionDialog : public BaseDialog
+{
+ public:
+  ds::List* list = nullptr;
+  ds::FormRow* rowA = nullptr;
+  ds::Caption* caption = nullptr;
+  ds::FormRow* rowB = nullptr;
+  ds::FormRow* rowC = nullptr;
+
+  CaptionDialog() : BaseDialog("Caption", false)
+  {
+    form.with([&](Window& f) {
+      list = new (std::nothrow) ds::List(&f);
+      auto* card = new (std::nothrow) ds::Card(list);
+      rowA = new (std::nothrow) ds::FormRow(
+          card, "A", [](Window* s) { new Window(s, rect_t{}); });
+      caption = new (std::nothrow) ds::Caption(card, "ID is unique");
+      rowB = new (std::nothrow) ds::FormRow(
+          card, "B", [](Window* s) { new Window(s, rect_t{}); });
+      rowC = new (std::nothrow) ds::FormRow(
+          card, "C", [](Window* s) { new Window(s, rect_t{}); });
+    });
+  }
+};
+
+// Vertical gap between two stacked siblings.
+lv_coord_t gapBetween(const Box& above, const Box& below)
+{
+  return lv_coord_t(below.y1 - (above.y1 + above.h));
+}
+
 }  // namespace
 
 // ds::FieldGroup flows a VARIABLE number of controls left-to-right after its
@@ -368,6 +402,66 @@ TEST(DesignSystemForm, FieldRowHighlightTogglesActiveState)
   dlg->rowA->highlightField(0, false);
   EXPECT_FALSE(lv_obj_has_state(label0, LV_STATE_CHECKED))
       << "highlightField(false) did not clear the active state";
+
+  dlg->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
+// An inline status line is an ANNOTATION, not a field. ds::List gives every
+// child the same inter-row gap, sized on the assumption that a child is a full
+// touch-floor row; a status line built as an empty-label FormRow therefore
+// inherits the 40 px floor and reads as a second, mostly-empty row, roughly
+// tripling the apparent distance to its neighbours (the reported "gap between
+// Channel Range and Receiver is bigger than everywhere else" bug). ds::Caption
+// sizes to its own text instead, so it stays strictly under the touch floor.
+TEST(DesignSystemForm, CaptionStaysUnderTheTouchFloor)
+{
+  auto* dlg = new (std::nothrow) CaptionDialog();
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ASSERT_NE(dlg->caption, nullptr);
+  ASSERT_NE(dlg->rowA, nullptr);
+  settleAndLayout(dlg);
+
+  const lv_coord_t floor = ds::rowHeight(ds::RowSize::OneLine);
+  Box cap = winBox(dlg->caption);
+  Box row = winBox(dlg->rowA);
+
+  EXPECT_GT(cap.h, 0) << "caption collapsed to nothing";
+  EXPECT_LT(cap.h, floor)
+      << "caption claims a full touch-floor row (" << cap.h << " >= " << floor
+      << ") -- it is not a focus target and must size to its own text";
+  EXPECT_GE(row.h, floor)
+      << "a real form row must still meet the touch floor";
+
+  dlg->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
+// ...and the gap ABOVE and BELOW a caption is the same uniform inter-row gap
+// every other pair of rows gets. Spacing down a form page must not depend on
+// what kind of row happens to be adjacent.
+TEST(DesignSystemForm, CaptionKeepsTheUniformRowGap)
+{
+  auto* dlg = new (std::nothrow) CaptionDialog();
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ASSERT_NE(dlg->caption, nullptr);
+  settleAndLayout(dlg);
+
+  Box a = winBox(dlg->rowA);
+  Box cap = winBox(dlg->caption);
+  Box b = winBox(dlg->rowB);
+  Box c = winBox(dlg->rowC);
+
+  // Reference: the gap between two ordinary adjacent form rows.
+  const lv_coord_t reference = gapBetween(b, c);
+  EXPECT_GE(reference, 0) << "rows are not stacked top-to-bottom";
+
+  EXPECT_EQ(gapBetween(a, cap), reference)
+      << "gap above the caption differs from the standard inter-row gap";
+  EXPECT_EQ(gapBetween(cap, b), reference)
+      << "gap below the caption differs from the standard inter-row gap";
 
   dlg->deleteLater();
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();

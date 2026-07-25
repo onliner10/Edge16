@@ -112,22 +112,25 @@ No `rect_t`, no `coord_t`, no `PaddingSize`, no positions. States
 (normal/focused/pressed/disabled) come from the shared theme styles
 (`etx_lv_theme.cpp`), never per-instance.
 
-Implemented in the prototype (`radio/src/gui/colorlcd/libui/ds_core.h/.cpp`) —
-marked ●; spec-only marked ○.
+Implemented in `radio/src/gui/colorlcd/libui/ds_core.h/.cpp` — marked ●;
+spec-only marked ○.
 
 | # | Component | API sketch (semantic params only) | States | Absorbs / replaces |
 |---|---|---|---|---|
-| 1 | ● `ds::List` | `ds::List(Window* body)` — scrollable column, margins+gaps owned | — | every ad-hoc `setFlexLayout(COLUMN, PAD_TINY)` body |
+| 1 | ● `ds::List` | `List(body, Density?)` — scrollable column, page margins + inter-row `space-2` gap owned | — | every ad-hoc `setFlexLayout(COLUMN, PAD_TINY)` body |
 | 2 | ● `ds::ListRow` | `ListRow(list, Content{title, subtitle?, trailing?, trailingRole}, onPress, onLongPress?)`; `leadingSlot()` for one embedded control; setters for live text | normal/focus/press/disabled via theme; `setFlagged(role)` border cue | `ListLineButton` content layout, `OverlayCard`, `RolePickerRow`, hand-rolled row buttons |
-| 3 | ● `ds::RowStyle` adapter | `ds::RowStyle::apply(existingRow, RowSize)` + `ds::rowHeight(RowSize)` | as row | migration bridge: keeps `ListLineButton` machinery, DS owns geometry |
-| 4 | ● `ds::SectionHeader` | `SectionHeader(list, "FREE SWITCHES")` | — | ad-hoc `StaticText` + `padTop` headers |
-| 5 | ● `ds::Dialog` | `Dialog(title)`; `.body(text, TextRole)`; `.action(label, ButtonRole, fn)` — actions auto-laid right-aligned, primary rightmost | per-button theme states | raw `BaseDialog` + hand-packed button boxes |
-| 6 | ● `ds::Button` | `Button(parent, label, ButtonRole{Primary,Secondary,Destructive}, fn)` — 40 px tall, min-width 96 px, clamped | theme states + role colors | `TextButton` sizing free-for-all |
+| 3 | ● `ds::SectionHeader` | `SectionHeader(list, "FREE SWITCHES")` | — | ad-hoc `StaticText` + `padTop` headers |
+| 4 | ● `ds::Caption` | `Caption(list, text)` — non-interactive status/helper line that annotates the row *above* it; sizes to its own text, so it keeps the normal `space-2` gap without claiming a 40 px touch slot | text role/color settable for warn states | empty-label `FormRow`s used as inline validation text |
+| 5 | ● `ds::Dialog` | `Dialog(title, closeIfClickedOutside?)`; `.body(text, TextRole)`; `.action(label, ButtonRole, fn)` — actions auto-laid right-aligned, primary rightmost | per-button theme states | raw `BaseDialog` + hand-packed button boxes |
+| 6 | ● `ds::DSButton` | `DSButton(parent, label, ButtonRole{Primary,Secondary,Destructive}, fn)` — 40 px tall, min-width 96 px, clamped | theme states + role colors | `TextButton` sizing free-for-all |
 | 7 | ● `ds::PickerOverlay` | `PickerOverlay(title)`; `.section(label)`; `.option(Content, onSelect)` — 48 px options, scrollable, modal | option = row states | squashed picker dialogs; long `Menu` lists with rich rows |
-| 8 | ○ `ds::FormRow` | `FormRow(form, label, [](Window* slot){ new Choice(slot,…); })` — 40%/60% grid, 40 px min row | control's own | `FlexGridLayout` + `newLine` boilerplate |
-| 9 | ○ `ds::Card` | `Card(parent, title?)` — non-interactive group, `space-3` inset, `space-2` internal gap | — | `Window` + `padAll` boxes |
-| 10 | ○ `ds::PageScaffold` | `Page` already enforces header 45 px + routed body; DS addition: body defaults to `ds::List` unless a form is requested | — | per-page `body->padAll(...)` variance |
-| 11 | ○ `ds::EmptyState` | `EmptyState(body, icon, headline, hint, primaryAction?)` | button states | ad-hoc "+" only screens |
+| 8 | ● `ds::FormRow` | `FormRow(form, label, [](Window* slot){ new Choice(slot,…); })` — 40%/60% split, 40 px min row | control's own | `FlexGridLayout` + `newLine` boilerplate |
+| 9 | ● `ds::FieldRow` | `FieldRow(form, {{label, builder}, …})` — N evenly-sized labelled columns side by side, labels x-aligned down the page; `highlightField` for the active one | control's own | hand-packed two-control lines with hardcoded widths |
+| 10 | ● `ds::FieldGroup` | `FieldGroup(form, label, builder)` — one label, a variable number of small controls wrapping inside a bordered box | control's own | ad-hoc "label + N buttons on one line" rows |
+| 11 | ● `ds::Card` | `Card(parent, title?, bordered?)` — non-interactive group; flush by default, `bordered` for a separated panel | — | `Window` + `padAll` boxes |
+| 12 | ● `ds::Grid` | `Grid(parent, {Column::Fixed(w)…, Column::Fill(min)…})`; `.header()`, `.addRow()` — one shared immutable column template guarantees header/data x-alignment; sticky header, frozen leading column, h-scroll on overflow | row = row states | hand-computed columnar screens (GVars, flight modes) |
+| 13 | ● `ds::EmptyState` | `EmptyState(body, icon, headline, hint?, actionLabel?, onAction?)` | button states | blank screens and ad-hoc "+"-only screens |
+| 14 | ○ `ds::PageScaffold` | `Page` already enforces header 45 px + routed body; DS addition: body defaults to `ds::List` unless a form is requested | — | per-page `body->padAll(...)` variance |
 
 Notes:
 - `ds::ListRow::Content.title` renders `strong`, subtitle `body`+muted,
