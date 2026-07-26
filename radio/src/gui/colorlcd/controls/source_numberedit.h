@@ -54,7 +54,10 @@ class SourceNumberEdit : public Window
 
   void update();
 
-  static LAYOUT_VAL_SCALED(SRC_BTN_W, 38)  // ds-allow: composite source field; SRC toggle-button width for the fixed-width NumberEdit + button pack, not a DS token
+  // 40, not 38: this is a tap target, and 38 put it under the 8 mm touch floor
+  // for no reason -- its twin GV_BTN_W (gvar_numberedit.h) is already 40 and the
+  // two render side by side on the same forms.
+  static LAYOUT_VAL_SCALED(SRC_BTN_W, 40)  // ds-allow: composite source field; SRC toggle-button width for the fixed-width NumberEdit + button pack, not a DS token
 
  protected:
   Choice* source_field = nullptr;
