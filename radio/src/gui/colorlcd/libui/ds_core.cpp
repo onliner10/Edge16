@@ -51,6 +51,33 @@ constexpr coord_t kLeadingSlotW = LAYOUT_SCALE(40);
 constexpr coord_t kButtonMinW = LAYOUT_SCALE(96);
 constexpr coord_t kFlagBorder = 3;  // non-color structural cue
 
+// A DS row carries its own adjacency into whatever container it lands in.
+//
+// ds::List owns the inter-row gap, which is correct -- until a screen adds DS
+// rows STRAIGHT to a page body instead. That body is a plain flex column with
+// no DS spacing of its own, so the rows stack with a gap of exactly zero.
+// FormRow hides this (its 32 px control sits inset in a 40 px row, so ~8 px of
+// whitespace shows and reads as a gap), which is why it went unnoticed --
+// but FieldGroup draws a bordered box that fills the row, so two of them in a
+// row visibly TOUCH. Whether spacing appears at all should not depend on which
+// row type a screen happened to use.
+//
+// So a row lifts its parent to the DS gap on the way in. This is idempotent
+// and never shrinks: ds::List and ds::Card already set it, so it is a no-op
+// there, and a container that deliberately asks for MORE separation keeps it.
+// Restricted to flex parents, since pad_row means something different under a
+// grid layout and a DS row is never a grid cell.
+void adoptRowGap(Window* parent)
+{
+  if (!parent) return;
+  parent->withLive([](Window::LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    if (lv_obj_get_style_layout(obj, LV_PART_MAIN) != LV_LAYOUT_FLEX) return;
+    if (lv_obj_get_style_pad_row(obj, LV_PART_MAIN) < kSpace2)
+      lv_obj_set_style_pad_row(obj, kSpace2, LV_PART_MAIN);
+  });
+}
+
 LcdColorIndex roleColor(TextRole role)
 {
   switch (role) {
@@ -127,6 +154,7 @@ List::List(Window* parent, Density density) :
 SectionHeader::SectionHeader(Window* parent, const char* text) :
     Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
+  adoptRowGap(parent);
   withLive([&](LiveWindow& live) {
     lv_obj_t* obj = live.lvobj();
     lv_obj_set_style_pad_top(obj, kSpace4, LV_PART_MAIN);
@@ -150,6 +178,7 @@ SectionHeader::SectionHeader(Window* parent, const char* text) :
 Caption::Caption(Window* parent, const char* text) :
     Window(parent, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT})
 {
+  adoptRowGap(parent);
   withLive([&](LiveWindow& live) {
     lv_obj_t* obj = live.lvobj();
     lv_obj_set_style_pad_left(obj, kSpace3, LV_PART_MAIN);
@@ -370,6 +399,7 @@ FormRow::FormRow(Window* parent, const char* label,
     Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
 {
   setWindowFlag(NO_FOCUS);  // the control is the focus target, not the row
+  adoptRowGap(parent);
   withLive([&](LiveWindow& live) {
     lv_obj_t* obj = live.lvobj();
     lv_obj_set_width(obj, LV_PCT(100));
@@ -490,6 +520,7 @@ FieldRow::FieldRow(Window* parent, const std::vector<Field>& fields) :
     Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
 {
   setWindowFlag(NO_FOCUS);  // the controls are the focus targets, not the row
+  adoptRowGap(parent);
 
   const int n = (int)fields.size();
 
@@ -617,6 +648,7 @@ FieldGroup::FieldGroup(Window* parent, const char* label,
     Window(parent, rect_t{0, 0, LV_PCT(100), rowHeight(RowSize::OneLine)})
 {
   setWindowFlag(NO_FOCUS);  // the controls are the focus targets, not the row
+  adoptRowGap(parent);
 
   const bool hasLabel = label && label[0];
 

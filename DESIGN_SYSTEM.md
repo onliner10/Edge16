@@ -132,6 +132,22 @@ spec-only marked ○.
 | 13 | ● `ds::EmptyState` | `EmptyState(body, icon, headline, hint?, actionLabel?, onAction?)` | button states | blank screens and ad-hoc "+"-only screens |
 | 14 | ○ `ds::PageScaffold` | `Page` already enforces header 45 px + routed body; DS addition: body defaults to `ds::List` unless a form is requested | — | per-page `body->padAll(...)` variance |
 
+**A DS row carries its own adjacency.** `ds::List` owns the inter-row gap,
+which is correct — until a screen adds DS rows *straight to a page body*
+instead, as several do. That body is a plain flex column with no DS spacing of
+its own, so the rows stacked with a gap of exactly **zero**. `FormRow` hid it:
+its 32 px control sits inset in a 40 px row, so ~8 px of whitespace shows and
+reads as a gap. `FieldGroup` did not: it draws a bordered box filling the row,
+so two adjacent groups had their borders flush against each other (the
+Variometer Range/Center pair on the Telemetry page). Whether spacing exists at
+all must never depend on which row type a screen happened to reach for, so
+every row component (`SectionHeader`, `Caption`, `FormRow`, `FieldRow`,
+`FieldGroup`) lifts its parent to the DS gap on the way in. This is idempotent
+and never shrinks — `ds::List`/`ds::Card` already set it so it is a no-op
+there, and a container deliberately asking for *more* separation keeps it —
+and it applies only to flex parents, since `pad_row` means something different
+under a grid layout and a DS row is never a grid cell.
+
 Notes:
 - `ds::ListRow::Content.title` renders `strong`, subtitle `body`+muted,
   trailing `body` with caller-chosen **role** (Muted/Warning/Active) — the only

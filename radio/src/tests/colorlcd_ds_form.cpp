@@ -196,6 +196,50 @@ lv_coord_t gapBetween(const Box& above, const Box& below)
   return lv_coord_t(below.y1 - (above.y1 + above.h));
 }
 
+// Hosts DS rows added STRAIGHT to a bare flex-column body -- no ds::List, no
+// ds::Card -- which is what several screens actually do (see the "added
+// directly to the flex body" comment in model_telemetry.cpp). The body has no
+// DS spacing of its own, so without the row's own adjacency the rows stack
+// with a gap of exactly zero.
+class BareBodyDialog : public BaseDialog
+{
+ public:
+  Window* body = nullptr;
+  ds::FieldGroup* groupA = nullptr;
+  ds::FieldGroup* groupB = nullptr;
+  ds::FormRow* rowA = nullptr;
+  ds::FormRow* rowB = nullptr;
+
+  BareBodyDialog() : BaseDialog("BareBody", false)
+  {
+    form.with([&](Window& f) {
+      body = new (std::nothrow) Window(&f, rect_t{0, 0, LV_PCT(100), LV_SIZE_CONTENT});
+      if (!body) return;
+      // A plain flex column, exactly like a page body -- deliberately NOT a
+      // ds::List, and deliberately given no row gap.
+      body->withLive([](Window::LiveWindow& live) {
+        lv_obj_t* obj = live.lvobj();
+        lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_row(obj, 0, LV_PART_MAIN);
+      });
+      groupA = new (std::nothrow) ds::FieldGroup(body, "Range", [](Window* c) {
+        new Window(c, rect_t{0, 0, 60, 24});
+        new Window(c, rect_t{0, 0, 60, 24});
+      });
+      groupB = new (std::nothrow) ds::FieldGroup(body, "Center", [](Window* c) {
+        new Window(c, rect_t{0, 0, 60, 24});
+        new Window(c, rect_t{0, 0, 60, 24});
+      });
+      rowA = new (std::nothrow) ds::FormRow(body, "A", [](Window* s) {
+        new Window(s, rect_t{0, 0, 60, 24});
+      });
+      rowB = new (std::nothrow) ds::FormRow(body, "B", [](Window* s) {
+        new Window(s, rect_t{0, 0, 60, 24});
+      });
+    });
+  }
+};
+
 // Hosts a FormRow and a FieldRow each carrying one control built at the
 // STANDARD control height (EdgeTxStyles::UI_ELEMENT_HEIGHT, 32 px) -- what a
 // ToggleSwitch/Choice/NumberEdit actually is -- so the touch floor can be
@@ -479,6 +523,44 @@ TEST(DesignSystemForm, FormControlsMeetTheTouchFloor)
                             << " px tall, under the " << floor << " px floor";
   EXPECT_GE(field.w, floor) << "FieldRow control hit box is " << field.w
                             << " px wide, under the " << floor << " px floor";
+
+  dlg->deleteLater();
+  for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
+}
+
+// DS rows must never TOUCH, even when a screen adds them straight to a bare
+// page body instead of a ds::List. ds::List owns the inter-row gap, so
+// bypassing it produced a gap of exactly zero -- invisible on FormRow, whose
+// 32 px control sits inset in a 40 px row and shows ~8 px of whitespace that
+// reads as a gap, but plainly visible on FieldGroup, which draws a bordered
+// box filling the row: two adjacent groups had their borders flush against
+// each other. Whether spacing exists at all must not depend on which row type
+// a screen happened to reach for, so a row carries its adjacency into whatever
+// container it lands in.
+TEST(DesignSystemForm, RowsDoNotTouchInABareBody)
+{
+  auto* dlg = new (std::nothrow) BareBodyDialog();
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_TRUE(dlg->isAvailable());
+  ASSERT_NE(dlg->groupA, nullptr);
+  ASSERT_NE(dlg->groupB, nullptr);
+  ASSERT_NE(dlg->rowA, nullptr);
+  ASSERT_NE(dlg->rowB, nullptr);
+  settleAndLayout(dlg);
+
+  Box ga = winBox(dlg->groupA);
+  Box gb = winBox(dlg->groupB);
+  Box ra = winBox(dlg->rowA);
+  Box rb = winBox(dlg->rowB);
+
+  // The bordered FieldGroup boxes are the visible case.
+  EXPECT_GT(gapBetween(ga, gb), 0)
+      << "two ds::FieldGroups in a bare body are touching (gap "
+      << gapBetween(ga, gb) << ")";
+  // ...and plain rows get the identical gap, so spacing is uniform down the
+  // page regardless of row type.
+  EXPECT_EQ(gapBetween(ra, rb), gapBetween(ga, gb))
+      << "FormRow and FieldGroup disagree on the inter-row gap";
 
   dlg->deleteLater();
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
