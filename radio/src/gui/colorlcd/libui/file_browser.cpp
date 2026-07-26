@@ -152,12 +152,41 @@ static int scan_files(std::list<std::string>& files,
   return 0;
 }
 
+// Width of the strip reserved at the left of every cell for the file/folder
+// icon: a square icon box (the row's font height) plus a gap, so it tracks the
+// type scale instead of being a magic number.
+static lv_coord_t iconStripWidth()
+{
+  return getFontHeight(FONT(STD)) + PAD_SMALL;
+}
+
 FileBrowser::FileBrowser(Window* parent, const rect_t& rect, const char* dir) :
     TableField(parent, rect)
 {
   f_chdir(dir);
 
   setAutoEdit();
+
+  // Reserve room for the icon drawn in onDrawEnd.
+  //
+  // LVGL 9 removed the pre-draw hook that used to shift a cell's label to the
+  // right of its icon (see onDrawBegin), so the icon became a manual draw in
+  // onDrawEnd -- but the LABEL is still laid out by LVGL, starting at the
+  // cell's left padding. Nothing was reserving space for the icon, so it was
+  // painted straight over the first characters of every entry: "MODELS" read
+  // as "ODELS" and "IMAGES" as "AGES".
+  //
+  // Widening the cell padding is what fixes it, because that is the value
+  // LVGL lays the text out from. The name itself must NOT be padded instead:
+  // the cell's text IS the filename (onPress/onPressLong pass
+  // lv_table_get_cell_value straight to f_chdir and the file actions), so
+  // decorating it would corrupt every path.
+  withLive([](LiveWindow& live) {
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_style_pad_left(
+        obj, lv_obj_get_style_pad_left(obj, LV_PART_ITEMS) + iconStripWidth(),
+        LV_PART_ITEMS);
+  });
 
   setLongPressHandler([=]() {
     int row = getSelected();
@@ -273,7 +302,9 @@ void FileBrowser::onDrawEnd(uint16_t row, uint16_t col, lv_area_t* cell_area,
   });
   lv_coord_t font_h = getFontHeight(FONT(STD));
 
-  coords.x1 = cell_area->x1 + cell_left;
+  // cell_left now includes the reserved icon strip (see the constructor), so
+  // step back over it to land the glyph in that strip, ahead of the text.
+  coords.x1 = cell_area->x1 + cell_left - iconStripWidth();
   coords.x2 = coords.x1 + font_h - 1;
   coords.y1 = cell_area->y1 + (area_h - font_h) / 2;
   coords.y2 = coords.y1 + font_h - 1;

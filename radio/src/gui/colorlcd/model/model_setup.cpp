@@ -512,7 +512,10 @@ const static PageButtonDef modelSetupButtons[] = {
 #if defined(HELI)
   {STR_DEF(STR_MENUHELISETUP), [](Route r) { new ModelHeliPage(r); }, nullptr, modelHeliEnabled},
 #endif
-  {STR_DEF(STR_BATTERY), [](Route r) { new BatteryMonitorPage(0, r); }, nullptr, nullptr, "model.setup.battery"},
+  // STR_BATT_LABEL ("Battery"), not STR_BATTERY ("BATTERY"): the all-caps one
+  // is the full-screen ALERT title register (alongside STR_WARNING), and it
+  // made this the only shouting tile among Title Case siblings.
+  {STR_DEF(STR_BATT_LABEL), [](Route r) { new BatteryMonitorPage(0, r); }, nullptr, nullptr, "model.setup.battery"},
   {nullptr},
 };
 
