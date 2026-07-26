@@ -389,7 +389,13 @@ const lv_coord_t kFormRows[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
 // 4 px still lands inside the row that reserved the space for them.
 void expandControlToTouchFloor(lv_obj_t* obj)
 {
-  constexpr coord_t pad = (kTouchMin - EdgeTxStyles::UI_ELEMENT_HEIGHT) / 2;
+  // Round the half-difference UP. Both terms are LAYOUT_SCALE'd, and on the
+  // >=800 px layout they scale to 55 and 44 -- an ODD difference of 11, which
+  // integer division truncates to 5, leaving the box at 54 and one pixel SHORT
+  // of the floor it is supposed to guarantee. Rounding up costs a pixel only
+  // when the difference is odd, and a floor that is missed by one pixel on one
+  // display size is not a floor.
+  constexpr coord_t pad = (kTouchMin - EdgeTxStyles::UI_ELEMENT_HEIGHT + 1) / 2;
   if (pad > 0) lv_obj_set_ext_click_area(obj, pad);
 }
 }  // namespace
