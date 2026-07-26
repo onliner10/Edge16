@@ -1185,7 +1185,17 @@ DSButton* Dialog::action(const char* text, ButtonRole role,
         actionsRow->withLive([](Window::LiveWindow& live) {
           lv_obj_t* obj = live.lvobj();
           lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_ROW);
-          lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER,
+          // Centered, not right-aligned. Right-aligned action rows are the
+          // desktop convention, and both of its premises fail here: a desktop
+          // dialog is wide with left-aligned prose, so the eye naturally ends
+          // bottom-right. Every dialog in this app centers its body text
+          // instead, which left a compact 480 px alert with centered prose
+          // above buttons jammed against the right edge and a wide empty gap
+          // on the left. Centering also stops biasing every action toward the
+          // right thumb on a radio held in two hands. Order is unchanged --
+          // the affirmative action is still added last and so still sits on
+          // the right, which is consistent everywhere else in the UI.
+          lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                                 LV_FLEX_ALIGN_CENTER);
           lv_obj_set_style_pad_column(obj, kSpace3, LV_PART_MAIN);
           lv_obj_set_style_pad_top(obj, kSpace2, LV_PART_MAIN);

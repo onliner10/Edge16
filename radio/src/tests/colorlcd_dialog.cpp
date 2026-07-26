@@ -33,6 +33,7 @@ bool confirmDialogBlockingIgnoresOutsideTapForTest();
 bool messageDialogIsDismissibleForTest();
 bool dsDialogActionInvokesHandlerForTest();
 bool confirmDialogYesIsDestructiveWhenFlaggedForTest();
+bool dsDialogActionsAreCenteredForTest();
 bool fullScreenConfirmIgnoresLongPressForTest();
 bool fullScreenAlertStillDismissesOnLongPressForTest();
 
@@ -177,6 +178,26 @@ TEST(ColorConfirmDialog, YesIsDestructiveWhenFlagged)
   if (pid == 0) {
     alarm(2);
     _exit(confirmDialogYesIsDestructiveWhenFlaggedForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+// Dialog bodies are centered everywhere in this app, so a right-aligned
+// action row left the buttons jammed against the right edge under centered
+// prose. Actions are centered as a group; asserted as real geometry (equal
+// slack either side) so the property survives a refactor.
+TEST(ColorDSDialog, ActionsAreCentered)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(dsDialogActionsAreCenteredForTest() ? 0 : 1);
   }
 
   int status = 0;

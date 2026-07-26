@@ -600,7 +600,9 @@ class DSButton : public TextButton
 
 // ---------------------------------------------------------------------------
 // Dialog — title / body lines / actions, all spacing DS-owned.
-// Actions are right-aligned; add the primary action LAST.
+// Actions are CENTERED as a group, matching the centered body text every
+// dialog in this app uses; add the primary action LAST, so the affirmative
+// still sits on the right.
 //
 // `closeIfClickedOutside` (default true) chooses the dismissible-vs-blocking
 // semantics inherited from BaseDialog: a plain message dialog is dismissible

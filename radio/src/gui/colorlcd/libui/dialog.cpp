@@ -654,6 +654,52 @@ bool dsDialogActionInvokesHandlerForTest()
   return ran;
 }
 
+// The action row is CENTERED as a group, not right-aligned. Every dialog in
+// this app centers its body text, so a right-aligned action row put the
+// buttons hard against the right edge under centered prose, with a wide dead
+// gap on the left. Asserted as real geometry -- the slack to the left of the
+// first button and to the right of the last must match -- rather than by
+// reading back the flex constant, so the property survives a refactor that
+// achieves the layout some other way.
+bool dsDialogActionsAreCenteredForTest()
+{
+  auto* dlg = new (std::nothrow) ds::Dialog("Title");
+  if (!dlg || !dlg->isAvailable()) return false;
+  dlg->body("A reasonably long body line so the dialog is wider than the "
+            "buttons");
+  auto* no = dlg->action("No", ds::ButtonRole::Secondary, []() {});
+  auto* yes = dlg->action("Yes", ds::ButtonRole::Primary, []() {});
+  if (!no || !yes) {
+    dlg->deleteLater();
+    MainWindow::instance()->runMainLoopTick();
+    return false;
+  }
+  for (int i = 0; i < 3; i++) MainWindow::instance()->runMainLoopTick();
+
+  lv_area_t rowArea{}, firstArea{}, lastArea{};
+  bool got = false;
+  no->withLive([&](Window::LiveWindow& live) {
+    lv_obj_t* btn = live.lvobj();
+    lv_obj_t* row = lv_obj_get_parent(btn);
+    if (!row) return;
+    lv_obj_update_layout(row);
+    lv_obj_get_content_coords(row, &rowArea);
+    lv_obj_get_coords(btn, &firstArea);
+    got = true;
+  });
+  yes->withLive(
+      [&](Window::LiveWindow& live) { lv_obj_get_coords(live.lvobj(), &lastArea); });
+
+  const int32_t leftSlack = firstArea.x1 - rowArea.x1;
+  const int32_t rightSlack = rowArea.x2 - lastArea.x2;
+
+  dlg->deleteLater();
+  for (int i = 0; i < 3; i++) MainWindow::instance()->runMainLoopTick();
+
+  // Allow 1 px for odd-width rounding when the slack is split in two.
+  return got && leftSlack > 0 && std::abs(leftSlack - rightSlack) <= 1;
+}
+
 // A destructive confirm's YES action renders with the Destructive fill
 // (warning-colored), not Primary -- an irreversible choice (delete
 // sensor/theme, receiver reset, ...) must never look like the
