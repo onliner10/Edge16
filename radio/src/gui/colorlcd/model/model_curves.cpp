@@ -24,6 +24,7 @@
 #include "button.h"
 #include "curveedit.h"
 #include "dialog.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "menu.h"
 #include "page.h"
@@ -212,6 +213,30 @@ void ModelCurvesPage::build(Window *window)
 {
   pageWindow = window;
 
+  bool hasAnyCurve = false;
+  for (uint8_t index = 0; index < MAX_CURVES; index++) {
+    if (isCurveUsed(index)) {
+      hasAnyCurve = true;
+      break;
+    }
+  }
+
+  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
+
+  if (!hasAnyCurve) {
+    // Nothing configured yet: replace the bare "+" thumbnail with a real
+    // empty state (icon + what-this-is + a primary "New" action) so the
+    // screen explains itself instead of showing a lone plus. See
+    // special_functions.cpp / DESIGN_SYSTEM.md.
+    addButton = nullptr;
+    new ds::EmptyState(window, ICON_MODEL_CURVES, STR_MENUCURVES, nullptr,
+                       STR_NEW, [=]() -> uint8_t {
+                         plusPopup(window);
+                         return 0;
+                       });
+    return;
+  }
+
 #if LANDSCAPE
   static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
                                        LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
@@ -220,8 +245,6 @@ void ModelCurvesPage::build(Window *window)
                                        LV_GRID_TEMPLATE_LAST};
 #endif
   static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-
-  window->setFlexLayout(LV_FLEX_FLOW_COLUMN, PAD_ZERO);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 
   FlexGridLayout grid(col_dsc, row_dsc, PAD_TINY);  // ds-allow: curves overview - curve thumbnails/info drawn at absolute offsets in a fixed-column button grid; not a DS list.
 

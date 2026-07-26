@@ -589,6 +589,30 @@ void ModelLogicalSwitchesPage::build(Window* window)
 {
   pageWindow = window;
 
+  bool hasAnySwitch = false;
+  for (uint8_t i = 0; i < MAX_LOGICAL_SWITCHES; i++) {
+    if (lswAddress(i)->func != LS_FUNC_NONE) {
+      hasAnySwitch = true;
+      break;
+    }
+  }
+
+  if (!hasAnySwitch) {
+    // Nothing configured yet: replace the bare "+" spanning cell with a real
+    // empty state (icon + what-this-is + a primary "New" action) so the
+    // screen explains itself instead of showing a lone plus. See
+    // special_functions.cpp / DESIGN_SYSTEM.md.
+    window->setFlexLayout(LV_FLEX_FLOW_COLUMN);
+    addButton = nullptr;
+    new ds::EmptyState(window, ICON_MODEL_LOGICAL_SWITCHES,
+                       STR_MENULOGICALSWITCHES, nullptr, STR_NEW,
+                       [=]() -> uint8_t {
+                         plusPopup(window);
+                         return 0;
+                       });
+    return;
+  }
+
   // DESIGN SYSTEM: ds::Grid restores the 7-column tabular scan (name / func /
   // v1 / v2 / AND / duration / delay) with all columns aligned down the list,
   // the 40 px touch floor and all spacing. tap = edit, long-press = menu.
