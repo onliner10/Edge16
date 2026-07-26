@@ -253,6 +253,10 @@ class TouchFloorDialog : public BaseDialog
   // A deliberately NARROW, icon-sized control -- the shape of the Model image
   // folder picker, which sizes to its own glyph rather than to a field width.
   Window* narrowCtrl = nullptr;
+  // ...and a control TALLER than the touch floor, to prove the row still grows
+  // around it rather than clipping (the risk of a fixed-fraction grid track).
+  Window* tallCtrl = nullptr;
+  ds::FormRow* tallRow = nullptr;
 
   explicit TouchFloorDialog(lv_coord_t ctrlH) : BaseDialog("TouchFloor", false)
   {
@@ -264,6 +268,9 @@ class TouchFloorDialog : public BaseDialog
       });
       new (std::nothrow) ds::FormRow(card, "Image", [&](Window* s) {
         narrowCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 28, ctrlH});
+      });
+      tallRow = new (std::nothrow) ds::FormRow(card, "Tall", [&](Window* s) {
+        tallCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 60, 72});
       });
       new (std::nothrow) ds::FieldRow(
           card, {{"A",
@@ -506,22 +513,55 @@ TEST(DesignSystemForm, FormControlsMeetTheTouchFloor)
   settleAndLayout(dlg);
 
   // Measure through lv_obj_get_click_area -- the exact area LVGL's own
-  // lv_obj_hit_test() consults -- rather than the drawn coords, so the test
-  // asserts what a finger can actually reach.
+  // lv_obj_hit_test() consults -- rather than the drawn coords.
+  //
+  // Then INTERSECT it with the parent's coords, because a click area alone
+  // overstates what a finger can reach. lv_indev_search_obj() only descends
+  // into a container's children when the touch point is inside the CONTAINER's
+  // own coords (lv_indev.c: the `lv_area_is_point_on(&obj_coords, ...)` gate,
+  // which considers ext_draw_size only for OVERFLOW_VISIBLE objects and never
+  // consults a child's ext_click_area). So any part of an expanded click box
+  // that pokes outside its parent is dead space that no touch can ever land
+  // on. Asserting the nominal box would let a control "meet" the floor on
+  // paper while being unreachable in practice.
   auto hitBox = [](Window* w) -> Box {
     Box b;
     if (!w) return b;
     w->withLive([&](Window::LiveWindow& live) {
+      lv_obj_t* obj = live.lvobj();
       lv_area_t a;
-      lv_obj_get_click_area(live.lvobj(), &a);
+      lv_obj_get_click_area(obj, &a);
+      lv_obj_t* parent = lv_obj_get_parent(obj);
+      if (parent) {
+        lv_area_t p;
+        lv_obj_get_coords(parent, &p);
+        a.x1 = LV_MAX(a.x1, p.x1);
+        a.y1 = LV_MAX(a.y1, p.y1);
+        a.x2 = LV_MIN(a.x2, p.x2);
+        a.y2 = LV_MIN(a.y2, p.y2);
+      }
       b = {a.x1, a.y1, lv_coord_t(a.x2 - a.x1 + 1), lv_coord_t(a.y2 - a.y1 + 1)};
     });
     return b;
   };
 
+  Box parentBox;
+  dlg->formCtrl->withLive([&](Window::LiveWindow& live) {
+    lv_obj_t* p = lv_obj_get_parent(live.lvobj());
+    if (p) {
+      lv_area_t a;
+      lv_obj_get_coords(p, &a);
+      parentBox = {a.x1, a.y1, lv_coord_t(a.x2 - a.x1 + 1),
+                   lv_coord_t(a.y2 - a.y1 + 1)};
+    }
+  });
+
   Box form = hitBox(dlg->formCtrl);
   EXPECT_GE(form.h, floor) << "FormRow control hit box is " << form.h
-                           << " px tall, under the " << floor << " px floor";
+                           << " px tall, under the " << floor << " px floor"
+                           << " (parent row is " << parentBox.w << "x"
+                           << parentBox.h << " at " << parentBox.x1 << ","
+                           << parentBox.y1 << ")";
   EXPECT_GE(form.w, floor) << "FormRow control hit box is " << form.w
                            << " px wide, under the " << floor << " px floor";
 
@@ -542,6 +582,18 @@ TEST(DesignSystemForm, FormControlsMeetTheTouchFloor)
   EXPECT_GE(narrow.h, floor)
       << "an icon-sized FormRow control is only " << narrow.h
       << " px tall, under the " << floor << " px floor";
+
+  // The row's grid track is a fixed fraction so a floor-sized control centres
+  // in the FULL row height. That must not cap the row: a control taller than
+  // the floor still has to make its row grow, or it would be clipped.
+  ASSERT_NE(dlg->tallCtrl, nullptr);
+  ASSERT_NE(dlg->tallRow, nullptr);
+  Box tall = winBox(dlg->tallCtrl);
+  Box tallRow = winBox(dlg->tallRow);
+  EXPECT_GE(tall.h, 72) << "a 72 px control was squashed to " << tall.h;
+  EXPECT_GE(tallRow.h, tall.h)
+      << "the row (" << tallRow.h << " px) is shorter than its own control ("
+      << tall.h << " px) -- the control is clipped";
 
   dlg->deleteLater();
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();

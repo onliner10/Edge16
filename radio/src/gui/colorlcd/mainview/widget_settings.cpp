@@ -22,12 +22,12 @@
 #include "widget_settings.h"
 
 #include "color_picker.h"
+#include "ds_core.h"
 #include "edgetx.h"
 #include "filechoice.h"
 #include "numberedit.h"
 #include "slider.h"
 #include "sourcechoice.h"
-#include "static.h"
 #include "switchchoice.h"
 #include "textedit.h"
 #include "toggleswitch.h"
@@ -47,15 +47,14 @@ static const rect_t widgetSettingsDialogRect = {
     LCD_H - 2 * LCD_H / 5    // height
 };
 
-static const lv_coord_t line_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1),
-                                          LV_GRID_TEMPLATE_LAST};
-static const lv_coord_t line_row_dsc[] = {LV_GRID_CONTENT,
-                                          LV_GRID_TEMPLATE_LAST};
-
 WidgetSettings::WidgetSettings(Widget* w) :
     BaseDialog(w->getFactory()->getDisplayName(), true), widget(w)
 {
-  FlexGridLayout grid(line_col_dsc, line_row_dsc, PAD_TINY); // ds-allow: per-widget options form builds its own grid so a custom-width option editor (SLIDER_W slider) isn't resized by a DS FormRow control column
+  // DESIGN SYSTEM: each widget option is a ds::FormRow (label + one control);
+  // the DS owns the 40/60 split, the touch floor and the inter-row gap. `form`
+  // is already the dialog's scrolling flex-column body (BaseDialog).
+  Window* formWindow = nullptr;
+  if (!form.with([&](Window& formWin) { formWindow = &formWin; })) return;
 
   uint8_t optIdx = 0;
 
@@ -73,170 +72,167 @@ WidgetSettings::WidgetSettings(Widget* w) :
       continue;
     }
 
-    auto line = form.valueOr<FormLine*>(
-        nullptr, [&](Window& formWindow) { return formWindow.newLine(grid); });
-    if (!line) return;
+    const char* label = opt->displayName ? opt->displayName : opt->name;
 
-    new (std::nothrow) StaticText(
-        line, rect_t{}, opt->displayName ? opt->displayName : opt->name);
+    new ds::FormRow(formWindow, label, [=](Window* slot) {
+      switch (opt->type) {
+        case WidgetOption::Integer:
+          if (auto edit = new (std::nothrow) NumberEdit(
+               slot, rect_t{}, opt->min.signedValue,
+               opt->max.signedValue,
+               [=]() -> int {
+                 return widgetData->getSignedValue(optIdx);
+               },
+               [=](int32_t newValue) {
+                 widgetData->setSignedValue(optIdx, newValue);
+                 setWidgetStorageDirty(widget);
+               })) {
+            edit->setDefault(opt->deflt.signedValue);
+          }
+          break;
 
-    switch (opt->type) {
-      case WidgetOption::Integer:
-        if (auto edit = new (std::nothrow) NumberEdit(
-             line, rect_t{}, opt->min.signedValue,
-             opt->max.signedValue,
-             [=]() -> int {
-               return widgetData->getSignedValue(optIdx);
-             },
-             [=](int32_t newValue) {
-               widgetData->setSignedValue(optIdx, newValue);
-               setWidgetStorageDirty(widget);
-             })) {
-          edit->setDefault(opt->deflt.signedValue);
-        }
-        break;
+        case WidgetOption::Source:
+          new (std::nothrow) SourceChoice(
+              slot, rect_t{}, 0, MIXSRC_LAST_TELEM,
+              [=]() -> int16_t {
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](int16_t newValue) {
+                widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
 
-      case WidgetOption::Source:
-        new (std::nothrow) SourceChoice(
-            line, rect_t{}, 0, MIXSRC_LAST_TELEM,
-            [=]() -> int16_t {
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](int16_t newValue) {
-              widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
-              setWidgetStorageDirty(widget);
+        case WidgetOption::Bool:
+          new (std::nothrow) ToggleSwitch(
+              slot, rect_t{},
+              [=]() -> uint8_t {
+                return (uint8_t)widgetData->getBoolValue(optIdx);
+              },
+              [=](int8_t newValue) {
+                widgetData->setBoolValue(optIdx, newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
+
+        case WidgetOption::String:
+          new (std::nothrow) ModelStringEdit(slot, rect_t{},
+                                             widgetData->getString(optIdx),
+                                             [=](const char* s) {
+                                               widgetData->setString(optIdx, s);
+                                               setWidgetStorageDirty(widget);
+                                             });
+          break;
+
+        case WidgetOption::TextSize:
+          new (std::nothrow) Choice(
+              slot, rect_t{}, STR_FONT_SIZES, 0, FONTS_COUNT - 1,
+              [=]() -> int {  // getValue
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](int newValue) {  // setValue
+                widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
+
+        case WidgetOption::Align:
+          new (std::nothrow) Choice(
+              slot, rect_t{}, STR_ALIGN_OPTS, 0, ALIGN_COUNT - 1,
+              [=]() -> int {  // getValue
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](int newValue) {  // setValue
+                widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
+
+        case WidgetOption::Timer:  // Unsigned
+        {
+          auto tmChoice = new (std::nothrow) Choice(
+              slot, rect_t{}, 0, TIMERS - 1,
+              [=]() -> int {  // getValue
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](int newValue) {  // setValue
+                widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
+                setWidgetStorageDirty(widget);
+              });
+
+          if (tmChoice) {
+            tmChoice->setTextHandler([](int value) {
+              return std::string(STR_TIMER) + std::to_string(value + 1);
             });
-        break;
+          }
+        } break;
 
-      case WidgetOption::Bool:
-        new (std::nothrow) ToggleSwitch(
-            line, rect_t{},
-            [=]() -> uint8_t {
-              return (uint8_t)widgetData->getBoolValue(optIdx);
-            },
-            [=](int8_t newValue) {
-              widgetData->setBoolValue(optIdx, newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
+        case WidgetOption::Switch:
+          new (std::nothrow) SwitchChoice(
+              slot, rect_t{},
+              opt->min.signedValue,  // min
+              opt->max.signedValue,  // max
+              [=]() -> int16_t {       // getValue
+                return widgetData->getSignedValue(optIdx);
+              },
+              [=](int16_t newValue) {  // setValue
+                widgetData->setSignedValue(optIdx, newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
 
-      case WidgetOption::String:
-        new (std::nothrow) ModelStringEdit(line, rect_t{},
-                                           widgetData->getString(optIdx),
-                                           [=](const char* s) {
-                                             widgetData->setString(optIdx, s);
-                                             setWidgetStorageDirty(widget);
-                                           });
-        break;
+        case WidgetOption::Color:
+          new (std::nothrow) ColorPicker(
+              slot, rect_t{},
+              [=]() -> uint32_t {  // getValue
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](uint32_t newValue) {  // setValue
+                widgetData->setUnsignedValue(optIdx, newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
 
-      case WidgetOption::TextSize:
-        new (std::nothrow) Choice(
-            line, rect_t{}, STR_FONT_SIZES, 0, FONTS_COUNT - 1,
-            [=]() -> int {  // getValue
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](int newValue) {  // setValue
-              widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
+        case WidgetOption::Slider:
+          new (std::nothrow) Slider(
+              slot, SLIDER_W, opt->min.signedValue, opt->max.signedValue,
+              [=]() {
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](uint32_t newValue) {
+                widgetData->setUnsignedValue(optIdx, newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
 
-      case WidgetOption::Align:
-        new (std::nothrow) Choice(
-            line, rect_t{}, STR_ALIGN_OPTS, 0, ALIGN_COUNT - 1,
-            [=]() -> int {  // getValue
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](int newValue) {  // setValue
-              widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
+        case WidgetOption::Choice:
+          // 0-based: stored value maps directly to the choice index (0..N-1),
+          // matching the Integer/Bool paths. (A previous -1/+1 offset here
+          // underflowed for the default/unset value 0 and had no live user.)
+          new (std::nothrow) Choice(slot, rect_t{}, opt->choiceValues, 0,
+              opt->choiceValues.size() - 1,
+              [=]() {
+                return widgetData->getUnsignedValue(optIdx);
+              },
+              [=](uint32_t newValue) {
+                widgetData->setUnsignedValue(optIdx, newValue);
+                setWidgetStorageDirty(widget);
+              });
+          break;
 
-      case WidgetOption::Timer:  // Unsigned
-      {
-        auto tmChoice = new (std::nothrow) Choice(
-            line, rect_t{}, 0, TIMERS - 1,
-            [=]() -> int {  // getValue
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](int newValue) {  // setValue
-              widgetData->setUnsignedValue(optIdx, (uint32_t)newValue);
-              setWidgetStorageDirty(widget);
-            });
-
-        if (tmChoice) {
-          tmChoice->setTextHandler([](int value) {
-            return std::string(STR_TIMER) + std::to_string(value + 1);
-          });
-        }
-      } break;
-
-      case WidgetOption::Switch:
-        new (std::nothrow) SwitchChoice(
-            line, rect_t{},
-            opt->min.signedValue,  // min
-            opt->max.signedValue,  // max
-            [=]() -> int16_t {       // getValue
-              return widgetData->getSignedValue(optIdx);
-            },
-            [=](int16_t newValue) {  // setValue
-              widgetData->setSignedValue(optIdx, newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
-
-      case WidgetOption::Color:
-        new (std::nothrow) ColorPicker(
-            line, rect_t{},
-            [=]() -> uint32_t {  // getValue
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](uint32_t newValue) {  // setValue
-              widgetData->setUnsignedValue(optIdx, newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
-
-      case WidgetOption::Slider:
-        new (std::nothrow) Slider(
-            line, SLIDER_W, opt->min.signedValue, opt->max.signedValue,
-            [=]() {
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](uint32_t newValue) {
-              widgetData->setUnsignedValue(optIdx, newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
-
-      case WidgetOption::Choice:
-        // 0-based: stored value maps directly to the choice index (0..N-1),
-        // matching the Integer/Bool paths. (A previous -1/+1 offset here
-        // underflowed for the default/unset value 0 and had no live user.)
-        new (std::nothrow) Choice(line, rect_t{}, opt->choiceValues, 0,
-            opt->choiceValues.size() - 1,
-            [=]() {
-              return widgetData->getUnsignedValue(optIdx);
-            },
-            [=](uint32_t newValue) {
-              widgetData->setUnsignedValue(optIdx, newValue);
-              setWidgetStorageDirty(widget);
-            });
-        break;
-
-      case WidgetOption::File:
-        new (std::nothrow) FileChoice(line, rect_t{}, opt->fileSelectPath, "",
-                                      FF_MAX_LFN,
-                                      [=]() {
-                                        return widgetData->getString(optIdx);
-                                      },
-                                      [=](std::string s) {
-                                        widgetData->setString(optIdx, s.c_str());
-                                        setWidgetStorageDirty(widget);
-                                      });
-        break;
-    }
+        case WidgetOption::File:
+          new (std::nothrow) FileChoice(slot, rect_t{}, opt->fileSelectPath, "",
+                                        FF_MAX_LFN,
+                                        [=]() {
+                                          return widgetData->getString(optIdx);
+                                        },
+                                        [=](std::string s) {
+                                          widgetData->setString(optIdx, s.c_str());
+                                          setWidgetStorageDirty(widget);
+                                        });
+          break;
+      }
+    });
 
     optIdx++;
     opt++;

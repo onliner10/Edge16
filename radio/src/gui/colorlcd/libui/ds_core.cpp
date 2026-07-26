@@ -371,7 +371,16 @@ namespace {
 // 40% label / 60% control, one content-height row, vertically centered.
 const lv_coord_t kFormCols[] = {LV_GRID_FR(2), LV_GRID_FR(3),
                                 LV_GRID_TEMPLATE_LAST};
-const lv_coord_t kFormRows[] = {LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
+// FR(1), not GRID_CONTENT: the track must fill the row's full height so a
+// control centred in it is centred in the whole 40 px row. With GRID_CONTENT
+// the track shrank to the control's own 32 px and sat at the TOP, leaving 8 px
+// of dead space below and pinning the control flush to the row's top edge --
+// which quietly halved the click-box expansion, since LVGL never hit-tests a
+// child outside its parent's coords (lv_indev_search_obj), so the 4 px added
+// above the control was unreachable and only the 4 px below counted. The row
+// still sizes to content overall (LV_SIZE_CONTENT + a kTouchMin floor), so a
+// taller control or a wrapped label still grows it.
+const lv_coord_t kFormRows[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 
 // In a FormRow/FieldCell the CONTROL is the tap target -- the row sets NO_FOCUS
 // on itself so the label area is inert. But the standard control height is

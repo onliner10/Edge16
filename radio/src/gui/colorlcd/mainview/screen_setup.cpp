@@ -26,6 +26,7 @@
 
 #include "color_picker.h"
 #include "dialog.h"  // confirmDestructive
+#include "ds_core.h"
 #include "edgetx.h"
 #include "getset_helpers.h"
 #include "layout.h"
@@ -317,7 +318,6 @@ void ScreenSetupPage::buildLayoutOptions()
 {
   if (!layoutOptions) return;
 
-  FlexGridLayout grid(line_col_dsc, line_row_dsc);
   layoutOptions->setFlexLayout();
 
   // Layout options...
@@ -327,40 +327,39 @@ void ScreenSetupPage::buildLayoutOptions()
   auto factory = layout->getFactory();
   if (!factory) return;
 
+  // DESIGN SYSTEM: one ds::FormRow per layout option (label + one control);
+  // the DS owns the 40/60 split, the touch floor and the inter-row gap.
   int index = 0;
   for (auto* option = factory->getLayoutOptions(); option->name; option++, index++) {
     auto layoutData = g_model.getScreenLayoutData(customScreenIndex);
     LayoutOptionValue* value = &layoutData->options[index].value;
 
-    // Option label
-    auto line = layoutOptions->newLine(grid);
-    new (std::nothrow) StaticText(line, rect_t{}, STR_VAL(option->name));
+    new ds::FormRow(layoutOptions, STR_VAL(option->name), [=](Window* slot) {
+      switch (option->type) {
+        case LayoutOption::Bool:
+          new ToggleSwitch(slot, rect_t{},
+                           GET_DEFAULT(value->boolValue),
+                           [=](int newValue) {
+                             value->boolValue = newValue;
+                             Messaging::send(Messaging::DECORATION_UPDATE);
+                             SET_DIRTY();
+                           });
+          break;
 
-    // Option value
-    switch (option->type) {
-      case LayoutOption::Bool:
-        new (std::nothrow) ToggleSwitch(line, rect_t{},
-                         GET_DEFAULT(value->boolValue),
-                         [=](int newValue) {
-                           value->boolValue = newValue;
-                           Messaging::send(Messaging::DECORATION_UPDATE);
-                           SET_DIRTY();
-                         });
-        break;
+        case LayoutOption::Color:
+          new ColorPicker(slot, rect_t{},
+                          GET_DEFAULT(value->unsignedValue),
+                          [=](int newValue) {
+                            value->unsignedValue = newValue;
+                             Messaging::send(Messaging::DECORATION_UPDATE);
+                             SET_DIRTY();
+                          });
+          break;
 
-      case LayoutOption::Color:
-        new (std::nothrow) ColorPicker(line, rect_t{},
-                        GET_DEFAULT(value->unsignedValue),
-                        [=](int newValue) {
-                          value->unsignedValue = newValue;
-                           Messaging::send(Messaging::DECORATION_UPDATE);
-                           SET_DIRTY();
-                        });
-        break;
-
-      default:
-        break;
-    }
+        default:
+          break;
+      }
+    });
   }
 }
 
