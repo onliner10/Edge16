@@ -441,9 +441,19 @@ bool FormRow::addChild(Window* child)
   // vertically centered. (The label is a raw lv label, not a Window child, so
   // the first — and only — Window child is the control.)
   child->withLive([](Window::LiveWindow& live) {
-    lv_obj_set_grid_cell(live.lvobj(), LV_GRID_ALIGN_START, 1, 1,
-                         LV_GRID_ALIGN_CENTER, 0, 1);
-    expandControlToTouchFloor(live.lvobj());
+    lv_obj_t* obj = live.lvobj();
+    lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_START, 1, 1, LV_GRID_ALIGN_CENTER,
+                         0, 1);
+    // Same min-width clamp FieldRow's cells already applied. Without it a
+    // control that sizes to its own content -- an icon-only picker such as the
+    // Model image folder button, 28 px wide -- stayed narrower than the floor,
+    // and the click-box expansion below could not rescue it: that expansion is
+    // derived from the HEIGHT shortfall, so it added 4 px a side and left the
+    // button 36 px wide. Clamping the width makes the layout reserve the space
+    // rather than papering over it with an oversized hit box, so the control
+    // also LOOKS as big as it is tappable.
+    lv_obj_set_style_min_width(obj, kTouchMin, LV_PART_MAIN);
+    expandControlToTouchFloor(obj);
   });
   return true;
 }

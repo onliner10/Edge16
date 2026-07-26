@@ -250,6 +250,10 @@ class TouchFloorDialog : public BaseDialog
   Window* formCtrl = nullptr;
   Window* fieldCtrl = nullptr;
 
+  // A deliberately NARROW, icon-sized control -- the shape of the Model image
+  // folder picker, which sizes to its own glyph rather than to a field width.
+  Window* narrowCtrl = nullptr;
+
   explicit TouchFloorDialog(lv_coord_t ctrlH) : BaseDialog("TouchFloor", false)
   {
     form.with([&](Window& f) {
@@ -257,6 +261,9 @@ class TouchFloorDialog : public BaseDialog
       auto* card = new (std::nothrow) ds::Card(list);
       new (std::nothrow) ds::FormRow(card, "Toggle", [&](Window* s) {
         formCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 52, ctrlH});
+      });
+      new (std::nothrow) ds::FormRow(card, "Image", [&](Window* s) {
+        narrowCtrl = new (std::nothrow) Window(s, rect_t{0, 0, 28, ctrlH});
       });
       new (std::nothrow) ds::FieldRow(
           card, {{"A",
@@ -523,6 +530,18 @@ TEST(DesignSystemForm, FormControlsMeetTheTouchFloor)
                             << " px tall, under the " << floor << " px floor";
   EXPECT_GE(field.w, floor) << "FieldRow control hit box is " << field.w
                             << " px wide, under the " << floor << " px floor";
+
+  // A control that sizes to its own content can be far narrower than a field.
+  // The click-box expansion alone cannot save it -- that is derived from the
+  // HEIGHT shortfall -- so the row must also clamp the width.
+  ASSERT_NE(dlg->narrowCtrl, nullptr);
+  Box narrow = hitBox(dlg->narrowCtrl);
+  EXPECT_GE(narrow.w, floor)
+      << "an icon-sized FormRow control is only " << narrow.w
+      << " px wide, under the " << floor << " px floor";
+  EXPECT_GE(narrow.h, floor)
+      << "an icon-sized FormRow control is only " << narrow.h
+      << " px tall, under the " << floor << " px floor";
 
   dlg->deleteLater();
   for (int i = 0; i < 8; i++) MainWindow::instance()->runMainLoopTick();
