@@ -344,3 +344,65 @@ Safety risk assessment
 ```
 
 Respond in the user's language for explanations. Keep code comments and identifiers in English unless the surrounding file uses another convention.
+
+## Cursor Cloud specific instructions
+
+This section is for Cursor Cloud agents. The VM snapshot already has Nix installed
+(single-user, daemonless), submodules checked out, and the `nix develop` toolchain
+realized. The startup update script only runs `git submodule update --init --recursive`.
+
+The Pi tools referenced above (`compile_check`, `edge16_check`, `edgetx_ui`,
+`github_failure`, Serena) are NOT available in Cursor Cloud. Use the direct
+`nix develop -c ...` equivalents documented below and in `.pi/extensions/edge16-checks.ts`
+(the source of truth for the exact flags each preset uses).
+
+### Environment
+
+- Nix is installed for the `ubuntu` user and sourced from `~/.bashrc` (the installer
+  only edited `~/.profile`, and the Cloud shell is interactive non-login, so the extra
+  `~/.bashrc` line is what makes `nix` available). `nix develop` (flake in `flake.nix`)
+  provides cmake, ninja, arm-none-eabi-gcc, uv, python, clang, SDL. First use after a
+  `flake.lock` change re-realizes the toolchain and can take a while.
+- Two non-obvious build gotchas are pre-handled; keep them in mind if a build breaks:
+  1. `~/.bashrc` exports `CPLUS_INCLUDE_PATH` pointing at the pinned nix gcc's libstdc++
+     headers. The firmware codegen (`radio/util/generate_datacopy.py` and the YAML
+     generators) parses C++ with the RAW `libclang.so`, which bypasses the nix clang
+     wrapper and otherwise fails with `'cinttypes' file not found`. This value is
+     inherited into `nix develop -c ...`. If you see that error, re-source `~/.bashrc`.
+  2. Builds must run with `NIX_HARDENING_ENABLE` set to a list that EXCLUDES `fortify`
+     (see the exact list below). The nix gcc-wrapper otherwise injects `-D_FORTIFY_SOURCE`,
+     which fails as `_FORTIFY_SOURCE requires compiling with optimization (-O)` under the
+     project's `-Werror` at `-O0`. Pass it (plus `XDG_CONFIG_HOME=/tmp/edge16-xdg`) via
+     `env` INSIDE `nix develop -c` — do NOT export `XDG_CONFIG_HOME` globally, or `nix`
+     itself stops finding `~/.config/nix/nix.conf` and flakes break.
+
+### Canonical commands (run from repo root)
+
+Native gtests (Tier 1/2 verification; mirrors `edge16_check check=commit-tests`):
+
+```sh
+nix develop -c env XDG_CONFIG_HOME=/tmp/edge16-xdg \
+  NIX_HARDENING_ENABLE="bindnow format libcxxhardeningfast pic relro stackclashprotection stackprotector strictflexarrays1 strictoverflow zerocallusedregs" \
+  FLAVOR=tx16s EDGE16_UV_ACTIVE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 \
+  EXTRA_OPTIONS='-DWARNINGS_AS_ERRORS=YES -DEDGE16_SAFETY_CHECKS=ON -DDISABLE_COMPANION=ON' \
+  uv run --with-requirements requirements.txt bash ./tools/commit-tests.sh
+```
+
+Swap `FLAVOR=tx16smk3` for MK3. For `asan-ubsan`/`tsan`/`strict-firmware`, change
+`EXTRA_OPTIONS` / script exactly as `.pi/extensions/edge16-checks.ts` does.
+
+Build the SDL simulator (native, no hardware needed):
+
+```sh
+nix develop -c env CMAKE_BUILD_PARALLEL_LEVEL=4 tools/ui-harness/edgetx-ui build tx16s
+```
+
+### Simulator / UI harness
+
+- The harness runs headless by default (`SDL_VIDEODRIVER=dummy`); screenshots come from
+  the framebuffer. Drive it with `tools/ui-harness/edgetx-ui run-flow <flow.json>` or the
+  `smoke` subcommand. Flows live in `tools/ui-harness/flows/`.
+- To show a real window on the VM desktop (e.g. for a screen recording), set
+  `EDGETX_UI_SHOW_WINDOW=1 SDL_VIDEODRIVER=x11 DISPLAY=:1`. Windowed mode works on this VM.
+- The harness rebuilds the simulator under `build/ui-harness/<target>` unless it finds an
+  existing `simu`; set `EDGETX_UI_BUILD_ROOT` to reuse a build dir elsewhere.
