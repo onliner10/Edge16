@@ -157,6 +157,7 @@ class NumberEdit : public TextButton
 
   void updateDisplay();
   void openEdit();
+  void onDelete() override;
 
   void checkEvents() override;
 };

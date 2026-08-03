@@ -30,6 +30,8 @@
 #include "mainwindow.h"
 #include "numberedit.h"
 
+NumberWheel* NumberWheel::activeWheel = nullptr;
+
 // Base card dimensions for the 480x272 TX16S MK2 display.  Larger screens use
 // the same proportions with larger touch targets, while MK2 keeps a compact fit.
 constexpr lv_coord_t BASE_CARD_W = 340;
@@ -667,6 +669,26 @@ void NumberWheel::onCancel()
   deleteLater();
 }
 
+void NumberWheel::onDelete()
+{
+  if (activeWheel == this) activeWheel = nullptr;
+  edit = nullptr;
+  Window::onDelete();
+}
+
+void NumberWheel::detachEdit(NumberEdit* edit)
+{
+  if (!edit || !activeWheel || activeWheel->edit != edit) return;
+
+  auto* wheel = activeWheel;
+  activeWheel = nullptr;
+  // Drop the NumberArea closeHandler before teardown — it captures the field
+  // being destroyed. Null edit so any in-flight roller callbacks no-op.
+  wheel->setCloseHandler({});
+  wheel->edit = nullptr;
+  wheel->deleteLater();
+}
+
 void NumberWheel::onLiveClicked(LiveWindow&)
 {
   // Reached only for a tap on the dark scrim OUTSIDE the card (taps inside the
@@ -965,8 +987,19 @@ NumberWheel* NumberWheel::open(NumberEdit* edit)
   if (!edit) return nullptr;
   if (!canOpen(edit)) return nullptr;
 
+  // Only one wheel at a time; dropping an older one must not call into a
+  // possibly-stale NumberArea closeHandler.
+  if (activeWheel) {
+    auto* prev = activeWheel;
+    activeWheel = nullptr;
+    prev->setCloseHandler({});
+    prev->edit = nullptr;
+    prev->deleteLater();
+  }
+
   auto* wheel = new (std::nothrow) NumberWheel(edit);
   if (!wheel) return nullptr;
+  activeWheel = wheel;
 
   // Create a group so hardware rotary and keys work
   lv_group_t* g = lv_group_create();

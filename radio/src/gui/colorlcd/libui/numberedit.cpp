@@ -179,6 +179,8 @@ class NumberArea : public FormField
     setEditMode(false);
     auto* wheel = NumberWheel::open(numEdit);
     if (!wheel) return false;
+    // NumberWheel::detachEdit clears this handler before NumberArea/NumberEdit
+    // teardown so the capture of `this` cannot outlive the field.
     wheel->setCloseHandler([this]() {
       numEdit->update();
       changeEnd();
@@ -237,6 +239,12 @@ class NumberArea : public FormField
   }
 
   void onCancel() override { onClicked(); }
+
+  void onDelete() override
+  {
+    NumberWheel::detachEdit(numEdit);
+    FormField::onDelete();
+  }
 
   static void numberedit_cb(lv_event_t* e)
   {
@@ -480,6 +488,11 @@ void NumberEdit::checkEvents()
   TextButton::checkEvents();
 }
 
+void NumberEdit::onDelete()
+{
+  NumberWheel::detachEdit(this);
+}
+
 #if defined(SIMU)
 void etxCreateForceObjectAllocationFailureForTest(bool force);
 
@@ -570,5 +583,43 @@ bool numberEditCancelActiveEditorDoesNotCrashForTest()
   MainWindow::instance()->runMainLoopTick();
   delete numberEdit;
   return ok;
+}
+
+bool numberEditDeleteWhileWheelOpenClosesWheelForTest()
+{
+  // NumberArea::tryWheel captured `this` in the wheel closeHandler without
+  // detaching on field teardown. Deleting the NumberEdit while the wheel was
+  // open left that handler (and NumberWheel::edit) dangling.
+  int value = 50;
+  auto numberEdit = new (std::nothrow) NumberEdit(
+      MainWindow::instance(),
+      rect_t{0, 0, 120, EdgeTxStyles::UI_ELEMENT_HEIGHT}, 0, 100,
+      [&]() { return value; }, [&](int v) { value = v; });
+  if (!numberEdit || !numberEdit->isAvailable()) {
+    delete numberEdit;
+    return false;
+  }
+  if (!NumberWheel::canOpen(numberEdit)) {
+    delete numberEdit;
+    return false;
+  }
+
+  auto* wheel = NumberWheel::open(numberEdit);
+  if (!wheel) {
+    delete numberEdit;
+    return false;
+  }
+  if (Window::topWindow() != wheel) {
+    delete numberEdit;
+    return false;
+  }
+
+  // Simulate the production closeHandler capture from NumberArea::tryWheel.
+  wheel->setCloseHandler([numberEdit]() {
+    numberEdit->update();
+  });
+
+  numberEdit->deleteLater();
+  return Window::topWindow() != wheel;
 }
 #endif
