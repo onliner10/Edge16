@@ -108,6 +108,14 @@ class ConfirmDialog : public ds::Dialog
                 std::function<void(void)> cancelHandler = nullptr,
                 bool destructive = false);
 
+  // Drop confirm/cancel captures before the owner is destroyed so a lingering
+  // YES/NO tap cannot UAF into the creating page/dialog.
+  void clearHandlers()
+  {
+    confirmHandler = nullptr;
+    cancelHandler = nullptr;
+  }
+
  protected:
   std::function<void(void)> confirmHandler;
   std::function<void(void)> cancelHandler;
