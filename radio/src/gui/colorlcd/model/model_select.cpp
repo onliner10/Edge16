@@ -797,26 +797,6 @@ ModelLabelsWindow::ModelLabelsWindow() : Page(ICON_MODEL_SELECT, Route{}, PAD_ZE
 }
 
 #if defined(HARDWARE_KEYS)
-void ModelLabelsWindow::onLongPressSYS()
-{
-  onCancel();
-  Page::onLongPressSYS();
-}
-void ModelLabelsWindow::onPressMDL()
-{
-  onCancel();
-  Page::onPressMDL();
-}
-void ModelLabelsWindow::onPressTELE()
-{
-  onCancel();
-  Page::onPressTELE();
-}
-void ModelLabelsWindow::onLongPressTELE()
-{
-  onCancel();
-  Page::onLongPressTELE();
-}
 void ModelLabelsWindow::onPressPG(bool isNext)
 {
   int rowcount = lblselector->getRowCount();

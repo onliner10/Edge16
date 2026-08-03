@@ -28,6 +28,7 @@
 #include <new>
 
 #include "mainwindow.h"
+#include "messaging.h"
 #include "page.h"
 #include "setup_menus/pagegroup.h"
 
@@ -166,6 +167,9 @@ class LongPressReturnTestEditorPage : public Page
  public:
   LongPressReturnTestEditorPage() : Page(ICON_MODEL_MIXER, Route{}) {}
   void longPressReturnForTest() { onLongPressRTN(); }
+#if defined(HARDWARE_KEYS)
+  void pressMDLForTest() { onPressMDL(); }
+#endif
 };
 
 static const PageDef longPressReturnPages[] = {
@@ -264,6 +268,54 @@ bool pageLongPressReturnRunsEditorCloseHandlerBeforeParentCloseForTest()
 
         return Window::pageGroup() == nullptr && editorCloseHandlerCalled &&
                parentAliveInEditorCloseHandler;
+      });
+}
+
+#if defined(HARDWARE_KEYS)
+// SYS/MDL/TELE used to deleteLater() the editor (deferring closeHandler) then
+// navigate the parent PageGroup, which can clear the tab body before the
+// deferred handler runs.  closeHandler must see a live PageGroup.
+bool pagePressMDLRunsEditorCloseHandlerWhileParentAliveForTest()
+{
+  bool editorCloseHandlerCalled = false;
+  bool parentAliveInEditorCloseHandler = false;
+  return withLongPressReturnStackForTest(
+      [&](PageGroup* pageGroup, LongPressReturnTestEditorPage* editor) {
+        if (Window::pageGroup() != pageGroup || Window::topWindow() != editor)
+          return false;
+
+        editor->setCloseHandler([&]() {
+          editorCloseHandlerCalled = true;
+          parentAliveInEditorCloseHandler = Window::pageGroup() == pageGroup;
+        });
+        editor->pressMDLForTest();
+
+        // closeHandler must already have run synchronously before navigation
+        // deferred work; do not rely on a later deferred cycle.
+        return editorCloseHandlerCalled && parentAliveInEditorCloseHandler;
+      });
+}
+#endif
+
+// Quick Menu item select notifies Page then PageGroup (newer Messaging groups
+// first).  Page must run closeHandler before PageGroup::onCancel clears body.
+bool pageQuickMenuSelectRunsEditorCloseHandlerWhileParentAliveForTest()
+{
+  bool editorCloseHandlerCalled = false;
+  bool parentAliveInEditorCloseHandler = false;
+  return withLongPressReturnStackForTest(
+      [&](PageGroup* pageGroup, LongPressReturnTestEditorPage* editor) {
+        if (Window::pageGroup() != pageGroup || Window::topWindow() != editor)
+          return false;
+
+        editor->setCloseHandler([&]() {
+          editorCloseHandlerCalled = true;
+          parentAliveInEditorCloseHandler = Window::pageGroup() == pageGroup;
+        });
+
+        Messaging::send(Messaging::QUICK_MENU_ITEM_SELECT, 1);
+
+        return editorCloseHandlerCalled && parentAliveInEditorCloseHandler;
       });
 }
 
@@ -533,6 +585,42 @@ TEST(ColorWindow, LongPressReturnRunsEditorCloseHandlerBeforeParentClose)
   if (pid == 0) {
     alarm(2);
     _exit(pageLongPressReturnRunsEditorCloseHandlerBeforeParentCloseForTest()
+              ? 0
+              : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+#if defined(HARDWARE_KEYS)
+TEST(ColorWindow, PressMDLRunsEditorCloseHandlerWhileParentAlive)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(pagePressMDLRunsEditorCloseHandlerWhileParentAliveForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+#endif
+
+TEST(ColorWindow, QuickMenuSelectRunsEditorCloseHandlerWhileParentAlive)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(pageQuickMenuSelectRunsEditorCloseHandlerWhileParentAliveForTest()
               ? 0
               : 1);
   }
