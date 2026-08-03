@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 bool moduleSubTypeChoiceDeleteWhileMenuOpenClosesMenuForTest();
+bool moduleSubTypeSetValueDoesNotBlockUiForTest();
 
 TEST(ColorModuleSetup, ModuleSubTypeChoiceDeleteWhileMenuOpenClosesMenu)
 {
@@ -35,6 +36,22 @@ TEST(ColorModuleSetup, ModuleSubTypeChoiceDeleteWhileMenuOpenClosesMenu)
   if (pid == 0) {
     alarm(2);
     _exit(moduleSubTypeChoiceDeleteWhileMenuOpenClosesMenuForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorModuleSetup, ModuleSubTypeSetValueDoesNotBlockUi)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(moduleSubTypeSetValueDoesNotBlockUiForTest() ? 0 : 1);
   }
 
   int status = 0;
