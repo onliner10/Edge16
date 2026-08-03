@@ -38,6 +38,7 @@
 #include "view_main.h"
 #include "widget_settings.h"
 #include "widgets_setup.h"
+#include "pagegroup.h"
 
 #define SET_DIRTY() storageDirty(EE_MODEL)
 #define BUTTON_HEIGHT 30
@@ -154,6 +155,49 @@ bool screenSetupLayoutChoiceCanvasCreateFailureFailsClosedForTest()
   return choice && !choice->hasCanvas() && !choice->isAvailable() &&
          !choice->isVisible() && !choice->automationClickable();
 }
+
+class SetupWidgetsDeferTestPageGroupItem : public PageGroupItem
+{
+ public:
+  explicit SetupWidgetsDeferTestPageGroupItem(const PageDef& pageDef) :
+      PageGroupItem(pageDef)
+  {
+  }
+  void build(Window*) override {}
+};
+
+static const PageDef setupWidgetsDeferTestPages[] = {
+    {ICON_THEME_VIEW1, STR_DEF(STR_QM_SCREEN_1), STR_DEF(STR_MAIN_VIEW_1),
+     PAGE_CREATE, QM_UI_SCREEN1,
+     [](const PageDef& pageDef) -> PageGroupItem* {
+       return new (std::nothrow) SetupWidgetsDeferTestPageGroupItem(pageDef);
+     }},
+    {EDGETX_ICONS_COUNT}};
+
+bool screenSetupWidgetsDefersPageGroupCloseForTest()
+{
+  auto pageGroup = new (std::nothrow)
+      PageGroup(ICON_THEME, "UI", setupWidgetsDeferTestPages);
+  if (!pageGroup || Window::pageGroup() != pageGroup) return false;
+
+  // Host mirrors ScreenSetupPage body content: a descendant of the PageGroup
+  // whose press handler previously called getParent()->deleteLater() inline.
+  auto host = new (std::nothrow) Window(pageGroup, rect_t{0, 0, 10, 10});
+  if (!host || host->getParent() != pageGroup) return false;
+
+  ScreenSetupPage::openSetupWidgets(host, 0);
+
+  const bool notClosedInline = Window::pageGroup() == pageGroup;
+  Window::runDeferredCloseHandlersForTest();
+  const bool notClosedSameCycle = Window::pageGroup() == pageGroup;
+  Window::runDeferredCloseHandlersForTest();
+  const bool closedAfterDeferred = Window::pageGroup() == nullptr;
+  Window* top = Window::topWindow();
+  const bool setupWidgetsOpened = top != nullptr && !top->isPageGroup();
+
+  return notClosedInline && notClosedSameCycle && closedAfterDeferred &&
+         setupWidgetsOpened;
+}
 #endif
 
 static Layout* getCustomLayout(unsigned index)
@@ -179,6 +223,21 @@ static const lv_coord_t line_row_dsc[] = {LV_GRID_CONTENT,
 ScreenSetupPage::ScreenSetupPage(unsigned index, const PageDef& pageDef) :
     PageGroupItem(pageDef), customScreenIndex(index)
 {
+}
+
+void ScreenSetupPage::openSetupWidgets(Window* hostWindow, unsigned screenIndex)
+{
+  if (!hostWindow) return;
+
+  // Defer PageGroup teardown + SetupWidgetsPage creation together. Inline
+  // deleteLater of the parent PageGroup from a descendant button press used to
+  // tear down the LVGL tree while the press handler was still on the stack
+  // (hard UI freeze; same class as long-RTN editor close).
+  hostWindow->deferWindowMutation(
+      [screenIndex](Window& liveWindow, UiMutationToken&) {
+        if (Window* parent = liveWindow.getParent()) parent->deleteLater();
+        new (std::nothrow) SetupWidgetsPage(screenIndex);
+      });
 }
 
 void ScreenSetupPage::build(Window* window)
@@ -253,9 +312,7 @@ void ScreenSetupPage::build(Window* window)
 #endif
   btn = new (std::nothrow) TextButton(line, rect_t{}, STR_SETUP_WIDGETS,
                        [=]() -> uint8_t {
-    auto idx = customScreenIndex;
-    window->getParent()->deleteLater();
-    new (std::nothrow) SetupWidgetsPage(idx);
+    ScreenSetupPage::openSetupWidgets(window, customScreenIndex);
     return 0;
   });
   if (btn) {
