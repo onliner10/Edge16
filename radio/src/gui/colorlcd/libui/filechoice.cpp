@@ -185,6 +185,7 @@ void FileChoice::openMenu()
     setEditMode(true);  // this needs to be done first before menu is created.
 
     Menu::openOr([&](Menu& menu) {
+      activeMenu = &menu;
       if (menuTitle) menu.setTitle(menuTitle);
 
       auto tb = Window::makeLive<FileChoiceMenuToolbar>(*this, menu);
@@ -192,8 +193,17 @@ void FileChoice::openMenu()
 
       // fillMenu(menu); - called by MenuToolbar
 
-      menu.setCloseHandler([=]() { setEditMode(false); });
-    }, [&]() { setEditMode(false); });
+      std::weak_ptr<bool> lifetime(lifetimeToken);
+      auto* choice = this;
+      menu.setCloseHandler([choice, lifetime]() {
+        if (!lifetime.lock()) return;
+        choice->activeMenu = nullptr;
+        choice->setEditMode(false);
+      });
+    }, [&]() {
+      activeMenu = nullptr;
+      setEditMode(false);
+    });
   } else {
     auto md = new (std::nothrow) MessageDialog(STR_SDCARD, STR_NO_FILES_ON_SD);
     if (!md) return;

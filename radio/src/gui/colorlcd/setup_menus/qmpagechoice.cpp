@@ -59,6 +59,7 @@ void QMPageChoice::openMenu()
   setEditMode(true);  // this needs to be done first before menu is created.
 
   Menu::openOr([&](Menu& menu) {
+    activeMenu = &menu;
     if (menuTitle) menu.setTitle(menuTitle);
 
     auto tb = Window::makeLive<QMPageChoiceMenuToolbar>(*this, menu);
@@ -66,6 +67,15 @@ void QMPageChoice::openMenu()
 
     // fillMenu(menu); - called by MenuToolbar
 
-    menu.setCloseHandler([=]() { setEditMode(false); });
-  }, [&]() { setEditMode(false); }, false, popupWidth);
+    std::weak_ptr<bool> lifetime(lifetimeToken);
+    auto* choice = this;
+    menu.setCloseHandler([choice, lifetime]() {
+      if (!lifetime.lock()) return;
+      choice->activeMenu = nullptr;
+      choice->setEditMode(false);
+    });
+  }, [&]() {
+    activeMenu = nullptr;
+    setEditMode(false);
+  }, false, popupWidth);
 }

@@ -24,6 +24,7 @@
 #include "menu.h"
 #include "menutoolbar.h"
 #include "edgetx.h"
+#include "mainwindow.h"
 
 #include <new>
 
@@ -177,30 +178,38 @@ void SourceChoice::openMenu()
   inMenu = true;
 
   Menu::openOr([&](Menu& menu) {
+    activeMenu = &menu;
     auto menuPtr = &menu;
     if (menuTitle) menu.setTitle(menuTitle);
 
     auto tb = new (std::nothrow) SourceChoiceMenuToolbar(*this, menu);
     if (tb) menu.setToolbar(tb);
 
+    std::weak_ptr<bool> lifetime(lifetimeToken);
+    auto* choice = this;
+
     if (canInvert)
-      menu.setLongPressHandler([=]() { if (tb) tb->invertChoice(); });
+      menu.setLongPressHandler([choice, lifetime, tb]() {
+        if (!lifetime.lock()) return;
+        if (tb) tb->invertChoice();
+      });
 
 #if defined(AUTOSOURCE)
-    menu.setWaitHandler([=]() {
-      int16_t val = getMovedSource(vmin);
+    menu.setWaitHandler([choice, lifetime, menuPtr, tb]() {
+      if (!lifetime.lock()) return;
+      int16_t val = getMovedSource(choice->vmin);
       if (val) {
         if (tb) tb->resetFilter();
-        menuPtr->select(getIndexFromValue(val));
+        menuPtr->select(choice->getIndexFromValue(val));
       }
 #if defined(AUTOSWITCH)
       else {
         swsrc_t swtch = abs(getMovedSwitch());
         if (swtch && !IS_SWITCH_MULTIPOS(swtch)) {
           val = switchToMix(swtch);
-          if (val && (val >= vmin) && (val <= vmax)) {
+          if (val && (val >= choice->vmin) && (val <= choice->vmax)) {
             if (tb) tb->resetFilter();
-            menuPtr->select(getIndexFromValue(val));
+            menuPtr->select(choice->getIndexFromValue(val));
           }
         }
       }
@@ -210,13 +219,18 @@ void SourceChoice::openMenu()
 
     // fillMenu(menu); - called by MenuToolbar
 
-    // Runs for every close path (pick, EXIT, Cancel button, or a tap on the
-    // scrim).  Clearing inMenu here guarantees a cancel leaves no transient
-    // edit state behind: getIntValue()/the text handler stop returning the
-    // abs()/inverted view, so the field keeps showing exactly its pre-open
-    // value instead of a stale or blanked one.
-    menu.setCloseHandler([=]() { inMenu = false; setEditMode(false); });
+    // Runs for every close path (pick, EXIT, Cancel, or scrim tap). Clear
+    // inMenu so cancel leaves no transient abs()/inverted edit state.
+    // lifetimeToken guards against the Choice being deleted while the Menu
+    // is still open (UAF on AUTOSOURCE waitHandler / closeHandler).
+    menu.setCloseHandler([choice, lifetime]() {
+      if (!lifetime.lock()) return;
+      choice->activeMenu = nullptr;
+      choice->inMenu = false;
+      choice->setEditMode(false);
+    });
   }, [&]() {
+    activeMenu = nullptr;
     inMenu = false;
     setEditMode(false);
   });
@@ -238,3 +252,37 @@ SourceChoice::SourceChoice(Window *parent, const rect_t &rect, int16_t vmin,
 
   setAvailableHandler([](int v) { return isSourceAvailable(v); });
 }
+
+#if defined(SIMU)
+bool sourceChoiceDeleteWhileMenuOpenClosesMenuForTest()
+{
+  // SourceChoice/SwitchChoice used Menu::openOr without tracking activeMenu, so
+  // Choice::onDelete left the modal Menu alive with wait/close handlers that
+  // captured the destroyed choice (UAF on the next UI tick).
+  int16_t value = MIXSRC_FIRST_STICK;
+  class TestSourceChoice : public SourceChoice
+  {
+   public:
+    using SourceChoice::SourceChoice;
+    void openMenuForTest() { openMenu(); }
+    Menu* activeMenuForTest() const { return activeMenu; }
+  };
+
+  auto choice = new (std::nothrow) TestSourceChoice(
+      MainWindow::instance(),
+      rect_t{0, 0, 100, EdgeTxStyles::UI_ELEMENT_HEIGHT}, MIXSRC_FIRST_STICK,
+      MIXSRC_LAST_CH, [&]() -> int16_t { return value; },
+      [&](int16_t v) { value = v; }, true);
+  if (!choice || !choice->isAvailable()) return false;
+
+  choice->openMenuForTest();
+  Menu* menu = choice->activeMenuForTest();
+  if (!menu) return false;
+  if (Window::topWindow() != menu) return false;
+
+  choice->deleteLater();
+  // Choice::onDelete must close the still-open Menu; otherwise AUTOSOURCE
+  // waitHandler keeps firing against a destroyed SourceChoice.
+  return Window::topWindow() != menu;
+}
+#endif
