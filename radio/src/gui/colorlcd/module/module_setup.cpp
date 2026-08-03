@@ -34,7 +34,6 @@
 #include "messaging.h"
 #include "mixer_scheduler.h"
 #include "ds_core.h"
-#include "os/sleep.h"
 #include "ppm_settings.h"
 #include "storage/modelslist.h"
 #include "toggleswitch.h"
@@ -609,12 +608,11 @@ class ModuleSubTypeChoice : public Choice
       g_model.moduleData[moduleIdx].subType = 0;
       resetMultiProtocolsOptions(moduleIdx);
 
-      MultiModuleStatus& status = getMultiModuleStatus(moduleIdx);
-      status.invalidate();
-
-      uint32_t startUpdate = time_get_ms();
-      while (!status.isValid() && (time_get_ms() - startUpdate < 250))
-        sleep_ms(1);
+      // Invalidate cached MPM status so options/UI refresh when the module
+      // reports again. Do NOT sleep/poll here: this runs on the UI thread from
+      // a Menu selection and used to freeze LVGL/input for up to 250ms (always
+      // that long in the simulator / when the module is offline).
+      getMultiModuleStatus(moduleIdx).invalidate();
 
       SET_DIRTY();
 #endif
@@ -848,6 +846,46 @@ bool moduleSubTypeChoiceDeleteWhileMenuOpenClosesMenuForTest()
   choice->deleteLater();
   md.type = savedType;
   return Window::topWindow() != menu;
+}
+
+bool moduleSubTypeSetValueDoesNotBlockUiForTest()
+{
+  // Changing multimodule RF protocol used to busy-wait up to 250ms on the UI
+  // thread for MultiModuleStatus. That freezes LVGL/input — especially in the
+  // simulator / when the module never reports valid status.
+  class TestChoice : public ModuleSubTypeChoice
+  {
+   public:
+    using ModuleSubTypeChoice::ModuleSubTypeChoice;
+    void setValueForTest(int value) { setValue(value); }
+  };
+
+  auto& md = g_model.moduleData[EXTERNAL_MODULE];
+  const auto savedType = md.type;
+  const auto savedProto = md.multi.rfProtocol;
+  md.type = MODULE_TYPE_MULTIMODULE;
+  md.multi.rfProtocol = 0;
+
+  auto choice = new (std::nothrow)
+      TestChoice(MainWindow::instance(), EXTERNAL_MODULE);
+  if (!choice || !choice->isAvailable()) {
+    md.type = savedType;
+    md.multi.rfProtocol = savedProto;
+    delete choice;
+    return false;
+  }
+
+  getMultiModuleStatus(EXTERNAL_MODULE).invalidate();
+
+  const tmr10ms_t start = get_tmr10ms();
+  choice->setValueForTest(1);
+  const tmr10ms_t elapsed = get_tmr10ms() - start;
+
+  const bool ok = md.multi.rfProtocol == 1 && elapsed < 5;  // 5 * 10ms = 50ms
+  md.type = savedType;
+  md.multi.rfProtocol = savedProto;
+  delete choice;
+  return ok;
 }
 #endif
 
