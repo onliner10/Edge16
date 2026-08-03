@@ -514,6 +514,12 @@ class ModuleWindow : public Window
 
   void startRSSIDialog(std::function<void()> closeHandler = nullptr)
   {
+    // MODULE_UPDATE / updateModule() can clear() and null rangeButton while
+    // the RSSI dialog is still open. Capture a WindowRef so the closeHandler
+    // never touches a destroyed ModuleWindow or stale rangeButton*.
+    auto owner = refForDeferredMutation();
+    const uint8_t idx = moduleIdx;
+
     auto rssiDialog = new DynamicMessageDialog(
         STR_RANGE_TEST,
         [=]() {
@@ -522,11 +528,15 @@ class ModuleWindow : public Window
         getRxStatLabels()->label, 50,
         COLOR_THEME_SECONDARY1_INDEX, CENTERED | FONT(XL));
 
-    rssiDialog->setCloseHandler([this, closeHandler]() {
-      rangeButton->check(false);
-      moduleState[moduleIdx].mode = MODULE_MODE_NORMAL;
-      if (closeHandler) closeHandler();
-    });
+    rssiDialog->setCloseHandler(
+        [owner, idx, closeHandler = std::move(closeHandler)]() mutable {
+          owner.withLiveWindow([](Window& window) {
+            auto& mw = static_cast<ModuleWindow&>(window);
+            if (mw.rangeButton) mw.rangeButton->check(false);
+          });
+          moduleState[idx].mode = MODULE_MODE_NORMAL;
+          if (closeHandler) closeHandler();
+        });
   }
 
   void updateIDStaticText(int mdIdx)
@@ -809,6 +819,103 @@ ModulePage::ModulePage(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, 
 }
 
 #if defined(SIMU) && defined(MULTIMODULE)
+bool moduleWindowRssiDialogCloseAfterRebuildSafeForTest()
+{
+  // startRSSIDialog's closeHandler used to call rangeButton->check(false)
+  // unconditionally. updateModule()/MODULE_UPDATE clears the window and
+  // nulls rangeButton while the dialog can still be open — UAF on dismiss.
+  class TestModuleWindow : public ModuleWindow
+  {
+   public:
+    using ModuleWindow::ModuleWindow;
+    void startRSSIDialogForTest() { startRSSIDialog(); }
+    void updateModuleForTest() { updateModule(); }
+    TextButton* rangeButtonForTest() const { return rangeButton; }
+  };
+
+  auto& md = g_model.moduleData[EXTERNAL_MODULE];
+  const auto savedType = md.type;
+  md.type = MODULE_TYPE_MULTIMODULE;
+
+  auto* window = new (std::nothrow)
+      TestModuleWindow(MainWindow::instance(), EXTERNAL_MODULE);
+  if (!window || !window->isAvailable() || !window->rangeButtonForTest()) {
+    md.type = savedType;
+    delete window;
+    return false;
+  }
+
+  moduleState[EXTERNAL_MODULE].mode = MODULE_MODE_RANGECHECK;
+  window->startRSSIDialogForTest();
+  Window* dialog = Window::topWindow();
+  if (!dialog || dialog == window) {
+    md.type = savedType;
+    delete window;
+    return false;
+  }
+
+  // Rebuild destroys the old rangeButton while the RSSI dialog stays open.
+  TextButton* staleRangeButton = window->rangeButtonForTest();
+  window->updateModuleForTest();
+  // updateModule() nulls then may recreate rangeButton — either way the
+  // closeHandler must not touch the destroyed object.
+  const bool rebuilt = window->rangeButtonForTest() != staleRangeButton;
+
+  dialog->deleteLater();
+  Window::runDeferredCloseHandlersForTest();
+  Window::runDeferredCloseHandlersForTest();
+
+  const bool modeRestored =
+      moduleState[EXTERNAL_MODULE].mode == MODULE_MODE_NORMAL;
+  md.type = savedType;
+  delete window;
+  return rebuilt && modeRestored;
+}
+
+bool moduleWindowRssiDialogCloseAfterOwnerDeleteSafeForTest()
+{
+  class TestModuleWindow : public ModuleWindow
+  {
+   public:
+    using ModuleWindow::ModuleWindow;
+    void startRSSIDialogForTest() { startRSSIDialog(); }
+    TextButton* rangeButtonForTest() const { return rangeButton; }
+  };
+
+  auto& md = g_model.moduleData[EXTERNAL_MODULE];
+  const auto savedType = md.type;
+  md.type = MODULE_TYPE_MULTIMODULE;
+
+  auto* window = new (std::nothrow)
+      TestModuleWindow(MainWindow::instance(), EXTERNAL_MODULE);
+  if (!window || !window->isAvailable() || !window->rangeButtonForTest()) {
+    md.type = savedType;
+    delete window;
+    return false;
+  }
+
+  moduleState[EXTERNAL_MODULE].mode = MODULE_MODE_RANGECHECK;
+  window->startRSSIDialogForTest();
+  Window* dialog = Window::topWindow();
+  if (!dialog || dialog == window) {
+    md.type = savedType;
+    delete window;
+    return false;
+  }
+
+  window->deleteLater();
+  Window::runDeferredCloseHandlersForTest();
+
+  dialog->deleteLater();
+  Window::runDeferredCloseHandlersForTest();
+  Window::runDeferredCloseHandlersForTest();
+
+  const bool modeRestored =
+      moduleState[EXTERNAL_MODULE].mode == MODULE_MODE_NORMAL;
+  md.type = savedType;
+  return modeRestored;
+}
+
 bool moduleSubTypeChoiceDeleteWhileMenuOpenClosesMenuForTest()
 {
   // Multimodule openMenu used `new Menu()` without setting activeMenu, so
