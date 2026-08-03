@@ -102,6 +102,12 @@ protected:
 
   NavWindow* navWindow();
 
+  // Cancel this Page and run its closeHandler while the parent PageGroup (and
+  // its line buttons) are still alive.  deleteLater() would otherwise defer the
+  // handler until after SYS/MDL/TELE / Quick Menu navigation tears down that
+  // parent — a UAF/freeze when the handler rebuilds or updates line buttons.
+  void cancelWithCloseHandler();
+
   template <typename Fn>
   bool withPageHeader(Fn&& fn)
   {

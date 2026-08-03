@@ -122,14 +122,25 @@ Page::Page(EdgeTxIcon icon, Route route, PaddingSize padding, bool pauseRefresh)
   body->padAll(padding);
 
   quickMenuMsg.subscribe(Messaging::QUICK_MENU_ITEM_SELECT,
-      [=](uint32_t param) {
-        onCancel();
+      [=](uint32_t) {
+        // Same lifetime invariant as cancelWithCloseHandler(): run the
+        // closeHandler before PageGroup's QUICK_MENU subscriber tears down
+        // the tab body (Messaging delivers newer/more-negative groups first).
+        cancelWithCloseHandler();
       });
 }
 
 void Page::onCancel()
 {
   deleteLater();
+}
+
+void Page::cancelWithCloseHandler()
+{
+  auto handler = std::move(closeHandler);
+  closeHandler = nullptr;
+  onCancel();
+  if (handler) handler();
 }
 
 void Page::onLiveClicked(LiveWindow&) { Keyboard::hide(false); }
@@ -184,7 +195,7 @@ void Page::onPressSYS()
   } else {
     auto p = navWindow();
     if (p) {
-      onCancel();
+      cancelWithCloseHandler();
       p->onPressSYS();
     }
   }
@@ -194,7 +205,7 @@ void Page::onLongPressSYS()
 {
   auto p = navWindow();
   if (p) {
-    onCancel();
+    cancelWithCloseHandler();
     p->onLongPressSYS();
   }
 }
@@ -203,7 +214,7 @@ void Page::onPressMDL()
 {
   auto p = navWindow();
   if (p) {
-    onCancel();
+    cancelWithCloseHandler();
     p->onPressMDL();
   }
 }
@@ -212,7 +223,7 @@ void Page::onLongPressMDL()
 {
   auto p = navWindow();
   if (p) {
-    onCancel();
+    cancelWithCloseHandler();
     p->onLongPressMDL();
   }
 }
@@ -221,7 +232,7 @@ void Page::onPressTELE()
 {
   auto p = navWindow();
   if (p) {
-    onCancel();
+    cancelWithCloseHandler();
     p->onPressTELE();
   }
 }
@@ -230,7 +241,7 @@ void Page::onLongPressTELE()
 {
   auto p = navWindow();
   if (p) {
-    onCancel();
+    cancelWithCloseHandler();
     p->onLongPressTELE();
   }
 }
@@ -246,10 +257,7 @@ void Page::onLongPressRTN()
   // PageGroup for a frame, while closing that parent inline caused freezes.
   deferWindowMutation([](Window& window, UiMutationToken&) {
     auto& page = static_cast<Page&>(window);
-    auto closeHandler = std::move(page.closeHandler);
-    page.closeHandler = nullptr;
-    page.onCancel();
-    if (closeHandler) closeHandler();
+    page.cancelWithCloseHandler();
 
     if (PageGroup* pageGroup = Window::pageGroup())
       pageGroup->returnHomeFromLongPress();

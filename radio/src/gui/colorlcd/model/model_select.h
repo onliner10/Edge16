@@ -75,11 +75,8 @@ class ModelLabelsWindow : public Page
   void moveLabel(int selected, int direction);
 
 #if defined(HARDWARE_KEYS)
-  void onLongPressSYS() override;
-  void onPressMDL() override;
+  // Long MDL is intentionally disabled on the model select screen.
   void onLongPressMDL() override {}
-  void onPressTELE() override;
-  void onLongPressTELE() override;
   void onPressPG(bool isNext);
   void onPressPGUP() override;
   void onPressPGDN() override;
