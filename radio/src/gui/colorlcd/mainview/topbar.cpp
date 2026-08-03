@@ -163,12 +163,19 @@ void SetupTopBarWidgetsPage::onLiveClicked(Window::LiveWindow&)
   // block event forwarding (window is transparent)
 }
 
-void SetupTopBarWidgetsPage::onCancel() { deleteLater(); }
+void SetupTopBarWidgetsPage::onCancel()
+{
+  // Defer self-teardown + Quick Menu reopen. Inline deleteLater from EXIT/Back
+  // tears down this NavWindow while LVGL is still dispatching — same freeze
+  // class as SetupWidgetsPage::onCancel.
+  deferWindowMutation([](Window& window, UiMutationToken&) {
+    window.deleteLater();
+    QuickMenu::openQuickMenu();
+  });
+}
 
 void SetupTopBarWidgetsPage::onDeleted()
 {
-  QuickMenu::openQuickMenu();
-
   auto viewMain = ViewMain::instance();
   if (viewMain && viewMain->getTopbar()) {
     viewMain->getTopbar()->setSetupMode(false);
@@ -433,3 +440,16 @@ Widget* TopBar::createWidget(unsigned int index,
 }
 
 //-----------------------------------------------------------------------------
+
+#if defined(SIMU)
+bool setupTopBarWidgetsPageCancelDefersTeardownForTest()
+{
+  auto page = new (std::nothrow) SetupTopBarWidgetsPage();
+  if (!page || Window::topWindow() != page) return false;
+
+  page->onCancel();
+  // Must remain the top layer until the deferred mutation runs; running the
+  // mutation would call QuickMenu::openQuickMenu and rebuild UI.
+  return Window::topWindow() == page;
+}
+#endif
