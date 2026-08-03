@@ -30,6 +30,7 @@
 #include "etx_lv_theme.h"
 #include "form.h"
 #include "getset_helpers.h"
+#include "mainwindow.h"
 #include "messaging.h"
 #include "mixer_scheduler.h"
 #include "ds_core.h"
@@ -704,19 +705,29 @@ class ModuleSubTypeChoice : public Choice
 
 #if defined(MULTIMODULE)
     if (isModuleMultimodule(moduleIdx)) {
-      auto menu = new Menu();
+      setEditMode(true);  // must be done before the menu is created
+
+      auto menu = new (std::nothrow) Menu();
+      if (!menu) {
+        setEditMode(false);
+        return;
+      }
+      activeMenu = menu;
 
       if (menuTitle) menu->setTitle(menuTitle);
-      menu->setCloseHandler([=]() { setEditMode(false); });
 
-      setEditMode(true);
+      std::weak_ptr<bool> lifetime(lifetimeToken);
+      auto* choice = this;
+      menu->setCloseHandler([choice, lifetime]() {
+        if (!lifetime.lock()) return;
+        choice->activeMenu = nullptr;
+        choice->setEditMode(false);
+      });
 
       auto protos = MultiRfProtocols::instance(moduleIdx);
       protos->fillList([=](const MultiRfProtocols::RfProto& p) {
         addValue(p.label.c_str());
-        menu->addLine(p.label.c_str(), [=]() {
-          setValue(p.proto);
-        });
+        menu->addLine(p.label.c_str(), [=]() { setValue(p.proto); });
       });
 
       ModuleData* md = &g_model.moduleData[moduleIdx];
@@ -798,3 +809,45 @@ ModulePage::ModulePage(uint8_t moduleIdx, Route route) : Page(ICON_MODEL_SETUP, 
   // Call this last in case it opens the 'Scanning' popup.
   subTypeChoice->updateLayout();
 }
+
+#if defined(SIMU) && defined(MULTIMODULE)
+bool moduleSubTypeChoiceDeleteWhileMenuOpenClosesMenuForTest()
+{
+  // Multimodule openMenu used `new Menu()` without setting activeMenu, so
+  // Choice::onDelete left the picker alive with close/line handlers capturing
+  // the destroyed ModuleSubTypeChoice.
+  class TestChoice : public ModuleSubTypeChoice
+  {
+   public:
+    using ModuleSubTypeChoice::ModuleSubTypeChoice;
+    void openMenuForTest() { openMenu(); }
+    Menu* activeMenuForTest() const { return activeMenu; }
+  };
+
+  auto& md = g_model.moduleData[EXTERNAL_MODULE];
+  const auto savedType = md.type;
+  md.type = MODULE_TYPE_MULTIMODULE;
+
+  auto choice = new (std::nothrow)
+      TestChoice(MainWindow::instance(), EXTERNAL_MODULE);
+  if (!choice || !choice->isAvailable()) {
+    md.type = savedType;
+    delete choice;
+    return false;
+  }
+
+  choice->openMenuForTest();
+  Menu* menu = choice->activeMenuForTest();
+  const bool menuOpen = menu && Window::topWindow() == menu;
+  if (!menuOpen) {
+    md.type = savedType;
+    delete choice;
+    return false;
+  }
+
+  choice->deleteLater();
+  md.type = savedType;
+  return Window::topWindow() != menu;
+}
+#endif
+
