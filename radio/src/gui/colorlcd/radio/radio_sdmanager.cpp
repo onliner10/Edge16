@@ -84,10 +84,16 @@ class FlashDialog: public FullScreenDialog
 #if defined(PXX2)
 
 #include "pulses/pxx2_ota.h"
+#include "dialog.h"
 
 // Forward declaration of C-style callback for startBind()
 class FrskyOtaFlashDialog;
 ModuleCallback onUpdateStateChangedCallbackFor(FrskyOtaFlashDialog* dialog);
+void onUpdateStateChangedCallback();
+
+// Only one OTA flash is possible at a time; PXX2 bind uses a C callback that
+// routes through this holder. Cleared synchronously in FrskyOtaFlashDialog::disarm().
+static FrskyOtaFlashDialog* frskyOtaFlashDialogHolder = nullptr;
 
 class FrskyOtaFlashDialog : public BaseDialog
 {
@@ -105,15 +111,17 @@ class FrskyOtaFlashDialog : public BaseDialog
     memclear(&reusableBuffer.sdManager.otaUpdateInformation, sizeof(OtaUpdateInformation));
     strncpy(reusableBuffer.sdManager.otaUpdateInformation.filename, filename, min<uint8_t>(strlen(filename), FF_MAX_LFN));
     reusableBuffer.sdManager.otaUpdateInformation.module = module;
-    moduleState[reusableBuffer.sdManager.otaUpdateInformation.module].startBind(&reusableBuffer.sdManager.otaUpdateInformation, onUpdateStateChangedCallbackFor(this));
-
-    setCloseHandler([=]() { moduleState[reusableBuffer.sdManager.otaUpdateInformation.module].mode = MODULE_MODE_NORMAL; });
+    moduleState[reusableBuffer.sdManager.otaUpdateInformation.module].startBind(
+        &reusableBuffer.sdManager.otaUpdateInformation,
+        onUpdateStateChangedCallbackFor(this));
   }
 
   void onUpdateConfirmation()
   {
     OtaUpdateInformation * destination = moduleState[reusableBuffer.sdManager.otaUpdateInformation.module].otaUpdateInformation;
     Pxx2OtaUpdate otaUpdate(reusableBuffer.sdManager.otaUpdateInformation.module, destination->candidateReceiversNames[destination->selectedReceiverIndex]);
+    // Stop bind callbacks before the long synchronous flash path / teardown.
+    disarm();
     auto dialog = new FlashDialog<Pxx2OtaUpdate>(otaUpdate);
     dialog->flash(destination->filename);
     deleteLater();
@@ -159,7 +167,11 @@ class FrskyOtaFlashDialog : public BaseDialog
               rxChoiceMenu->setCancelHandler([=]() {
                 // Seems menu didn't delete itself before call cancelHandler().
                 // Delete the menu explicity to ensure menu is deleted before dialog.
-                rxChoiceMenu->deleteLater();
+                if (rxChoiceMenu) {
+                  rxChoiceMenu->setCancelHandler({});
+                  rxChoiceMenu->deleteLater();
+                  rxChoiceMenu = nullptr;
+                }
                 deleteLater();
               });
             } else {
@@ -187,24 +199,97 @@ class FrskyOtaFlashDialog : public BaseDialog
     BaseDialog::onLiveCheckEvents(live);
   }
 
+  void onDelete() override
+  {
+    // deleteLater() defers closeHandler; PXX2 bind frames can still invoke the
+    // module callback in that window. Disarm synchronously here.
+    disarm();
+  }
+
  protected:
   uint8_t popupReceiversCount = 0;
   Menu* rxChoiceMenu = nullptr;
   ConfirmDialog* updateConfirmDialog = nullptr;
+
+  void disarm()
+  {
+    // Holder first so an in-flight callback no-ops even if callback ptr races.
+    if (frskyOtaFlashDialogHolder == this)
+      frskyOtaFlashDialogHolder = nullptr;
+
+    const uint8_t module = reusableBuffer.sdManager.otaUpdateInformation.module;
+    if (module < NUM_MODULES) {
+      if (moduleState[module].callback == onUpdateStateChangedCallback)
+        moduleState[module].callback = nullptr;
+      moduleState[module].mode = MODULE_MODE_NORMAL;
+    }
+
+    if (rxChoiceMenu) {
+      rxChoiceMenu->setCancelHandler({});
+      rxChoiceMenu->removeLines();
+      rxChoiceMenu->deleteLater();
+      rxChoiceMenu = nullptr;
+    }
+    if (updateConfirmDialog) {
+      updateConfirmDialog->clearHandlers();
+      updateConfirmDialog->deleteLater();
+      updateConfirmDialog = nullptr;
+    }
+  }
+
+  // Visible to the C callback wrapper below.
+  friend void onUpdateStateChangedCallback();
+  friend ModuleCallback onUpdateStateChangedCallbackFor(FrskyOtaFlashDialog*);
+#if defined(SIMU)
+  friend bool frskyOtaFlashDialogDeleteClearsModuleCallbackForTest();
+#endif
 };
 
-// Wrapper for C-style callback of startBind()
-// Only one OTA flash is possible at a time, it's fine to use a global holder.
-FrskyOtaFlashDialog* frskyOtaFlashDialogHolder = nullptr;
-void onUpdateStateChangedCallback() {
-  if (frskyOtaFlashDialogHolder != nullptr) {
+void onUpdateStateChangedCallback()
+{
+  if (frskyOtaFlashDialogHolder != nullptr)
     frskyOtaFlashDialogHolder->onUpdateStateChanged();
-  }
 }
-ModuleCallback onUpdateStateChangedCallbackFor(FrskyOtaFlashDialog* dialog) {
+
+ModuleCallback onUpdateStateChangedCallbackFor(FrskyOtaFlashDialog* dialog)
+{
   frskyOtaFlashDialogHolder = dialog;
   return onUpdateStateChangedCallback;
 }
+
+#if defined(SIMU)
+bool frskyOtaFlashDialogDeleteClearsModuleCallbackForTest()
+{
+  constexpr ModuleIndex module = EXTERNAL_MODULE;
+  moduleState[module].callback = nullptr;
+  moduleState[module].mode = MODULE_MODE_NORMAL;
+  frskyOtaFlashDialogHolder = nullptr;
+
+  auto dialog = new (std::nothrow) FrskyOtaFlashDialog("OTA");
+  if (!dialog) return false;
+
+  dialog->flash("test.bin", module);
+
+  const bool armed =
+      frskyOtaFlashDialogHolder == dialog &&
+      moduleState[module].callback == onUpdateStateChangedCallback &&
+      moduleState[module].mode == MODULE_MODE_BIND;
+
+  dialog->deleteLater();
+
+  // Must be cleared synchronously in onDelete — not after deferred handlers.
+  const bool disarmedInline =
+      frskyOtaFlashDialogHolder == nullptr &&
+      moduleState[module].callback == nullptr &&
+      moduleState[module].mode == MODULE_MODE_NORMAL;
+
+  // Stale callback entry must be a no-op after teardown.
+  onUpdateStateChangedCallback();
+
+  Window::runDeferredCloseHandlersForTest();
+  return armed && disarmedInline;
+}
+#endif  // SIMU
 
 #endif  // PXX2
 

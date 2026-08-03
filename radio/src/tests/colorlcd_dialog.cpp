@@ -36,6 +36,9 @@ bool confirmDialogYesIsDestructiveWhenFlaggedForTest();
 bool dsDialogActionsAreCenteredForTest();
 bool fullScreenConfirmIgnoresLongPressForTest();
 bool fullScreenAlertStillDismissesOnLongPressForTest();
+#if defined(PXX2)
+bool frskyOtaFlashDialogDeleteClearsModuleCallbackForTest();
+#endif
 
 // Confirming with a typed name (checkmark/OK) applies it, and the dialog
 // opens with its keyboard already showing and the auto-generated name as the
@@ -244,5 +247,26 @@ TEST(ColorFullScreenDialog, AlertStillDismissesOnLongPress)
   ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
   EXPECT_EQ(WEXITSTATUS(status), 0);
 }
+
+#if defined(PXX2)
+// Cancelling Frsky OTA must clear the global dialog holder and moduleState
+// callback synchronously. deleteLater() used to defer only MODULE_MODE_NORMAL
+// via closeHandler while PXX2 bind frames could still UAF the dialog.
+TEST(ColorFrskyOtaFlashDialog, DeleteClearsModuleCallback)
+{
+  const pid_t pid = fork();
+  ASSERT_GE(pid, 0);
+
+  if (pid == 0) {
+    alarm(2);
+    _exit(frskyOtaFlashDialogDeleteClearsModuleCallbackForTest() ? 0 : 1);
+  }
+
+  int status = 0;
+  ASSERT_EQ(waitpid(pid, &status, 0), pid);
+  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+#endif
 
 #endif
