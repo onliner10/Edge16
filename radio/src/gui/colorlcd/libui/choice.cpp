@@ -304,6 +304,8 @@ void Choice::onDelete()
   activeMenu = nullptr;
   if (menu) {
     menu->setCloseHandler({});
+    menu->setWaitHandler({});
+    menu->setLongPressHandler({});
     menu->deleteLater();
   }
   ChoiceBase::onDelete();

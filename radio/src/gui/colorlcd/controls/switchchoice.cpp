@@ -23,6 +23,9 @@
 #include "menu.h"
 #include "menutoolbar.h"
 #include "edgetx.h"
+#include "mainwindow.h"
+
+#include <new>
 
 #include <new>
 
@@ -129,6 +132,7 @@ void SwitchChoice::openMenu()
   setEditMode(true);  // this needs to be done first before menu is created.
 
   Menu::openOr([&](Menu& menu) {
+    activeMenu = &menu;
     auto menuPtr = &menu;
     if (menuTitle) menu.setTitle(menuTitle);
 
@@ -138,10 +142,17 @@ void SwitchChoice::openMenu()
     auto tb = new (std::nothrow) SwitchChoiceMenuToolbar(*this, menu);
     if (tb) menu.setToolbar(tb);
 
-    menu.setLongPressHandler([=]() { if (tb) tb->invertChoice(); });
+    std::weak_ptr<bool> lifetime(lifetimeToken);
+    auto* choice = this;
+
+    menu.setLongPressHandler([choice, lifetime, tb]() {
+      if (!lifetime.lock()) return;
+      if (tb) tb->invertChoice();
+    });
 
 #if defined(AUTOSWITCH)
-    menu.setWaitHandler([=]() {
+    menu.setWaitHandler([choice, lifetime, menuPtr, tb]() {
+      if (!lifetime.lock()) return;
       swsrc_t val = 0;
       swsrc_t swtch = getMovedSwitch();
       if (swtch) {
@@ -153,9 +164,9 @@ void SwitchChoice::openMenu()
         } else {
           val = swtch;
         }
-        if (val && (!isValueAvailable || isValueAvailable(val))) {
+        if (val && (!choice->isValueAvailable || choice->isValueAvailable(val))) {
           if (tb) tb->resetFilter();
-          menuPtr->select(getIndexFromValue(val));
+          menuPtr->select(choice->getIndexFromValue(val));
         }
       }
     });
@@ -163,8 +174,14 @@ void SwitchChoice::openMenu()
 
     // fillMenu(menu); - called by MenuToolbar
 
-    menu.setCloseHandler([=]() { setEditMode(false); });
+    menu.setCloseHandler([choice, lifetime]() {
+      if (!lifetime.lock()) return;
+      choice->activeMenu = nullptr;
+      choice->inMenu = false;
+      choice->setEditMode(false);
+    });
   }, [&]() {
+    activeMenu = nullptr;
     inMenu = false;
     setEditMode(false);
   });
@@ -186,3 +203,32 @@ SwitchChoice::SwitchChoice(Window* parent, const rect_t& rect, int vmin,
 
   setAvailableHandler(isSwitchAvailableInMixes);
 }
+
+#if defined(SIMU)
+bool switchChoiceDeleteWhileMenuOpenClosesMenuForTest()
+{
+  int16_t value = SWSRC_FIRST_SWITCH;
+  class TestSwitchChoice : public SwitchChoice
+  {
+   public:
+    using SwitchChoice::SwitchChoice;
+    void openMenuForTest() { openMenu(); }
+    Menu* activeMenuForTest() const { return activeMenu; }
+  };
+
+  auto choice = new (std::nothrow) TestSwitchChoice(
+      MainWindow::instance(),
+      rect_t{0, 0, 100, EdgeTxStyles::UI_ELEMENT_HEIGHT}, SWSRC_FIRST_SWITCH,
+      SWSRC_LAST_SWITCH, [&]() -> int16_t { return value; },
+      [&](int16_t v) { value = v; });
+  if (!choice || !choice->isAvailable()) return false;
+
+  choice->openMenuForTest();
+  Menu* menu = choice->activeMenuForTest();
+  if (!menu) return false;
+  if (Window::topWindow() != menu) return false;
+
+  choice->deleteLater();
+  return Window::topWindow() != menu;
+}
+#endif

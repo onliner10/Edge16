@@ -27,15 +27,17 @@
 
 bool choiceImageCreateFailureLeavesChoiceUsableForTest();
 bool choiceLabelCreateFailureFailsClosedForTest();
+bool sourceChoiceDeleteWhileMenuOpenClosesMenuForTest();
+bool switchChoiceDeleteWhileMenuOpenClosesMenuForTest();
 
-TEST(ColorChoice, ImageCreateFailureLeavesChoiceUsable)
+static void expectChildSucceeds(bool (*body)())
 {
   const pid_t pid = fork();
   ASSERT_GE(pid, 0);
 
   if (pid == 0) {
     alarm(2);
-    _exit(choiceImageCreateFailureLeavesChoiceUsableForTest() ? 0 : 1);
+    _exit(body() ? 0 : 1);
   }
 
   int status = 0;
@@ -44,20 +46,24 @@ TEST(ColorChoice, ImageCreateFailureLeavesChoiceUsable)
   EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
+TEST(ColorChoice, ImageCreateFailureLeavesChoiceUsable)
+{
+  expectChildSucceeds(choiceImageCreateFailureLeavesChoiceUsableForTest);
+}
+
 TEST(ColorChoice, LabelCreateFailureFailsClosed)
 {
-  const pid_t pid = fork();
-  ASSERT_GE(pid, 0);
+  expectChildSucceeds(choiceLabelCreateFailureFailsClosedForTest);
+}
 
-  if (pid == 0) {
-    alarm(2);
-    _exit(choiceLabelCreateFailureFailsClosedForTest() ? 0 : 1);
-  }
+TEST(ColorChoice, SourceChoiceDeleteWhileMenuOpenClosesMenu)
+{
+  expectChildSucceeds(sourceChoiceDeleteWhileMenuOpenClosesMenuForTest);
+}
 
-  int status = 0;
-  ASSERT_EQ(waitpid(pid, &status, 0), pid);
-  ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
-  EXPECT_EQ(WEXITSTATUS(status), 0);
+TEST(ColorChoice, SwitchChoiceDeleteWhileMenuOpenClosesMenu)
+{
+  expectChildSucceeds(switchChoiceDeleteWhileMenuOpenClosesMenuForTest);
 }
 
 #endif
