@@ -517,7 +517,7 @@ class ModuleWindow : public Window
     // MODULE_UPDATE / updateModule() can clear() and null rangeButton while
     // the RSSI dialog is still open. Capture a WindowRef so the closeHandler
     // never touches a destroyed ModuleWindow or stale rangeButton*.
-    auto owner = refForDeferredMutation();
+    auto owner = lifetimeRef();
     const uint8_t idx = moduleIdx;
 
     auto rssiDialog = new DynamicMessageDialog(
