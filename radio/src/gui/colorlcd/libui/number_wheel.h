@@ -53,6 +53,10 @@ class NumberWheel : public ModalWindow
 
   static NumberWheel* open(NumberEdit* edit);
 
+  /// Close any open wheel bound to this NumberEdit without invoking its
+  /// NumberArea closeHandler (field is being destroyed).
+  static void detachEdit(NumberEdit* edit);
+
   /// Maximum acceptable option count for a single-column wheel.
   static constexpr int MAX_WHEEL_OPTIONS = 300;
 
@@ -108,6 +112,8 @@ class NumberWheel : public ModalWindow
 #endif
 
  protected:
+  static NumberWheel* activeWheel;
+
   NumberEdit* edit = nullptr;
   std::vector<lv_obj_t*> rollers;  // all rollers, in column order
   lv_obj_t* rollerObj = nullptr;   // alias of rollers[0]
@@ -142,6 +148,7 @@ class NumberWheel : public ModalWindow
   void buildMultiRollers(lv_obj_t* parent);
   void onConfirm();
   void onCancel() override;
+  void onDelete() override;
   int currentComposedValue() const;
   void applyCurrentSelection(bool tick);
   void previewSelection(int idx);  // single-column only; calls applyCurrentSelection
