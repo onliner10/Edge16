@@ -46,6 +46,11 @@ class ScreenSetupPage : public PageGroupItem
 
   static void addScreen();
 
+  // Tear down the parent PageGroup and open SetupWidgetsPage. Must be deferred
+  // so the button press handler is not still on the stack while its ancestors
+  // are deleted (same freeze class as Page::onLongPressRTN).
+  static void openSetupWidgets(Window* hostWindow, unsigned screenIndex);
+
  protected:
   unsigned customScreenIndex;
   Window* layoutOptions = nullptr;

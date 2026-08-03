@@ -26,23 +26,38 @@
 #include <unistd.h>
 
 bool screenSetupLayoutChoiceCanvasCreateFailureFailsClosedForTest();
+bool screenSetupWidgetsDefersPageGroupCloseForTest();
+bool setupWidgetsPageCancelDefersTeardownForTest();
 
-TEST(ColorScreenSetup, LayoutChoiceCanvasCreateFailureFailsClosed)
+static void expectChildSucceeds(bool (*body)())
 {
   const pid_t pid = fork();
   ASSERT_GE(pid, 0);
 
   if (pid == 0) {
     alarm(2);
-    _exit(screenSetupLayoutChoiceCanvasCreateFailureFailsClosedForTest()
-              ? 0
-              : 1);
+    _exit(body() ? 0 : 1);
   }
 
   int status = 0;
   ASSERT_EQ(waitpid(pid, &status, 0), pid);
   ASSERT_TRUE(WIFEXITED(status)) << "child process did not exit normally";
   EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST(ColorScreenSetup, LayoutChoiceCanvasCreateFailureFailsClosed)
+{
+  expectChildSucceeds(screenSetupLayoutChoiceCanvasCreateFailureFailsClosedForTest);
+}
+
+TEST(ColorScreenSetup, SetupWidgetsDefersPageGroupClose)
+{
+  expectChildSucceeds(screenSetupWidgetsDefersPageGroupCloseForTest);
+}
+
+TEST(ColorScreenSetup, SetupWidgetsCancelDefersTeardown)
+{
+  expectChildSucceeds(setupWidgetsPageCancelDefersTeardownForTest);
 }
 
 #endif

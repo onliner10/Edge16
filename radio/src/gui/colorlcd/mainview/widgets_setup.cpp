@@ -243,8 +243,14 @@ void SetupWidgetsPage::onLiveClicked(Window::LiveWindow&)
 
 void SetupWidgetsPage::onCancel()
 {
-  deleteLater();
-  QuickMenu::openPage((QMPage)(QM_UI_SCREEN1 + customScreenIdx));
+  // Defer self-teardown + PageGroup reopen. Inline deleteLater from a key/touch
+  // handler tears down this NavWindow (and its focused children) while LVGL is
+  // still dispatching the event — same freeze class as Setup Widgets entry.
+  const auto idx = customScreenIdx;
+  deferWindowMutation([idx](Window& window, UiMutationToken&) {
+    window.deleteLater();
+    QuickMenu::openPage((QMPage)(QM_UI_SCREEN1 + idx));
+  });
 }
 
 void SetupWidgetsPage::onDeleted()
@@ -259,3 +265,16 @@ void SetupWidgetsPage::onDeleted()
 
   storageDirty(EE_MODEL);
 }
+
+#if defined(SIMU)
+bool setupWidgetsPageCancelDefersTeardownForTest()
+{
+  auto page = new (std::nothrow) SetupWidgetsPage(0);
+  if (!page || Window::topWindow() != page) return false;
+
+  page->onCancel();
+  // Must remain the top layer until the deferred mutation runs; running the
+  // mutation would call QuickMenu::openPage and rebuild a full PageGroup.
+  return Window::topWindow() == page;
+}
+#endif
