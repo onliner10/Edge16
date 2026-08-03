@@ -591,6 +591,10 @@ class Window
   FocusHandler focusHandler;
   ScrollHandler scrollHandler;
 
+  // Owner-bound ref for handlers that may outlive a rebuild or this window
+  // (dialog closeHandlers, etc.). Prefer this over capturing raw `this`.
+  WindowRef lifetimeRef() { return refForDeferredMutation(); }
+
 #if defined(SIMU)
   std::string automationId_;
   std::string automationRole_;
