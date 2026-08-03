@@ -27,6 +27,7 @@
 
 bool replaceDefaultLayoutPreservesRadioTopbarForTest();
 bool explicitTopbarRemovalStillClearsZoneForTest();
+bool setupTopBarWidgetsPageCancelDefersTeardownForTest();
 
 // The topbar widget configuration is radio-global. Each of these helpers
 // mutates that shared state and the UI singletons, so run each in a forked
@@ -59,6 +60,11 @@ TEST(ColorTopBar, DefaultLayoutRebuildPreservesRadioTopbar)
 TEST(ColorTopBar, ExplicitRemovalStillClearsZone)
 {
   expectChildSucceeds(explicitTopbarRemovalStillClearsZoneForTest);
+}
+
+TEST(ColorTopBar, SetupTopBarCancelDefersTeardown)
+{
+  expectChildSucceeds(setupTopBarWidgetsPageCancelDefersTeardownForTest);
 }
 
 #endif
